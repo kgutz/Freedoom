@@ -39,6 +39,8 @@
   }
   .scroll{
     padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
+    min-height:100vh;
+    min-height:100dvh;
   }
   body::after{
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
@@ -367,7 +369,7 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v7</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v8</p>
     </div>
   </section>
 </div>
