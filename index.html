@@ -550,7 +550,7 @@
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.3</p>
     </div>
   </div>
 </div>
@@ -1334,7 +1334,9 @@ function ensureHero(){
     const lim=limitOfDate(parseKey(g.day));
     const c=getDay(g.day).c;
     g.hp=(c<=lim)?100:75;
-    g.day=todayKey();g.hpT=now;dirty=true;
+    g.day=todayKey();g.hpT=now;
+    g.cigDmg=[]; /* registro de daños del día, para poder deshacer */
+    dirty=true;
   }
   /* regeneración: +1 de vida cada 10 min sin fumar */
   const ticks=Math.floor((now-g.hpT)/600000);
@@ -1513,11 +1515,26 @@ function bump(id,delta,min=0){
 document.getElementById('addCig').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   const dmg=smokeDamage();
+  (state.game.cigDmg=state.game.cigDmg||[]).push(dmg);
   setDay(k,d.c+1,d.p,Date.now());
   if(dmg>0) showToast('⚔ −'+dmg+' de vida','dmg');
   else showToast('En ritmo · sin daño ♥','heal');
 });
-document.getElementById('subCig').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c-1,d.p);});
+document.getElementById('subCig').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  if(d.c<=0) return;
+  ensureHero();
+  const arr=state.game.cigDmg;
+  if(arr&&arr.length){
+    const r=arr.pop();
+    if(r>0&&state.game.hp!==undefined){
+      state.game.hp=Math.min(100,state.game.hp+r);
+      showToast('Corregido · +'+r+' de vida ♥','heal');
+    }
+    scheduleSave();
+  }
+  setDay(k,d.c-1,d.p);
+});
 document.getElementById('addPill').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
@@ -1528,7 +1545,17 @@ document.getElementById('addPill').addEventListener('click',()=>{
   }
   setDay(k,d.c,d.p+1);
 });
-document.getElementById('subPill').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c,d.p-1);});
+document.getElementById('subPill').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  if(d.p<=0) return;
+  ensureHero();
+  if(d.p===1&&state.game.hp!==undefined){
+    state.game.hp=Math.max(0,state.game.hp-15);
+    scheduleSave();
+    showToast('Poción retirada −15','dmg');
+  }
+  setDay(k,d.c,d.p-1);
+});
 document.getElementById('addBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
@@ -1541,6 +1568,13 @@ document.getElementById('addBeer').addEventListener('click',()=>{
 });
 document.getElementById('subBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
+  if((d.b||0)<=0) return;
+  ensureHero();
+  if(state.game.hp!==undefined){
+    state.game.hp=Math.min(100,state.game.hp+5);
+    scheduleSave();
+    showToast('Corregido · +5 de vida ♥','heal');
+  }
   setDay(k,d.c,d.p,undefined,(d.b||0)-1);
 });
 
