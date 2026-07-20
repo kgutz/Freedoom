@@ -26,7 +26,7 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{min-height:100%}
+  html,body{min-height:100%;overscroll-behavior-y:none}
   body{
     background:var(--bg);
     color:var(--text);
@@ -34,7 +34,7 @@
     font-weight:300;
     max-width:440px;
     margin:0 auto;
-    padding:20px 18px calc(150px + env(safe-area-inset-bottom));
+    padding:20px 18px calc(104px + env(safe-area-inset-bottom));
     position:relative;
   }
   body::after{
