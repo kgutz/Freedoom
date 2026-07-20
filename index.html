@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Freedoom</title>
 <link rel="apple-touch-icon" href="icono.png">
+<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icono.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -371,7 +372,8 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v5</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v6</p>
+      <p class="hint" style="text-align:center;opacity:.6" id="debugInfo"></p>
     </div>
   </section>
 </div>
@@ -431,6 +433,21 @@ fixAppHeight();
 window.addEventListener('resize',fixAppHeight);
 window.addEventListener('orientationchange',()=>setTimeout(fixAppHeight,150));
 if(window.visualViewport) window.visualViewport.addEventListener('resize',fixAppHeight);
+
+/* Diagnóstico: medidas reales del dispositivo, visibles en Ajustes */
+function showDebug(){
+  const el=document.getElementById('debugInfo');
+  if(!el) return;
+  const probe=document.createElement('div');
+  probe.style.cssText='position:absolute;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);';
+  document.body.appendChild(probe);
+  const cs=getComputedStyle(probe);
+  const st=cs.paddingTop, sb=cs.paddingBottom;
+  probe.remove();
+  const standalone=window.navigator.standalone===true?'sí':'no';
+  el.textContent=`ventana ${window.innerHeight}px · pantalla ${screen.height}px · body ${document.body.getBoundingClientRect().height.toFixed(0)}px · safe ${st}/${sb} · app: ${standalone}`;
+}
+window.addEventListener('load',()=>setTimeout(showDebug,300));
 
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
