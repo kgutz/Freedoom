@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Registro · Dejar de fumar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#171310;
+    --panel:#211C17;
+    --panel2:#2A241D;
+    --line:#3A3229;
+    --text:#EDE3D2;
+    --muted:#9C8F7C;
+    --kodak:#E8B44A;
+    --ok:#8FAE6B;
+    --warn:#C4553E;
+    --pill:#7FA0B8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Sora',system-ui,sans-serif;
+    font-weight:300;
+    max-width:440px;
+    margin:0 auto;
+    padding:20px 18px 90px;
+    position:relative;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .mono{font-family:'IBM Plex Mono',monospace}
+
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+  .fecha{font-size:15px;color:var(--muted);text-transform:capitalize}
+  .fecha b{display:block;color:var(--text);font-weight:600;font-size:19px;margin-top:2px}
+  .semana-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--kodak);
+    border:1px solid var(--line);border-radius:6px;padding:6px 10px;text-align:right;line-height:1.5;
+    background:var(--panel);
+  }
+  .semana-tag span{color:var(--muted);display:block;font-size:10px;letter-spacing:.08em}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px}
+  .card h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+
+  .counter-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .digits{
+    font-family:'IBM Plex Mono',monospace;font-size:64px;font-weight:600;line-height:1;
+    color:var(--text);min-width:110px;letter-spacing:.02em;
+  }
+  .digits small{font-size:14px;color:var(--muted);display:block;font-weight:400;letter-spacing:.1em;margin-top:6px}
+  .btns{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .btn-add{
+    width:88px;height:88px;border-radius:50%;border:none;cursor:pointer;
+    background:radial-gradient(circle at 35% 30%, #F3C765, var(--kodak) 60%, #B8863A);
+    color:#241C0E;font-size:42px;font-weight:400;font-family:'Sora',sans-serif;
+    box-shadow:0 6px 0 #6E5122, 0 10px 22px rgba(0,0,0,.5);
+    transition:transform .08s, box-shadow .08s;
+    user-select:none;
+  }
+  .btn-add:active{transform:translateY(5px);box-shadow:0 1px 0 #6E5122, 0 4px 10px rgba(0,0,0,.5)}
+  .btn-sub{
+    width:44px;height:32px;border-radius:8px;border:1px solid var(--line);cursor:pointer;
+    background:var(--panel2);color:var(--muted);font-size:20px;line-height:1;
+  }
+  .btn-sub:active{background:var(--line)}
+
+  .btn-add.pill-btn{
+    width:64px;height:64px;font-size:32px;
+    background:radial-gradient(circle at 35% 30%, #A9C4D8, var(--pill) 60%, #55738A);
+    box-shadow:0 5px 0 #33475A, 0 8px 18px rgba(0,0,0,.5);
+  }
+  .btn-add.pill-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #33475A, 0 3px 8px rgba(0,0,0,.5)}
+  .digits.pill-d{font-size:44px}
+
+  .filmstrip-wrap{margin-top:18px}
+  .filmstrip-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .filmstrip-label .mono b{color:var(--text)}
+  .filmstrip{
+    display:flex;flex-wrap:wrap;gap:4px;
+    background:#0E0B09;border-radius:8px;padding:10px 8px;
+    border:1px solid var(--line);
+  }
+  .frame{
+    flex:1 1 calc(10% - 4px);min-width:24px;height:30px;border-radius:3px;
+    border:1px dashed #4A4034;background:transparent;
+    transition:background .3s;
+  }
+  .frame.used{background:var(--kodak);border:1px solid var(--kodak);opacity:.9}
+  .frame.over{background:var(--warn);border:1px solid var(--warn)}
+  .restantes{font-size:13px;color:var(--muted);margin-top:10px;text-align:center}
+  .restantes b{color:var(--kodak);font-family:'IBM Plex Mono',monospace}
+  .restantes.excedido b{color:var(--warn)}
+
+  /* ---------- barra de ritmo ---------- */
+  .pace-wrap{margin-top:20px;border-top:1px solid var(--line);padding-top:16px}
+  .pace-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
+  .pace-label .estado{font-weight:600}
+  .pace-label .estado.g{color:var(--ok)}
+  .pace-label .estado.y{color:var(--kodak)}
+  .pace-label .estado.o{color:#D98E3A}
+  .pace-label .estado.r{color:var(--warn)}
+  .pace-bar{
+    position:relative;height:20px;border-radius:10px;
+    background:#0E0B09;border:1px solid var(--line);overflow:hidden;
+  }
+  .pace-expected{
+    position:absolute;left:0;top:0;bottom:0;border-radius:10px;
+    background:rgba(237,227,210,.09);
+    transition:width .4s;
+  }
+  .pace-clip{
+    position:absolute;left:0;top:0;bottom:0;overflow:hidden;
+    border-radius:10px;transition:width .4s;
+  }
+  .pace-grad{
+    position:absolute;left:0;top:0;bottom:0;
+    background:linear-gradient(90deg,
+      var(--ok) 0%, var(--ok) 30%,
+      var(--kodak) 55%,
+      #D98E3A 75%,
+      var(--warn) 92%, var(--warn) 100%);
+    transition:width .4s;
+  }
+  .pace-info{font-size:12px;color:var(--muted);margin-top:12px;text-align:center;line-height:1.7}
+  .pace-info b{font-family:'IBM Plex Mono',monospace;color:var(--text)}
+  .edit-time{
+    font-family:'IBM Plex Mono',monospace;color:var(--kodak);font-weight:600;
+    border-bottom:1px dotted var(--kodak);cursor:pointer;padding-bottom:1px;
+  }
+
+  nav{
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:440px;display:flex;
+    background:rgba(23,19,16,.96);border-top:1px solid var(--line);
+    backdrop-filter:blur(8px);z-index:10;
+  }
+  nav button{
+    flex:1;padding:16px 0 20px;background:none;border:none;color:var(--muted);
+    font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
+    letter-spacing:.05em;
+  }
+  nav button.active{color:var(--kodak)}
+
+  .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .cal-head h3{font-size:16px;font-weight:600;text-transform:capitalize}
+  .cal-head button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-dow{font-size:10px;text-align:center;color:var(--muted);padding:4px 0;letter-spacing:.08em}
+  .cal-day{
+    aspect-ratio:1;border-radius:8px;border:1px solid transparent;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+    font-size:12px;color:var(--muted);cursor:pointer;background:var(--panel);
+  }
+  .cal-day.empty{background:transparent;cursor:default}
+  .cal-day.today{border-color:var(--kodak)}
+  .cal-day .n{font-weight:600;color:var(--text)}
+  .cal-day .c{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--kodak)}
+  .cal-day .c.over{color:var(--warn)}
+  .cal-day .p{font-size:9px;color:var(--pill)}
+  .cal-day.future{opacity:.35;cursor:default}
+
+  .week-summary{margin-top:18px}
+  .week-summary h4{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .wk-row{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;font-size:13px;
+  }
+  .wk-row .rng{color:var(--muted);font-size:11px;display:block;margin-top:2px}
+  .wk-row .stat{font-family:'IBM Plex Mono',monospace;font-size:14px;text-align:right}
+  .wk-row .stat .sub{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+  .wk-row .stat.ok{color:var(--ok)}
+  .wk-row .stat.bad{color:var(--warn)}
+  .wk-row .stat.curr{color:var(--kodak)}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:20}
+  .modal-bg.show{display:flex}
+  .modal-bg.center{align-items:center;padding:0 24px}
+  .modal-bg.center .modal{border-radius:20px;max-width:340px}
+  .modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:20px 20px 0 0;
+    width:100%;max-width:440px;padding:24px 20px 34px;
+  }
+  .modal h3{font-size:16px;margin-bottom:18px;text-transform:capitalize;font-weight:600}
+  .edit-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .edit-row .lbl{font-size:14px;color:var(--muted)}
+  .stepper{display:flex;align-items:center;gap:14px}
+  .stepper button{
+    width:42px;height:42px;border-radius:10px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);font-size:20px;cursor:pointer;
+  }
+  .stepper .val{font-family:'IBM Plex Mono',monospace;font-size:24px;min-width:44px;text-align:center;font-weight:600}
+  .modal .close{
+    width:100%;margin-top:8px;padding:14px;border-radius:12px;border:none;cursor:pointer;
+    background:var(--kodak);color:#241C0E;font-family:'Sora',sans-serif;font-weight:700;font-size:15px;
+  }
+
+  .set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px}
+
+  /* ---------- gráfica ---------- */
+  .seg{display:flex;gap:6px;margin-bottom:16px}
+  .seg button{
+    flex:1;padding:9px 0;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--muted);
+    font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;
+  }
+  .seg button.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
+  .graf-svg{width:100%;height:auto;display:block;margin-top:4px}
+  .graf-sum{
+    display:flex;justify-content:space-around;gap:8px;margin-top:16px;
+    border-top:1px solid var(--line);padding-top:14px;text-align:center;
+  }
+  .graf-sum div{font-size:11px;color:var(--muted);line-height:1.6}
+  .graf-sum b{display:block;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600}
+  .graf-sum .pk b{color:var(--warn)}
+  .graf-sum .mn b{color:var(--ok)}
+  .graf-sum .md b{color:var(--kodak)}
+  .set-row:last-child{border-bottom:none}
+  .set-row label{color:var(--muted)}
+  .set-row input{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;
+    width:150px;color-scheme:dark;
+  }
+  .hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
+
+  .view{display:none}
+  .view.active{display:block}
+  .loading{text-align:center;color:var(--muted);padding:60px 0;font-size:14px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading">Cargando registro…</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="fecha">Hoy<b id="fechaHoy"></b></div>
+    <div class="semana-tag"><span>SEMANA</span><span id="semanaNum" style="color:var(--text);font-size:14px"></span>máx <b id="limiteDia"></b>/día</div>
+  </header>
+
+  <!-- VISTA HOY -->
+  <section id="view-hoy" class="view active">
+    <div class="card">
+      <h2>Cigarros hoy</h2>
+      <div class="counter-row">
+        <div class="digits" id="cigHoy">0<small>HOY</small></div>
+        <div class="btns">
+          <button class="btn-add" id="addCig" aria-label="Sumar un cigarro">+</button>
+          <button class="btn-sub" id="subCig" aria-label="Restar un cigarro">−</button>
+        </div>
+      </div>
+      <div class="filmstrip-wrap">
+        <div class="filmstrip-label">
+          <span>Límite de hoy</span>
+          <span class="mono"><b id="hoyTotal">0</b> / <span id="hoyLimite">19</span></span>
+        </div>
+        <div class="filmstrip" id="filmstrip"></div>
+        <div class="restantes" id="restantes"></div>
+
+        <div class="pace-wrap">
+          <div class="pace-label">
+            <span>Ritmo del día</span>
+            <span class="estado" id="paceEstado"></span>
+          </div>
+          <div class="pace-bar">
+            <div class="pace-expected" id="paceExpected"></div>
+            <div class="pace-clip" id="paceClip"><div class="pace-grad" id="paceGrad"></div></div>
+          </div>
+          <div class="pace-info" id="paceInfo"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pastillas hoy</h2>
+      <div class="counter-row">
+        <div class="digits pill-d" id="pillHoy">0<small>TOMADAS</small></div>
+        <div class="btns">
+          <button class="btn-add pill-btn" id="addPill" aria-label="Sumar una pastilla">+</button>
+          <button class="btn-sub" id="subPill" aria-label="Restar una pastilla">−</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA CALENDARIO -->
+  <section id="view-cal" class="view">
+    <div class="card">
+      <div class="cal-head">
+        <button id="calPrev" aria-label="Mes anterior">‹</button>
+        <h3 id="calTitle"></h3>
+        <button id="calNext" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <p class="hint">Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.</p>
+    </div>
+    <div class="week-summary">
+      <h4>Resumen por semanas</h4>
+      <div id="weekList"></div>
+    </div>
+  </section>
+
+  <!-- VISTA GRÁFICA -->
+  <section id="view-graf" class="view">
+    <div class="card">
+      <div class="seg">
+        <button id="segSem" class="active">Semana</button>
+        <button id="segMes">Mes</button>
+      </div>
+      <div class="cal-head">
+        <button id="grafPrev" aria-label="Anterior">‹</button>
+        <h3 id="grafTitle" style="font-size:14px"></h3>
+        <button id="grafNext" aria-label="Siguiente">›</button>
+      </div>
+      <svg id="grafSvg" class="graf-svg" viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="graf-sum">
+        <div class="pk"><b id="sumPico">–</b>Pico<span id="sumPicoDia" style="display:block"></span></div>
+        <div class="mn"><b id="sumMin">–</b>Mínimo<span id="sumMinDia" style="display:block"></span></div>
+        <div class="md"><b id="sumMedia">–</b>Media/día</div>
+      </div>
+      <p class="hint">La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.</p>
+    </div>
+  </section>
+
+  <!-- VISTA AJUSTES -->
+  <section id="view-set" class="view">
+    <div class="card">
+      <h2>Ajustes del plan</h2>
+      <div class="set-row">
+        <label for="cfgStart">Inicio del plan</label>
+        <input type="date" id="cfgStart">
+      </div>
+      <div class="set-row">
+        <label for="cfgLimit">Límite diario semana 1</label>
+        <input type="number" id="cfgLimit" min="1" max="99" style="width:80px">
+      </div>
+      <div class="set-row">
+        <label for="cfgWake">Me levanto a las</label>
+        <input type="time" id="cfgWake">
+      </div>
+      <div class="set-row">
+        <label for="cfgSleep">Me acuesto a las</label>
+        <input type="time" id="cfgSleep">
+      </div>
+      <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
+    </div>
+  </section>
+</div>
+
+<nav>
+  <button id="navHoy" class="active">Hoy</button>
+  <button id="navCal">Calendario</button>
+  <button id="navGraf">Gráfica</button>
+  <button id="navSet">Ajustes</button>
+</nav>
+
+<!-- MODAL EDITAR DÍA -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3 id="modalTitle"></h3>
+    <div class="edit-row">
+      <span class="lbl">Cigarros</span>
+      <div class="stepper">
+        <button id="mCigSub">−</button>
+        <span class="val" id="mCigVal">0</span>
+        <button id="mCigAdd">+</button>
+      </div>
+    </div>
+    <div class="edit-row">
+      <span class="lbl">Pastillas</span>
+      <div class="stepper">
+        <button id="mPillSub">−</button>
+        <span class="val" id="mPillVal">0</span>
+        <button id="mPillAdd">+</button>
+      </div>
+    </div>
+    <button class="close" id="modalClose">Guardar</button>
+  </div>
+</div>
+
+<!-- MODAL EDITAR HORA DEL ÚLTIMO -->
+<div class="modal-bg center" id="timeModalBg">
+  <div class="modal">
+    <h3>Hora del último cigarro</h3>
+    <div class="edit-row">
+      <span class="lbl">Fue a las</span>
+      <input type="time" id="lastTimeInput" style="background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:18px;color-scheme:dark">
+    </div>
+    <button class="close" id="timeModalSave">Guardar</button>
+  </div>
+</div>
+
+<script>
+const KEY='registro-dejar-fumar';
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const DOW=['L','M','X','J','V','S','D'];
+
+/* Datos iniciales que Kike apuntó a mano antes de tener la app */
+const SEED={
+  '2026-07-17':{c:18,p:0},
+  '2026-07-18':{c:16,p:0},
+  '2026-07-19':{c:13,p:0}
+};
+
+let state={
+  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00'},
+  days:{},
+  seeded:false
+};
+let calCursor=new Date();
+let editingKey=null;
+let saveTimer=null;
+
+/* ---------- utilidades de fecha ---------- */
+function keyOf(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+function parseKey(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);}
+function todayKey(){return keyOf(new Date());}
+function daysBetween(a,b){
+  const ms=new Date(b.getFullYear(),b.getMonth(),b.getDate()) - new Date(a.getFullYear(),a.getMonth(),a.getDate());
+  return Math.floor(ms/86400000);
+}
+function mondayOf(d){
+  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  const off=(x.getDay()+6)%7; /* lunes=0 */
+  x.setDate(x.getDate()-off);
+  return x;
+}
+function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (viernes) */
+  return Math.floor(daysBetween(parseKey(state.config.startDate), d)/7);
+}
+function weekRange(idx){
+  const a=parseKey(state.config.startDate);
+  a.setDate(a.getDate()+idx*7);
+  const b=new Date(a); b.setDate(b.getDate()+6);
+  return [a,b];
+}
+function limitOfWeek(idx){return Math.max(0, state.config.startLimit - idx);}
+function limitOfDate(d){return limitOfWeek(Math.max(0,weekIndexOf(d)));}
+function getDay(k){return state.days[k]||{c:0,p:0};}
+function setDay(k,c,p,t){
+  c=Math.max(0,c); p=Math.max(0,p);
+  const prev=state.days[k];
+  const last=(t!==undefined)? t : (prev? prev.t : undefined);
+  if(c===0&&p===0){delete state.days[k];}
+  else{
+    state.days[k]={c,p};
+    if(last!==undefined) state.days[k].t=last;
+  }
+  scheduleSave(); renderAll();
+}
+
+/* ---------- almacenamiento ---------- */
+async function load(){
+  try{
+    const r=await window.storage.get(KEY);
+    if(r&&r.value){
+      const data=JSON.parse(r.value);
+      if(data.config) state.config=Object.assign(state.config,data.config);
+      if(data.days) state.days=data.days;
+      if(data.seeded) state.seeded=true;
+    }
+  }catch(e){ /* primera vez: la clave no existe todavía */ }
+  /* Cargar una sola vez los días apuntados a mano (17, 18 y 19 de julio) */
+  if(!state.seeded){
+    for(const k in SEED){
+      if(!state.days[k]) state.days[k]=SEED[k];
+    }
+    state.seeded=true;
+    scheduleSave();
+  }
+}
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    try{ await window.storage.set(KEY, JSON.stringify(state)); }
+    catch(e){ console.error('Error guardando',e); }
+  },400);
+}
+
+/* ---------- render ---------- */
+function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderSettings();}
+
+function renderHoy(){
+  const now=new Date(), tk=todayKey();
+  document.getElementById('fechaHoy').textContent=
+    `${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
+
+  const wIdx=Math.max(0,weekIndexOf(now));
+  const limit=limitOfWeek(wIdx);
+  document.getElementById('semanaNum').textContent=wIdx+1;
+  document.getElementById('limiteDia').textContent=limit;
+
+  const d=getDay(tk);
+  document.getElementById('cigHoy').innerHTML=`${d.c}<small>HOY</small>`;
+  document.getElementById('pillHoy').innerHTML=`${d.p}<small>TOMADAS</small>`;
+
+  document.getElementById('hoyTotal').textContent=d.c;
+  document.getElementById('hoyLimite').textContent=limit;
+
+  /* tira de película: un fotograma por cada cigarro del límite de hoy */
+  const strip=document.getElementById('filmstrip');
+  strip.innerHTML='';
+  const frames=Math.max(limit,d.c,1);
+  for(let i=0;i<frames;i++){
+    const f=document.createElement('div');
+    f.className='frame'+(i<d.c ? (i<limit?' used':' over') : '');
+    strip.appendChild(f);
+  }
+  renderPace(now,d.c,limit);
+
+  const rest=document.getElementById('restantes');
+  const left=limit-d.c;
+  if(left>=0){
+    rest.className='restantes';
+    rest.innerHTML=`Llevas <b>${d.c}</b> de un máximo de <b>${limit}</b> — te quedan <b>${left}</b>`;
+  }else{
+    rest.className='restantes excedido';
+    rest.innerHTML=`Hoy te has pasado <b>${-left}</b> del máximo de ${limit} — mañana empiezas de cero`;
+  }
+}
+
+function minutesOf(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+
+function renderPace(now,smoked,limit){
+  const clip=document.getElementById('paceClip');
+  const grad=document.getElementById('paceGrad');
+  const expectedEl=document.getElementById('paceExpected');
+  const estado=document.getElementById('paceEstado');
+  const info=document.getElementById('paceInfo');
+
+  const wake=minutesOf(state.config.wakeTime||'09:00');
+  const sleep=minutesOf(state.config.sleepTime||'23:00');
+  const span=Math.max(60, sleep-wake); /* minutos despierto */
+  const nowM=now.getHours()*60+now.getMinutes();
+  const frac=Math.min(1, Math.max(0,(nowM-wake)/span)); /* fracción del día transcurrida */
+  const expected=limit*frac; /* los que "tocarían" a esta hora */
+
+  /* zona clara = hasta dónde deberías ir ahora */
+  expectedEl.style.width=(frac*100)+'%';
+
+  /* barra degradada: el gradiente ocupa el ancho total de la barra
+     y el clip lo va destapando -> empieza verde, avanza a amarillo,
+     naranja y acaba en rojo al acercarse al límite */
+  const pct=Math.min(100,(limit>0? smoked/limit*100 : 100));
+  clip.style.width=pct+'%';
+  grad.style.width=(pct>0? (100/pct)*100 : 100)+'%';
+
+  /* estado por color según el ritmo */
+  let cls, txt;
+  if(limit<=0){
+    cls='r'; txt='Semana de 0';
+  }else if(nowM<wake){
+    if(smoked===0){cls='g'; txt='Tu día aún no empieza';}
+    else{cls='o'; txt='Antes de hora';}
+  }else if(smoked>=limit){
+    cls='r'; txt=smoked>limit?'Límite superado':'Límite alcanzado';
+  }else{
+    const ratio=expected>0.3? smoked/expected : (smoked>0? 2 : 0);
+    if(ratio<=1.0){cls='g'; txt='Vas bien';}
+    else if(ratio<=1.25){cls='y'; txt='Un poco por encima';}
+    else if(ratio<=1.55){cls='o'; txt='Vas rápido';}
+    else{cls='r'; txt='Vas muy rápido';}
+  }
+  estado.className='estado '+cls;
+  estado.textContent=txt;
+
+  /* info: ritmo objetivo y diferencia con lo esperado */
+  const minPerCig=Math.round(span/Math.max(1,limit));
+  const exp=Math.round(expected);
+  let diffTxt='';
+  if(nowM>=wake && nowM<=sleep && limit>0){
+    const diff=smoked-exp;
+    if(diff<0) diffTxt=` · vas <b>${-diff}</b> por debajo ✓`;
+    else if(diff===0) diffTxt=' · justo en el ritmo';
+    else diffTxt=` · vas <b>${diff}</b> por encima`;
+  }
+  info.innerHTML=`Ritmo objetivo: <b>1</b> cada <b>~${minPerCig} min</b> · a esta hora tocarían <b>~${exp}</b>${diffTxt}`;
+
+  /* aproximación del siguiente: reparte lo que queda entre el tiempo que queda */
+  const rec=getDay(todayKey());
+  const left=limit-smoked;
+  const fmtH=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(Math.round(m%60)).padStart(2,'0')}`;
+  let nextLine='';
+  if(limit>0 && left<=0){
+    nextLine='Límite de hoy completo — el siguiente, mañana';
+  }else if(rec.t){
+    const lt=new Date(rec.t);
+    const lastM=lt.getHours()*60+lt.getMinutes();
+    const window=sleep-lastM;
+    const lastEd=`<span class="edit-time" data-edit-time="1">${fmtH(lastM)}</span>`;
+    if(window>0){
+      const interval=Math.max(10,Math.round(window/left));
+      const nextM=lastM+interval;
+      if(nextM<=nowM){
+        nextLine=`Último: ${lastEd} · ya podría tocar el siguiente — tú decides`;
+      }else{
+        nextLine=`Último: ${lastEd} · el siguiente aprox. a las <b>~${fmtH(nextM)}</b>`;
+      }
+    }else{
+      nextLine=`Último: ${lastEd} — ya fuera de tu horario, el siguiente mañana`;
+    }
+  }
+  if(nextLine) info.innerHTML+=`<br>${nextLine}`;
+}
+
+function renderCal(){
+  const y=calCursor.getFullYear(), m=calCursor.getMonth();
+  document.getElementById('calTitle').textContent=`${MESES[m]} ${y}`;
+  const grid=document.getElementById('calGrid');
+  grid.innerHTML='';
+  DOW.forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;grid.appendChild(el);});
+  const first=new Date(y,m,1);
+  let offset=(first.getDay()+6)%7;
+  for(let i=0;i<offset;i++){const e=document.createElement('div');e.className='cal-day empty';grid.appendChild(e);}
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const tk=todayKey(), now=new Date();
+  for(let day=1;day<=daysInMonth;day++){
+    const date=new Date(y,m,day), k=keyOf(date);
+    const cell=document.createElement('div');
+    const isFuture=daysBetween(now,date)>0;
+    cell.className='cal-day'+(k===tk?' today':'')+(isFuture?' future':'');
+    const rec=getDay(k);
+    const over=rec.c>limitOfDate(date);
+    cell.innerHTML=`<span class="n">${day}</span>`+
+      (rec.c>0?`<span class="c${over?' over':''}">${rec.c}</span>`:'')+
+      (rec.p>0?`<span class="p">💊${rec.p}</span>`:'');
+    if(!isFuture){
+      cell.addEventListener('click',()=>openModal(k));
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function renderWeeks(){
+  const list=document.getElementById('weekList');
+  list.innerHTML='';
+  const now=new Date();
+  const currIdx=Math.max(0,weekIndexOf(now));
+  for(let i=0;i<=currIdx;i++){
+    const [a,b]=weekRange(i);
+    const limit=limitOfWeek(i);
+    let total=0, over=0;
+    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)){
+      if(daysBetween(now,d)>0) break; /* no contar días futuros */
+      const c=getDay(keyOf(d)).c;
+      total+=c;
+      if(c>limit) over++;
+    }
+    const row=document.createElement('div');
+    row.className='wk-row';
+    let cls, mark;
+    if(i===currIdx){cls='curr';mark='en curso';}
+    else if(over===0){cls='ok';mark='✓ cumplida';}
+    else{cls='bad';mark=`✗ ${over} día${over>1?'s':''} pasado${over>1?'s':''}`;}
+    const fmt=d=>`${d.getDate()} ${MESES[d.getMonth()].slice(0,3)}`;
+    row.innerHTML=`<div>Semana ${i+1} · máx ${limit}/día<span class="rng">${fmt(a)} – ${fmt(b)}</span></div>
+      <div class="stat ${cls}">${mark}<span class="sub">${total} en total</span></div>`;
+    list.appendChild(row);
+  }
+  if(limitOfWeek(currIdx)<=0){
+    const done=document.createElement('p');
+    done.className='hint';
+    done.textContent='Has llegado al final del plan. Enhorabuena por el camino recorrido.';
+    list.appendChild(done);
+  }
+}
+
+/* ---------- gráfica ---------- */
+let grafMode='semana';
+let grafWeek=null;   /* índice de semana del plan */
+let grafMonth=new Date();
+
+function renderGraf(){
+  const svg=document.getElementById('grafSvg');
+  if(!svg) return;
+  const now=new Date();
+  const currIdx=Math.max(0,weekIndexOf(now));
+  if(grafWeek===null) grafWeek=currIdx;
+
+  /* días del rango */
+  let days=[], title='';
+  if(grafMode==='semana'){
+    const [a,b]=weekRange(grafWeek);
+    const fmt=d=>`${d.getDate()} ${MESES[d.getMonth()].slice(0,3)}`;
+    title=`Semana ${grafWeek+1} · ${fmt(a)} – ${fmt(b)}`;
+    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)) days.push(new Date(d));
+  }else{
+    const y=grafMonth.getFullYear(), m=grafMonth.getMonth();
+    title=`${MESES[m]} ${y}`;
+    const n=new Date(y,m+1,0).getDate();
+    for(let i=1;i<=n;i++) days.push(new Date(y,m,i));
+  }
+  document.getElementById('grafTitle').textContent=title;
+
+  /* datos: solo días ya vividos */
+  const startPlan=parseKey(state.config.startDate);
+  const pts=days.map(d=>{
+    const past=daysBetween(now,d)<=0;
+    const tracked=past && daysBetween(startPlan,d)>=0;
+    return {d, past, tracked, c:getDay(keyOf(d)).c, lim:limitOfDate(d)};
+  });
+
+  /* escala */
+  let yMax=5;
+  pts.forEach(p=>{yMax=Math.max(yMax,p.c,p.lim);});
+  yMax=Math.ceil(yMax*1.15);
+
+  /* pico y mínimo entre días registrados */
+  const reg=pts.filter(p=>p.tracked);
+  let pico=null,minimo=null,total=0;
+  reg.forEach(p=>{
+    total+=p.c;
+    if(!pico||p.c>pico.c)pico=p;
+    if(!minimo||p.c<minimo.c)minimo=p;
+  });
+
+  /* geometría */
+  const L=30,R=354,T=14,B=196,XL=222;
+  const plotW=R-L, plotH=B-T;
+  const n=days.length;
+  const slot=plotW/n;
+  const bw=Math.max(4,Math.min(30,slot*0.62));
+  const yOf=v=>B-(v/yMax)*plotH;
+
+  let s='';
+  /* rejilla horizontal */
+  const stepY=yMax>12?5:(yMax>6?2:1);
+  for(let v=0;v<=yMax;v+=stepY){
+    s+=`<line x1="${L}" y1="${yOf(v)}" x2="${R}" y2="${yOf(v)}" stroke="#3A3229" stroke-width="0.6"/>`;
+    s+=`<text x="${L-5}" y="${yOf(v)+3}" font-size="8" fill="#9C8F7C" text-anchor="end" font-family="IBM Plex Mono">${v}</text>`;
+  }
+  /* línea de límite (escalonada, discontinua) */
+  let lim='';
+  pts.forEach((p,i)=>{
+    const x0=L+i*slot, x1=L+(i+1)*slot, y=yOf(p.lim);
+    lim+=(i===0?`M${x0},${y}`:`L${x0},${y}`)+`L${x1},${y}`;
+  });
+  s+=`<path d="${lim}" stroke="#EDE3D2" stroke-width="1" stroke-dasharray="4 3" fill="none" opacity="0.55"/>`;
+  /* barras */
+  pts.forEach((p,i)=>{
+    const cx=L+i*slot+slot/2;
+    if(p.past && (p.c>0 || p.tracked)){
+      const h=Math.max(p.c>0?2:0,(p.c/yMax)*plotH);
+      let col='var(--kodak)';
+      if(p.c>p.lim)col='var(--warn)';
+      else if(minimo&&keyOf(p.d)===keyOf(minimo.d))col='var(--ok)';
+      if(h>0){
+        s+=`<rect x="${cx-bw/2}" y="${B-h}" width="${bw}" height="${h}" rx="2" fill="${col}"/>`;
+        if(grafMode==='semana'||n<=15){
+          s+=`<text x="${cx}" y="${B-h-4}" font-size="9" fill="#EDE3D2" text-anchor="middle" font-family="IBM Plex Mono">${p.c}</text>`;
+        }
+      }
+    }
+    /* etiquetas eje x */
+    const showLbl=grafMode==='semana'||p.d.getDate()===1||p.d.getDate()%5===0;
+    if(showLbl){
+      const lbl=grafMode==='semana'
+        ? DIAS[p.d.getDay()].slice(0,2).toUpperCase()+' '+p.d.getDate()
+        : p.d.getDate();
+      s+=`<text x="${cx}" y="${XL-12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Sora">${lbl}</text>`;
+    }
+  });
+  svg.innerHTML=s;
+
+  /* resumen */
+  const fmtDia=p=>p?`${DIAS[p.d.getDay()].slice(0,3)} ${p.d.getDate()}`:'';
+  document.getElementById('sumPico').textContent=pico?pico.c:'–';
+  document.getElementById('sumPicoDia').textContent=fmtDia(pico);
+  document.getElementById('sumMin').textContent=minimo?minimo.c:'–';
+  document.getElementById('sumMinDia').textContent=fmtDia(minimo);
+  document.getElementById('sumMedia').textContent=reg.length?(total/reg.length).toFixed(1).replace('.',','):'–';
+}
+
+function renderSettings(){
+  document.getElementById('cfgStart').value=state.config.startDate;
+  document.getElementById('cfgLimit').value=state.config.startLimit;
+  document.getElementById('cfgWake').value=state.config.wakeTime||'09:00';
+  document.getElementById('cfgSleep').value=state.config.sleepTime||'23:00';
+}
+
+/* ---------- modal ---------- */
+function openModal(k){
+  editingKey=k;
+  const d=parseKey(k), rec=getDay(k);
+  document.getElementById('modalTitle').textContent=
+    `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
+  document.getElementById('mCigVal').textContent=rec.c;
+  document.getElementById('mPillVal').textContent=rec.p;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){
+  const c=+document.getElementById('mCigVal').textContent;
+  const p=+document.getElementById('mPillVal').textContent;
+  setDay(editingKey,c,p);
+  document.getElementById('modalBg').classList.remove('show');
+}
+
+/* ---------- eventos ---------- */
+function bump(id,delta,min=0){
+  const el=document.getElementById(id);
+  el.textContent=Math.max(min,+el.textContent+delta);
+}
+document.getElementById('addCig').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c+1,d.p,Date.now());});
+document.getElementById('subCig').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c-1,d.p);});
+document.getElementById('addPill').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c,d.p+1);});
+document.getElementById('subPill').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c,d.p-1);});
+
+document.getElementById('mCigAdd').addEventListener('click',()=>bump('mCigVal',1));
+document.getElementById('mCigSub').addEventListener('click',()=>bump('mCigVal',-1));
+document.getElementById('mPillAdd').addEventListener('click',()=>bump('mPillVal',1));
+document.getElementById('mPillSub').addEventListener('click',()=>bump('mPillVal',-1));
+document.getElementById('modalClose').addEventListener('click',closeModal);
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+
+/* editar la hora del último cigarro */
+document.getElementById('paceInfo').addEventListener('click',e=>{
+  if(e.target.dataset && e.target.dataset.editTime){
+    const rec=getDay(todayKey());
+    if(!rec.t) return;
+    const lt=new Date(rec.t);
+    document.getElementById('lastTimeInput').value=
+      `${String(lt.getHours()).padStart(2,'0')}:${String(lt.getMinutes()).padStart(2,'0')}`;
+    document.getElementById('timeModalBg').classList.add('show');
+  }
+});
+document.getElementById('timeModalSave').addEventListener('click',()=>{
+  const v=document.getElementById('lastTimeInput').value;
+  if(v){
+    const [h,m]=v.split(':').map(Number);
+    const d=new Date(); d.setHours(h,m,0,0);
+    const k=todayKey(), rec=getDay(k);
+    setDay(k,rec.c,rec.p,d.getTime());
+  }
+  document.getElementById('timeModalBg').classList.remove('show');
+});
+document.getElementById('timeModalBg').addEventListener('click',e=>{
+  if(e.target.id==='timeModalBg')document.getElementById('timeModalBg').classList.remove('show');
+});
+
+document.getElementById('calPrev').addEventListener('click',()=>{calCursor.setMonth(calCursor.getMonth()-1);renderCal();});
+document.getElementById('calNext').addEventListener('click',()=>{calCursor.setMonth(calCursor.getMonth()+1);renderCal();});
+
+document.getElementById('cfgStart').addEventListener('change',e=>{
+  if(e.target.value){state.config.startDate=e.target.value;scheduleSave();renderAll();}
+});
+document.getElementById('cfgLimit').addEventListener('change',e=>{
+  const v=parseInt(e.target.value,10);
+  if(v>0){state.config.startLimit=v;scheduleSave();renderAll();}
+});
+document.getElementById('cfgWake').addEventListener('change',e=>{
+  if(e.target.value){state.config.wakeTime=e.target.value;scheduleSave();renderAll();}
+});
+document.getElementById('cfgSleep').addEventListener('change',e=>{
+  if(e.target.value){state.config.sleepTime=e.target.value;scheduleSave();renderAll();}
+});
+
+const views={navHoy:'view-hoy',navCal:'view-cal',navGraf:'view-graf',navSet:'view-set'};
+Object.keys(views).forEach(nid=>{
+  document.getElementById(nid).addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById(nid).classList.add('active');
+    document.getElementById(views[nid]).classList.add('active');
+    if(nid==='navCal'){calCursor=new Date();renderCal();renderWeeks();}
+    if(nid==='navGraf'){grafWeek=Math.max(0,weekIndexOf(new Date()));grafMonth=new Date();renderGraf();}
+  });
+});
+
+/* controles de la gráfica */
+document.getElementById('segSem').addEventListener('click',()=>{
+  grafMode='semana';
+  document.getElementById('segSem').classList.add('active');
+  document.getElementById('segMes').classList.remove('active');
+  renderGraf();
+});
+document.getElementById('segMes').addEventListener('click',()=>{
+  grafMode='mes';
+  document.getElementById('segMes').classList.add('active');
+  document.getElementById('segSem').classList.remove('active');
+  renderGraf();
+});
+document.getElementById('grafPrev').addEventListener('click',()=>{
+  if(grafMode==='semana'){if(grafWeek>0){grafWeek--;renderGraf();}}
+  else{grafMonth.setMonth(grafMonth.getMonth()-1);renderGraf();}
+});
+document.getElementById('grafNext').addEventListener('click',()=>{
+  if(grafMode==='semana'){grafWeek++;renderGraf();}
+  else{grafMonth.setMonth(grafMonth.getMonth()+1);renderGraf();}
+});
+
+/* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
+   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si es lunes) */
+let lastDay=todayKey();
+setInterval(()=>{
+  if(todayKey()!==lastDay){lastDay=todayKey();renderAll();}
+  else{renderHoy();}
+},60000);
+
+/* ---------- init ---------- */
+(async function(){
+  await load();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  renderAll();
+})();
+</script>
+</body>
+</html>
