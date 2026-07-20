@@ -26,17 +26,19 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;overscroll-behavior-y:none}
+  html{height:100%;height:-webkit-fill-available;background:var(--bg)}
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'Sora',system-ui,sans-serif;
     font-weight:300;
     position:fixed;top:0;bottom:0;left:0;right:0;
+    height:100%;height:-webkit-fill-available;
     width:100%;max-width:440px;
     margin:0 auto;
     display:flex;flex-direction:column;
     overflow:hidden;
+    overscroll-behavior-y:none;
   }
   .scroll{
     flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
@@ -369,6 +371,7 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v3</p>
     </div>
   </section>
 </div>
