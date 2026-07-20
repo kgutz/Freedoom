@@ -159,11 +159,21 @@
     padding-bottom:env(safe-area-inset-bottom);
   }
   nav button{
-    flex:1;padding:14px 0 12px;background:none;border:none;color:var(--muted);
-    font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
-    letter-spacing:.05em;
+    flex:1;padding:11px 0 10px;background:none;border:none;color:var(--muted);
+    font-family:'Sora',sans-serif;font-size:11px;font-weight:600;cursor:pointer;
+    letter-spacing:.02em;
+    display:flex;flex-direction:column;align-items:center;gap:4px;
   }
+  nav button svg{width:21px;height:21px;display:block}
   nav button.active{color:var(--kodak)}
+  .gear-btn{
+    margin-top:10px;width:36px;height:36px;
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;
+    color:var(--muted);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .gear-btn svg{width:19px;height:19px}
+  .gear-btn.active{color:var(--kodak);border-color:var(--kodak)}
 
   /* ---------- calendario ---------- */
   .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -255,6 +265,142 @@
   .view.active{display:block}
   .loading{text-align:center;color:var(--muted);padding:60px 0;font-size:14px}
 
+  .btn-add.beer-btn{
+    width:64px;height:64px;font-size:32px;
+    background:radial-gradient(circle at 35% 30%, #EBC57A, #D99B3F 60%, #8F6224);
+    box-shadow:0 5px 0 #5C3F17, 0 8px 18px rgba(0,0,0,.5);
+  }
+  .btn-add.beer-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #5C3F17, 0 3px 8px rgba(0,0,0,.5)}
+
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(92px + env(safe-area-inset-bottom));
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:9px 18px;font-family:'IBM Plex Mono',monospace;font-size:13px;
+    color:var(--text);z-index:30;opacity:0;pointer-events:none;
+    transition:opacity .25s, transform .25s;white-space:nowrap;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+  .toast.dmg{color:var(--warn);border-color:var(--warn)}
+  .toast.heal{color:var(--ok);border-color:var(--ok)}
+
+  .menu-item{
+    width:100%;padding:15px 16px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--text);
+    font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;
+    margin-bottom:10px;display:flex;align-items:center;gap:12px;text-align:left;
+  }
+  .menu-item:last-child{margin-bottom:0}
+  .menu-item svg{width:19px;height:19px;color:var(--kodak);flex-shrink:0}
+  .menu-item:active{border-color:var(--kodak)}
+
+  /* ---------- hojas superpuestas (ajustes / instrucciones) ---------- */
+  .sheet-bg{
+    position:fixed;inset:0;background:rgba(0,0,0,.55);
+    display:none;justify-content:center;align-items:center;z-index:25;
+    padding:calc(20px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));
+  }
+  .sheet-bg.show{display:flex}
+  .sheet{
+    width:100%;max-width:412px;
+    max-height:100%;
+    background:var(--bg);border:1px solid var(--line);
+    border-radius:20px;
+    overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+    padding:16px 18px 22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.55);
+  }
+  .sheet-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:14px;position:sticky;top:-16px;background:var(--bg);
+    padding:10px 0;z-index:1;
+  }
+  .sheet-head h3{font-size:17px;font-weight:600}
+  .sheet-close{
+    width:34px;height:34px;border-radius:50%;
+    background:var(--panel2);border:1px solid var(--line);
+    color:var(--muted);font-size:14px;cursor:pointer;line-height:1;
+  }
+
+  /* ---------- héroe RPG ---------- */
+  .hero-top{display:flex;gap:18px;align-items:center;margin-bottom:6px}
+  .sprite-box{
+    width:104px;height:104px;flex-shrink:0;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    background:#0E0B09;border:1px solid var(--line);border-radius:12px;
+  }
+  .sprite-aura{position:absolute;inset:8px;border-radius:50%;pointer-events:none}
+  .sprite-aura.t2{box-shadow:0 0 18px 4px rgba(232,180,74,.22)}
+  .sprite-aura.t3{box-shadow:0 0 22px 7px rgba(232,180,74,.4)}
+  .sprite-aura.t4{box-shadow:0 0 28px 10px rgba(232,180,74,.55)}
+  .sprite-svg{width:80px;height:80px;image-rendering:pixelated;animation:bob 1.6s steps(2,end) infinite;position:relative}
+  .sprite-svg.hurt{filter:saturate(.55) drop-shadow(0 0 7px rgba(196,85,62,.6));animation:none}
+  .sprite-zzz{position:absolute;top:4px;right:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+  .hero-id{flex:1;min-width:0}
+  .hero-id .rango{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .hero-id .nombre{font-size:19px;font-weight:600;margin:2px 0 4px}
+  .hero-id .nivel{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--kodak)}
+  .hero-id .racha{font-size:12px;color:var(--muted);margin-top:5px}
+  .hero-id .racha b{color:var(--text);font-family:'IBM Plex Mono',monospace}
+
+  .stat-bar{margin-top:12px}
+  .stat-bar .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
+  .stat-bar .lbl b{font-family:'IBM Plex Mono',monospace;color:var(--text);letter-spacing:0}
+  .stat-track{height:12px;border-radius:6px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}
+  .stat-fill{height:100%;border-radius:6px;transition:width .4s}
+  .stat-fill.xp{background:var(--kodak)}
+  .stat-fill.hp-hi{background:var(--ok)}
+  .stat-fill.hp-mid{background:var(--kodak)}
+  .stat-fill.hp-low{background:#D98E3A}
+  .stat-fill.hp-crit{background:var(--warn)}
+
+  .boss-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .boss-name{font-size:14px;font-weight:600}
+  .boss-name small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
+  .boss-state{font-family:'IBM Plex Mono',monospace;font-size:12px}
+  .boss-state.win{color:var(--ok)}
+  .boss-state.lose{color:var(--warn)}
+  .boss-state.curr{color:var(--kodak)}
+  .pips{display:flex;gap:5px}
+  .pip{
+    flex:1;height:22px;border-radius:5px;border:1px dashed #4A4034;
+    display:flex;align-items:center;justify-content:center;font-size:11px;
+  }
+  .pip.hit{background:var(--ok);border:1px solid var(--ok);color:#1A2312}
+  .pip.fail{background:var(--warn);border:1px solid var(--warn);color:#2B0F08}
+  .pip.today{border:1px solid var(--kodak);color:var(--kodak)}
+  .pip.pend{color:var(--muted)}
+  .boss-count{font-size:12px;color:var(--muted);margin-top:10px}
+  .boss-count b{color:var(--kodak);font-family:'IBM Plex Mono',monospace}
+
+  .abil{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+  .abil:last-child{border-bottom:none}
+  .abil .lv{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0;
+    border:1px solid var(--line);border-radius:6px;padding:3px 6px;color:var(--muted);margin-top:1px;
+  }
+  .abil.on .lv{color:var(--kodak);border-color:var(--kodak)}
+  .abil .an{font-size:13px;font-weight:600}
+  .abil .ad{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+  .abil.off{opacity:.4}
+
+  .cls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cls-card{
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:14px 10px;text-align:center;cursor:pointer;
+  }
+  .cls-card:active{border-color:var(--kodak)}
+  .cls-card .sprite-svg{width:64px;height:64px;margin:0 auto 8px;display:block}
+  .cls-card .cn{font-size:14px;font-weight:600}
+  .cls-card .ce{font-size:11px;color:var(--kodak);font-family:'IBM Plex Mono',monospace;margin:2px 0 6px}
+  .cls-card .cd{font-size:11px;color:var(--muted);line-height:1.5}
+  .mini-btn{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:8px 12px;font-family:'Sora',sans-serif;font-size:12px;
+    font-weight:600;cursor:pointer;
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{transition:none!important}
   }
@@ -267,7 +413,11 @@
 
 <div id="app" style="display:none">
   <header>
-    <div class="fecha">Hoy<b id="fechaHoy"></b></div>
+    <div class="fecha">Hoy<b id="fechaHoy"></b>
+      <button id="navMenu" class="gear-btn" aria-label="Menú">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      </button>
+    </div>
     <div class="semana-tag"><span>SEMANA</span><span id="semanaNum" style="color:var(--text);font-size:14px"></span>máx <b id="limiteDia"></b>/día</div>
   </header>
 
@@ -314,6 +464,22 @@
         </div>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Cervezas hoy</h2>
+      <div class="counter-row">
+        <div class="digits pill-d" id="beerHoy">0<small>BIRRAS</small></div>
+        <div class="btns">
+          <button class="btn-add beer-btn" id="addBeer" aria-label="Sumar una cerveza">+</button>
+          <button class="btn-sub" id="subBeer" aria-label="Restar una cerveza">−</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISTA HÉROE -->
+  <section id="view-hero" class="view">
+    <div id="heroContent"></div>
   </section>
 
   <!-- VISTA CALENDARIO -->
@@ -355,8 +521,13 @@
     </div>
   </section>
 
-  <!-- VISTA AJUSTES -->
-  <section id="view-set" class="view">
+</div>
+</main>
+
+<!-- HOJA AJUSTES (superpuesta) -->
+<div class="sheet-bg" id="sheetSet">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Ajustes</h3><button class="sheet-close" data-sheet="sheetSet">✕</button></div>
     <div class="card">
       <h2>Ajustes del plan</h2>
       <div class="set-row">
@@ -375,18 +546,78 @@
         <label for="cfgSleep">Me acuesto a las</label>
         <input type="time" id="cfgSleep">
       </div>
-      <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v12 · estilo v8</p>
+      <div class="set-row">
+        <label>Clase del héroe</label>
+        <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
+      </div>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.2</p>
     </div>
-  </section>
+  </div>
 </div>
-</main>
+
+<!-- HOJA INSTRUCCIONES (superpuesta) -->
+<div class="sheet-bg" id="sheetInstr">
+  <div class="sheet">
+    <div class="sheet-head"><h3>Instrucciones</h3><button class="sheet-close" data-sheet="sheetInstr">✕</button></div>
+    <div class="card">
+      <h2>⚔ Daño</h2>
+      <p class="hint" style="margin-top:0">Tu héroe pierde vida cuando fumas <b style="color:var(--text)">por delante del ritmo del día</b> (la zona clara de la barra en Hoy):</p>
+      <p class="hint">· Un poco adelantado → <b style="color:var(--warn)">−8</b><br>· Muy adelantado → <b style="color:var(--warn)">−15</b><br>· Por encima del límite del día → <b style="color:var(--warn)">−25</b><br>· Cada cerveza → <b style="color:var(--warn)">−5</b></p>
+      <p class="hint">Si fumas en ritmo o por detrás, no hay daño. Y si esperas hasta la hora del "siguiente aprox.", es un <b style="color:var(--kodak)">disparo perfecto</b>: daño cero garantizado.</p>
+    </div>
+    <div class="card">
+      <h2>♥ Curación</h2>
+      <p class="hint" style="margin-top:0">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· La primera pastilla del día es tu poción: <b style="color:var(--ok)">+15</b> (solo la primera; la medicación se toma como te la pautaron).<br>· Descanso nocturno: día cumplido → amaneces al <b style="color:var(--ok)">100</b>; día pasado → al 75.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
+    </div>
+    <div class="card">
+      <h2>El ritmo del día</h2>
+      <p class="hint" style="margin-top:0">La barra de Hoy reparte tu límite diario entre tus horas despierto. La zona clara marca hasta dónde "tocaría" ir a esta hora; el color es lo que llevas: verde al principio, amarillo, naranja y rojo al acercarte al límite. Debajo, la app te aproxima la hora del siguiente repartiendo lo que te queda entre el tiempo que queda. La hora del "Último" es tocable por si apuntaste tarde.</p>
+    </div>
+    <div class="card">
+      <h2>Jefes y experiencia</h2>
+      <p class="hint" style="margin-top:0">Cada día cumplido da <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite. Cada semana del plan es un jefe: cada día cumplido es un golpe, y si cierras los 7 sin pasarte lo derrotas (<b style="color:var(--kodak)">+200 XP</b>). Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
+    </div>
+    <div class="card">
+      <h2>El plan</h2>
+      <p class="hint" style="margin-top:0">Las semanas van de viernes a jueves desde el inicio del plan, y cada viernes el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Todos los datos se guardan en este dispositivo.</p>
+    </div>
+  </div>
+</div>
+
+<!-- MENÚ HAMBURGUESA -->
+<div class="modal-bg center" id="menuBg">
+  <div class="modal">
+    <h3>Menú</h3>
+    <button class="menu-item" id="menuAjustes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
+      Ajustes
+    </button>
+    <button class="menu-item" id="menuInstr">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>
+      Instrucciones
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <nav>
-  <button id="navHoy" class="active">Hoy</button>
-  <button id="navCal">Calendario</button>
-  <button id="navGraf">Gráfica</button>
-  <button id="navSet">Ajustes</button>
+  <button id="navHoy" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="3.4"/><line x1="12" y1="3" x2="12" y2="5.4"/><line x1="12" y1="18.6" x2="12" y2="21"/><line x1="3" y1="12" x2="5.4" y2="12"/><line x1="18.6" y1="12" x2="21" y2="12"/><line x1="5.6" y1="5.6" x2="7.3" y2="7.3"/><line x1="16.7" y1="16.7" x2="18.4" y2="18.4"/><line x1="5.6" y1="18.4" x2="7.3" y2="16.7"/><line x1="16.7" y1="7.3" x2="18.4" y2="5.6"/></svg>
+    <span>Hoy</span>
+  </button>
+  <button id="navHero">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.2c0 4.8-3.2 7.8-7 9.3-3.8-1.5-7-4.5-7-9.3V6z"/></svg>
+    <span>Héroe</span>
+  </button>
+  <button id="navCal">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5.5" width="16" height="15" rx="2.5"/><line x1="8.5" y1="3.5" x2="8.5" y2="7.5"/><line x1="15.5" y1="3.5" x2="15.5" y2="7.5"/><line x1="4" y1="10.5" x2="20" y2="10.5"/></svg>
+    <span>Calendario</span>
+  </button>
+  <button id="navGraf">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="7"/><line x1="18" y1="20" x2="18" y2="10"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+    <span>Gráfica</span>
+  </button>
 </nav>
 
 <!-- MODAL EDITAR DÍA -->
@@ -407,6 +638,14 @@
         <button id="mPillSub">−</button>
         <span class="val" id="mPillVal">0</span>
         <button id="mPillAdd">+</button>
+      </div>
+    </div>
+    <div class="edit-row">
+      <span class="lbl">Cervezas</span>
+      <div class="stepper">
+        <button id="mCerSub">−</button>
+        <span class="val" id="mCerVal">0</span>
+        <button id="mCerAdd">+</button>
       </div>
     </div>
     <button class="close" id="modalClose">Guardar</button>
@@ -442,7 +681,8 @@ const SEED={
 let state={
   config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00'},
   days:{},
-  seeded:false
+  seeded:false,
+  game:{cls:null}
 };
 let calCursor=new Date();
 let editingKey=null;
@@ -477,14 +717,16 @@ function weekRange(idx){
 function limitOfWeek(idx){return Math.max(0, state.config.startLimit - idx);}
 function limitOfDate(d){return limitOfWeek(Math.max(0,weekIndexOf(d)));}
 function getDay(k){return state.days[k]||{c:0,p:0};}
-function setDay(k,c,p,t){
+function setDay(k,c,p,t,b){
   c=Math.max(0,c); p=Math.max(0,p);
   const prev=state.days[k];
   const last=(t!==undefined)? t : (prev? prev.t : undefined);
-  if(c===0&&p===0){delete state.days[k];}
+  const beers=(b!==undefined)? Math.max(0,b) : (prev? (prev.b||0) : 0);
+  if(c===0&&p===0&&beers===0){delete state.days[k];}
   else{
     state.days[k]={c,p};
     if(last!==undefined) state.days[k].t=last;
+    if(beers>0) state.days[k].b=beers;
   }
   scheduleSave(); renderAll();
 }
@@ -512,6 +754,7 @@ async function load(){
       if(data.config) state.config=Object.assign(state.config,data.config);
       if(data.days) state.days=data.days;
       if(data.seeded) state.seeded=true;
+      if(data.game) state.game=data.game;
     }
   }catch(e){ /* primera vez: la clave no existe todavía */ }
   /* Cargar una sola vez los días apuntados a mano (17, 18 y 19 de julio) */
@@ -543,7 +786,7 @@ window.addEventListener('pagehide',()=>{
 });
 
 /* ---------- render ---------- */
-function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderSettings();}
+function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
 
 function renderHoy(){
   const now=new Date(), tk=todayKey();
@@ -558,6 +801,7 @@ function renderHoy(){
   const d=getDay(tk);
   document.getElementById('cigHoy').innerHTML=`${d.c}<small>HOY</small>`;
   document.getElementById('pillHoy').innerHTML=`${d.p}<small>TOMADAS</small>`;
+  document.getElementById('beerHoy').innerHTML=`${d.b||0}<small>BIRRAS</small>`;
 
   document.getElementById('hoyTotal').textContent=d.c;
   document.getElementById('hoyLimite').textContent=limit;
@@ -688,7 +932,8 @@ function renderCal(){
     const over=rec.c>limitOfDate(date);
     cell.innerHTML=`<span class="n">${day}</span>`+
       (rec.c>0?`<span class="c${over?' over':''}">${rec.c}</span>`:'')+
-      (rec.p>0?`<span class="p">💊${rec.p}</span>`:'');
+      (rec.p>0?`<span class="p">💊${rec.p}</span>`:'')+
+      (rec.b>0?`<span class="p" style="color:#D99B3F">🍺${rec.b}</span>`:'');
     if(!isFuture){
       cell.addEventListener('click',()=>openModal(k));
     }
@@ -843,6 +1088,404 @@ function renderSettings(){
   document.getElementById('cfgSleep').value=state.config.sleepTime||'23:00';
 }
 
+/* ==================== RPG / TAMAGOTCHI ==================== */
+
+const PAL_COMMON={S:'#E5B98E',O:'#141010',W:'#EDE3D2',P:'#7FA0B8'};
+
+const CLASSES={
+  knight:{
+    name:'Knight',es:'Caballero',
+    tiers:['Escudero','Caballero','Caballero de Élite','Caballero Legendario'],
+    desc:'Fuerza y voluntad. Resiste el antojo con el escudo en alto.',
+    pal:{A:'#98A5B3',B:'#5E6873',C:'#C4553E'},
+    px:[
+      "................",
+      ".......CC.......",
+      ".......CC.......",
+      "....AAAAAAAA....",
+      "...ABBBBBBBBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "....A.SSSS.A....",
+      "...AAAAAAAAAA...",
+      "..SAABAABAABAS..",
+      "..SAABAABAABAS..",
+      "...AAAAAAAAAA...",
+      "....BB....BB....",
+      "....BB....BB....",
+      "...OO......OO..."
+    ],
+    ab:[
+      {lvl:1,name:'Escudo Alzado',d:'Tu voluntad básica. Cada día cumplido golpea al jefe de la semana.'},
+      {lvl:3,name:'Piel de Hierro',d:'Tres días seguidos bajo el límite: la racha te endurece.'},
+      {lvl:5,name:'Golpe Firme',d:'Cerrar el día muy por debajo del límite da XP extra.'},
+      {lvl:8,name:'Estandarte',d:'Tres jefes semanales vencidos: tu casa gana renombre.'},
+      {lvl:12,name:'Última Muralla',d:'En las semanas duras del final, tu defensa vale doble.'},
+      {lvl:16,name:'Juramento Eterno',d:'El humo ya no gobierna a este caballero.'}
+    ]
+  },
+  paladin:{
+    name:'Paladin',es:'Arquero Sagrado',
+    tiers:['Explorador','Paladín','Paladín Real','Paladín Divino'],
+    desc:'Precisión sagrada. Cada flecha (cigarro) solo cuando de verdad toca.',
+    pal:{A:'#7FA366',B:'#55703F',C:'#E8B44A',Y:'#8A6B47'},
+    px:[
+      "................",
+      ".....AAAAAA.....",
+      "....AAAAAAAA....",
+      "...AABBBBBBAA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "....A.SSSS.A....",
+      "...ACCCCCCCCA...",
+      "..SAAAAAAAAS.Y..",
+      "..SAAGAAGAAS.Y..",
+      "...AAAAAAAA..Y..",
+      "....BB..BB......",
+      "....BB..BB......",
+      "...OO....OO....."
+    ],
+    ab:[
+      {lvl:1,name:'Flecha Contada',d:'Cada disparo se registra. La puntería empieza por saber cuántas van.'},
+      {lvl:3,name:'Ojo del Halcón',d:'Ves el ritmo del día antes de tensar la cuerda.'},
+      {lvl:5,name:'Aliento Sagrado',d:'Esperar al aproximado del siguiente bendice tu pulso.'},
+      {lvl:8,name:'Carcaj Ligero',d:'Cada semana tu carcaj lleva una flecha menos, y no la echas de menos.'},
+      {lvl:12,name:'Disparo Certero',d:'Días de mínimo histórico: diana perfecta.'},
+      {lvl:16,name:'Luz Implacable',d:'El arco descansa. La luz ya no necesita flechas.'}
+    ]
+  },
+  sorcerer:{
+    name:'Sorcerer',es:'Mago de la Muerte',
+    tiers:['Aprendiz Oscuro','Hechicero','Nigromante','Archimago de la Muerte'],
+    desc:'Drena la fuerza del vicio y la convierte en poder tuyo.',
+    pal:{A:'#7E5FA8',B:'#4E3A6E',C:'#C4553E'},
+    px:[
+      ".......AA.......",
+      "......AAAA......",
+      ".....AAAAAA.....",
+      "...AAAAAAAAAA...",
+      "....BSSSSSSB....",
+      "....BSSSSSSB....",
+      "....BSSSSSSB....",
+      "....BSSSSSSB....",
+      ".....SSSS.......",
+      "....AAAAAAAA....",
+      "...SABBAABBAS...",
+      "...SAAAAAAAAS...",
+      "....AAAAAAAA....",
+      "....AAAAAAAA....",
+      "....AAAAAAAA....",
+      "...OOOOOOOOOO..."
+    ],
+    ab:[
+      {lvl:1,name:'Toque Sombrío',d:'Marcas cada cigarro y le robas su misterio.'},
+      {lvl:3,name:'Drenar Ansia',d:'Cada antojo resistido alimenta tu poder (y tu XP).'},
+      {lvl:5,name:'Peste al Antojo',d:'El deseo enferma cuando lo miras a los ojos con datos.'},
+      {lvl:8,name:'Muro de Huesos',d:'Tu racha levanta una muralla que el mono no cruza.'},
+      {lvl:12,name:'Cosecha Oscura',d:'Cada jefe semanal caído engrosa tu filacteria.'},
+      {lvl:16,name:'Señor de la Ceniza',d:'La muerte del vicio. Tú mandas sobre lo que queda.'}
+    ]
+  },
+  druid:{
+    name:'Druid',es:'Curandero',
+    tiers:['Iniciado','Druida','Druida Ancestral','Avatar del Bosque'],
+    desc:'Sana el cuerpo día a día y hace crecer algo nuevo donde había ceniza.',
+    pal:{A:'#A8C46B',B:'#7A5C3E',C:'#C4553E'},
+    px:[
+      "................",
+      "....C.AAAA.C....",
+      "....AAAAAAAA....",
+      "...AABBBBBBAA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "...ABSSSSSSBA...",
+      "....A.SSSS.A....",
+      "...BBBBBBBBBB...",
+      "..SBBBBBBBBBBS..",
+      "..SBBCBBBBCBBS..",
+      "...BBBBBBBBBB...",
+      "....BBBBBBBB....",
+      "....BBBBBBBB....",
+      "...OOOOOOOOOO..."
+    ],
+    ab:[
+      {lvl:1,name:'Brote Verde',d:'El primer día registrado ya es una semilla plantada.'},
+      {lvl:3,name:'Savia Sanadora',d:'Cada día bajo el límite, tus pulmones respiran un poco más hondo.'},
+      {lvl:5,name:'Raíces Firmes',d:'La racha echa raíces: cuesta más arrancarla.'},
+      {lvl:8,name:'Lluvia Limpia',d:'Una semana vencida lava el alquitrán del bosque.'},
+      {lvl:12,name:'Corazón del Bosque',d:'Tu cuerpo empieza a recordar cómo era antes.'},
+      {lvl:16,name:'Renacer',d:'Donde hubo humo, ahora crece otra cosa.'}
+    ]
+  }
+};
+
+const BOSSES=[
+  'El Gólem de Humo','Espectro Gris','Araña de Alquitrán','Caballero Ceniza',
+  'Bruja del Antojo','Gusano de Nicotina','Sabueso del Mono','Gárgola Amarilla',
+  'Wyvern de Brea','Nigromante del Mechero','Hidra de Tres Caladas','Titán de Cartón',
+  'Sombra de la Sobremesa','Djinn del Mediodía','Minotauro Nocturno','Liche del Café',
+  'Dragón Menguante','El Último Trío','Gemelos del Ocaso','El Solitario',
+  'El Vacío — jefe final'
+];
+
+/* --- sprite 8-bit --- */
+function spriteSVG(clsId,mood,extraClass){
+  const cls=CLASSES[clsId];
+  const pal=Object.assign({},PAL_COMMON,cls.pal);
+  let rects='';
+  cls.px.forEach((row,y)=>{
+    for(let x=0;x<16;x++){
+      const ch=row[x];
+      if(ch!=='.'&&pal[ch]){
+        rects+=`<rect x="${x}" y="${y}" width="1" height="1" fill="${pal[ch]}"/>`;
+      }
+    }
+  });
+  /* cara según estado (coordenadas comunes a todas las clases) */
+  const eye=pal.O;
+  if(mood==='hurt'||mood==='sleep'){
+    rects+=`<rect x="5" y="5" width="2" height="1" fill="${eye}"/><rect x="9" y="5" width="2" height="1" fill="${eye}"/>`;
+    if(mood==='hurt') rects+=`<rect x="7" y="7" width="1" height="1" fill="${eye}"/>`;
+  }else{
+    rects+=`<rect x="6" y="5" width="1" height="1" fill="${eye}"/><rect x="9" y="5" width="1" height="1" fill="${eye}"/>`;
+    if(mood==='happy') rects+=`<rect x="7" y="7" width="2" height="1" fill="${eye}"/>`;
+    if(mood==='neutral') rects+=`<rect x="7" y="7" width="1" height="1" fill="${eye}"/>`;
+    if(mood==='worried'){
+      rects+=`<rect x="7" y="7" width="1" height="1" fill="${eye}"/><rect x="13" y="3" width="1" height="1" fill="${pal.P}"/>`;
+    }
+  }
+  return `<svg class="sprite-svg ${extraClass||''} ${mood==='hurt'?'hurt':''}" viewBox="0 0 16 16" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+}
+
+/* --- progreso del juego (determinista desde los datos) --- */
+function gameStats(){
+  const now=new Date();
+  const start=parseKey(state.config.startDate);
+  let xp=0,cur=0;
+  for(let d=new Date(start); daysBetween(now,d)<0; d.setDate(d.getDate()+1)){
+    const lim=limitOfDate(d), c=getDay(keyOf(d)).c;
+    if(c<=lim){xp+=50+4*Math.max(0,lim-c);cur++;}
+    else{cur=0;}
+  }
+  const streak=cur;
+  const currW=Math.max(0,weekIndexOf(now));
+  let bossesDown=0;
+  for(let w=0;w<currW;w++){
+    const lim=limitOfWeek(w);
+    const [a,b]=weekRange(w);
+    let all=true;
+    for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
+      if(getDay(keyOf(d)).c>lim){all=false;break;}
+    }
+    if(all){xp+=200;bossesDown++;}
+  }
+  const lvl=1+Math.floor(Math.sqrt(xp/60));
+  const curTh=60*(lvl-1)*(lvl-1), nextTh=60*lvl*lvl;
+  const prog=Math.min(1,(xp-curTh)/Math.max(1,nextTh-curTh));
+  const tier=lvl>=15?3:lvl>=10?2:lvl>=5?1:0;
+  return {xp,lvl,prog,nextTh,streak,bossesDown,currW,tier};
+}
+
+function heroToday(){
+  ensureHero();
+  const g=state.game;
+  const hp=g.hp===undefined?100:g.hp;
+  const now=new Date();
+  const c=getDay(todayKey()).c;
+  const wake=minutesOf(state.config.wakeTime||'09:00');
+  const nowM=now.getHours()*60+now.getMinutes();
+  let mood;
+  if(nowM<wake&&c===0) mood='sleep';
+  else mood=hp>70?'happy':hp>40?'neutral':hp>15?'worried':'hurt';
+  return {hp,mood};
+}
+
+function bossState(){
+  const now=new Date();
+  const w=Math.max(0,weekIndexOf(now));
+  const lim=limitOfWeek(w);
+  const [a,b]=weekRange(w);
+  const pips=[];let lost=false;
+  for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
+    const isPast=daysBetween(now,d)<0;
+    const isToday=keyOf(d)===todayKey();
+    const c=getDay(keyOf(d)).c;
+    let st='pend';
+    if(isPast){st=c<=lim?'hit':'fail';if(st==='fail')lost=true;}
+    else if(isToday){if(c>lim){st='fail';lost=true;}else st='today';}
+    pips.push(st);
+  }
+  return {name:BOSSES[Math.min(w,BOSSES.length-1)],lim,pips,lost,w};
+}
+
+/* --- sistema de vida por eventos --- */
+function ensureHero(){
+  if(!state.game) state.game={cls:null};
+  const g=state.game;
+  const now=Date.now();
+  if(g.hp===undefined){g.hp=100;g.hpT=now;g.day=todayKey();scheduleSave();return;}
+  let dirty=false;
+  /* descanso nocturno: día cumplido -> 100, día pasado -> 75 */
+  if(g.day!==todayKey()){
+    const lim=limitOfDate(parseKey(g.day));
+    const c=getDay(g.day).c;
+    g.hp=(c<=lim)?100:75;
+    g.day=todayKey();g.hpT=now;dirty=true;
+  }
+  /* regeneración: +1 de vida cada 10 min sin fumar */
+  const ticks=Math.floor((now-g.hpT)/600000);
+  if(ticks>0){
+    g.hp=Math.min(100,g.hp+ticks);
+    g.hpT+=ticks*600000;
+    dirty=true;
+  }
+  if(dirty) scheduleSave();
+}
+
+function heroArmor(){return Math.min(5,Math.floor(gameStats().streak/3));}
+
+function smokeDamage(){
+  ensureHero();
+  const g=state.game;
+  const now=new Date();
+  const lim=limitOfDate(now);
+  const rec=getDay(todayKey());
+  const cAfter=rec.c+1;
+  const wake=minutesOf(state.config.wakeTime||'09:00');
+  const sleep=minutesOf(state.config.sleepTime||'23:00');
+  const nowM=now.getHours()*60+now.getMinutes();
+  const frac=Math.min(1,Math.max(0,(nowM-wake)/Math.max(60,sleep-wake)));
+  const expected=lim*frac;
+  let dmg;
+  if(lim<=0||cAfter>lim){
+    dmg=25; /* por encima del límite del día */
+  }else{
+    /* disparo perfecto: esperaste hasta la hora aproximada del siguiente */
+    let perfect=false;
+    if(rec.t){
+      const lt=new Date(rec.t);
+      const lastM=lt.getHours()*60+lt.getMinutes();
+      const left=lim-rec.c, win=sleep-lastM;
+      if(win>0&&left>0){
+        const nextM=lastM+Math.max(10,Math.round(win/left));
+        if(nowM>=nextM) perfect=true;
+      }
+    }
+    const ratio=expected>0.3? cAfter/expected : 2;
+    if(perfect||ratio<=1) dmg=0;          /* en ritmo o por detrás */
+    else if(ratio<=1.5) dmg=8;            /* un poco por delante */
+    else dmg=15;                          /* muy por delante */
+  }
+  if(dmg>0) dmg=Math.max(1,dmg-heroArmor()); /* la racha es armadura */
+  if(dmg>0) g.hp=Math.max(0,g.hp-dmg);
+  g.hpT=Date.now(); /* fumar reinicia el reloj de regeneración */
+  scheduleSave();
+  return dmg;
+}
+
+function showToast(txt,type){
+  const t=document.getElementById('toast');
+  if(!t) return;
+  t.textContent=txt;
+  t.className='toast show '+(type||'');
+  clearTimeout(t._h);
+  t._h=setTimeout(()=>{t.className='toast';},2000);
+}
+
+function renderHero(){
+  const box=document.getElementById('heroContent');
+  if(!box) return;
+  const cls=state.game&&state.game.cls;
+
+  /* --- selección de clase --- */
+  if(!cls||!CLASSES[cls]){
+    let cards='';
+    for(const id in CLASSES){
+      const c=CLASSES[id];
+      cards+=`<div class="cls-card" data-cls="${id}">
+        ${spriteSVG(id,'happy')}
+        <div class="cn">${c.name}</div>
+        <div class="ce">${c.es}</div>
+        <div class="cd">${c.desc}</div>
+      </div>`;
+    }
+    box.innerHTML=`<div class="card">
+      <h2>Elige tu clase</h2>
+      <p class="hint" style="margin:0 0 14px">Tu héroe vive de tus datos: gana XP cada día que cumples, sube de nivel, y su salud refleja cómo llevas el día de hoy. Elige con cabeza — el camino son 21 semanas.</p>
+      <div class="cls-grid">${cards}</div>
+    </div>`;
+    return;
+  }
+
+  const C=CLASSES[cls];
+  const g=gameStats();
+  const h=heroToday();
+  const bs=bossState();
+
+  const hpCls=h.hp>70?'hp-hi':h.hp>40?'hp-mid':h.hp>15?'hp-low':'hp-crit';
+  const auraCls=g.tier>0?('t'+(g.tier+1)):'';
+  const zzz=h.mood==='sleep'?'<span class="sprite-zzz">z z</span>':'';
+
+  const pips=bs.pips.map(p=>{
+    const sym=p==='hit'?'✕':p==='fail'?'!':p==='today'?'●':'·';
+    return `<div class="pip ${p}">${sym}</div>`;
+  }).join('');
+  let bState,bCls;
+  if(bs.lost){bState='te ha vencido';bCls='lose';}
+  else if(bs.pips.every(p=>p==='hit')){bState='¡derrotado!';bCls='win';}
+  else{bState='en combate';bCls='curr';}
+
+  const abils=C.ab.map(a=>{
+    const on=g.lvl>=a.lvl;
+    return `<div class="abil ${on?'on':'off'}">
+      <span class="lv">Nv ${a.lvl}</span>
+      <div><div class="an">${a.name}</div><div class="ad">${a.d}</div></div>
+    </div>`;
+  }).join('');
+
+  box.innerHTML=`
+    <div class="card">
+      <div class="hero-top">
+        <div class="sprite-box"><div class="sprite-aura ${auraCls}"></div>${spriteSVG(cls,h.mood)}${zzz}</div>
+        <div class="hero-id">
+          <div class="rango">${C.tiers[g.tier]}</div>
+          <div class="nombre">${C.name}</div>
+          <div class="nivel">Nivel ${g.lvl}</div>
+          <div class="racha">Racha: <b>${g.streak}</b> día${g.streak===1?'':'s'} · Jefes: <b>${g.bossesDown}</b> · Armadura: <b>−${heroArmor()}</b></div>
+        </div>
+      </div>
+      <div class="stat-bar">
+        <div class="lbl"><span>SALUD</span><b>${h.hp}%</b></div>
+        <div class="stat-track"><div class="stat-fill ${hpCls}" style="width:${h.hp}%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <div class="lbl"><span>EXPERIENCIA</span><b>${g.xp} / ${g.nextTh} XP</b></div>
+        <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(g.prog*100)}%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Jefe de la semana ${bs.w+1}</h2>
+      <div class="boss-row">
+        <div class="boss-name">${bs.name}<small>máx ${bs.lim}/día · cada día cumplido es un golpe</small></div>
+        <div class="boss-state ${bCls}">${bState}</div>
+      </div>
+      <div class="pips">${pips}</div>
+      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de 21 · quedan <b>${21-bs.w-(bs.pips.every(p=>p==='hit')?1:0)}</b> por delante</div>
+    </div>
+
+    <div class="card">
+      <h2>Habilidades — ${C.es}</h2>
+      ${abils}
+    </div>`;
+}
+
+/* ==================== fin RPG ==================== */
+
 /* ---------- modal ---------- */
 function openModal(k){
   editingKey=k;
@@ -851,12 +1494,14 @@ function openModal(k){
     `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]}`;
   document.getElementById('mCigVal').textContent=rec.c;
   document.getElementById('mPillVal').textContent=rec.p;
+  document.getElementById('mCerVal').textContent=rec.b||0;
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){
   const c=+document.getElementById('mCigVal').textContent;
   const p=+document.getElementById('mPillVal').textContent;
-  setDay(editingKey,c,p);
+  const b=+document.getElementById('mCerVal').textContent;
+  setDay(editingKey,c,p,undefined,b);
   document.getElementById('modalBg').classList.remove('show');
 }
 
@@ -865,15 +1510,46 @@ function bump(id,delta,min=0){
   const el=document.getElementById(id);
   el.textContent=Math.max(min,+el.textContent+delta);
 }
-document.getElementById('addCig').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c+1,d.p,Date.now());});
+document.getElementById('addCig').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  const dmg=smokeDamage();
+  setDay(k,d.c+1,d.p,Date.now());
+  if(dmg>0) showToast('⚔ −'+dmg+' de vida','dmg');
+  else showToast('En ritmo · sin daño ♥','heal');
+});
 document.getElementById('subCig').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c-1,d.p);});
-document.getElementById('addPill').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c,d.p+1);});
+document.getElementById('addPill').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  ensureHero();
+  if(d.p===0&&state.game.hp!==undefined){
+    state.game.hp=Math.min(100,state.game.hp+15);
+    scheduleSave();
+    showToast('Poción diaria +15 ♥','heal');
+  }
+  setDay(k,d.c,d.p+1);
+});
 document.getElementById('subPill').addEventListener('click',()=>{const k=todayKey(),d=getDay(k);setDay(k,d.c,d.p-1);});
+document.getElementById('addBeer').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  ensureHero();
+  if(state.game.hp!==undefined){
+    state.game.hp=Math.max(0,state.game.hp-5);
+    scheduleSave();
+  }
+  setDay(k,d.c,d.p,undefined,(d.b||0)+1);
+  showToast('🍺 −5 de vida','dmg');
+});
+document.getElementById('subBeer').addEventListener('click',()=>{
+  const k=todayKey(),d=getDay(k);
+  setDay(k,d.c,d.p,undefined,(d.b||0)-1);
+});
 
 document.getElementById('mCigAdd').addEventListener('click',()=>bump('mCigVal',1));
 document.getElementById('mCigSub').addEventListener('click',()=>bump('mCigVal',-1));
 document.getElementById('mPillAdd').addEventListener('click',()=>bump('mPillVal',1));
 document.getElementById('mPillSub').addEventListener('click',()=>bump('mPillVal',-1));
+document.getElementById('mCerAdd').addEventListener('click',()=>bump('mCerVal',1));
+document.getElementById('mCerSub').addEventListener('click',()=>bump('mCerVal',-1));
 document.getElementById('modalClose').addEventListener('click',closeModal);
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 
@@ -919,17 +1595,46 @@ document.getElementById('cfgSleep').addEventListener('change',e=>{
   if(e.target.value){state.config.sleepTime=e.target.value;scheduleSave();renderAll();}
 });
 
-const views={navHoy:'view-hoy',navCal:'view-cal',navGraf:'view-graf',navSet:'view-set'};
+const views={navHoy:'view-hoy',navHero:'view-hero',navCal:'view-cal',navGraf:'view-graf'};
+function switchView(vid,btnId){
+  document.querySelectorAll('nav button, .gear-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(vid).classList.add('active');
+  document.getElementById(btnId).classList.add('active');
+  window.scrollTo(0,0);
+  document.getElementById('scrollArea').scrollTop=0;
+}
 Object.keys(views).forEach(nid=>{
   document.getElementById(nid).addEventListener('click',()=>{
-    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    document.getElementById(nid).classList.add('active');
-    document.getElementById(views[nid]).classList.add('active');
-    window.scrollTo(0,0);
-    document.getElementById('scrollArea').scrollTop=0;
+    switchView(views[nid],nid);
     if(nid==='navCal'){calCursor=new Date();renderCal();renderWeeks();}
     if(nid==='navGraf'){grafWeek=Math.max(0,weekIndexOf(new Date()));grafMonth=new Date();renderGraf();}
+  });
+});
+
+/* menú hamburguesa: abre hojas superpuestas */
+document.getElementById('navMenu').addEventListener('click',()=>{
+  document.getElementById('menuBg').classList.add('show');
+});
+document.getElementById('menuAjustes').addEventListener('click',()=>{
+  document.getElementById('menuBg').classList.remove('show');
+  document.getElementById('sheetSet').classList.add('show');
+});
+document.getElementById('menuInstr').addEventListener('click',()=>{
+  document.getElementById('menuBg').classList.remove('show');
+  document.getElementById('sheetInstr').classList.add('show');
+});
+document.getElementById('menuBg').addEventListener('click',e=>{
+  if(e.target.id==='menuBg')e.target.classList.remove('show');
+});
+document.querySelectorAll('.sheet-close').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.getElementById(b.dataset.sheet).classList.remove('show');
+  });
+});
+document.querySelectorAll('.sheet-bg').forEach(s=>{
+  s.addEventListener('click',e=>{
+    if(e.target===s)s.classList.remove('show');
   });
 });
 
@@ -953,6 +1658,21 @@ document.getElementById('grafPrev').addEventListener('click',()=>{
 document.getElementById('grafNext').addEventListener('click',()=>{
   if(grafMode==='semana'){grafWeek++;renderGraf();}
   else{grafMonth.setMonth(grafMonth.getMonth()+1);renderGraf();}
+});
+
+/* elegir clase de héroe */
+document.getElementById('view-hero').addEventListener('click',e=>{
+  const card=e.target.closest('[data-cls]');
+  if(card){
+    state.game={cls:card.dataset.cls};
+    scheduleSave();
+    renderHero();
+  }
+});
+document.getElementById('cfgResetCls').addEventListener('click',()=>{
+  state.game={cls:null};
+  scheduleSave();
+  renderHero();
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
