@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Registro · Dejar de fumar</title>
+<title>Freedoom</title>
+<link rel="apple-touch-icon" href="icono.png">
+<link rel="icon" type="image/png" href="icono.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Freedoom">
+<meta name="theme-color" content="#171310">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -467,9 +473,23 @@ function setDay(k,c,p,t){
 }
 
 /* ---------- almacenamiento ---------- */
+/* Adaptador: dentro de Claude usa window.storage; en GitHub Pages / PWA usa localStorage del navegador */
+const store={
+  async get(k){
+    if(window.storage && window.storage.get) return window.storage.get(k);
+    const v=localStorage.getItem(k);
+    return v!==null ? {key:k,value:v} : null;
+  },
+  async set(k,v){
+    if(window.storage && window.storage.set) return window.storage.set(k,v);
+    localStorage.setItem(k,v);
+    return {key:k,value:v};
+  }
+};
+
 async function load(){
   try{
-    const r=await window.storage.get(KEY);
+    const r=await store.get(KEY);
     if(r&&r.value){
       const data=JSON.parse(r.value);
       if(data.config) state.config=Object.assign(state.config,data.config);
@@ -487,12 +507,23 @@ async function load(){
   }
 }
 function scheduleSave(){
+  /* en el móvil (localStorage) guarda al instante: si cierras la app justo después de un +, no se pierde */
+  if(!(window.storage && window.storage.set)){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.error('Error guardando',e); }
+    return;
+  }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    try{ await window.storage.set(KEY, JSON.stringify(state)); }
+    try{ await store.set(KEY, JSON.stringify(state)); }
     catch(e){ console.error('Error guardando',e); }
   },400);
 }
+/* al ocultar/cerrar la app, volcado final por si había un guardado pendiente */
+window.addEventListener('pagehide',()=>{
+  if(!(window.storage && window.storage.set)){
+    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  }
+});
 
 /* ---------- render ---------- */
 function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderSettings();}
