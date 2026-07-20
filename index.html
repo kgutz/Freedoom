@@ -26,14 +26,14 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html{height:100%;height:-webkit-fill-available;background:var(--bg)}
+  html{height:100%;background:var(--bg)}
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'Sora',system-ui,sans-serif;
     font-weight:300;
-    position:fixed;top:0;bottom:0;left:0;right:0;
-    height:100%;height:-webkit-fill-available;
+    position:fixed;top:0;left:0;right:0;
+    height:var(--appH,100dvh);
     width:100%;max-width:440px;
     margin:0 auto;
     display:flex;flex-direction:column;
@@ -371,7 +371,7 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v3</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v4</p>
     </div>
   </section>
 </div>
@@ -422,6 +422,16 @@
 
 <script>
 const KEY='registro-dejar-fumar';
+
+/* Altura real de la pantalla medida por JS (arregla el hueco inferior en modo app de iOS) */
+function fixAppHeight(){
+  document.documentElement.style.setProperty('--appH', window.innerHeight+'px');
+}
+fixAppHeight();
+window.addEventListener('resize',fixAppHeight);
+window.addEventListener('orientationchange',()=>setTimeout(fixAppHeight,150));
+if(window.visualViewport) window.visualViewport.addEventListener('resize',fixAppHeight);
+
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
 const DOW=['L','M','X','J','V','S','D'];
