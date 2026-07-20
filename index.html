@@ -26,7 +26,7 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{min-height:100%;overscroll-behavior-y:none}
+  html,body{height:100%;overscroll-behavior-y:none}
   body{
     background:var(--bg);
     color:var(--text);
@@ -34,8 +34,15 @@
     font-weight:300;
     max-width:440px;
     margin:0 auto;
-    padding:calc(24px + env(safe-area-inset-top)) 18px calc(104px + env(safe-area-inset-bottom));
+    height:100dvh;
+    display:flex;flex-direction:column;
+    overflow:hidden;
     position:relative;
+  }
+  .scroll{
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:none;
+    padding:calc(24px + env(safe-area-inset-top)) 18px 24px;
   }
   body::after{
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
@@ -143,8 +150,7 @@
   }
 
   nav{
-    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-    width:100%;max-width:440px;display:flex;
+    flex-shrink:0;display:flex;width:100%;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
     padding-bottom:calc(14px + env(safe-area-inset-bottom));
@@ -250,6 +256,7 @@
 </head>
 <body>
 
+<main class="scroll" id="scrollArea">
 <div id="loading" class="loading">Cargando registro…</div>
 
 <div id="app" style="display:none">
@@ -366,6 +373,7 @@
     </div>
   </section>
 </div>
+</main>
 
 <nav>
   <button id="navHoy" class="active">Hoy</button>
@@ -910,6 +918,7 @@ Object.keys(views).forEach(nid=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     document.getElementById(nid).classList.add('active');
     document.getElementById(views[nid]).classList.add('active');
+    document.getElementById('scrollArea').scrollTop=0;
     if(nid==='navCal'){calCursor=new Date();renderCal();renderWeeks();}
     if(nid==='navGraf'){grafWeek=Math.max(0,weekIndexOf(new Date()));grafMonth=new Date();renderGraf();}
   });
