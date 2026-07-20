@@ -179,19 +179,20 @@
   .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
   .cal-head h3{font-size:16px;font-weight:600;text-transform:capitalize}
   .cal-head button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
-  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
   .cal-dow{font-size:10px;text-align:center;color:var(--muted);padding:4px 0;letter-spacing:.08em}
   .cal-day{
-    aspect-ratio:1;border-radius:8px;border:1px solid transparent;
+    min-height:52px;border-radius:8px;border:1px solid transparent;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
     font-size:12px;color:var(--muted);cursor:pointer;background:var(--panel);
+    overflow:hidden;padding:3px 1px;min-width:0;
   }
   .cal-day.empty{background:transparent;cursor:default}
   .cal-day.today{border-color:var(--kodak)}
-  .cal-day .n{font-weight:600;color:var(--text)}
-  .cal-day .c{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--kodak)}
+  .cal-day .n{font-weight:600;color:var(--text);line-height:1.1}
+  .cal-day .c{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--kodak);line-height:1.1}
   .cal-day .c.over{color:var(--warn)}
-  .cal-day .p{font-size:9px;color:var(--pill)}
+  .cal-day .p{font-size:8.5px;color:var(--pill);white-space:nowrap;line-height:1.2}
   .cal-day.future{opacity:.35;cursor:default}
 
   .week-summary{margin-top:18px}
@@ -547,10 +548,14 @@
         <input type="time" id="cfgSleep">
       </div>
       <div class="set-row">
+        <label for="cfgPills">Pastillas al día</label>
+        <input type="number" id="cfgPills" min="1" max="10" style="width:80px">
+      </div>
+      <div class="set-row">
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.3</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.5</p>
     </div>
   </div>
 </div>
@@ -567,7 +572,7 @@
     </div>
     <div class="card">
       <h2>♥ Curación</h2>
-      <p class="hint" style="margin-top:0">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· La primera pastilla del día es tu poción: <b style="color:var(--ok)">+15</b> (solo la primera; la medicación se toma como te la pautaron).<br>· Descanso nocturno: día cumplido → amaneces al <b style="color:var(--ok)">100</b>; día pasado → al 75.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
+      <p class="hint" style="margin-top:0">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· Completar todas las pastillas del día (las que te pautaron, ajustable en Ajustes) es tu poción: <b style="color:var(--ok)">+15</b> al tomar la última.<br>· Descanso nocturno: día cumplido → amaneces al <b style="color:var(--ok)">100</b>; día pasado → al 75.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
     </div>
     <div class="card">
       <h2>El ritmo del día</h2>
@@ -679,7 +684,7 @@ const SEED={
 };
 
 let state={
-  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00'},
+  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3},
   days:{},
   seeded:false,
   game:{cls:null}
@@ -930,10 +935,12 @@ function renderCal(){
     cell.className='cal-day'+(k===tk?' today':'')+(isFuture?' future':'');
     const rec=getDay(k);
     const over=rec.c>limitOfDate(date);
+    const extras=[];
+    if(rec.p>0)extras.push('💊'+rec.p);
+    if(rec.b>0)extras.push('🍺'+rec.b);
     cell.innerHTML=`<span class="n">${day}</span>`+
       (rec.c>0?`<span class="c${over?' over':''}">${rec.c}</span>`:'')+
-      (rec.p>0?`<span class="p">💊${rec.p}</span>`:'')+
-      (rec.b>0?`<span class="p" style="color:#D99B3F">🍺${rec.b}</span>`:'');
+      (extras.length?`<span class="p">${extras.join(' ')}</span>`:'');
     if(!isFuture){
       cell.addEventListener('click',()=>openModal(k));
     }
@@ -1086,6 +1093,7 @@ function renderSettings(){
   document.getElementById('cfgLimit').value=state.config.startLimit;
   document.getElementById('cfgWake').value=state.config.wakeTime||'09:00';
   document.getElementById('cfgSleep').value=state.config.sleepTime||'23:00';
+  document.getElementById('cfgPills').value=state.config.pillsGoal||3;
 }
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
@@ -1538,10 +1546,11 @@ document.getElementById('subCig').addEventListener('click',()=>{
 document.getElementById('addPill').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
-  if(d.p===0&&state.game.hp!==undefined){
+  const goal=state.config.pillsGoal||3;
+  if(d.p+1===goal&&state.game.hp!==undefined){
     state.game.hp=Math.min(100,state.game.hp+15);
     scheduleSave();
-    showToast('Poción diaria +15 ♥','heal');
+    showToast('Pastillas completas · poción +15 ♥','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -1549,7 +1558,8 @@ document.getElementById('subPill').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   if(d.p<=0) return;
   ensureHero();
-  if(d.p===1&&state.game.hp!==undefined){
+  const goal=state.config.pillsGoal||3;
+  if(d.p===goal&&state.game.hp!==undefined){
     state.game.hp=Math.max(0,state.game.hp-15);
     scheduleSave();
     showToast('Poción retirada −15','dmg');
@@ -1627,6 +1637,10 @@ document.getElementById('cfgWake').addEventListener('change',e=>{
 });
 document.getElementById('cfgSleep').addEventListener('change',e=>{
   if(e.target.value){state.config.sleepTime=e.target.value;scheduleSave();renderAll();}
+});
+document.getElementById('cfgPills').addEventListener('change',e=>{
+  const v=parseInt(e.target.value,10);
+  if(v>0){state.config.pillsGoal=v;scheduleSave();renderAll();}
 });
 
 const views={navHoy:'view-hoy',navHero:'view-hero',navCal:'view-cal',navGraf:'view-graf'};
