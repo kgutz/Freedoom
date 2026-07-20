@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Freedoom</title>
 <link rel="apple-touch-icon" href="icono.png">
-<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="icono.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,24 +26,19 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html{height:100%;background:var(--bg)}
+  html{background:var(--bg)}
   body{
     background:var(--bg);
     color:var(--text);
     font-family:'Sora',system-ui,sans-serif;
     font-weight:300;
-    position:fixed;top:0;left:0;right:0;
-    height:var(--appH,100dvh);
-    width:100%;max-width:440px;
+    max-width:440px;
     margin:0 auto;
-    display:flex;flex-direction:column;
-    overflow:hidden;
+    position:relative;
     overscroll-behavior-y:none;
   }
   .scroll{
-    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
-    overscroll-behavior-y:none;
-    padding:calc(8px + env(safe-area-inset-top)) 18px 24px;
+    padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
   }
   body::after{
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
@@ -152,13 +146,14 @@
   }
 
   nav{
-    flex-shrink:0;display:flex;width:100%;
+    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    width:100%;max-width:440px;display:flex;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
-    padding-bottom:max(4px, calc(env(safe-area-inset-bottom) - 14px));
+    padding-bottom:env(safe-area-inset-bottom);
   }
   nav button{
-    flex:1;padding:13px 0 9px;background:none;border:none;color:var(--muted);
+    flex:1;padding:14px 0 12px;background:none;border:none;color:var(--muted);
     font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
     letter-spacing:.05em;
   }
@@ -372,8 +367,7 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v6</p>
-      <p class="hint" style="text-align:center;opacity:.6" id="debugInfo"></p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v7</p>
     </div>
   </section>
 </div>
@@ -424,30 +418,6 @@
 
 <script>
 const KEY='registro-dejar-fumar';
-
-/* Altura real de la pantalla medida por JS (arregla el hueco inferior en modo app de iOS) */
-function fixAppHeight(){
-  document.documentElement.style.setProperty('--appH', window.innerHeight+'px');
-}
-fixAppHeight();
-window.addEventListener('resize',fixAppHeight);
-window.addEventListener('orientationchange',()=>setTimeout(fixAppHeight,150));
-if(window.visualViewport) window.visualViewport.addEventListener('resize',fixAppHeight);
-
-/* Diagnóstico: medidas reales del dispositivo, visibles en Ajustes */
-function showDebug(){
-  const el=document.getElementById('debugInfo');
-  if(!el) return;
-  const probe=document.createElement('div');
-  probe.style.cssText='position:absolute;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);';
-  document.body.appendChild(probe);
-  const cs=getComputedStyle(probe);
-  const st=cs.paddingTop, sb=cs.paddingBottom;
-  probe.remove();
-  const standalone=window.navigator.standalone===true?'sí':'no';
-  el.textContent=`ventana ${window.innerHeight}px · pantalla ${screen.height}px · body ${document.body.getBoundingClientRect().height.toFixed(0)}px · safe ${st}/${sb} · app: ${standalone}`;
-}
-window.addEventListener('load',()=>setTimeout(showDebug,300));
 
 const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
@@ -947,6 +917,7 @@ Object.keys(views).forEach(nid=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     document.getElementById(nid).classList.add('active');
     document.getElementById(views[nid]).classList.add('active');
+    window.scrollTo(0,0);
     document.getElementById('scrollArea').scrollTop=0;
     if(nid==='navCal'){calCursor=new Date();renderCal();renderWeeks();}
     if(nid==='navGraf'){grafWeek=Math.max(0,weekIndexOf(new Date()));grafMonth=new Date();renderGraf();}
