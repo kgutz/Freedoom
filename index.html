@@ -14,13 +14,13 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#171310;
+    --bg:#171310;          /* emulsión oscura */
     --panel:#211C17;
     --panel2:#2A241D;
     --line:#3A3229;
-    --text:#EDE3D2;
+    --text:#EDE3D2;        /* crema cálido */
     --muted:#9C8F7C;
-    --kodak:#E8B44A;
+    --kodak:#E8B44A;       /* amarillo Kodak */
     --ok:#8FAE6B;
     --warn:#C4553E;
     --pill:#7FA0B8;
@@ -42,12 +42,13 @@
     min-height:100vh;
     min-height:100dvh;
   }
-  body::after{
+  body::after{ /* grano sutil */
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   .mono{font-family:'IBM Plex Mono',monospace}
 
+  /* ---------- header ---------- */
   header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
   .fecha{font-size:15px;color:var(--muted);text-transform:capitalize}
   .fecha b{display:block;color:var(--text);font-weight:600;font-size:19px;margin-top:2px}
@@ -58,6 +59,7 @@
   }
   .semana-tag span{color:var(--muted);display:block;font-size:10px;letter-spacing:.08em}
 
+  /* ---------- contador principal ---------- */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px}
   .card h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
 
@@ -91,6 +93,7 @@
   .btn-add.pill-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #33475A, 0 3px 8px rgba(0,0,0,.5)}
   .digits.pill-d{font-size:44px}
 
+  /* ---------- tira de película ---------- */
   .filmstrip-wrap{margin-top:18px}
   .filmstrip-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
   .filmstrip-label .mono b{color:var(--text)}
@@ -140,13 +143,14 @@
       var(--warn) 92%, var(--warn) 100%);
     transition:width .4s;
   }
-  .pace-info{font-size:12px;color:var(--muted);margin-top:12px;text-align:center;line-height:1.7}
+  .pace-info{font-size:12px;color:var(--muted);margin-top:12px;text-align:left;line-height:1.9}
   .pace-info b{font-family:'IBM Plex Mono',monospace;color:var(--text)}
   .edit-time{
     font-family:'IBM Plex Mono',monospace;color:var(--kodak);font-weight:600;
     border-bottom:1px dotted var(--kodak);cursor:pointer;padding-bottom:1px;
   }
 
+  /* ---------- navegación ---------- */
   nav{
     position:fixed;bottom:0;left:50%;transform:translateX(-50%);
     width:100%;max-width:440px;display:flex;
@@ -161,6 +165,7 @@
   }
   nav button.active{color:var(--kodak)}
 
+  /* ---------- calendario ---------- */
   .cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
   .cal-head h3{font-size:16px;font-weight:600;text-transform:capitalize}
   .cal-head button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer}
@@ -193,6 +198,7 @@
   .wk-row .stat.bad{color:var(--warn)}
   .wk-row .stat.curr{color:var(--kodak)}
 
+  /* ---------- modales ---------- */
   .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:20}
   .modal-bg.show{display:flex}
   .modal-bg.center{align-items:center;padding:0 24px}
@@ -215,7 +221,16 @@
     background:var(--kodak);color:#241C0E;font-family:'Sora',sans-serif;font-weight:700;font-size:15px;
   }
 
+  /* ---------- ajustes ---------- */
   .set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .set-row:last-child{border-bottom:none}
+  .set-row label{color:var(--muted)}
+  .set-row input{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;
+    width:150px;color-scheme:dark;
+  }
+  .hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
 
   /* ---------- gráfica ---------- */
   .seg{display:flex;gap:6px;margin-bottom:16px}
@@ -235,14 +250,6 @@
   .graf-sum .pk b{color:var(--warn)}
   .graf-sum .mn b{color:var(--ok)}
   .graf-sum .md b{color:var(--kodak)}
-  .set-row:last-child{border-bottom:none}
-  .set-row label{color:var(--muted)}
-  .set-row input{
-    background:var(--panel2);border:1px solid var(--line);color:var(--text);
-    border-radius:8px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:14px;
-    width:150px;color-scheme:dark;
-  }
-  .hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
 
   .view{display:none}
   .view.active{display:block}
@@ -369,7 +376,7 @@
         <input type="time" id="cfgSleep">
       </div>
       <p class="hint">La semana 1 empieza el día exacto de inicio del plan (viernes 17) y cada semana dura 7 días: de viernes a jueves. Cada viernes el límite diario baja 1 automáticamente: 20 → 19 → 18… hasta llegar a 0.</p>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v8</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v12 · estilo v8</p>
     </div>
   </section>
 </div>
@@ -632,7 +639,7 @@ function renderPace(now,smoked,limit){
     else if(diff===0) diffTxt=' · justo en el ritmo';
     else diffTxt=` · vas <b>${diff}</b> por encima`;
   }
-  info.innerHTML=`Ritmo objetivo: <b>1</b> cada <b>~${minPerCig} min</b> · a esta hora tocarían <b>~${exp}</b>${diffTxt}`;
+  info.innerHTML=`Ritmo objetivo: <b>1</b> cada <b>~${minPerCig} min</b><br>A esta hora tocarían <b>~${exp}</b>${diffTxt}`;
 
   /* aproximación del siguiente: reparte lo que queda entre el tiempo que queda */
   const rec=getDay(todayKey());
