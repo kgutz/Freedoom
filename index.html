@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Freedoom</title>
 <link rel="apple-touch-icon" href="icono.png">
 <link rel="icon" type="image/png" href="icono.png">
@@ -26,7 +26,7 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%}
+  html,body{min-height:100%}
   body{
     background:var(--bg);
     color:var(--text);
@@ -34,7 +34,7 @@
     font-weight:300;
     max-width:440px;
     margin:0 auto;
-    padding:20px 18px 90px;
+    padding:20px 18px calc(150px + env(safe-area-inset-bottom));
     position:relative;
   }
   body::after{
@@ -147,9 +147,10 @@
     width:100%;max-width:440px;display:flex;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
+    padding-bottom:calc(14px + env(safe-area-inset-bottom));
   }
   nav button{
-    flex:1;padding:16px 0 20px;background:none;border:none;color:var(--muted);
+    flex:1;padding:16px 0 10px;background:none;border:none;color:var(--muted);
     font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
     letter-spacing:.05em;
   }
