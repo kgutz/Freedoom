@@ -268,6 +268,7 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     min-height:70vh;text-align:center;color:var(--muted);font-size:14px;gap:22px;
   }
+  .top-logo{display:block;width:min(200px,56%);height:auto;margin:2px auto 14px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
   .load-txt{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;opacity:.7}
@@ -441,6 +442,7 @@
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
 
 <div id="app" style="display:none">
+  <img src="logo.png" alt="Freedoom" class="top-logo" onerror="this.style.display='none'">
   <header>
     <div class="fecha">Hoy<b id="fechaHoy"></b>
       <button id="navMenu" class="gear-btn" aria-label="Menú">
@@ -591,7 +593,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v19 · logo</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v19.2</p>
     </div>
   </div>
 </div>
@@ -628,6 +630,7 @@
       <h2>El plan</h2>
       <p class="hint" style="margin-top:0">Las semanas van de viernes a jueves desde el inicio del plan, y cada viernes el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Todos los datos se guardan en este dispositivo.</p>
     </div>
+    <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
   </div>
 </div>
 
