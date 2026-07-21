@@ -155,7 +155,7 @@
     flex-shrink:0;width:100%;display:none;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
-    padding-bottom:env(safe-area-inset-bottom);
+    padding-bottom:max(6px, calc(env(safe-area-inset-bottom) - 8px));
   }
   nav.show{display:flex}
   nav button{
@@ -674,7 +674,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.3</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
