@@ -264,7 +264,15 @@
 
   .view{display:none}
   .view.active{display:block}
-  .loading{text-align:center;color:var(--muted);padding:60px 0;font-size:14px}
+  .loading{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:70vh;text-align:center;color:var(--muted);font-size:14px;gap:22px;
+  }
+  .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
+  .load-txt{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;opacity:.7}
+  .menu-logo{width:70%;max-width:230px;height:auto;display:block;margin:0 auto 4px;image-rendering:pixelated}
+  .set-logo{width:60%;max-width:180px;height:auto;display:block;margin:6px auto 4px;image-rendering:pixelated;opacity:.9}
 
   .btn-add.beer-btn{
     width:64px;height:64px;font-size:32px;
@@ -430,7 +438,7 @@
 <body>
 
 <main class="scroll" id="scrollArea">
-<div id="loading" class="loading">Cargando registro…</div>
+<div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
 
 <div id="app" style="display:none">
   <header>
@@ -582,7 +590,8 @@
           <button class="mini-btn" id="btnImport">Importar</button>
         </div>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v18.1</p>
+      <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v19 · logo</p>
     </div>
   </div>
 </div>
@@ -634,7 +643,8 @@
 <!-- MENÚ HAMBURGUESA -->
 <div class="modal-bg center" id="menuBg">
   <div class="modal">
-    <h3>Menú</h3>
+    <img src="logo.png" alt="Freedoom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
+    <h3 id="menuTitle" style="display:none">Menú</h3>
     <button class="menu-item" id="menuAjustes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
       Ajustes
