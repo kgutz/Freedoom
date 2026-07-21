@@ -26,7 +26,7 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html{background:var(--bg)}
+  html,body{height:100%;overflow:hidden}
   body{
     background:var(--bg);
     color:var(--text);
@@ -34,13 +34,13 @@
     font-weight:300;
     max-width:440px;
     margin:0 auto;
-    position:relative;
+    position:fixed;top:0;bottom:0;left:0;right:0;
+    display:flex;flex-direction:column;
     overscroll-behavior-y:none;
   }
   .scroll{
-    padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
-    min-height:100vh;
-    min-height:100dvh;
+    flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+    padding:calc(10px + env(safe-area-inset-top)) 18px 24px;
   }
   body::after{ /* grano sutil */
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
@@ -152,8 +152,7 @@
 
   /* ---------- navegación ---------- */
   nav{
-    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-    width:100%;max-width:440px;display:flex;
+    flex-shrink:0;width:100%;display:flex;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
     padding-bottom:env(safe-area-inset-bottom);
@@ -271,6 +270,44 @@
   .top-logo{display:block;width:min(200px,56%);height:auto;margin:2px auto 14px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
+
+  /* ---------- onboarding ---------- */
+  #onboard{position:fixed;inset:0;background:var(--bg);z-index:50;
+    display:flex;align-items:center;justify-content:center;
+    padding:calc(30px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom));
+    overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .ob-step{display:none;width:100%;max-width:400px;margin:auto;animation:obfade .6s ease}
+  .ob-step.active{display:block}
+  @keyframes obfade{from{opacity:0}to{opacity:1}}
+  #ob1{text-align:center}
+  .ob-logo{width:min(300px,82%);height:auto;image-rendering:pixelated;
+    filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 2s ease forwards;opacity:0;display:inline-block}
+  @keyframes logoIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+  .ob-fallback{font-family:'Sora',sans-serif;font-weight:700;font-size:44px;letter-spacing:.04em;color:var(--kodak);animation:logoIn 2s ease forwards;opacity:0}
+  .ob-start{margin-top:34px;background:none;border:none;color:var(--muted);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.12em;cursor:pointer;
+    animation:blink 2.4s ease-in-out infinite;animation-delay:1.6s;opacity:0}
+  @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+  .ob-h{font-size:26px;font-weight:700;margin-bottom:6px;text-align:center}
+  .ob-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;text-align:center}
+  .ob-field{margin-bottom:20px}
+  .ob-field>label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
+  .ob-field input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    border-radius:12px;padding:13px 14px;font-family:'IBM Plex Mono',monospace;font-size:16px;color-scheme:dark}
+  .ob-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px;font-style:italic}
+  .ob-row{display:flex;gap:12px}
+  .ob-row>div{flex:1}
+  .ob-toggle{display:flex;gap:8px}
+  .ob-tg{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--muted);font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer}
+  .ob-tg.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
+  .ob-next{width:100%;margin-top:6px;padding:15px;border-radius:14px;border:none;cursor:pointer;
+    background:var(--kodak);color:#241C0E;font-family:'Sora',sans-serif;font-weight:700;font-size:16px}
+  #ob3 .cls-card .sprite-svg{width:100%;height:auto;aspect-ratio:1}
+  .btn-reset{width:100%;margin-top:18px;padding:14px;border-radius:12px;cursor:pointer;
+    background:none;border:1.5px solid var(--kodak);color:var(--kodak);
+    font-family:'Sora',sans-serif;font-weight:700;font-size:14px;letter-spacing:.02em}
+  .btn-reset:active{background:rgba(232,180,74,.12)}
   .load-txt{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;opacity:.7}
   .menu-logo{width:70%;max-width:230px;height:auto;display:block;margin:0 auto 4px;image-rendering:pixelated}
   .set-logo{width:60%;max-width:180px;height:auto;display:block;margin:6px auto 4px;image-rendering:pixelated;opacity:.9}
@@ -439,6 +476,49 @@
 <body>
 
 <main class="scroll" id="scrollArea">
+
+<!-- ONBOARDING (primera vez) -->
+<div id="onboard" style="display:none">
+  <div class="ob-step active" id="ob1">
+    <img src="logo.png" alt="Freedoom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
+    <div id="obTitleFallback" class="ob-fallback" style="display:none">FREEDOOM</div>
+    <button class="ob-start" id="obStart">Toca para empezar</button>
+  </div>
+  <div class="ob-step" id="ob2">
+    <h2 class="ob-h">Tu plan</h2>
+    <div class="ob-field">
+      <label>¿Qué día empiezas?</label>
+      <input type="date" id="obStart2">
+      <p class="ob-note">Este día marca tu semana: cada 7 días, ese mismo día, tu objetivo baja un cigarro.</p>
+    </div>
+    <div class="ob-field">
+      <label>Cigarros al día · primera semana</label>
+      <input type="number" id="obLimit" min="1" max="99" value="20">
+    </div>
+    <div class="ob-field">
+      <label>¿Tomas pastillas?</label>
+      <div class="ob-toggle">
+        <button class="ob-tg active" data-pills="yes">Sí</button>
+        <button class="ob-tg" data-pills="no">No</button>
+      </div>
+    </div>
+    <div class="ob-field" id="obPillsQty">
+      <label>¿Cuántas pastillas al día?</label>
+      <input type="number" id="obPills" min="1" max="10" value="3">
+    </div>
+    <div class="ob-field ob-row">
+      <div><label>Me levanto</label><input type="time" id="obWake" value="09:00"></div>
+      <div><label>Me acuesto</label><input type="time" id="obSleep" value="23:00"></div>
+    </div>
+    <button class="ob-next" id="obToHero">Continuar</button>
+  </div>
+  <div class="ob-step" id="ob3">
+    <h2 class="ob-h">Elige tu héroe</h2>
+    <p class="ob-sub">Tu personaje vive de tus datos: gana XP cada día que cumples y su salud refleja cómo llevas el día. El camino son varias semanas — elige con cabeza.</p>
+    <div class="cls-grid" id="obClsGrid"></div>
+  </div>
+</div>
+
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
 
 <div id="app" style="display:none">
@@ -485,7 +565,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="pillCard">
       <h2>Pastillas hoy</h2>
       <div class="counter-row">
         <div class="digits pill-d" id="pillHoy">0<small>TOMADAS</small></div>
@@ -593,7 +673,8 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v19.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.1</p>
+      <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
 </div>
@@ -732,20 +813,16 @@ const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'
 const DOW=['L','M','X','J','V','S','D'];
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
-const SEED={
-  '2026-07-17':{c:18,p:0},
-  '2026-07-18':{c:16,p:0},
-  '2026-07-19':{c:13,p:0},
-  '2026-07-20':{c:18,p:3,b:5}
-};
-const SEED_V=2;
+const SEED={};
+const SEED_V=3;
 
 let state={
-  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3},
+  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true},
   days:{},
   seeded:false,
   seededV:0,
-  game:{cls:null}
+  game:{cls:null},
+  onboarded:false
 };
 let calCursor=new Date();
 let editingKey=null;
@@ -823,6 +900,7 @@ async function load(){
       if(data.seeded) state.seeded=true;
       if(data.seededV) state.seededV=data.seededV;
       if(data.game) state.game=data.game;
+      if(data.onboarded) state.onboarded=true;
     }
   }catch(e){ /* primera vez: la clave no existe todavía */ }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -861,6 +939,8 @@ function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHe
 
 function renderHoy(){
   const now=new Date(), tk=todayKey();
+  const pc=document.getElementById('pillCard');
+  if(pc) pc.style.display=(state.config.takesPills===false)?'none':'';
   const diaCap=DIAS[now.getDay()].charAt(0).toUpperCase()+DIAS[now.getDay()].slice(1);
   const mesAb=MESES[now.getMonth()].slice(0,3);
   const mesCap=mesAb.charAt(0).toUpperCase()+mesAb.slice(1);
@@ -2065,11 +2145,94 @@ window.addEventListener('pageshow',checkDay);
 window.addEventListener('focus',checkDay);
 
 /* ---------- init ---------- */
+/* ---------- onboarding ---------- */
+let obPillsYes=true;
+function renderObHeroes(){
+  let cards='';
+  for(const id in CLASSES){
+    const c=CLASSES[id];
+    cards+=`<div class="cls-card" data-obcls="${id}">
+      ${spriteSVG(id,'happy')}
+      <div class="cn">${c.name}</div>
+      <div class="ce">${c.es}</div>
+      <div class="cd">${c.desc}</div>
+    </div>`;
+  }
+  document.getElementById('obClsGrid').innerHTML=cards;
+}
+function showStep(n){
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ob'+n).classList.add('active');
+  document.getElementById('onboard').scrollTop=0;
+}
+function startOnboarding(){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='none';
+  const ob=document.getElementById('onboard');
+  ob.style.display='flex';
+  // fecha por defecto = hoy
+  document.getElementById('obStart2').value=todayKey();
+  renderObHeroes();
+  showStep(1);
+}
+function finishOnboarding(clsId){
+  state.config.startDate=document.getElementById('obStart2').value||todayKey();
+  state.config.startLimit=parseInt(document.getElementById('obLimit').value,10)||20;
+  state.config.wakeTime=document.getElementById('obWake').value||'09:00';
+  state.config.sleepTime=document.getElementById('obSleep').value||'23:00';
+  if(obPillsYes){
+    state.config.takesPills=true;
+    state.config.pillsGoal=parseInt(document.getElementById('obPills').value,10)||3;
+  }else{
+    state.config.takesPills=false;
+    state.config.pillsGoal=0;
+  }
+  state.game={cls:clsId};
+  state.onboarded=true;
+  ensureHero();
+  scheduleSave();
+  document.getElementById('onboard').style.display='none';
+  document.getElementById('app').style.display='block';
+  switchView('view-hoy','navHoy');
+  renderAll();
+}
+document.getElementById('obStart').addEventListener('click',()=>showStep(2));
+document.querySelectorAll('.ob-tg').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.ob-tg').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    obPillsYes=(b.dataset.pills==='yes');
+    document.getElementById('obPillsQty').style.display=obPillsYes?'block':'none';
+  });
+});
+document.getElementById('obToHero').addEventListener('click',()=>showStep(3));
+document.getElementById('obClsGrid').addEventListener('click',e=>{
+  const card=e.target.closest('[data-obcls]');
+  if(card) finishOnboarding(card.dataset.obcls);
+});
+
+/* reiniciar app */
+document.getElementById('btnReset').addEventListener('click',()=>{
+  if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
+  state={
+    config:{startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true},
+    days:{}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
+  };
+  scheduleSave();
+  document.getElementById('sheetSet').classList.remove('show');
+  startOnboarding();
+});
+
 (async function(){
   await load();
   document.getElementById('loading').style.display='none';
-  document.getElementById('app').style.display='block';
-  renderAll();
+  /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
+  if(!state.onboarded || !(state.game && state.game.cls)){
+    startOnboarding();
+  }else{
+    document.getElementById('app').style.display='block';
+    renderAll();
+  }
 })();
 </script>
 </body>
