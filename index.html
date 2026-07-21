@@ -278,7 +278,7 @@
     bottom:calc(92px + env(safe-area-inset-bottom));
     background:var(--panel);border:1px solid var(--line);border-radius:999px;
     padding:9px 18px;font-family:'IBM Plex Mono',monospace;font-size:13px;
-    color:var(--text);z-index:30;opacity:0;pointer-events:none;
+    color:var(--text);z-index:40;opacity:0;pointer-events:none;
     transition:opacity .25s, transform .25s;white-space:nowrap;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
@@ -555,7 +555,14 @@
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v15.1</p>
+      <div class="set-row">
+        <label>Copia de seguridad</label>
+        <div style="display:flex;gap:8px">
+          <button class="mini-btn" id="btnExport">Exportar</button>
+          <button class="mini-btn" id="btnImport">Importar</button>
+        </div>
+      </div>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v15.3</p>
     </div>
   </div>
 </div>
@@ -587,6 +594,15 @@
       <h2>El plan</h2>
       <p class="hint" style="margin-top:0">Las semanas van de viernes a jueves desde el inicio del plan, y cada viernes el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Todos los datos se guardan en este dispositivo.</p>
     </div>
+  </div>
+</div>
+
+<!-- MODAL COPIA DE SEGURIDAD -->
+<div class="modal-bg center" id="backupBg" style="z-index:31">
+  <div class="modal">
+    <h3 id="backupTitle">Copia de seguridad</h3>
+    <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…"></textarea>
+    <button class="close" id="backupAction">Importar</button>
   </div>
 </div>
 
@@ -681,13 +697,16 @@ const DOW=['L','M','X','J','V','S','D'];
 const SEED={
   '2026-07-17':{c:18,p:0},
   '2026-07-18':{c:16,p:0},
-  '2026-07-19':{c:13,p:0}
+  '2026-07-19':{c:13,p:0},
+  '2026-07-20':{c:18,p:3,b:5}
 };
+const SEED_V=2;
 
 let state={
   config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3},
   days:{},
   seeded:false,
+  seededV:0,
   game:{cls:null}
 };
 let calCursor=new Date();
@@ -762,14 +781,18 @@ async function load(){
       if(data.config) state.config=Object.assign(state.config,data.config);
       if(data.days) state.days=data.days;
       if(data.seeded) state.seeded=true;
+      if(data.seededV) state.seededV=data.seededV;
       if(data.game) state.game=data.game;
     }
   }catch(e){ /* primera vez: la clave no existe todavía */ }
-  /* Cargar una sola vez los días apuntados a mano (17, 18 y 19 de julio) */
-  if(!state.seeded){
+  /* Cargar los días apuntados a mano; con versión, para que nuevos días
+     semilla se apliquen aunque la instalación ya hubiera sembrado antes.
+     Solo rellena días que no existan: nunca pisa datos reales. */
+  if(state.seededV!==SEED_V){
     for(const k in SEED){
       if(!state.days[k]) state.days[k]=SEED[k];
     }
+    state.seededV=SEED_V;
     state.seeded=true;
     scheduleSave();
   }
@@ -1740,6 +1763,55 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
   state.game={cls:null};
   scheduleSave();
   renderHero();
+});
+
+/* copia de seguridad: exportar / importar */
+let backupMode='export';
+document.getElementById('btnExport').addEventListener('click',async()=>{
+  const data=JSON.stringify(state);
+  try{
+    await navigator.clipboard.writeText(data);
+    showToast('Datos copiados al portapapeles ✓','heal');
+  }catch(e){
+    backupMode='export';
+    document.getElementById('backupTitle').textContent='Exportar datos';
+    const ta=document.getElementById('backupText');
+    ta.value=data; ta.readOnly=true;
+    document.getElementById('backupAction').textContent='Cerrar';
+    document.getElementById('backupBg').classList.add('show');
+    ta.focus(); ta.select();
+  }
+});
+document.getElementById('btnImport').addEventListener('click',()=>{
+  backupMode='import';
+  document.getElementById('backupTitle').textContent='Importar datos';
+  const ta=document.getElementById('backupText');
+  ta.value=''; ta.readOnly=false;
+  document.getElementById('backupAction').textContent='Importar';
+  document.getElementById('backupBg').classList.add('show');
+});
+document.getElementById('backupAction').addEventListener('click',()=>{
+  if(backupMode==='import'){
+    try{
+      const data=JSON.parse(document.getElementById('backupText').value);
+      if(!data||typeof data!=='object'||(!data.days&&!data.config)) throw new Error('formato');
+      if(data.config) state.config=Object.assign(state.config,data.config);
+      if(data.days) state.days=data.days;
+      if(data.game) state.game=data.game;
+      if(data.seededV) state.seededV=data.seededV;
+      state.seeded=true;
+      scheduleSave();
+      renderAll();
+      showToast('Datos importados ✓','heal');
+    }catch(e){
+      showToast('No se pudo leer la copia','dmg');
+      return;
+    }
+  }
+  document.getElementById('backupBg').classList.remove('show');
+});
+document.getElementById('backupBg').addEventListener('click',e=>{
+  if(e.target.id==='backupBg')e.target.classList.remove('show');
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
