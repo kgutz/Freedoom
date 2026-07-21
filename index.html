@@ -555,7 +555,7 @@
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v14.5</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v15.1</p>
     </div>
   </div>
 </div>
@@ -580,7 +580,8 @@
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
-      <p class="hint" style="margin-top:0">Cada día cumplido da <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite. Cada semana del plan es un jefe: cada día cumplido es un golpe, y si cierras los 7 sin pasarte lo derrotas (<b style="color:var(--kodak)">+200 XP</b>). Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
+      <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día sin birras → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (7 días sin pasarte) → <b style="color:var(--kodak)">+200 XP</b></p>
+      <p class="hint">Los bonus del día (pastillas, sin birras, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
     </div>
     <div class="card">
       <h2>El plan</h2>
@@ -722,16 +723,18 @@ function weekRange(idx){
 function limitOfWeek(idx){return Math.max(0, state.config.startLimit - idx);}
 function limitOfDate(d){return limitOfWeek(Math.max(0,weekIndexOf(d)));}
 function getDay(k){return state.days[k]||{c:0,p:0};}
-function setDay(k,c,p,t,b){
+function setDay(k,c,p,t,b,s){
   c=Math.max(0,c); p=Math.max(0,p);
   const prev=state.days[k];
   const last=(t!==undefined)? t : (prev? prev.t : undefined);
   const beers=(b!==undefined)? Math.max(0,b) : (prev? (prev.b||0) : 0);
+  const shots=(s!==undefined)? Math.max(0,s) : (prev? (prev.s||0) : 0);
   if(c===0&&p===0&&beers===0){delete state.days[k];}
   else{
     state.days[k]={c,p};
     if(last!==undefined) state.days[k].t=last;
     if(beers>0) state.days[k].b=beers;
+    if(shots>0) state.days[k].s=shots;
   }
   scheduleSave(); renderAll();
 }
@@ -1273,12 +1276,25 @@ function spriteSVG(clsId,mood,extraClass){
 function gameStats(){
   const now=new Date();
   const start=parseKey(state.config.startDate);
-  let xp=0,cur=0;
+  const goal=state.config.pillsGoal||3;
+  let xp=0,cur=0,minC=null;
   for(let d=new Date(start); daysBetween(now,d)<0; d.setDate(d.getDate()+1)){
-    const lim=limitOfDate(d), c=getDay(keyOf(d)).c;
-    if(c<=lim){xp+=50+4*Math.max(0,lim-c);cur++;}
-    else{cur=0;}
+    const rec=getDay(keyOf(d));
+    const lim=limitOfDate(d), c=rec.c;
+    xp+=2*(rec.s||0);                       /* disparos perfectos: +2 c/u */
+    if(c<=lim){
+      xp+=50+4*Math.max(0,lim-c);           /* día cumplido + margen */
+      if(rec.p>=goal) xp+=10;               /* pastillas completas */
+      if((rec.b||0)===0) xp+=10;            /* día sin birras */
+      cur++;
+      if(cur===7)xp+=75;                    /* hitos de racha */
+      else if(cur===14)xp+=150;
+      else if(cur===30)xp+=300;
+    }else{cur=0;}
+    if(minC===null){minC=c;}
+    else if(c<minC){minC=c;xp+=25;}         /* mínimo histórico batido */
   }
+  xp+=2*(getDay(todayKey()).s||0);          /* perfectos de hoy, en tiempo real */
   const streak=cur;
   const currW=Math.max(0,weekIndexOf(now));
   let bossesDown=0;
@@ -1289,7 +1305,7 @@ function gameStats(){
     for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
       if(getDay(keyOf(d)).c>lim){all=false;break;}
     }
-    if(all){xp+=200;bossesDown++;}
+    if(all){xp+=200;bossesDown++;}          /* jefe semanal */
   }
   const lvl=1+Math.floor(Math.sqrt(xp/60));
   const curTh=60*(lvl-1)*(lvl-1), nextTh=60*lvl*lvl;
@@ -1370,12 +1386,11 @@ function smokeDamage(){
   const nowM=now.getHours()*60+now.getMinutes();
   const frac=Math.min(1,Math.max(0,(nowM-wake)/Math.max(60,sleep-wake)));
   const expected=lim*frac;
-  let dmg;
+  let dmg, perfect=false;
   if(lim<=0||cAfter>lim){
     dmg=25; /* por encima del límite del día */
   }else{
     /* disparo perfecto: esperaste hasta la hora aproximada del siguiente */
-    let perfect=false;
     if(rec.t){
       const lt=new Date(rec.t);
       const lastM=lt.getHours()*60+lt.getMinutes();
@@ -1394,7 +1409,7 @@ function smokeDamage(){
   if(dmg>0) g.hp=Math.max(0,g.hp-dmg);
   g.hpT=Date.now(); /* fumar reinicia el reloj de regeneración */
   scheduleSave();
-  return dmg;
+  return {dmg,perfect};
 }
 
 function showToast(txt,type){
@@ -1465,7 +1480,7 @@ function renderHero(){
           <div class="rango">${C.tiers[g.tier]}</div>
           <div class="nombre">${C.name}</div>
           <div class="nivel">Nivel ${g.lvl}</div>
-          <div class="racha">Racha: <b>${g.streak}</b> día${g.streak===1?'':'s'} · Jefes: <b>${g.bossesDown}</b> · Armadura: <b>−${heroArmor()}</b></div>
+          <div class="racha">Racha: <b>${g.streak}</b> día${g.streak===1?'':'s'} · Jefes: <b>${g.bossesDown}</b> · Armadura: <b>−${heroArmor()}</b><br>Disparos perfectos hoy: <b>${getDay(todayKey()).s||0}</b></div>
         </div>
       </div>
       <div class="stat-bar">
@@ -1522,10 +1537,11 @@ function bump(id,delta,min=0){
 }
 document.getElementById('addCig').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
-  const dmg=smokeDamage();
-  (state.game.cigDmg=state.game.cigDmg||[]).push(dmg);
-  setDay(k,d.c+1,d.p,Date.now());
-  if(dmg>0) showToast('⚔ −'+dmg+' de vida','dmg');
+  const r=smokeDamage();
+  (state.game.cigDmg=state.game.cigDmg||[]).push({d:r.dmg,p:r.perfect});
+  setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0));
+  if(r.dmg>0) showToast('⚔ −'+r.dmg+' de vida','dmg');
+  else if(r.perfect) showToast('Disparo perfecto · +2 XP ♥','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -1533,15 +1549,18 @@ document.getElementById('subCig').addEventListener('click',()=>{
   if(d.c<=0) return;
   ensureHero();
   const arr=state.game.cigDmg;
+  let wasPerfect=false;
   if(arr&&arr.length){
-    const r=arr.pop();
-    if(r>0&&state.game.hp!==undefined){
-      state.game.hp=Math.min(100,state.game.hp+r);
-      showToast('Corregido · +'+r+' de vida ♥','heal');
+    const e=arr.pop();
+    const dmg=(typeof e==='number')?e:e.d;
+    wasPerfect=(typeof e==='object')&&e.p;
+    if(dmg>0&&state.game.hp!==undefined){
+      state.game.hp=Math.min(100,state.game.hp+dmg);
+      showToast('Corregido · +'+dmg+' de vida ♥','heal');
     }
     scheduleSave();
   }
-  setDay(k,d.c-1,d.p);
+  setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0));
 });
 document.getElementById('addPill').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
@@ -1724,12 +1743,18 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
-   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si es lunes) */
+   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si es viernes) */
 let lastDay=todayKey();
-setInterval(()=>{
+function checkDay(){
   if(todayKey()!==lastDay){lastDay=todayKey();renderAll();}
   else{renderHoy();}
-},60000);
+}
+setInterval(checkDay,60000);
+/* al volver la app de segundo plano (iOS la congela), refrescar al instante:
+   si ya es otro día, los contadores vuelven a 0 sin esperar */
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDay();});
+window.addEventListener('pageshow',checkDay);
+window.addEventListener('focus',checkDay);
 
 /* ---------- init ---------- */
 (async function(){
