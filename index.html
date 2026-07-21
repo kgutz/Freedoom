@@ -570,7 +570,7 @@
           <button class="mini-btn" id="btnImport">Importar</button>
         </div>
       </div>
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v16 · poderes</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v16.1</p>
     </div>
   </div>
 </div>
@@ -596,7 +596,7 @@
     <div class="card">
       <h2>⚗ Maná y hechizos</h2>
       <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada (0–100). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al 100</b>. Si fallas el día, conservas el que tuvieras.</p>
-      <p class="hint">Con él lanzas los hechizos de tu clase desde la ficha del héroe: escudos, curas, amplificadores de XP y perdones. Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Cada clase tiene además 3 pasivas (nivel 1, 5 y 12) siempre activas que cambian las reglas a su manera. Los efectos activos se ven como iconitos junto a tu héroe.</p>
+      <p class="hint">Con él lanzas los hechizos de tu clase desde la ficha del héroe: escudos, curas, amplificadores y perdones. Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Cada clase amplifica un recurso distinto (el Paladín la XP, el Druida la vida, el Hechicero el maná). Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos activos se ven como iconitos junto a tu héroe.</p>
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
@@ -836,8 +836,11 @@ function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHe
 
 function renderHoy(){
   const now=new Date(), tk=todayKey();
+  const diaCap=DIAS[now.getDay()].charAt(0).toUpperCase()+DIAS[now.getDay()].slice(1);
+  const mesAb=MESES[now.getMonth()].slice(0,3);
+  const mesCap=mesAb.charAt(0).toUpperCase()+mesAb.slice(1);
   document.getElementById('fechaHoy').textContent=
-    `${DIAS[now.getDay()]}, ${now.getDate()} de ${MESES[now.getMonth()]} de ${now.getFullYear()}`;
+    `${diaCap}, ${now.getDate()}/${mesCap}/${now.getFullYear()}`;
 
   const wIdx=Math.max(0,weekIndexOf(now));
   const limit=limitOfWeek(wIdx);
@@ -1236,10 +1239,10 @@ const CLASSES={
     pas:[
       {lvl:1,name:'Absorber Esencia',d:'Las birras solo te quitan −3 (drenas su fuerza).'},
       {lvl:5,name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
-      {lvl:12,name:'Filacteria',d:'El Pacto Oscuro mejora: cuesta 10 de vida y da +40 XP.'}
+      {lvl:12,name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
     ],
     act:[
-      {lvl:2,id:'pacto',name:'Pacto Oscuro',cost:0,d:'Sacrificas 15 de vida → +30 XP. Sin coste de maná.'},
+      {lvl:2,id:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
       {lvl:8,id:'peste',name:'Peste al Antojo',cost:35,d:'Las birras de hoy no hacen daño.'},
       {lvl:14,id:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
     ]
@@ -1522,13 +1525,7 @@ function castSpell(id){
   g.buffs=g.buffs||{};
   const now=Date.now();
 
-  if(id==='pacto'){ /* sin maná: paga con vida */
-    const cost=(st.lvl>=12)?10:15, gain=(st.lvl>=12)?40:30; /* Filacteria */
-    if(g.hp<=cost){showToast('Vida insuficiente','dmg');return;}
-    g.hp-=cost;
-    g.bonusXp=(g.bonusXp||0)+gain;
-    showToast('Pacto Oscuro · −'+cost+' ♥ → +'+gain+' XP','heal');
-  }else if(id==='alma'){ /* convierte todo el maná en vida */
+  if(id==='alma'){ /* convierte todo el maná en vida */
     if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' ⚗','dmg');return;}
     const heal=Math.floor(g.mp/2);
     g.hp=Math.min(100,g.hp+heal);
@@ -1539,6 +1536,11 @@ function castSpell(id){
     if((g.mp||0)<sp.cost){showToast('Maná insuficiente ('+sp.cost+' ⚗)','dmg');return;}
     g.mp-=sp.cost;
     switch(id){
+      case 'ceniza':{
+        const hrs=(st.lvl>=12)?3:2;                    /* Filacteria */
+        g.buffs.cenizaUntil=now+hrs*3600000;
+        showToast('☠ Maldición de Ceniza · '+hrs+'h de perfectos a doble maná','heal');break;
+      }
       case 'muro':
         g.buffs.shield=(g.buffs.shield||0)+2;
         showToast('🛡 Muro de Escudos · 2 cigarros protegidos','heal');break;
@@ -1628,6 +1630,7 @@ function renderHero(){
   const chips=[];
   if(bf.shield>0)chips.push('🛡×'+bf.shield);
   if(bf.certeroUntil>nowT)chips.push('🎯 '+Math.ceil((bf.certeroUntil-nowT)/60000)+'m');
+  if(bf.cenizaUntil>nowT)chips.push('☠ '+Math.ceil((bf.cenizaUntil-nowT)/60000)+'m');
   if(bf.regenUntil>nowT)chips.push('🌿 '+Math.ceil((bf.regenUntil-nowT)/60000)+'m');
   if(bf.pesteDay===todayKey())chips.push('☠🍺 hoy');
   if(bf.bastion)chips.push('🏰 armado');
@@ -1660,8 +1663,8 @@ function renderHero(){
     const ultiUsed=a.ulti&&gm.ultiW===w;
     let btn='';
     if(on){
-      const costTxt=a.id==='pacto'?((g.lvl>=12?10:15)+' ♥'):(a.cost+' ⚗');
-      const noMana=(a.id!=='pacto')&&mp<a.cost;
+      const costTxt=a.cost+' ⚗';
+      const noMana=mp<a.cost;
       const dis=noMana||ultiUsed;
       btn=`<button class="mini-btn cast-btn" data-cast="${a.id}" ${dis?'disabled':''}>${ultiUsed?'Usada esta semana':'Lanzar · '+costTxt}</button>`;
     }
@@ -1752,7 +1755,9 @@ document.getElementById('addCig').addEventListener('click',()=>{
     const st=gameStats();
     px=(state.game.cls==='paladin')?4:2;                       /* Ojo del Halcón */
     if(state.game.buffs&&state.game.buffs.certeroUntil>Date.now()) px=8; /* Ojo Certero */
-    state.game.mp=Math.min(100,(state.game.mp||0)+10);
+    let mgain=10;
+    if(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now()) mgain=20; /* Maldición de Ceniza */
+    state.game.mp=Math.min(100,(state.game.mp||0)+mgain);
   }
   (state.game.cigDmg=state.game.cigDmg||[]).push({d:r.dmg,p:r.perfect,x:px});
   setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0));
@@ -1985,6 +1990,8 @@ document.getElementById('view-hero').addEventListener('click',e=>{
 document.getElementById('cfgResetCls').addEventListener('click',()=>{
   state.game.cls=null;
   scheduleSave();
+  document.getElementById('sheetSet').classList.remove('show');
+  switchView('view-hero','navHero');
   renderHero();
 });
 
