@@ -69,11 +69,11 @@
 
   /* ---------- pantalla Hoy rediseñada ---------- */
   .hoy-hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
-  .hoy-hero-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px}
+  .hoy-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px}
   .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:20px;text-align:left;letter-spacing:.01em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .hoy-fecha{text-align:right;flex-shrink:0;line-height:1.1}
-  .hoy-fecha span{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-  .hoy-fecha b{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);font-weight:600}
+  .hoy-fecha{text-align:right;flex-shrink:0;line-height:1.15;padding-top:2px}
+  .hoy-fecha span{display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .hoy-fecha b{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);font-weight:600}
   .hoy-hp-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
   .hoy-hp-lbl b{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:13px}
   .pill-counter{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
@@ -717,7 +717,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.4</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.5</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
