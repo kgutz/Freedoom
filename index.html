@@ -49,7 +49,7 @@
   .mono{font-family:'IBM Plex Mono',monospace}
 
   /* ---------- header ---------- */
-  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
   .fecha{font-size:15px;color:var(--muted);text-transform:capitalize}
   .fecha b{display:block;color:var(--text);font-weight:600;font-size:19px;margin-top:2px}
   .semana-tag{
@@ -67,7 +67,11 @@
 
   /* ---------- pantalla Hoy rediseñada ---------- */
   .hoy-hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
-  .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:20px;text-align:center;margin-bottom:12px;letter-spacing:.01em}
+  .hoy-hero-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px}
+  .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:20px;text-align:left;letter-spacing:.01em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hoy-fecha{text-align:right;flex-shrink:0;line-height:1.1}
+  .hoy-fecha span{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .hoy-fecha b{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);font-weight:600}
   .hoy-hp-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
   .hoy-hp-lbl b{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:13px}
   .pill-counter{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
@@ -294,7 +298,7 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     min-height:70vh;text-align:center;color:var(--muted);font-size:14px;gap:22px;
   }
-  .top-logo{display:block;width:min(200px,56%);height:auto;margin:2px auto 14px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
+  .top-logo{display:block;width:min(200px,56%);height:auto;margin:4px auto 16px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
 
@@ -561,20 +565,21 @@
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
 
 <div id="app" style="display:none">
-  <img src="logo.png" alt="Freedoom" class="top-logo" onerror="this.style.display='none'">
   <header>
-    <div class="fecha">Hoy<b id="fechaHoy"></b>
-      <button id="navMenu" class="gear-btn" aria-label="Menú">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-      </button>
-    </div>
+    <button id="navMenu" class="gear-btn" aria-label="Menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+    </button>
     <div class="semana-tag"><span>SEMANA</span><span id="semanaNum" style="color:var(--text);font-size:14px"></span>máx <b id="limiteDia"></b>/día</div>
   </header>
+  <img src="logo.png" alt="Freedoom" class="top-logo" onerror="this.style.display='none'">
 
   <!-- VISTA HOY -->
   <section id="view-hoy" class="view active">
     <div class="hoy-hero">
-      <div class="hoy-hero-name" id="hoyHeroName">—</div>
+      <div class="hoy-hero-top">
+        <div class="hoy-hero-name" id="hoyHeroName">—</div>
+        <div class="hoy-fecha"><span>Hoy</span><b id="fechaHoy"></b></div>
+      </div>
       <div class="hoy-hp">
         <div class="hoy-hp-lbl"><span>Salud</span><b id="hoyHpVal">100%</b></div>
         <div class="stat-track"><div class="stat-fill" id="hoyHpFill" style="width:100%"></div></div>
@@ -716,7 +721,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.1</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.2</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -984,11 +989,12 @@ function renderHoy(){
   const now=new Date(), tk=todayKey();
   const pc=document.getElementById('pillCard');
   if(pc) pc.style.display=(state.config.takesPills===false)?'none':'';
-  const diaCap=DIAS[now.getDay()].charAt(0).toUpperCase()+DIAS[now.getDay()].slice(1);
+  const diaAb=DIAS[now.getDay()].slice(0,3);
+  const diaCap=diaAb.charAt(0).toUpperCase()+diaAb.slice(1);
   const mesAb=MESES[now.getMonth()].slice(0,3);
   const mesCap=mesAb.charAt(0).toUpperCase()+mesAb.slice(1);
   document.getElementById('fechaHoy').textContent=
-    `${diaCap}, ${now.getDate()}/${mesCap}/${now.getFullYear()}`;
+    `${diaCap}, ${now.getDate()}/${mesCap}`;
 
   const wIdx=Math.max(0,weekIndexOf(now));
   const limit=limitOfWeek(wIdx);
