@@ -49,15 +49,17 @@
   .mono{font-family:'IBM Plex Mono',monospace}
 
   /* ---------- header ---------- */
-  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;position:relative;z-index:2}
+  .top-logo{display:block;width:min(220px,62%);height:auto;margin:-34px auto 14px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));position:relative;z-index:1;pointer-events:none}
   .fecha{font-size:15px;color:var(--muted);text-transform:capitalize}
   .fecha b{display:block;color:var(--text);font-weight:600;font-size:19px;margin-top:2px}
   .semana-tag{
-    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--kodak);
-    border:1px solid var(--line);border-radius:6px;padding:6px 10px;text-align:right;line-height:1.5;
-    background:var(--panel);
+    font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--kodak);
+    text-align:right;line-height:1.35;
   }
-  .semana-tag span{color:var(--muted);display:block;font-size:10px;letter-spacing:.08em}
+  .semana-tag .sem-line{color:var(--muted);font-size:11px;letter-spacing:.08em}
+  .semana-tag .sem-line b{color:var(--text);font-size:13px;font-weight:600}
+  .semana-tag .max-line{color:var(--kodak);font-size:13px;font-weight:600}
 
   /* ---------- contador principal ---------- */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:14px}
@@ -92,7 +94,6 @@
   #beerCounter .pc-num{color:#C98A3C}
   #beerCounter .pc-add{background:#C98A3C;color:#241703}
   #beerCounter .pc-add:active{background:#B87A2E}
-  .hoy-divider{height:1px;background:var(--line);margin:6px 2px 16px}
   .digits{
     font-family:'IBM Plex Mono',monospace;font-size:64px;font-weight:600;line-height:1;
     color:var(--text);min-width:110px;letter-spacing:.02em;
@@ -298,7 +299,6 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     min-height:70vh;text-align:center;color:var(--muted);font-size:14px;gap:22px;
   }
-  .top-logo{display:block;width:min(200px,56%);height:auto;margin:4px auto 16px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45))}
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
 
@@ -569,7 +569,7 @@
     <button id="navMenu" class="gear-btn" aria-label="Menú">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
     </button>
-    <div class="semana-tag"><span>SEMANA</span><span id="semanaNum" style="color:var(--text);font-size:14px"></span>máx <b id="limiteDia"></b>/día</div>
+    <div class="semana-tag"><div class="sem-line">SEMANA <b id="semanaNum"></b></div><div class="max-line">máx <b id="limiteDia"></b>/día</div></div>
   </header>
   <img src="logo.png" alt="Freedoom" class="top-logo" onerror="this.style.display='none'">
 
@@ -600,22 +600,18 @@
         </div>
         <div class="filmstrip" id="filmstrip"></div>
         <div class="restantes" id="restantes"></div>
-      </div>
-    </div>
 
-    <div class="hoy-divider"></div>
-
-    <div class="card">
-      <div class="pace-wrap">
-        <div class="pace-label">
-          <span>Ritmo del día</span>
-          <span class="estado" id="paceEstado"></span>
+        <div class="pace-wrap">
+          <div class="pace-label">
+            <span>Ritmo del día</span>
+            <span class="estado" id="paceEstado"></span>
+          </div>
+          <div class="pace-bar">
+            <div class="pace-expected" id="paceExpected"></div>
+            <div class="pace-clip" id="paceClip"><div class="pace-grad" id="paceGrad"></div></div>
+          </div>
+          <div class="pace-info" id="paceInfo"></div>
         </div>
-        <div class="pace-bar">
-          <div class="pace-expected" id="paceExpected"></div>
-          <div class="pace-clip" id="paceClip"><div class="pace-grad" id="paceGrad"></div></div>
-        </div>
-        <div class="pace-info" id="paceInfo"></div>
       </div>
     </div>
 
@@ -721,7 +717,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.4</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
