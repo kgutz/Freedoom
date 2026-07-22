@@ -748,7 +748,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v23 · birra opcional</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v24 · poderes cigarros</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -779,8 +779,8 @@
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
-      <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día sin birras → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (7 días sin pasarte) → <b style="color:var(--kodak)">+200 XP</b></p>
-      <p class="hint">Los bonus del día (pastillas, sin birras, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
+      <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día con la mitad o menos del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (7 días sin pasarte) → <b style="color:var(--kodak)">+200 XP</b></p>
+      <p class="hint">Los bonus del día (pastillas, día ligero, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
     </div>
     <div class="card">
       <h2>El plan</h2>
@@ -1451,13 +1451,13 @@ const CLASSES={
       "...OOOOOOOOOO..."
     ],
     pas:[
-      {lvl:1,name:'Absorber Esencia',d:'Las birras solo te quitan −3 (drenas su fuerza).'},
+      {lvl:1,name:'Absorber Esencia',d:'Cada cigarro adelantado te quita −2 menos (drenas su fuerza).'},
       {lvl:5,name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
       {lvl:12,name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
     ],
     act:[
       {lvl:2,id:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
-      {lvl:8,id:'peste',name:'Peste al Antojo',cost:35,d:'Las birras de hoy no hacen daño.'},
+      {lvl:8,id:'peste',name:'Peste al Antojo',cost:35,d:'Los cigarros de hoy hacen la mitad de daño.'},
       {lvl:14,id:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
     ]
   },
@@ -1487,7 +1487,7 @@ const CLASSES={
     pas:[
       {lvl:1,name:'Savia Viva',d:'Regeneras +1 de vida cada 7 minutos (en vez de 10).'},
       {lvl:5,name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
-      {lvl:12,name:'Raíces Profundas',d:'La primera birra de cada día no hace daño.'}
+      {lvl:12,name:'Raíces Profundas',d:'El primer cigarro adelantado de cada día no hace daño.'}
     ],
     act:[
       {lvl:2,id:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
@@ -1537,8 +1537,8 @@ function computeXp(lvlHint){
     xp+=(rec.sx!==undefined? rec.sx : 2*(rec.s||0));     /* XP de disparos perfectos */
     if(c<=lim){
       let dayXp=50+marginF*Math.max(0,lim-c);
-      if(rec.p>=goal) dayXp+=10;
-      if((rec.b||0)===0) dayXp+=10;
+      if(rec.p>=goal && state.config.takesPills!==false) dayXp+=10;
+      if(c<=Math.floor(lim/2)) dayXp+=10;                /* día con la mitad o menos del límite */
       if(judg.includes(k)) dayXp*=2;                     /* Juicio Divino */
       xp+=dayXp;
       cur++;
@@ -1693,6 +1693,17 @@ function smokeDamage(){
     else if(ratio<=1.5) dmg=8;            /* un poco por delante */
     else dmg=15;                          /* muy por delante */
   }
+  /* Raíces Profundas (druid nv12): el primer cigarro adelantado del día no hace daño */
+  if(dmg>0 && cls==='druid' && lvl>=12){
+    if(g.rootsDay!==todayKey()){
+      g.rootsDay=todayKey();   /* marca que ya se gastó el perdón hoy */
+      dmg=0;
+    }
+  }
+  /* Absorber Esencia (sorcerer nv1): cada cigarro adelantado quita −2 menos */
+  if(dmg>0 && cls==='sorcerer') dmg=Math.max(1,dmg-2);
+  /* Peste al Antojo (sorcerer nv8): los cigarros de hoy hacen la mitad de daño */
+  if(dmg>0 && g.buffs && g.buffs.pesteDay===todayKey()) dmg=Math.max(1,Math.round(dmg/2));
   if(dmg>0) dmg=Math.max(1,dmg-heroArmor()); /* la racha es armadura */
   let shielded=false;
   if(dmg>0&&g.buffs&&g.buffs.shield>0){    /* Muro de Escudos */
@@ -1758,7 +1769,7 @@ function castSpell(id){
         showToast('⚖️ Juicio Divino · hoy XP ×2 si cumples','heal');break;
       case 'peste':
         g.buffs.pesteDay=todayKey();
-        showToast('☠ Peste al Antojo · birras de hoy sin daño','heal');break;
+        showToast('☠ Peste al Antojo · daño de cigarros a la mitad hoy','heal');break;
       case 'regen':
         g.buffs.regenUntil=now+2*3600000;
         showToast('🌿 Regeneración ×2 durante 2h','heal');break;
@@ -2022,16 +2033,12 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
   const g=state.game;
-  const st=gameStats();
-  let bd=5;
-  if(g.cls==='sorcerer') bd=3;                               /* Absorber Esencia */
-  if(g.cls==='druid'&&st.lvl>=12&&(d.b||0)===0) bd=0;        /* Raíces Profundas */
-  if(g.buffs&&g.buffs.pesteDay===todayKey()) bd=0;           /* Peste al Antojo */
+  const bd=5;                                                /* daño fijo; los poderes ya no dependen de la cerveza */
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
   (g.beerDmg=g.beerDmg||[]).push(bd);
   scheduleSave();
   setDay(k,d.c,d.p,undefined,(d.b||0)+1);
-  showToast(bd>0?('🍺 −'+bd+' de vida'):'🍺 Sin daño ♥', bd>0?'dmg':'heal');
+  showToast('🍺 −'+bd+' de vida','dmg');
 });
 document.getElementById('subBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
