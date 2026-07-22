@@ -748,7 +748,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v24 · poderes cigarros</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v25 · curva XP</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -1517,7 +1517,7 @@ function spriteSVG(clsId,mood,extraClass){
 }
 
 /* --- progreso del juego (determinista desde los datos) --- */
-function lvlOfXp(xp){return 1+Math.floor(Math.sqrt(xp/80));}
+function lvlOfXp(xp){return 1+Math.floor(Math.sqrt(xp/35));}
 
 function computeXp(lvlHint){
   const now=new Date();
@@ -1573,7 +1573,7 @@ function gameStats(){
   const p2=computeXp(lvl1);
   const xp=p2.xp;
   const lvl=lvlOfXp(xp);
-  const curTh=80*(lvl-1)*(lvl-1), nextTh=80*lvl*lvl;
+  const curTh=35*(lvl-1)*(lvl-1), nextTh=35*lvl*lvl;
   const prog=Math.min(1,(xp-curTh)/Math.max(1,nextTh-curTh));
   const tier=lvl>=15?3:lvl>=10?2:lvl>=5?1:0;
   return {xp,lvl,prog,nextTh,streak:p2.streak,bossesDown:p2.bossesDown,currW:p2.currW,tier};
