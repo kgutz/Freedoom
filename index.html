@@ -283,12 +283,13 @@
   @keyframes obfade{from{opacity:0}to{opacity:1}}
   #ob1{text-align:center}
   .ob-logo{width:min(300px,82%);height:auto;image-rendering:pixelated;
-    filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 2s ease forwards;opacity:0;display:inline-block}
+    filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 1.2s ease forwards;opacity:0;display:inline-block}
   @keyframes logoIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
-  .ob-fallback{font-family:'Sora',sans-serif;font-weight:700;font-size:44px;letter-spacing:.04em;color:var(--kodak);animation:logoIn 2s ease forwards;opacity:0}
+  .ob-fallback{font-family:'Sora',sans-serif;font-weight:700;font-size:44px;letter-spacing:.04em;color:var(--kodak);animation:logoIn 1.2s ease forwards;opacity:0}
   .ob-start{margin-top:34px;background:none;border:none;color:var(--muted);
     font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.12em;cursor:pointer;
-    animation:blink 2.4s ease-in-out infinite;animation-delay:1.6s;opacity:0}
+    animation:startIn .5s ease forwards, blink 2.4s ease-in-out infinite;animation-delay:.5s,1s;opacity:0}
+  @keyframes startIn{from{opacity:0}to{opacity:.7}}
   @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
   .ob-h{font-size:26px;font-weight:700;margin-bottom:6px;text-align:center}
   .ob-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;text-align:center}
@@ -675,7 +676,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.5</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.6</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
