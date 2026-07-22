@@ -99,6 +99,10 @@
   #pillCard .pc-add{background:var(--pill);color:#0E1A24}
   #pillCard .pc-add:active{background:#6E8FA6}
   #beerCounter .pc-num{color:#C98A3C}
+  .set-toggle{display:flex;gap:6px}
+  .st-tg{padding:7px 16px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
+    color:var(--muted);font-family:'Sora',sans-serif;font-weight:600;font-size:13px;cursor:pointer}
+  .st-tg.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
   #beerCounter .pc-add{background:#C98A3C;color:#241703}
   #beerCounter .pc-add:active{background:#B87A2E}
   .digits{
@@ -547,6 +551,13 @@
       <label>¿Cuántas pastillas al día?</label>
       <input type="number" id="obPills" min="1" max="10" value="3">
     </div>
+    <div class="ob-field">
+      <label>¿Registras cervezas?</label>
+      <div class="ob-toggle">
+        <button class="ob-tg active" data-beer="yes">Sí</button>
+        <button class="ob-tg" data-beer="no">No</button>
+      </div>
+    </div>
     <div class="ob-field ob-row">
       <div><label>Me levanto</label><input type="time" id="obWake" value="09:00"></div>
       <div><label>Me acuesto</label><input type="time" id="obSleep" value="23:00"></div>
@@ -715,6 +726,13 @@
         <input type="number" id="cfgPills" min="1" max="10" style="width:80px">
       </div>
       <div class="set-row">
+        <label>¿Registras cervezas?</label>
+        <div class="set-toggle">
+          <button class="st-tg" id="beerYes" data-beer="yes">Sí</button>
+          <button class="st-tg" id="beerNo" data-beer="no">No</button>
+        </div>
+      </div>
+      <div class="set-row">
         <label for="cfgHeroName">Nombre del héroe</label>
         <input type="text" id="cfgHeroName" maxlength="16" style="width:150px">
       </div>
@@ -730,7 +748,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v22.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v23 · birra opcional</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -874,7 +892,7 @@ const SEED={};
 const SEED_V=3;
 
 let state={
-  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true},
+  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true, tracksBeer:true},
   days:{},
   seeded:false,
   seededV:0,
@@ -998,6 +1016,8 @@ function renderHoy(){
   const now=new Date(), tk=todayKey();
   const pc=document.getElementById('pillCard');
   if(pc) pc.style.display=(state.config.takesPills===false)?'none':'';
+  const bc=document.getElementById('beerCounter');
+  if(bc) bc.style.display=(state.config.tracksBeer===false)?'none':'';
   const diaAb=DIAS[now.getDay()].slice(0,3);
   const diaCap=diaAb.charAt(0).toUpperCase()+diaAb.slice(1);
   const mesAb=MESES[now.getMonth()].slice(0,3);
@@ -1326,6 +1346,12 @@ function renderSettings(){
   document.getElementById('cfgPills').value=state.config.pillsGoal||3;
   const hn=document.getElementById('cfgHeroName');
   if(hn) hn.value=(state.game&&state.game.name)?state.game.name:'';
+  const bYes=document.getElementById('beerYes'), bNo=document.getElementById('beerNo');
+  if(bYes&&bNo){
+    const on=(state.config.tracksBeer!==false);
+    bYes.classList.toggle('active',on);
+    bNo.classList.toggle('active',!on);
+  }
 }
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
@@ -2083,6 +2109,12 @@ document.getElementById('cfgHeroName').addEventListener('change',e=>{
     scheduleSave();renderAll();
   }
 });
+document.getElementById('beerYes').addEventListener('click',()=>{
+  state.config.tracksBeer=true;scheduleSave();renderSettings();renderHoy();
+});
+document.getElementById('beerNo').addEventListener('click',()=>{
+  state.config.tracksBeer=false;scheduleSave();renderSettings();renderHoy();
+});
 
 const views={navHoy:'view-hoy',navHero:'view-hero',navCal:'view-cal',navGraf:'view-graf'};
 function switchView(vid,btnId){
@@ -2279,6 +2311,7 @@ function finishOnboarding(clsId){
     state.config.takesPills=false;
     state.config.pillsGoal=0;
   }
+  state.config.tracksBeer=obBeerYes;
   const nm=document.getElementById('obName').value.trim();
   state.game={cls:clsId, name:nm||CLASSES[clsId].es};
   state.onboarded=true;
@@ -2291,12 +2324,19 @@ function finishOnboarding(clsId){
   renderAll();
 }
 document.getElementById('obStart').addEventListener('click',()=>showStep(2));
+let obBeerYes=true;
 document.querySelectorAll('.ob-tg').forEach(b=>{
   b.addEventListener('click',()=>{
-    document.querySelectorAll('.ob-tg').forEach(x=>x.classList.remove('active'));
+    const group=b.dataset.pills!==undefined?'pills':'beer';
+    const attr=group==='pills'?'pills':'beer';
+    b.parentElement.querySelectorAll('.ob-tg').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
-    obPillsYes=(b.dataset.pills==='yes');
-    document.getElementById('obPillsQty').style.display=obPillsYes?'block':'none';
+    if(group==='pills'){
+      obPillsYes=(b.dataset.pills==='yes');
+      document.getElementById('obPillsQty').style.display=obPillsYes?'block':'none';
+    }else{
+      obBeerYes=(b.dataset.beer==='yes');
+    }
   });
 });
 document.getElementById('obToHero').addEventListener('click',()=>showStep(3));
