@@ -748,7 +748,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v25 · curva XP</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v26 · stats por clase</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -774,13 +774,13 @@
     </div>
     <div class="card">
       <h2>⚗ Maná y hechizos</h2>
-      <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada (0–100). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al 100</b>. Si fallas el día, conservas el que tuvieras.</p>
+      <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada. Su máximo sube con el nivel y depende de tu clase (los magos tienen mucho más; el caballero, poco). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al máximo</b>. Si fallas el día, conservas el que tuvieras.</p>
       <p class="hint">Con él lanzas los hechizos de tu clase desde la ficha del héroe: escudos, curas, amplificadores y perdones. Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Cada clase amplifica un recurso distinto (el Paladín la XP, el Druida la vida, el Hechicero el maná). Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos activos se ven como iconitos junto a tu héroe.</p>
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
       <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día con la mitad o menos del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (7 días sin pasarte) → <b style="color:var(--kodak)">+200 XP</b></p>
-      <p class="hint">Los bonus del día (pastillas, día ligero, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
+      <p class="hint">Los bonus del día (pastillas, día ligero, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Al subir de nivel también crecen tu vida y maná máximos, según tu clase: el caballero gana sobre todo vida, los magos sobre todo maná, y el arquero de forma equilibrada. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
     </div>
     <div class="card">
       <h2>El plan</h2>
@@ -1047,15 +1047,18 @@ function renderHoy(){
       /* usa hero_face/ si existe; si no, cae al sprite de cuerpo entero recortado */
       faceEl.innerHTML=`<img src="hero_face/${g.cls}_face.png" alt="" onerror="this.onerror=null;this.src='sprites/${g.cls}_happy.png';this.className='face-full'">`;
     }
-    const hp=Math.max(0,Math.min(100,Math.round(g.hp)));
+    const st=gameStats();
+    const maxHp=st.maxHp;
+    const hpv=Math.max(0,Math.round(g.hp));
+    const pctFill=Math.max(0,Math.min(100,(hpv/maxHp)*100));
     const fill=document.getElementById('hoyHpFill');
     const val=document.getElementById('hoyHpVal');
     if(fill){
-      fill.style.width=hp+'%';
-      let cls='hp-hi'; if(hp<=15)cls='hp-crit'; else if(hp<=40)cls='hp-low'; else if(hp<=70)cls='hp-mid';
+      fill.style.width=pctFill+'%';
+      let cls='hp-hi'; if(pctFill<=15)cls='hp-crit'; else if(pctFill<=40)cls='hp-low'; else if(pctFill<=70)cls='hp-mid';
       fill.className='stat-fill '+cls;
     }
-    if(val) val.textContent=hp+'%';
+    if(val) val.textContent=hpv+' / '+maxHp;
   }
 
   document.getElementById('hoyTotal').textContent=d.c;
@@ -1385,7 +1388,7 @@ const CLASSES={
     pas:[
       {lvl:1,name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
       {lvl:5,name:'Yelmo Templado',d:'Pasarte del límite hace −18 en vez de −25.'},
-      {lvl:12,name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85 (en vez de 75).'}
+      {lvl:12,name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
     ],
     act:[
       {lvl:2,id:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 cigarros no hacen daño.'},
@@ -1492,7 +1495,7 @@ const CLASSES={
     act:[
       {lvl:2,id:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
       {lvl:8,id:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces al 100 pase lo que pase. 1 uso por semana.'}
+      {lvl:14,id:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
     ]
   }
 };
@@ -1576,20 +1579,36 @@ function gameStats(){
   const curTh=35*(lvl-1)*(lvl-1), nextTh=35*lvl*lvl;
   const prog=Math.min(1,(xp-curTh)/Math.max(1,nextTh-curTh));
   const tier=lvl>=15?3:lvl>=10?2:lvl>=5?1:0;
-  return {xp,lvl,prog,nextTh,streak:p2.streak,bossesDown:p2.bossesDown,currW:p2.currW,tier};
+  const {maxHp,maxMp}=classMaxes(state.game&&state.game.cls, lvl);
+  return {xp,lvl,prog,nextTh,streak:p2.streak,bossesDown:p2.bossesDown,currW:p2.currW,tier,maxHp,maxMp};
+}
+
+/* máximos de vida y maná según clase y nivel (Opción A) */
+const CLASS_GROWTH={
+  knight:  {hp:8, mp:2},   /* tanque físico */
+  paladin: {hp:5, mp:5},   /* híbrido equilibrado */
+  sorcerer:{hp:2, mp:8},   /* mago puro */
+  druid:   {hp:3, mp:7}    /* mago sanador */
+};
+function classMaxes(cls, lvl){
+  const g=CLASS_GROWTH[cls]||{hp:5,mp:5};
+  const lv=Math.max(1,lvl||1);
+  return { maxHp:100+g.hp*(lv-1), maxMp:100+g.mp*(lv-1) };
 }
 
 function heroToday(){
   ensureHero();
   const g=state.game;
   const hp=g.hp===undefined?100:g.hp;
+  const mx=heroMaxes().maxHp;
+  const pct=(hp/mx)*100;
   const now=new Date();
   const c=getDay(todayKey()).c;
   const wake=minutesOf(state.config.wakeTime||'09:00');
   const nowM=now.getHours()*60+now.getMinutes();
   let mood;
   if(nowM<wake&&c===0) mood='sleep';
-  else mood=hp>70?'happy':hp>40?'neutral':hp>15?'worried':'hurt';
+  else mood=pct>70?'happy':pct>40?'neutral':pct>15?'worried':'hurt';
   return {hp,mood};
 }
 
@@ -1611,13 +1630,18 @@ function bossState(){
   return {name:BOSSES[Math.min(w,BOSSES.length-1)],lim,pips,lost,w};
 }
 
+/* topes dinámicos según clase y nivel */
+function heroMaxes(){ return classMaxes(state.game&&state.game.cls, lvlOfXp(computeXp(1).xp)); }
+function capHp(v){ return Math.max(0,Math.min(heroMaxes().maxHp, v)); }
+function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
+
 /* --- sistema de vida y maná por eventos --- */
 function ensureHero(){
   if(!state.game) state.game={cls:null};
   const g=state.game;
   const now=Date.now();
-  if(g.hp===undefined){g.hp=100;g.mp=100;g.hpT=now;g.day=todayKey();scheduleSave();return;}
-  if(g.mp===undefined) g.mp=100;
+  if(g.hp===undefined){const mx=heroMaxes();g.hp=mx.maxHp;g.mp=mx.maxMp;g.hpT=now;g.day=todayKey();scheduleSave();return;}
+  if(g.mp===undefined) g.mp=heroMaxes().maxMp;
   g.buffs=g.buffs||{};
   let dirty=false;
   /* descanso nocturno */
@@ -1625,12 +1649,13 @@ function ensureHero(){
     const lim=limitOfDate(parseKey(g.day));
     const c=getDay(g.day).c;
     const lvl=gameStats().lvl;
+    const mx=heroMaxes();
     if(c<=lim){
-      g.hp=100; g.mp=100;                       /* día cumplido: vida y maná al 100 */
+      g.hp=mx.maxHp; g.mp=mx.maxMp;              /* día cumplido: vida y maná al máximo */
     }else{
-      if(g.buffs.renacer) g.hp=100;             /* Renacer (Druid) */
-      else if(g.cls==='knight'&&lvl>=12) g.hp=85; /* Voluntad de Acero */
-      else g.hp=75;
+      if(g.buffs.renacer) g.hp=mx.maxHp;         /* Renacer (Druid) */
+      else if(g.cls==='knight'&&lvl>=12) g.hp=Math.round(mx.maxHp*0.85); /* Voluntad de Acero */
+      else g.hp=Math.round(mx.maxHp*0.75);
       if(g.buffs.bastion){                      /* Último Bastión (Knight) */
         (g.pardons=g.pardons||[]).push(g.day);
         g.buffs.bastion=false;
@@ -1648,7 +1673,7 @@ function ensureHero(){
   const intMs=intMin*60000;
   const ticks=Math.floor((now-g.hpT)/intMs);
   if(ticks>0){
-    g.hp=Math.min(100,g.hp+ticks);
+    g.hp=capHp(g.hp+ticks);
     g.hpT+=ticks*intMs;
     dirty=true;
   }
@@ -1711,7 +1736,7 @@ function smokeDamage(){
   }
   if(dmg>0) g.hp=Math.max(0,g.hp-dmg);
   if(perfect&&cls==='paladin'&&lvl>=5){    /* Flecha Bendita */
-    g.hp=Math.min(100,g.hp+3);
+    g.hp=capHp(g.hp+3);
   }
   g.hpT=Date.now(); /* fumar reinicia el reloj de regeneración */
   scheduleSave();
@@ -1734,7 +1759,7 @@ function castSpell(id){
   if(id==='alma'){ /* convierte todo el maná en vida */
     if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' ⚗','dmg');return;}
     const heal=Math.floor(g.mp/2);
-    g.hp=Math.min(100,g.hp+heal);
+    g.hp=capHp(g.hp+heal);
     g.mp=0;
     g.ultiW=w;
     showToast('Robar Alma · +'+heal+' de vida ♥','heal');
@@ -1751,7 +1776,7 @@ function castSpell(id){
         g.buffs.shield=(g.buffs.shield||0)+2;
         showToast('🛡 Muro de Escudos · 2 cigarros protegidos','heal');break;
       case 'grito':
-        g.hp=Math.min(100,g.hp+20);
+        g.hp=capHp(g.hp+20);
         showToast('Grito de Guerra · +20 ♥','heal');break;
       case 'bastion':
         g.buffs.bastion=true; g.ultiW=w;
@@ -1760,7 +1785,7 @@ function castSpell(id){
         g.buffs.certeroUntil=now+3600000;
         showToast('🎯 Ojo Certero · 1h de perfectos a +8 XP','heal');break;
       case 'luz':
-        g.hp=Math.min(100,g.hp+15);
+        g.hp=capHp(g.hp+15);
         showToast('Luz Sanadora · +15 ♥','heal');break;
       case 'juicio':
         g.judgmentDays=g.judgmentDays||[];
@@ -1774,11 +1799,11 @@ function castSpell(id){
         g.buffs.regenUntil=now+2*3600000;
         showToast('🌿 Regeneración ×2 durante 2h','heal');break;
       case 'balsamo':
-        g.hp=Math.min(100,g.hp+15);
+        g.hp=capHp(g.hp+15);
         showToast('Bálsamo · +15 ♥','heal');break;
       case 'renacer':
         g.buffs.renacer=true; g.ultiW=w;
-        showToast('🌅 Renacer · esta noche amaneces al 100','heal');break;
+        showToast('🌅 Renacer · esta noche amaneces al máximo','heal');break;
     }
   }
   scheduleSave();
@@ -1825,8 +1850,13 @@ function renderHero(){
   const bs=bossState();
   const gm=state.game;
   const mp=gm.mp===undefined?0:gm.mp;
+  const maxHp=g.maxHp, maxMp=g.maxMp;
+  const hpv=Math.max(0,Math.round(h.hp));
+  const mpv=Math.max(0,Math.round(mp));
+  const hpPct=Math.max(0,Math.min(100,(hpv/maxHp)*100));
+  const mpPct=Math.max(0,Math.min(100,(mpv/maxMp)*100));
 
-  const hpCls=h.hp>70?'hp-hi':h.hp>40?'hp-mid':h.hp>15?'hp-low':'hp-crit';
+  const hpCls=hpPct>70?'hp-hi':hpPct>40?'hp-mid':hpPct>15?'hp-low':'hp-crit';
   const auraCls=g.tier>0?('t'+(g.tier+1)):'';
   const zzz=h.mood==='sleep'?'<span class="sprite-zzz">z z</span>':'';
 
@@ -1893,12 +1923,12 @@ function renderHero(){
       </div>
       ${chipsHtml}
       <div class="stat-bar">
-        <div class="lbl"><span>SALUD</span><b>${h.hp}%</b></div>
-        <div class="stat-track"><div class="stat-fill ${hpCls}" style="width:${h.hp}%"></div></div>
+        <div class="lbl"><span>SALUD</span><b>${hpv} / ${maxHp}</b></div>
+        <div class="stat-track"><div class="stat-fill ${hpCls}" style="width:${hpPct}%"></div></div>
       </div>
       <div class="stat-bar">
-        <div class="lbl"><span>MANÁ</span><b>${mp}</b></div>
-        <div class="stat-track"><div class="stat-fill mp" style="width:${mp}%"></div></div>
+        <div class="lbl"><span>MANÁ</span><b>${mpv} / ${maxMp}</b></div>
+        <div class="stat-track"><div class="stat-fill mp" style="width:${mpPct}%"></div></div>
       </div>
       <div class="stat-bar">
         <div class="lbl"><span>EXPERIENCIA</span><b>${g.xp} / ${g.nextTh} XP</b></div>
@@ -1963,7 +1993,7 @@ document.getElementById('addCig').addEventListener('click',()=>{
     if(state.game.buffs&&state.game.buffs.certeroUntil>Date.now()) px=8; /* Ojo Certero */
     let mgain=10;
     if(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now()) mgain=20; /* Maldición de Ceniza */
-    state.game.mp=Math.min(100,(state.game.mp||0)+mgain);
+    state.game.mp=capMp((state.game.mp||0)+mgain);
   }
   (state.game.cigDmg=state.game.cigDmg||[]).push({d:r.dmg,p:r.perfect,x:px});
   setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0));
@@ -1988,7 +2018,7 @@ document.getElementById('subCig').addEventListener('click',()=>{
     wasPerfect=(typeof e==='object')&&e.p;
     exX=(typeof e==='object')?(e.x||0):0;
     if(dmg>0&&state.game.hp!==undefined){
-      state.game.hp=Math.min(100,state.game.hp+dmg);
+      state.game.hp=capHp(state.game.hp+dmg);
       showToast('Corregido · +'+dmg+' de vida ♥','heal');
     }
     if(wasPerfect) state.game.mp=Math.max(0,(state.game.mp||0)-10);
@@ -2007,8 +2037,8 @@ document.getElementById('addPill').addEventListener('click',()=>{
   if(d.p+1===goal&&state.game.hp!==undefined){
     const st=gameStats();
     const heal=(state.game.cls==='druid'&&st.lvl>=5)?20:15;    /* Poción Mayor */
-    state.game.hp=Math.min(100,state.game.hp+heal);
-    state.game.mp=Math.min(100,(state.game.mp||0)+15);
+    state.game.hp=capHp(state.game.hp+heal);
+    state.game.mp=capMp((state.game.mp||0)+15);
     scheduleSave();
     showToast('Pastillas completas · +'+heal+' ♥ · +15 ⚗','heal');
   }
@@ -2048,7 +2078,7 @@ document.getElementById('subBeer').addEventListener('click',()=>{
   const arr=g.beerDmg;
   const bd=(arr&&arr.length)?arr.pop():5;
   if(bd>0&&g.hp!==undefined){
-    g.hp=Math.min(100,g.hp+bd);
+    g.hp=capHp(g.hp+bd);
     showToast('Corregido · +'+bd+' de vida ♥','heal');
   }
   scheduleSave();
