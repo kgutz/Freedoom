@@ -64,6 +64,31 @@
   .card h2{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
 
   .counter-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+  /* ---------- pantalla Hoy rediseñada ---------- */
+  .hoy-hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:20px;text-align:center;margin-bottom:12px;letter-spacing:.01em}
+  .hoy-hp-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .hoy-hp-lbl b{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:13px}
+  .pill-counter{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;overflow:hidden;margin-bottom:12px;height:60px}
+  .pill-counter .pc-body{flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+  .pill-counter .pc-label{font-size:15px;font-weight:600;color:var(--text)}
+  .pill-counter .pc-num{font-family:'IBM Plex Mono',monospace;font-size:26px;font-weight:600;color:var(--kodak)}
+  .pill-counter button{width:64px;flex-shrink:0;border:none;cursor:pointer;font-size:26px;font-weight:400;
+    font-family:'Sora',sans-serif;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s}
+  .pc-sub{background:#0E0B09;color:var(--muted);border-right:1px solid var(--line)!important}
+  .pc-add{background:var(--kodak);color:#241C0E;border-left:1px solid var(--line)!important}
+  .pc-sub:active{background:#050403}
+  .pc-add:active{background:#D9A43C}
+  #cigCounter .pc-num{color:var(--kodak)}
+  #pillCard .pc-num{color:var(--pill)}
+  #pillCard .pc-add{background:var(--pill);color:#0E1A24}
+  #pillCard .pc-add:active{background:#6E8FA6}
+  #beerCounter .pc-num{color:#C98A3C}
+  #beerCounter .pc-add{background:#C98A3C;color:#241703}
+  #beerCounter .pc-add:active{background:#B87A2E}
+  .hoy-divider{height:1px;background:var(--line);margin:6px 2px 16px}
   .digits{
     font-family:'IBM Plex Mono',monospace;font-size:64px;font-weight:600;line-height:1;
     color:var(--text);min-width:110px;letter-spacing:.02em;
@@ -297,7 +322,9 @@
   .ob-field>label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
   .ob-field input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
     border-radius:12px;padding:13px 14px;font-family:'IBM Plex Mono',monospace;font-size:16px;color-scheme:dark}
-  .ob-note{font-size:12px;color:var(--muted);line-height:1.5;margin-top:8px;font-style:italic}
+  .ob-hero-preview{width:120px;height:120px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
+  .ob-hero-preview .sprite-svg{width:100%;height:100%;animation:bob 1.6s steps(2,end) infinite}
+  .ob-field input[type=text]{text-align:center}
   .ob-row{display:flex;gap:12px}
   .ob-row>div{flex:1}
   .ob-toggle{display:flex;gap:8px}
@@ -520,6 +547,15 @@
     <p class="ob-sub">Tu personaje vive de tus datos: gana XP cada día que cumples y su salud refleja cómo llevas el día. El camino son varias semanas — elige con cabeza.</p>
     <div class="cls-grid" id="obClsGrid"></div>
   </div>
+  <div class="ob-step" id="ob4">
+    <h2 class="ob-h">Ponle nombre</h2>
+    <div class="ob-hero-preview" id="obHeroPreview"></div>
+    <p class="ob-sub">Dale un nombre a tu héroe. Es quien te acompañará todo el camino.</p>
+    <div class="ob-field">
+      <input type="text" id="obName" maxlength="16" placeholder="Nombre del héroe" autocomplete="off">
+    </div>
+    <button class="ob-next" id="obFinish">Empezar</button>
+  </div>
 </div>
 
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
@@ -537,15 +573,21 @@
 
   <!-- VISTA HOY -->
   <section id="view-hoy" class="view active">
-    <div class="card">
-      <h2>Cigarros hoy</h2>
-      <div class="counter-row">
-        <div class="digits" id="cigHoy">0<small>HOY</small></div>
-        <div class="btns">
-          <button class="btn-add" id="addCig" aria-label="Sumar un cigarro">+</button>
-          <button class="btn-sub" id="subCig" aria-label="Restar un cigarro">−</button>
-        </div>
+    <div class="hoy-hero">
+      <div class="hoy-hero-name" id="hoyHeroName">—</div>
+      <div class="hoy-hp">
+        <div class="hoy-hp-lbl"><span>Salud</span><b id="hoyHpVal">100%</b></div>
+        <div class="stat-track"><div class="stat-fill" id="hoyHpFill" style="width:100%"></div></div>
       </div>
+    </div>
+
+    <div class="pill-counter" id="cigCounter">
+      <button class="pc-sub" id="subCig" aria-label="Restar un cigarro">−</button>
+      <div class="pc-body"><span class="pc-label">Cigarros hoy</span><span class="pc-num" id="cigHoy">0</span></div>
+      <button class="pc-add" id="addCig" aria-label="Sumar un cigarro">+</button>
+    </div>
+
+    <div class="card">
       <div class="filmstrip-wrap">
         <div class="filmstrip-label">
           <span>Límite de hoy</span>
@@ -553,41 +595,35 @@
         </div>
         <div class="filmstrip" id="filmstrip"></div>
         <div class="restantes" id="restantes"></div>
-
-        <div class="pace-wrap">
-          <div class="pace-label">
-            <span>Ritmo del día</span>
-            <span class="estado" id="paceEstado"></span>
-          </div>
-          <div class="pace-bar">
-            <div class="pace-expected" id="paceExpected"></div>
-            <div class="pace-clip" id="paceClip"><div class="pace-grad" id="paceGrad"></div></div>
-          </div>
-          <div class="pace-info" id="paceInfo"></div>
-        </div>
       </div>
     </div>
 
-    <div class="card" id="pillCard">
-      <h2>Pastillas hoy</h2>
-      <div class="counter-row">
-        <div class="digits pill-d" id="pillHoy">0<small>TOMADAS</small></div>
-        <div class="btns">
-          <button class="btn-add pill-btn" id="addPill" aria-label="Sumar una pastilla">+</button>
-          <button class="btn-sub" id="subPill" aria-label="Restar una pastilla">−</button>
-        </div>
-      </div>
-    </div>
+    <div class="hoy-divider"></div>
 
     <div class="card">
-      <h2>Cervezas hoy</h2>
-      <div class="counter-row">
-        <div class="digits pill-d" id="beerHoy">0<small>BIRRAS</small></div>
-        <div class="btns">
-          <button class="btn-add beer-btn" id="addBeer" aria-label="Sumar una cerveza">+</button>
-          <button class="btn-sub" id="subBeer" aria-label="Restar una cerveza">−</button>
+      <div class="pace-wrap">
+        <div class="pace-label">
+          <span>Ritmo del día</span>
+          <span class="estado" id="paceEstado"></span>
         </div>
+        <div class="pace-bar">
+          <div class="pace-expected" id="paceExpected"></div>
+          <div class="pace-clip" id="paceClip"><div class="pace-grad" id="paceGrad"></div></div>
+        </div>
+        <div class="pace-info" id="paceInfo"></div>
       </div>
+    </div>
+
+    <div class="pill-counter" id="pillCard">
+      <button class="pc-sub" id="subPill" aria-label="Restar una pastilla">−</button>
+      <div class="pc-body"><span class="pc-label">Pastillas hoy</span><span class="pc-num" id="pillHoy">0</span></div>
+      <button class="pc-add" id="addPill" aria-label="Sumar una pastilla">+</button>
+    </div>
+
+    <div class="pill-counter" id="beerCounter">
+      <button class="pc-sub" id="subBeer" aria-label="Restar una cerveza">−</button>
+      <div class="pc-body"><span class="pc-label">Cervezas hoy</span><span class="pc-num" id="beerHoy">0</span></div>
+      <button class="pc-add" id="addBeer" aria-label="Sumar una cerveza">+</button>
     </div>
   </section>
 
@@ -665,6 +701,10 @@
         <input type="number" id="cfgPills" min="1" max="10" style="width:80px">
       </div>
       <div class="set-row">
+        <label for="cfgHeroName">Nombre del héroe</label>
+        <input type="text" id="cfgHeroName" maxlength="16" style="width:150px">
+      </div>
+      <div class="set-row">
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
@@ -676,7 +716,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v20.6</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.1</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -956,9 +996,25 @@ function renderHoy(){
   document.getElementById('limiteDia').textContent=limit;
 
   const d=getDay(tk);
-  document.getElementById('cigHoy').innerHTML=`${d.c}<small>HOY</small>`;
-  document.getElementById('pillHoy').innerHTML=`${d.p}<small>TOMADAS</small>`;
-  document.getElementById('beerHoy').innerHTML=`${d.b||0}<small>BIRRAS</small>`;
+  document.getElementById('cigHoy').textContent=d.c;
+  document.getElementById('pillHoy').textContent=d.p;
+  document.getElementById('beerHoy').textContent=d.b||0;
+  /* nombre del héroe y barra de salud vinculada (misma info que en Héroe) */
+  if(state.game && state.game.cls){
+    ensureHero();
+    const g=state.game;
+    const nameEl=document.getElementById('hoyHeroName');
+    if(nameEl) nameEl.textContent=g.name||CLASSES[g.cls].es;
+    const hp=Math.max(0,Math.min(100,Math.round(g.hp)));
+    const fill=document.getElementById('hoyHpFill');
+    const val=document.getElementById('hoyHpVal');
+    if(fill){
+      fill.style.width=hp+'%';
+      let cls='hp-hi'; if(hp<=15)cls='hp-crit'; else if(hp<=40)cls='hp-low'; else if(hp<=70)cls='hp-mid';
+      fill.className='stat-fill '+cls;
+    }
+    if(val) val.textContent=hp+'%';
+  }
 
   document.getElementById('hoyTotal').textContent=d.c;
   document.getElementById('hoyLimite').textContent=limit;
@@ -1246,6 +1302,8 @@ function renderSettings(){
   document.getElementById('cfgWake').value=state.config.wakeTime||'09:00';
   document.getElementById('cfgSleep').value=state.config.sleepTime||'23:00';
   document.getElementById('cfgPills').value=state.config.pillsGoal||3;
+  const hn=document.getElementById('cfgHeroName');
+  if(hn) hn.value=(state.game&&state.game.name)?state.game.name:'';
 }
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
@@ -1996,6 +2054,13 @@ document.getElementById('cfgPills').addEventListener('change',e=>{
   const v=parseInt(e.target.value,10);
   if(v>0){state.config.pillsGoal=v;scheduleSave();renderAll();}
 });
+document.getElementById('cfgHeroName').addEventListener('change',e=>{
+  const nm=e.target.value.trim();
+  if(state.game){
+    state.game.name=nm||(state.game.cls?CLASSES[state.game.cls].es:'');
+    scheduleSave();renderAll();
+  }
+});
 
 const views={navHoy:'view-hoy',navHero:'view-hero',navCal:'view-cal',navGraf:'view-graf'};
 function switchView(vid,btnId){
@@ -2191,7 +2256,8 @@ function finishOnboarding(clsId){
     state.config.takesPills=false;
     state.config.pillsGoal=0;
   }
-  state.game={cls:clsId};
+  const nm=document.getElementById('obName').value.trim();
+  state.game={cls:clsId, name:nm||CLASSES[clsId].es};
   state.onboarded=true;
   ensureHero();
   scheduleSave();
@@ -2211,9 +2277,20 @@ document.querySelectorAll('.ob-tg').forEach(b=>{
   });
 });
 document.getElementById('obToHero').addEventListener('click',()=>showStep(3));
+let obChosenCls=null;
 document.getElementById('obClsGrid').addEventListener('click',e=>{
   const card=e.target.closest('[data-obcls]');
-  if(card) finishOnboarding(card.dataset.obcls);
+  if(card){
+    obChosenCls=card.dataset.obcls;
+    const c=CLASSES[obChosenCls];
+    document.getElementById('obHeroPreview').innerHTML=spriteSVG(obChosenCls,'happy');
+    document.getElementById('obName').value='';
+    document.getElementById('obName').placeholder=c.es+'…';
+    showStep(4);
+  }
+});
+document.getElementById('obFinish').addEventListener('click',()=>{
+  finishOnboarding(obChosenCls||'knight');
 });
 
 /* reiniciar app */
