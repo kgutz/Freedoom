@@ -26,7 +26,7 @@
     --pill:#7FA0B8;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html{background:var(--bg)}
+  html{background:var(--bg);overscroll-behavior:none}
   body{
     background:var(--bg);
     color:var(--text);
@@ -35,7 +35,7 @@
     max-width:440px;
     margin:0 auto;
     position:relative;
-    overscroll-behavior-y:none;
+    overscroll-behavior:none;
   }
   .scroll{
     padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
@@ -717,7 +717,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.5</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.6</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
