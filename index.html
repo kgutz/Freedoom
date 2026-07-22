@@ -70,7 +70,14 @@
   /* ---------- pantalla Hoy rediseñada ---------- */
   .hoy-hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
   .hoy-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px}
-  .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:20px;text-align:left;letter-spacing:.01em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hoy-hero-id{display:flex;align-items:center;gap:11px;min-width:0}
+  .hoy-face{width:56px;height:56px;flex-shrink:0;border-radius:50%;overflow:hidden;
+    background:#0E0B09;border:1px solid var(--line);display:flex;align-items:flex-end;justify-content:center}
+  .hoy-face img{width:130%;height:130%;object-fit:cover;object-position:top center;image-rendering:pixelated}
+  .hoy-face img.face-full{width:150%;height:150%;object-position:top center}
+  .hoy-hero-txt{min-width:0}
+  .hoy-hero-name{font-family:'Sora',sans-serif;font-weight:700;font-size:19px;text-align:left;letter-spacing:.01em;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hoy-hero-cls{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--kodak);margin-top:2px}
   .hoy-fecha{text-align:right;flex-shrink:0;line-height:1.15;padding-top:2px}
   .hoy-fecha span{display:block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
   .hoy-fecha b{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text);font-weight:600}
@@ -577,7 +584,13 @@
   <section id="view-hoy" class="view active">
     <div class="hoy-hero">
       <div class="hoy-hero-top">
-        <div class="hoy-hero-name" id="hoyHeroName">—</div>
+        <div class="hoy-hero-id">
+          <div class="hoy-face" id="hoyFace"></div>
+          <div class="hoy-hero-txt">
+            <div class="hoy-hero-name" id="hoyHeroName">—</div>
+            <div class="hoy-hero-cls" id="hoyHeroCls"></div>
+          </div>
+        </div>
         <div class="hoy-fecha"><span>Hoy</span><b id="fechaHoy"></b></div>
       </div>
       <div class="hoy-hp">
@@ -717,7 +730,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v21.6</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v22 · carita</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -1007,6 +1020,13 @@ function renderHoy(){
     const g=state.game;
     const nameEl=document.getElementById('hoyHeroName');
     if(nameEl) nameEl.textContent=g.name||CLASSES[g.cls].es;
+    const clsEl=document.getElementById('hoyHeroCls');
+    if(clsEl) clsEl.textContent=CLASSES[g.cls].name;
+    const faceEl=document.getElementById('hoyFace');
+    if(faceEl){
+      /* usa hero_face/ si existe; si no, cae al sprite de cuerpo entero recortado */
+      faceEl.innerHTML=`<img src="hero_face/${g.cls}_face.png" alt="" onerror="this.onerror=null;this.src='sprites/${g.cls}_happy.png';this.className='face-full'">`;
+    }
     const hp=Math.max(0,Math.min(100,Math.round(g.hp)));
     const fill=document.getElementById('hoyHpFill');
     const val=document.getElementById('hoyHpVal');
