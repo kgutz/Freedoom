@@ -730,7 +730,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v22.1</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v22.2</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -2160,6 +2160,7 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   if(card){
     state.game.cls=card.dataset.cls;
     scheduleSave();
+    renderHoy();
     renderHero();
   }
 });
