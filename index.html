@@ -800,7 +800,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v31.1 · toasts cortos</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v32 · jefe mayoria</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -831,8 +831,9 @@
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
-      <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día con la mitad o menos del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (7 días sin pasarte) → <b style="color:var(--kodak)">+200 XP</b></p>
+      <p class="hint" style="margin-top:0">Formas de ganar XP:<br>· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día con la mitad o menos del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Jefe semanal derrotado (4 de 7 días cumplidos, mayoría) → <b style="color:var(--kodak)">+200 XP</b></p>
       <p class="hint">Los bonus del día (pastillas, día ligero, margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Al subir de nivel también crecen tu vida y maná máximos, según tu clase: el caballero gana sobre todo vida, los magos sobre todo maná, y el arquero de forma equilibrada. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
+      <p class="hint">Si no llegas a esos 4 días cumplidos, el jefe no cae: sigues contra el mismo la semana siguiente, y de golpe pierdes un <b style="color:var(--warn)">30%</b> de tu vida máxima y tu maná baja al <b style="color:var(--warn)">20%</b> del suyo. El límite diario sigue bajando cada semana igual; si necesitas más margen mientras lo dominas, ajústalo en Ajustes.</p>
     </div>
     <div class="card">
       <h2>El plan</h2>
@@ -1625,11 +1626,11 @@ function computeXp(lvlHint){
   for(let w=0;w<currW;w++){
     const lim=limitOfWeek(w);
     const [a,b]=weekRange(w);
-    let all=true;
+    let hits=0;
     for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
-      if(getDay(keyOf(d)).c>lim){all=false;break;}
+      if(getDay(keyOf(d)).c<=lim) hits++;
     }
-    if(all){xp+=200;bossesDown++;}
+    if(hits>=4){xp+=200;bossesDown++;}    /* jefe vencido: 4 de 7 días cumplidos (mayoría) */
   }
   return {xp,streak,bossesDown,currW};
 }
@@ -1682,18 +1683,23 @@ function bossState(){
   const w=Math.max(0,weekIndexOf(now));
   const lim=limitOfWeek(w);
   const [a,b]=weekRange(w);
-  const pips=[];let lost=false;
+  const pips=[]; let hits=0, fails=0;
   for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
     const isPast=daysBetween(now,d)<0;
     const isToday=keyOf(d)===todayKey();
     const c=getDay(keyOf(d)).c;
     let st='pend';
-    if(isPast){st=c<=lim?'hit':'fail';if(st==='fail')lost=true;}
-    else if(isToday){if(c>lim){st='fail';lost=true;}else st='today';}
+    if(isPast){st=c<=lim?'hit':'fail';}
+    else if(isToday){st=(c>lim)?'fail':'today';}
+    if(st==='hit'||st==='today') hits++;
+    else if(st==='fail') fails++;
     pips.push(st);
   }
-  const idx=Math.min(w,BOSSES.length-1);
-  return {name:BOSSES[idx],slug:BOSS_SLUGS[idx],lim,pips,lost,w};
+  const won=hits>=4;     /* mayoría (4 de 7) ya asegurada, aunque no hayan pasado los 7 días */
+  const lost=fails>=4;   /* 4 fallos ya aseguran que no se puede llegar a la mayoría */
+  const gs=gameStats();
+  const idx=Math.min(gs.bossesDown,BOSSES.length-1); /* el puntero solo avanza cuando GANAS una semana completa */
+  return {name:BOSSES[idx],slug:BOSS_SLUGS[idx],bossNum:idx+1,lim,pips,hits,fails,won,lost,w};
 }
 
 /* topes dinámicos según clase y nivel */
@@ -1732,6 +1738,26 @@ function ensureHero(){
     g.day=todayKey(); g.hpT=now;
     g.cigDmg=[]; g.beerDmg=[];
     dirty=true;
+  }
+  /* penalización semanal del jefe: si una semana se cierra con menos de 4 días cumplidos (mayoría),
+     el jefe no se vence — se repite la semana siguiente, y una sola vez se aplica el castigo */
+  const curWk=Math.max(0,weekIndexOf(new Date()));
+  if(g.lastWeekChecked===undefined) g.lastWeekChecked=curWk; /* primera vez visto: no penalizar retroactivamente */
+  while(g.lastWeekChecked<curWk){
+    const wIdx=g.lastWeekChecked;
+    const wLim=limitOfWeek(wIdx);
+    const [wa,wb]=weekRange(wIdx);
+    let wHits=0;
+    for(let d=new Date(wa);d<=wb;d.setDate(d.getDate()+1)){
+      if(getDay(keyOf(d)).c<=wLim) wHits++;
+    }
+    if(wHits<4){
+      const mx=heroMaxes();
+      g.hp=capHp(g.hp-Math.round(mx.maxHp*0.30));
+      g.mp=Math.round(mx.maxMp*0.20);
+      dirty=true;
+    }
+    g.lastWeekChecked++;
   }
   /* regeneración: +1 cada 10 min (Druid: 7; Regeneración activa: la mitad) */
   let intMin=(g.cls==='druid')?7:10;
@@ -1947,7 +1973,7 @@ function renderHero(){
   }).join('');
   let bState,bCls;
   if(bs.lost){bState='te ha vencido';bCls='lose';}
-  else if(bs.pips.every(p=>p==='hit')){bState='¡derrotado!';bCls='win';}
+  else if(bs.won){bState='¡derrotado!';bCls='win';}
   else{bState='';bCls='curr';}
 
   /* iconos compactos: pasivas y activas en cuadraditos, con respaldo a inicial si falta el pixel art */
@@ -1995,7 +2021,7 @@ function renderHero(){
     <div class="card">
       <div class="boss-top">
         <div class="boss-box">
-          <img src="bosses/boss_${String(bs.w+1).padStart(2,'0')}_${bs.slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <img src="bosses/boss_${String(bs.bossNum).padStart(2,'0')}_${bs.slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="boss-fallback" style="display:none">💀</span>
         </div>
         <div class="boss-id">
@@ -2007,7 +2033,7 @@ function renderHero(){
           <div class="pips">${pips}</div>
         </div>
       </div>
-      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de <b>${state.config.startLimit+1}</b> · quedan <b>${(state.config.startLimit+1)-bs.w-(bs.pips.every(p=>p==='hit')?1:0)}</b> por delante</div>
+      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de <b>${state.config.startLimit+1}</b> · quedan <b>${(state.config.startLimit+1)-g.bossesDown-(bs.won?1:0)}</b> por delante</div>
     </div>
 
     <div class="card">
