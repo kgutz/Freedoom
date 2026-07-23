@@ -317,8 +317,8 @@
   #onboard{position:fixed;inset:0;background:var(--bg);z-index:50;
     display:flex;align-items:center;justify-content:center;
     padding:calc(30px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom));
-    overflow-y:auto;-webkit-overflow-scrolling:touch}
-  .ob-step{display:none;width:100%;max-width:400px;margin:auto;animation:obfade .6s ease}
+    overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .ob-step{display:none;width:100%;max-width:400px;margin:auto;animation:obfade .6s ease;overflow-x:hidden}
   .ob-step.active{display:block}
   @keyframes obfade{from{opacity:0}to{opacity:1}}
   #ob1{text-align:center}
@@ -335,15 +335,15 @@
   .ob-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;text-align:center}
   .ob-field{margin-bottom:20px}
   .ob-field>label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
-  .ob-field input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  .ob-field input{width:100%;max-width:100%;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--text);
     border-radius:12px;padding:13px 14px;font-family:'IBM Plex Mono',monospace;font-size:16px;color-scheme:dark}
   .ob-hero-preview{width:120px;height:120px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
   .ob-hero-preview .sprite-svg{width:100%;height:100%;animation:bob 1.6s steps(2,end) infinite}
   .ob-field input[type=text]{text-align:center}
-  .ob-row{display:flex;gap:12px}
-  .ob-row>div{flex:1}
-  .ob-toggle{display:flex;gap:8px}
-  .ob-tg{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);
+  .ob-row{display:flex;gap:12px;min-width:0}
+  .ob-row>div{flex:1;min-width:0}
+  .ob-toggle{display:flex;gap:8px;min-width:0}
+  .ob-tg{flex:1;min-width:0;padding:12px;border-radius:12px;border:1px solid var(--line);
     background:var(--panel2);color:var(--muted);font-family:'Sora',sans-serif;font-weight:600;font-size:14px;cursor:pointer}
   .ob-tg.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
   .ob-next{width:100%;margin-top:6px;padding:15px;border-radius:14px;border:none;cursor:pointer;
@@ -800,7 +800,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v30.6</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v31.1 · toasts cortos</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -813,12 +813,12 @@
     <div class="card">
       <h2>⚔ Daño</h2>
       <p class="hint" style="margin-top:0">Tu héroe pierde vida cuando fumas <b style="color:var(--text)">por delante del ritmo del día</b> (la zona clara de la barra en Hoy):</p>
-      <p class="hint">· Un poco adelantado → <b style="color:var(--warn)">−8</b><br>· Muy adelantado → <b style="color:var(--warn)">−15</b><br>· Por encima del límite del día → <b style="color:var(--warn)">−25</b><br>· Cada cerveza → <b style="color:var(--warn)">−5</b></p>
+      <p class="hint">· Un poco adelantado → <b style="color:var(--warn)">−8</b><br>· Muy adelantado → <b style="color:var(--warn)">−15</b><br>· Por encima del límite del día → <b style="color:var(--warn)">−25</b><br>· Cada cerveza (si las registras) → <b style="color:var(--warn)">−5</b></p>
       <p class="hint">Si fumas en ritmo o por detrás, no hay daño. Y si esperas hasta la hora del "siguiente aprox.", es un <b style="color:var(--kodak)">disparo perfecto</b>: daño cero garantizado.</p>
     </div>
     <div class="card">
       <h2>♥ Curación</h2>
-      <p class="hint" style="margin-top:0">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· Completar todas las pastillas del día (las que te pautaron, ajustable en Ajustes) es tu poción: <b style="color:var(--ok)">+15</b> al tomar la última.<br>· Descanso nocturno: día cumplido → amaneces al <b style="color:var(--ok)">100</b>; día pasado → al 75.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
+      <p class="hint" style="margin-top:0">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· Completar todas las pastillas del día (las que te pautaron, ajustable en Ajustes) es tu poción: <b style="color:var(--ok)">+15</b> al tomar la última.<br>· Descanso nocturno: día cumplido → amaneces a tu vida y maná <b style="color:var(--ok)">máximos</b>; día pasado → tu vida amanece al 75% de tu máximo (85% si eres Caballero nivel 12+), y tu maná no se toca.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
     </div>
     <div class="card">
       <h2>El ritmo del día</h2>
@@ -827,7 +827,7 @@
     <div class="card">
       <h2>💧 Maná y hechizos</h2>
       <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada. Su máximo sube con el nivel y depende de tu clase (los magos tienen mucho más; el caballero, poco). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al máximo</b>. Si fallas el día, conservas el que tuvieras.</p>
-      <p class="hint">Con él lanzas los hechizos de tu clase desde la ficha del héroe: escudos, curas, amplificadores y perdones. Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Cada clase amplifica un recurso distinto (el Paladín la XP, el Druida la vida, el Hechicero el maná). Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos activos se ven como iconitos junto a tu héroe.</p>
+      <p class="hint">Los hechizos activos se lanzan tocando directamente su icono en el bloque de Habilidades (la ⓘ abre el Libro de habilidades con el detalle completo de las 6). Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos temporales se ven como chips junto a tu héroe.</p>
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>
@@ -836,7 +836,7 @@
     </div>
     <div class="card">
       <h2>El plan</h2>
-      <p class="hint" style="margin-top:0">Las semanas van de viernes a jueves desde el inicio del plan, y cada viernes el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Todos los datos se guardan en este dispositivo.</p>
+      <p class="hint" style="margin-top:0">Las semanas van de 7 en 7 días desde tu propio día de inicio (el que elegiste al empezar), y cada semana, ese mismo día, el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Las pastillas y las cervezas son opcionales: puedes activarlas o desactivarlas en Ajustes según tu caso. Todos los datos se guardan en este dispositivo.</p>
     </div>
     <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
   </div>
@@ -864,13 +864,13 @@
   <div class="modal">
     <img src="logo.png" alt="Freedoom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
     <h3 id="menuTitle" style="display:none">Menú</h3>
-    <button class="menu-item" id="menuAjustes">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
-      Ajustes
-    </button>
     <button class="menu-item" id="menuInstr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>
       Instrucciones
+    </button>
+    <button class="menu-item" id="menuAjustes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
+      Ajustes
     </button>
   </div>
 </div>
@@ -980,7 +980,7 @@ function mondayOf(d){
   x.setDate(x.getDate()-off);
   return x;
 }
-function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (viernes) */
+function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (cualquier día de la semana) */
   return Math.floor(daysBetween(parseKey(state.config.startDate), d)/7);
 }
 function weekRange(idx){
@@ -1824,11 +1824,12 @@ function castSpell(id){
 
   if(id==='alma'){ /* convierte todo el maná en vida */
     if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' 💧','dmg');return;}
+    const spent=g.mp;
     const heal=Math.floor(g.mp/2);
     g.hp=capHp(g.hp+heal);
     g.mp=0;
     g.ultiW=w;
-    showToast('Robar Alma · +'+heal+' de vida ♥','heal');
+    showToast('Robar Alma · −'+spent+' 💧 · +'+heal+' ♥','heal');
   }else{
     if((g.mp||0)<sp.cost){showToast('Maná insuficiente ('+sp.cost+' 💧)','dmg');return;}
     g.mp-=sp.cost;
@@ -1836,40 +1837,40 @@ function castSpell(id){
       case 'ceniza':{
         const hrs=(st.lvl>=12)?3:2;                    /* Filacteria */
         g.buffs.cenizaUntil=now+hrs*3600000;
-        showToast('☠ Maldición de Ceniza · '+hrs+'h de perfectos a doble maná','heal');break;
+        showToast('☠ Maldición de Ceniza · −'+sp.cost+' 💧','heal');break;
       }
       case 'muro':
         g.buffs.shield=(g.buffs.shield||0)+2;
-        showToast('🛡 Muro de Escudos · 2 cigarros protegidos','heal');break;
+        showToast('🛡 Muro de Escudos · −'+sp.cost+' 💧','heal');break;
       case 'grito':
         g.hp=capHp(g.hp+20);
-        showToast('Grito de Guerra · +20 ♥','heal');break;
+        showToast('Grito de Guerra · −'+sp.cost+' 💧 · +20 ♥','heal');break;
       case 'bastion':
         g.buffs.bastion=true; g.ultiW=w;
-        showToast('🏰 Último Bastión armado','heal');break;
+        showToast('🏰 Último Bastión · −'+sp.cost+' 💧','heal');break;
       case 'certero':
         g.buffs.certeroUntil=now+3600000;
-        showToast('🎯 Ojo Certero · 1h de perfectos a +8 XP','heal');break;
+        showToast('🎯 Ojo Certero · −'+sp.cost+' 💧','heal');break;
       case 'luz':
         g.hp=capHp(g.hp+15);
-        showToast('Luz Sanadora · +15 ♥','heal');break;
+        showToast('Luz Sanadora · −'+sp.cost+' 💧 · +15 ♥','heal');break;
       case 'juicio':
         g.judgmentDays=g.judgmentDays||[];
         if(!g.judgmentDays.includes(todayKey())) g.judgmentDays.push(todayKey());
         g.ultiW=w;
-        showToast('⚖️ Juicio Divino · hoy XP ×2 si cumples','heal');break;
+        showToast('⚖️ Juicio Divino · −'+sp.cost+' 💧','heal');break;
       case 'peste':
         g.buffs.pesteDay=todayKey();
-        showToast('☠ Peste al Antojo · daño de cigarros a la mitad hoy','heal');break;
+        showToast('☠ Peste al Antojo · −'+sp.cost+' 💧','heal');break;
       case 'regen':
         g.buffs.regenUntil=now+2*3600000;
-        showToast('🌿 Regeneración ×2 durante 2h','heal');break;
+        showToast('🌿 Regeneración · −'+sp.cost+' 💧','heal');break;
       case 'balsamo':
         g.hp=capHp(g.hp+15);
-        showToast('Bálsamo · +15 ♥','heal');break;
+        showToast('Bálsamo · −'+sp.cost+' 💧 · +15 ♥','heal');break;
       case 'renacer':
         g.buffs.renacer=true; g.ultiW=w;
-        showToast('🌅 Renacer · esta noche amaneces al máximo','heal');break;
+        showToast('🌅 Renacer · −'+sp.cost+' 💧','heal');break;
     }
   }
   scheduleSave();
@@ -2435,7 +2436,7 @@ document.getElementById('backupBg').addEventListener('click',e=>{
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
-   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si es viernes) */
+   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si toca semana nueva) */
 let lastDay=todayKey();
 function checkDay(){
   if(todayKey()!==lastDay){lastDay=todayKey();renderAll();}
