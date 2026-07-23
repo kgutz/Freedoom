@@ -794,7 +794,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29 · cambio de clase</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29.1 · jefes dinamicos</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -1988,7 +1988,7 @@ function renderHero(){
         <div class="boss-name">${bs.name}<small>máx ${bs.lim}/día · cada día cumplido es un golpe</small></div>
       </div>
       <div class="pips">${pips}</div>
-      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de 21 · quedan <b>${21-bs.w-(bs.pips.every(p=>p==='hit')?1:0)}</b> por delante</div>
+      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de <b>${state.config.startLimit+1}</b> · quedan <b>${(state.config.startLimit+1)-bs.w-(bs.pips.every(p=>p==='hit')?1:0)}</b> por delante</div>
     </div>
 
     <div class="card">
