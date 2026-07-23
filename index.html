@@ -408,6 +408,8 @@
     padding:10px 0;z-index:1;
   }
   .sheet-head h3{font-size:17px;font-weight:600}
+  .sk-head-center::before{content:'';width:34px;flex-shrink:0}
+  .sk-head-center h3{flex:1;text-align:center}
   .sheet-close{
     width:34px;height:34px;border-radius:50%;
     background:var(--panel2);border:1px solid var(--line);
@@ -468,6 +470,7 @@
   .cast-btn[disabled]{opacity:.35;cursor:default}
 
   .boss-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .boss-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   .boss-name{font-size:14px;font-weight:600}
   .boss-name small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
   .boss-state{font-family:'IBM Plex Mono',monospace;font-size:12px}
@@ -496,6 +499,49 @@
   .abil .an{font-size:13px;font-weight:600}
   .abil .ad{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
   .abil.off{opacity:.4}
+
+  /* ---------- bloque compacto de habilidades ---------- */
+  .skills-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .skills-head h2{font-size:15px}
+  .sk-row-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 9px 1px}
+  .sk-row-label.acts{margin-top:18px}
+  .sk-info-btn{
+    width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);
+    color:var(--kodak);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  }
+  .sk-info-btn:active{background:rgba(232,180,74,.15)}
+  .skill-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
+  .skill-row:last-child{margin-bottom:0}
+  .skill-box{
+    position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;
+    background:#0E0B09;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .skill-box img{width:78%;height:78%;object-fit:contain;image-rendering:pixelated}
+  .skill-box.off{opacity:.35;filter:grayscale(1)}
+  .skill-box.on{border-color:var(--kodak)}
+  .skill-box.ulti.on{border-color:var(--kodak);box-shadow:0 0 0 1px var(--kodak),0 0 10px 1px rgba(232,180,74,.4)}
+  .sk-lv{
+    position:absolute;top:4px;left:5px;font-family:'IBM Plex Mono',monospace;font-size:9px;
+    color:var(--muted);background:rgba(14,11,9,.75);border-radius:4px;padding:1px 4px;z-index:2;
+  }
+  .skill-box.on .sk-lv{color:var(--kodak)}
+  .sk-fallback{
+    font-family:'Sora',sans-serif;font-weight:700;font-size:22px;color:var(--muted);
+    width:100%;height:100%;align-items:center;justify-content:center;
+  }
+  .skill-box.on .sk-fallback{color:var(--kodak)}
+
+  /* ---------- libro de habilidades (sheet) ---------- */
+  .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}
+  .grim-cls-tag:first-child{margin-top:0}
+  .abil-ico{
+    width:44px;height:44px;flex-shrink:0;border-radius:10px;overflow:hidden;
+    background:#0E0B09;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;
+  }
+  .abil-ico img{width:80%;height:80%;object-fit:contain;image-rendering:pixelated}
+  .abil-ico .sk-fallback{font-size:16px}
+  .abil.on .abil-ico{border-color:var(--kodak)}
 
   .cls-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .cls-card{
@@ -748,7 +794,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v27 · fix primer cigarro</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v28.7</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -787,6 +833,14 @@
       <p class="hint" style="margin-top:0">Las semanas van de viernes a jueves desde el inicio del plan, y cada viernes el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Todos los datos se guardan en este dispositivo.</p>
     </div>
     <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
+  </div>
+</div>
+
+<!-- GRIMORIO (detalle de habilidades) -->
+<div class="sheet-bg" id="sheetSkills">
+  <div class="sheet">
+    <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetSkills">✕</button></div>
+    <div class="card" id="skillsBody"></div>
   </div>
 </div>
 
@@ -1386,14 +1440,14 @@ const CLASSES={
       "...OO......OO..."
     ],
     pas:[
-      {lvl:1,name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
-      {lvl:5,name:'Yelmo Templado',d:'Pasarte del límite hace −18 en vez de −25.'},
-      {lvl:12,name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
+      {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
+      {lvl:5,icon:'yelmo',name:'Yelmo Templado',d:'Pasarte del límite hace −18 en vez de −25.'},
+      {lvl:12,icon:'voluntad',name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
     ],
     act:[
-      {lvl:2,id:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 cigarros no hacen daño.'},
-      {lvl:8,id:'grito',name:'Grito de Guerra',cost:50,d:'+20 de vida al instante.'},
-      {lvl:14,id:'bastion',name:'Último Bastión',cost:90,ulti:true,d:'Tu racha sobrevive al próximo día fallido. 1 uso por semana.'}
+      {lvl:2,id:'muro',icon:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 cigarros no hacen daño.'},
+      {lvl:8,id:'grito',icon:'grito',name:'Grito de Guerra',cost:50,d:'+20 de vida al instante.'},
+      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:90,ulti:true,d:'Tu racha sobrevive al próximo día fallido. 1 uso por semana.'}
     ]
   },
   paladin:{
@@ -1420,14 +1474,14 @@ const CLASSES={
       "...OO....OO....."
     ],
     pas:[
-      {lvl:1,name:'Ojo del Halcón',d:'Los disparos perfectos dan +4 XP (en vez de +2).'},
-      {lvl:5,name:'Flecha Bendita',d:'Cada disparo perfecto además cura +3 de vida.'},
-      {lvl:12,name:'Puntería Divina',d:'El bonus por margen sube a +6 XP por cigarro (en vez de +4).'}
+      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Los disparos perfectos dan +4 XP (en vez de +2).'},
+      {lvl:5,icon:'flecha',name:'Flecha Bendita',d:'Cada disparo perfecto además cura +3 de vida.'},
+      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'El bonus por margen sube a +6 XP por cigarro (en vez de +4).'}
     ],
     act:[
-      {lvl:2,id:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +8 XP.'},
-      {lvl:8,id:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy cierras cumpliendo, la XP del día ×2. 1 uso por semana.'}
+      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +8 XP.'},
+      {lvl:8,id:'luz',icon:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
+      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy cierras cumpliendo, la XP del día ×2. 1 uso por semana.'}
     ]
   },
   sorcerer:{
@@ -1454,14 +1508,14 @@ const CLASSES={
       "...OOOOOOOOOO..."
     ],
     pas:[
-      {lvl:1,name:'Absorber Esencia',d:'Cada cigarro adelantado te quita −2 menos (drenas su fuerza).'},
-      {lvl:5,name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
-      {lvl:12,name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
+      {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Cada cigarro adelantado te quita −2 menos (drenas su fuerza).'},
+      {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
+      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
     ],
     act:[
-      {lvl:2,id:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
-      {lvl:8,id:'peste',name:'Peste al Antojo',cost:35,d:'Los cigarros de hoy hacen la mitad de daño.'},
-      {lvl:14,id:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
+      {lvl:2,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
+      {lvl:8,id:'peste',icon:'peste',name:'Peste al Antojo',cost:35,d:'Los cigarros de hoy hacen la mitad de daño.'},
+      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
     ]
   },
   druid:{
@@ -1488,14 +1542,14 @@ const CLASSES={
       "...OOOOOOOOOO..."
     ],
     pas:[
-      {lvl:1,name:'Savia Viva',d:'Regeneras +1 de vida cada 7 minutos (en vez de 10).'},
-      {lvl:5,name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
-      {lvl:12,name:'Raíces Profundas',d:'El primer cigarro adelantado de cada día no hace daño.'}
+      {lvl:1,icon:'savia',name:'Savia Viva',d:'Regeneras +1 de vida cada 7 minutos (en vez de 10).'},
+      {lvl:5,icon:'pocion',name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
+      {lvl:12,icon:'raices',name:'Raíces Profundas',d:'El primer cigarro adelantado de cada día no hace daño.'}
     ],
     act:[
-      {lvl:2,id:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
-      {lvl:8,id:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
+      {lvl:2,id:'regen',icon:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
+      {lvl:8,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
+      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
     ]
   }
 };
@@ -1883,32 +1937,21 @@ function renderHero(){
   else if(bs.pips.every(p=>p==='hit')){bState='¡derrotado!';bCls='win';}
   else{bState='en combate';bCls='curr';}
 
-  /* pasivas */
-  const pasHtml=C.pas.map(a=>{
+  /* iconos compactos: pasivas y activas en cuadraditos, con respaldo a inicial si falta el pixel art */
+  const skillIcon=(a,type)=>{
     const on=g.lvl>=a.lvl;
-    return `<div class="abil ${on?'on':'off'}">
-      <span class="lv">Nv ${a.lvl}</span>
-      <div><div class="an">${a.name}${on?' · <span style="color:var(--ok);font-size:11px">activa</span>':''}</div><div class="ad">${a.d}</div></div>
+    const ultiCls=a.ulti?' ulti':'';
+    const src=`spells/${cls}_spells/${cls}_${type}_${a.icon}.png`;
+    const fb=a.name.charAt(0);
+    const openAttr=(type==='act')?`data-cast="${a.id}"`:`data-pas-name="${a.name}" data-pas-lvl="${a.lvl}"`;
+    return `<div class="skill-box ${on?'on':'off'}${ultiCls}" ${openAttr}>
+      <span class="sk-lv">Nv ${a.lvl}</span>
+      <img src="${src}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <span class="sk-fallback" style="display:none">${fb}</span>
     </div>`;
-  }).join('');
-
-  /* activos con botón de lanzar */
-  const w=g.currW;
-  const actHtml=C.act.map(a=>{
-    const on=g.lvl>=a.lvl;
-    const ultiUsed=a.ulti&&gm.ultiW===w;
-    let btn='';
-    if(on){
-      const costTxt=a.cost+' ⚗';
-      const noMana=mp<a.cost;
-      const dis=noMana||ultiUsed;
-      btn=`<button class="mini-btn cast-btn" data-cast="${a.id}" ${dis?'disabled':''}>${ultiUsed?'Usada esta semana':'Lanzar · '+costTxt}</button>`;
-    }
-    return `<div class="abil ${on?'on':'off'}">
-      <span class="lv">Nv ${a.lvl}</span>
-      <div style="flex:1"><div class="an">${a.name}${a.ulti?' <span style="color:var(--kodak);font-size:10px">ULTI</span>':''}</div><div class="ad">${a.d}</div>${btn}</div>
-    </div>`;
-  }).join('');
+  };
+  const pasIcons=C.pas.map(a=>skillIcon(a,'pas')).join('');
+  const actIcons=C.act.map(a=>skillIcon(a,'act')).join('');
 
   box.innerHTML=`
     <div class="card">
@@ -1937,24 +1980,86 @@ function renderHero(){
     </div>
 
     <div class="card">
-      <h2>Jefe de la semana ${bs.w+1}</h2>
+      <div class="boss-head">
+        <h2 style="margin:0">Jefe de la semana ${bs.w+1}</h2>
+        <div class="boss-state ${bCls}">${bState}</div>
+      </div>
       <div class="boss-row">
         <div class="boss-name">${bs.name}<small>máx ${bs.lim}/día · cada día cumplido es un golpe</small></div>
-        <div class="boss-state ${bCls}">${bState}</div>
       </div>
       <div class="pips">${pips}</div>
       <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de 21 · quedan <b>${21-bs.w-(bs.pips.every(p=>p==='hit')?1:0)}</b> por delante</div>
     </div>
 
     <div class="card">
-      <h2>Pasivas — ${C.es}</h2>
-      ${pasHtml}
-    </div>
-
-    <div class="card">
-      <h2>Hechizos — ${C.es}</h2>
-      ${actHtml}
+      <div class="skills-head">
+        <h2 style="margin:0">Habilidades — ${C.es}</h2>
+        <button class="sk-info-btn" id="skInfoBtn" aria-label="Ver libro de habilidades">ⓘ</button>
+      </div>
+      <div class="sk-row-label">Pasivas</div>
+      <div class="skill-row">${pasIcons}</div>
+      <div class="sk-row-label acts">Activas</div>
+      <div class="skill-row">${actIcons}</div>
     </div>`;
+
+  window.__skillsCls=cls; /* para que el libro sepa qué clase pintar */
+}
+
+/* --- libro de habilidades: detalle completo de las 6 de la clase actual --- */
+function renderSkillsSheet(){
+  ensureHero();
+  const gm=state.game;
+  const cls=gm.cls; if(!cls) return;
+  const C=CLASSES[cls];
+  const g=gameStats();
+  const mp=gm.mp===undefined?0:gm.mp;
+  const w=g.currW;
+
+  const iconTag=(a,type)=>{
+    const src=`spells/${cls}_spells/${cls}_${type}_${a.icon}.png`;
+    const fb=a.name.charAt(0);
+    return `<div class="abil-ico"><img src="${src}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${fb}</span></div>`;
+  };
+
+  const pasHtml=C.pas.map(a=>{
+    const on=g.lvl>=a.lvl;
+    return `<div class="abil ${on?'on':'off'}">
+      ${iconTag(a,'pas')}
+      <div style="flex:1">
+        <span class="lv" style="float:right">Nv ${a.lvl}</span>
+        <div class="an">${a.name}${on?' · <span style="color:var(--ok);font-size:11px">activa</span>':''}</div>
+        <div class="ad">${a.d}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const actHtml=C.act.map(a=>{
+    const on=g.lvl>=a.lvl;
+    const ultiUsed=a.ulti&&gm.ultiW===w;
+    let btn='';
+    if(on){
+      const costTxt=a.cost+' ⚗';
+      const noMana=mp<a.cost;
+      const dis=noMana||ultiUsed;
+      btn=`<button class="mini-btn cast-btn" data-cast="${a.id}" ${dis?'disabled':''}>${ultiUsed?'Usada esta semana':'Lanzar · '+costTxt}</button>`;
+    }
+    return `<div class="abil ${on?'on':'off'}">
+      ${iconTag(a,'act')}
+      <div style="flex:1">
+        <span class="lv" style="float:right">Nv ${a.lvl}</span>
+        <div class="an">${a.name}${a.ulti?' <span style="color:var(--kodak);font-size:10px">ULTI</span>':''}</div>
+        <div class="ad">${a.d}</div>
+        ${btn}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('skillsBody').innerHTML=`
+    <div class="grim-cls-tag" style="margin-top:0">Pasivas — ${C.es}</div>
+    ${pasHtml}
+    <div class="grim-cls-tag">Hechizos — ${C.es}</div>
+    ${actHtml}
+  `;
 }
 
 /* ==================== fin RPG ==================== */
@@ -2185,6 +2290,14 @@ document.getElementById('menuInstr').addEventListener('click',()=>{
 document.getElementById('menuBg').addEventListener('click',e=>{
   if(e.target.id==='menuBg')e.target.classList.remove('show');
 });
+document.getElementById('skillsBody').addEventListener('click',e=>{
+  const cast=e.target.closest('[data-cast]');
+  if(cast&&!cast.disabled){
+    castSpell(cast.dataset.cast);
+    renderSkillsSheet();
+  }
+});
+
 document.querySelectorAll('.sheet-close').forEach(b=>{
   b.addEventListener('click',()=>{
     document.getElementById(b.dataset.sheet).classList.remove('show');
@@ -2223,6 +2336,20 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   const cast=e.target.closest('[data-cast]');
   if(cast&&!cast.disabled){
     castSpell(cast.dataset.cast);
+    return;
+  }
+  const pasTap=e.target.closest('[data-pas-name]');
+  if(pasTap){
+    const lvl=parseInt(pasTap.dataset.pasLvl,10);
+    const name=pasTap.dataset.pasName;
+    const curLvl=gameStats().lvl;
+    if(curLvl>=lvl) showToast(name+' · activa','heal');
+    else showToast('Nivel '+lvl+' necesario','dmg');
+    return;
+  }
+  if(e.target.closest('#skInfoBtn')){
+    renderSkillsSheet();
+    document.getElementById('sheetSkills').classList.add('show');
     return;
   }
   const card=e.target.closest('[data-cls]');
