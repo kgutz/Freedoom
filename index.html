@@ -482,7 +482,10 @@
   .boss-id .boss-name{margin-bottom:9px}
   .boss-name{font-size:14px;font-weight:600}
   .boss-name small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
-  .boss-state{font-family:'IBM Plex Mono',monospace;font-size:11px}
+  .boss-state{width:12px;height:12px;border-radius:50%;flex-shrink:0;background:var(--line)}
+  .boss-state.win{background:var(--ok)}
+  .boss-state.lose{background:var(--warn)}
+  .boss-state.curr{background:var(--kodak);opacity:.5}
   .boss-state.win{color:var(--ok)}
   .boss-state.lose{color:var(--warn)}
   .boss-state.curr{color:var(--kodak)}
@@ -800,7 +803,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v32 · jefe mayoria</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v32.2</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -2026,8 +2029,7 @@ function renderHero(){
         </div>
         <div class="boss-id">
           <div class="boss-head">
-            <h2 style="margin:0">Jefe de la semana ${bs.w+1}</h2>
-            <div class="boss-state ${bCls}">${bState}</div>
+            <h2 style="margin:0">Jefe de la semana</h2>
           </div>
           <div class="boss-name">${bs.name}<small>máx ${bs.lim}/día · cada día cumplido es un golpe</small></div>
           <div class="pips">${pips}</div>
