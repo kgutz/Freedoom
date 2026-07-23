@@ -794,7 +794,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v28.9</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29 · cambio de clase</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -2365,7 +2365,13 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   const card=e.target.closest('[data-cls]');
   if(card){
+    const hadHero=(state.game.hp!==undefined);
     state.game.cls=card.dataset.cls;
+    if(hadHero){
+      state.game.buffs={};              /* los efectos de la clase anterior ya no aplican */
+      state.game.hp=capHp(state.game.hp);   /* se conserva el valor, topado al nuevo máximo */
+      state.game.mp=capMp(state.game.mp);
+    }
     scheduleSave();
     renderHoy();
     renderHero();
