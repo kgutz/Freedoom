@@ -507,6 +507,7 @@
   .abil.on .lv{color:var(--kodak);border-color:var(--kodak)}
   .abil .an{font-size:13px;font-weight:600}
   .abil .ad{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+  .ad-cost{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--pill);margin-top:6px}
   .abil.off{opacity:.4}
 
   /* ---------- bloque compacto de habilidades ---------- */
@@ -803,7 +804,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29.6</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v30.1</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -828,7 +829,7 @@
       <p class="hint" style="margin-top:0">La barra de Hoy reparte tu límite diario entre tus horas despierto. La zona clara marca hasta dónde "tocaría" ir a esta hora; el color es lo que llevas: verde al principio, amarillo, naranja y rojo al acercarte al límite. Debajo, la app te aproxima la hora del siguiente repartiendo lo que te queda entre el tiempo que queda. La hora del "Último" es tocable por si apuntaste tarde.</p>
     </div>
     <div class="card">
-      <h2>⚗ Maná y hechizos</h2>
+      <h2>💧 Maná y hechizos</h2>
       <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada. Su máximo sube con el nivel y depende de tu clase (los magos tienen mucho más; el caballero, poco). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al máximo</b>. Si fallas el día, conservas el que tuvieras.</p>
       <p class="hint">Con él lanzas los hechizos de tu clase desde la ficha del héroe: escudos, curas, amplificadores y perdones. Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Cada clase amplifica un recurso distinto (el Paladín la XP, el Druida la vida, el Hechicero el maná). Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos activos se ven como iconitos junto a tu héroe.</p>
     </div>
@@ -1826,14 +1827,14 @@ function castSpell(id){
   const now=Date.now();
 
   if(id==='alma'){ /* convierte todo el maná en vida */
-    if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' ⚗','dmg');return;}
+    if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' 💧','dmg');return;}
     const heal=Math.floor(g.mp/2);
     g.hp=capHp(g.hp+heal);
     g.mp=0;
     g.ultiW=w;
     showToast('Robar Alma · +'+heal+' de vida ♥','heal');
   }else{
-    if((g.mp||0)<sp.cost){showToast('Maná insuficiente ('+sp.cost+' ⚗)','dmg');return;}
+    if((g.mp||0)<sp.cost){showToast('Maná insuficiente ('+sp.cost+' 💧)','dmg');return;}
     g.mp-=sp.cost;
     switch(id){
       case 'ceniza':{
@@ -2033,8 +2034,6 @@ function renderSkillsSheet(){
   const cls=gm.cls; if(!cls) return;
   const C=CLASSES[cls];
   const g=gameStats();
-  const mp=gm.mp===undefined?0:gm.mp;
-  const w=g.currW;
 
   const iconTag=(a,type)=>{
     const src=`spells/${cls}_spells/${cls}_${type}_${a.icon}.png`;
@@ -2056,21 +2055,13 @@ function renderSkillsSheet(){
 
   const actHtml=C.act.map(a=>{
     const on=g.lvl>=a.lvl;
-    const ultiUsed=a.ulti&&gm.ultiW===w;
-    let btn='';
-    if(on){
-      const costTxt=a.cost+' ⚗';
-      const noMana=mp<a.cost;
-      const dis=noMana||ultiUsed;
-      btn=`<button class="mini-btn cast-btn" data-cast="${a.id}" ${dis?'disabled':''}>${ultiUsed?'Usada esta semana':'Lanzar · '+costTxt}</button>`;
-    }
     return `<div class="abil ${on?'on':'off'}">
       ${iconTag(a,'act')}
       <div style="flex:1">
         <span class="lv" style="float:right">Nv ${a.lvl}</span>
         <div class="an">${a.name}${a.ulti?' <span style="color:var(--kodak);font-size:10px">ULTI</span>':''}</div>
         <div class="ad">${a.d}</div>
-        ${btn}
+        <div class="ad-cost">Coste: ${a.cost} 💧</div>
       </div>
     </div>`;
   }).join('');
@@ -2129,7 +2120,7 @@ document.getElementById('addCig').addEventListener('click',()=>{
   }
   if(r.shielded) showToast('🛡 Escudo absorbió el golpe','heal');
   else if(r.dmg>0) showToast('⚔ −'+r.dmg+' de vida','dmg');
-  else if(r.perfect) showToast('Disparo perfecto · +'+px+' XP · +10 ⚗','heal');
+  else if(r.perfect) showToast('Disparo perfecto · +'+px+' XP · +10 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -2166,7 +2157,7 @@ document.getElementById('addPill').addEventListener('click',()=>{
     state.game.hp=capHp(state.game.hp+heal);
     state.game.mp=capMp((state.game.mp||0)+15);
     scheduleSave();
-    showToast('Pastillas completas · +'+heal+' ♥ · +15 ⚗','heal');
+    showToast('Pastillas completas · +'+heal+' ♥ · +15 💧','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -2318,14 +2309,6 @@ document.getElementById('menuInstr').addEventListener('click',()=>{
 document.getElementById('menuBg').addEventListener('click',e=>{
   if(e.target.id==='menuBg')e.target.classList.remove('show');
 });
-document.getElementById('skillsBody').addEventListener('click',e=>{
-  const cast=e.target.closest('[data-cast]');
-  if(cast&&!cast.disabled){
-    castSpell(cast.dataset.cast);
-    renderSkillsSheet();
-  }
-});
-
 document.querySelectorAll('.sheet-close').forEach(b=>{
   b.addEventListener('click',()=>{
     document.getElementById(b.dataset.sheet).classList.remove('show');
