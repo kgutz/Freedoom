@@ -803,7 +803,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v32.2</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v33 · modal semanal jefe</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -852,6 +852,11 @@
     <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetSkills">✕</button></div>
     <div class="card" id="skillsBody"></div>
   </div>
+</div>
+
+<!-- MODAL RESULTADO DE LA SEMANA (jefe) -->
+<div class="modal-bg center" id="weekResultBg" style="z-index:33">
+  <div class="modal" id="weekResultModal" style="text-align:center"></div>
 </div>
 
 <!-- MODAL COPIA DE SEGURIDAD -->
@@ -1711,6 +1716,82 @@ function capHp(v){ return Math.max(0,Math.min(heroMaxes().maxHp, v)); }
 function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
 
 /* --- sistema de vida y maná por eventos --- */
+/* --- modal de resultado semanal (jefe vencido o repetido) --- */
+function renderWeekResultModal(){
+  const g=state.game;
+  const wr=g.weekResult; if(!wr) return;
+  const gs=gameStats();
+  const body=document.getElementById('weekResultModal');
+  const bossImg=(num,slug)=>`<div class="boss-box" style="margin:14px auto"><img src="bosses/boss_${String(num).padStart(2,'0')}_${slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="boss-fallback" style="display:none">💀</span></div>`;
+
+  if(wr.won){
+    const beatenIdx=Math.max(0,gs.bossesDown-1);
+    const beatenName=BOSSES[beatenIdx], beatenSlug=BOSS_SLUGS[beatenIdx];
+    const nextIdx=Math.min(gs.bossesDown,BOSSES.length-1);
+    const nextName=BOSSES[nextIdx], nextSlug=BOSS_SLUGS[nextIdx];
+    body.innerHTML=`
+      <div style="font-size:12px;color:var(--ok);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">¡Semana superada!</div>
+      <h3 style="margin-bottom:2px">Has vencido a ${beatenName}</h3>
+      ${bossImg(beatenIdx+1,beatenSlug)}
+      <p class="hint" style="margin:0 0 18px">De puta madre — cumpliste al menos 4 de tus 7 días. Esta semana entra un rival nuevo.</p>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Te espera:</div>
+      <h3 style="margin-bottom:2px">${nextName}</h3>
+      ${bossImg(nextIdx+1,nextSlug)}
+      <button class="ob-next" id="weekResultClose" style="margin-top:6px">Seguir adelante</button>
+    `;
+    document.getElementById('weekResultClose').addEventListener('click',()=>{
+      document.getElementById('weekResultBg').classList.remove('show');
+    });
+  }else{
+    const idx=Math.min(gs.bossesDown,BOSSES.length-1);
+    const name=BOSSES[idx], slug=BOSS_SLUGS[idx];
+    const lastLim=limitOfWeek(wr.weekIdx);
+    const newWeekIdx=wr.weekIdx+1;
+    body.innerHTML=`
+      <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
+      <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
+      ${bossImg(idx+1,slug)}
+      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo hasta que sumes 4 de 7 días cumplidos.</p>
+      <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
+      <div class="ob-field" style="text-align:left;margin-bottom:14px">
+        <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>
+        <div class="ob-toggle">
+          <button class="ob-tg" data-wradjust="yes" id="wrYes">Sí, ajustar</button>
+          <button class="ob-tg active" data-wradjust="no" id="wrNo">No, seguir automático</button>
+        </div>
+      </div>
+      <div class="ob-field" id="wrLimitField" style="display:none;text-align:left">
+        <label style="display:block;margin-bottom:8px">Cigarros al día esta semana</label>
+        <input type="number" id="wrLimitInput" min="0" max="99" value="${lastLim}">
+      </div>
+      <button class="ob-next" id="weekResultClose" style="margin-top:6px">Continuar</button>
+    `;
+    document.getElementById('wrYes').addEventListener('click',()=>{
+      document.getElementById('wrYes').classList.add('active');
+      document.getElementById('wrNo').classList.remove('active');
+      document.getElementById('wrLimitField').style.display='block';
+    });
+    document.getElementById('wrNo').addEventListener('click',()=>{
+      document.getElementById('wrNo').classList.add('active');
+      document.getElementById('wrYes').classList.remove('active');
+      document.getElementById('wrLimitField').style.display='none';
+    });
+    document.getElementById('weekResultClose').addEventListener('click',()=>{
+      const wantsAdjust=document.getElementById('wrYes').classList.contains('active');
+      if(wantsAdjust){
+        const v=parseInt(document.getElementById('wrLimitInput').value,10);
+        if(!isNaN(v)&&v>=0){
+          state.config.startLimit=v+newWeekIdx;
+          scheduleSave();
+        }
+      }
+      document.getElementById('weekResultBg').classList.remove('show');
+      renderAll();
+    });
+  }
+}
+
+/* --- sistema de vida y maná por eventos --- */
 function ensureHero(){
   if(!state.game) state.game={cls:null};
   const g=state.game;
@@ -1758,8 +1839,10 @@ function ensureHero(){
       const mx=heroMaxes();
       g.hp=capHp(g.hp-Math.round(mx.maxHp*0.30));
       g.mp=Math.round(mx.maxMp*0.20);
-      dirty=true;
     }
+    g.weekResult={won:wHits>=4,weekIdx:wIdx};
+    g.weekModalPending=true;
+    dirty=true;
     g.lastWeekChecked++;
   }
   /* regeneración: +1 cada 10 min (Druid: 7; Regeneración activa: la mitad) */
@@ -2588,6 +2671,13 @@ document.getElementById('btnReset').addEventListener('click',()=>{
     document.getElementById('app').style.display='block';
     document.getElementById('mainNav').classList.add('show');
     renderAll();
+    ensureHero();
+    if(state.game&&state.game.weekModalPending){
+      renderWeekResultModal();
+      document.getElementById('weekResultBg').classList.add('show');
+      state.game.weekModalPending=false;
+      scheduleSave();
+    }
   }
 })();
 </script>
