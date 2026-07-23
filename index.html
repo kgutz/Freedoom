@@ -748,7 +748,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v26 · stats por clase</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v27 · fix primer cigarro</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -1122,7 +1122,7 @@ function renderPace(now,smoked,limit){
   }else if(smoked>=limit){
     cls='r'; txt=smoked>limit?'Límite superado':'Límite alcanzado';
   }else{
-    const ratio=expected>0.3? smoked/expected : (smoked>0? 2 : 0);
+    const ratio=expected>0.3? smoked/expected : (smoked<=1? 0 : 2);
     if(ratio<=1.0){cls='g'; txt='Vas bien';}
     else if(ratio<=1.25){cls='y'; txt='Un poco por encima';}
     else if(ratio<=1.55){cls='o'; txt='Vas rápido';}
@@ -1713,7 +1713,7 @@ function smokeDamage(){
         if(nowM>=nextM) perfect=true;
       }
     }
-    const ratio=expected>0.3? cAfter/expected : 2;
+    const ratio=expected>0.3? cAfter/expected : (cAfter<=1? 0 : 2);
     if(perfect||ratio<=1) dmg=0;          /* en ritmo o por detrás */
     else if(ratio<=1.5) dmg=8;            /* un poco por delante */
     else dmg=15;                          /* muy por delante */
