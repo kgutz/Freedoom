@@ -803,7 +803,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29.5</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom v29.6</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -1950,7 +1950,7 @@ function renderHero(){
   let bState,bCls;
   if(bs.lost){bState='te ha vencido';bCls='lose';}
   else if(bs.pips.every(p=>p==='hit')){bState='¡derrotado!';bCls='win';}
-  else{bState='en combate';bCls='curr';}
+  else{bState='';bCls='curr';}
 
   /* iconos compactos: pasivas y activas en cuadraditos, con respaldo a inicial si falta el pixel art */
   const skillIcon=(a,type)=>{
