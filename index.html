@@ -1878,7 +1878,13 @@ function smokeDamage(){
   let dmg, perfect=false;
   const lvl=gameStats().lvl;
   const cls=g.cls;
-  if(lim<=0||cAfter>lim){
+  /* El primer cigarro marca el inicio real del ritmo del día:
+     desde la hora de levantarse no causa daño. */
+  if(rec.c===0 && nowM>=wake){
+    dmg=0;
+  }else if(rec.c===0 && nowM<wake){
+    dmg=15; /* antes de la hora configurada todavía va por delante del ritmo */
+  }else if(lim<=0||cAfter>lim){
     dmg=(cls==='knight'&&lvl>=5)?18:25; /* Yelmo Templado */
   }else{
     /* disparo perfecto: esperaste hasta la hora aproximada del siguiente */
