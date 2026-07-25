@@ -320,6 +320,13 @@
     overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
   .ob-step{display:none;width:100%;max-width:400px;margin:auto;animation:obfade .6s ease;overflow-x:hidden}
   .ob-step.active{display:block}
+  .ob-back{
+    width:40px;height:40px;margin-bottom:10px;border-radius:50%;
+    border:1px solid var(--line);background:var(--panel2);color:var(--text);
+    font-family:'Sora',sans-serif;font-size:22px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ob-back:active{border-color:var(--kodak);color:var(--kodak)}
   @keyframes obfade{from{opacity:0}to{opacity:1}}
   #ob1{text-align:center}
   .ob-logo{width:min(300px,82%);height:auto;image-rendering:pixelated;
@@ -585,6 +592,7 @@
     <button class="ob-start" id="obStart">Toca para empezar</button>
   </div>
   <div class="ob-step" id="ob2">
+    <button type="button" class="ob-back" data-ob-back="1" aria-label="Volver a la bienvenida">←</button>
     <h2 class="ob-h">Tu plan</h2>
     <div class="ob-field">
       <label>¿Qué día empiezas?</label>
@@ -620,11 +628,13 @@
     <button class="ob-next" id="obToHero">Continuar</button>
   </div>
   <div class="ob-step" id="ob3">
+    <button type="button" class="ob-back" data-ob-back="2" aria-label="Volver a los datos del plan">←</button>
     <h2 class="ob-h">Elige tu héroe</h2>
     <p class="ob-sub">Tu personaje vive de tus datos: gana XP cada día que cumples y su salud refleja cómo llevas el día. El camino son varias semanas — elige con cabeza.</p>
     <div class="cls-grid" id="obClsGrid"></div>
   </div>
   <div class="ob-step" id="ob4">
+    <button type="button" class="ob-back" data-ob-back="3" aria-label="Volver a la selección de héroe">←</button>
     <h2 class="ob-h">Ponle nombre</h2>
     <div class="ob-hero-preview" id="obHeroPreview"></div>
     <p class="ob-sub">Dale un nombre a tu héroe. Es quien te acompañará todo el camino.</p>
@@ -2622,7 +2632,12 @@ function finishOnboarding(clsId){
   switchView('view-hoy','navHoy');
   renderAll();
 }
-document.getElementById('obStart').addEventListener('click',()=>showStep(2));
+document.getElementById('onboard').addEventListener('click',()=>{
+  if(document.getElementById('ob1').classList.contains('active')) showStep(2);
+});
+document.querySelectorAll('[data-ob-back]').forEach(b=>{
+  b.addEventListener('click',()=>showStep(Number(b.dataset.obBack)));
+});
 let obBeerYes=true;
 document.querySelectorAll('.ob-tg').forEach(b=>{
   b.addEventListener('click',()=>{
