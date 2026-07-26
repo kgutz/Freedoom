@@ -1,5 +1,14 @@
 import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
 import { classMaxes, levelFromXp } from './domain/progression.js';
+import {
+  STORAGE_KEY,
+  createBrowserStore,
+  exportBackup,
+  importBackup,
+  mergeState,
+  parseState,
+  serializeState
+} from './storage/state-storage.js';
 
 import {
   DAY_NAMES as DIAS,
@@ -14,7 +23,6 @@ import {
 } from './domain/date-utils.js';
 
 const APP_VERSION='35';
-const KEY='registro-dejar-fumar';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -68,30 +76,13 @@ function setDay(k,c,p,t,b,s){
 
 /* ---------- almacenamiento ---------- */
 /* Adaptador: dentro de Claude usa window.storage; en GitHub Pages / PWA usa localStorage del navegador */
-const store={
-  async get(k){
-    if(window.storage && window.storage.get) return window.storage.get(k);
-    const v=localStorage.getItem(k);
-    return v!==null ? {key:k,value:v} : null;
-  },
-  async set(k,v){
-    if(window.storage && window.storage.set) return window.storage.set(k,v);
-    localStorage.setItem(k,v);
-    return {key:k,value:v};
-  }
-};
+const store=createBrowserStore(window);
 
 async function load(){
   try{
-    const r=await store.get(KEY);
+    const r=await store.get(STORAGE_KEY);
     if(r&&r.value){
-      const data=JSON.parse(r.value);
-      if(data.config) state.config=Object.assign(state.config,data.config);
-      if(data.days) state.days=data.days;
-      if(data.seeded) state.seeded=true;
-      if(data.seededV) state.seededV=data.seededV;
-      if(data.game) state.game=data.game;
-      if(data.onboarded) state.onboarded=true;
+      state=mergeState(state,parseState(r.value));
     }
   }catch(e){ /* primera vez: la clave no existe todavía */ }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -108,20 +99,20 @@ async function load(){
 }
 function scheduleSave(){
   /* en el móvil (localStorage) guarda al instante: si cierras la app justo después de un +, no se pierde */
-  if(!(window.storage && window.storage.set)){
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.error('Error guardando',e); }
+  if(!store.usesExternalStorage){
+    try{ store.set(STORAGE_KEY,serializeState(state)); }catch(e){ console.error('Error guardando',e); }
     return;
   }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    try{ await store.set(KEY, JSON.stringify(state)); }
+    try{ await store.set(STORAGE_KEY,serializeState(state)); }
     catch(e){ console.error('Error guardando',e); }
   },400);
 }
 /* al ocultar/cerrar la app, volcado final por si había un guardado pendiente */
 window.addEventListener('pagehide',()=>{
-  if(!(window.storage && window.storage.set)){
-    try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){}
+  if(!store.usesExternalStorage){
+    try{ store.set(STORAGE_KEY,serializeState(state)); }catch(e){}
   }
 });
 
@@ -1383,7 +1374,7 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
 /* copia de seguridad: exportar / importar */
 let backupMode='export';
 document.getElementById('btnExport').addEventListener('click',async()=>{
-  const data=JSON.stringify(state);
+  const data=exportBackup(state);
   try{
     await navigator.clipboard.writeText(data);
     showToast('Datos copiados al portapapeles ✓','heal');
@@ -1408,13 +1399,7 @@ document.getElementById('btnImport').addEventListener('click',()=>{
 document.getElementById('backupAction').addEventListener('click',()=>{
   if(backupMode==='import'){
     try{
-      const data=JSON.parse(document.getElementById('backupText').value);
-      if(!data||typeof data!=='object'||(!data.days&&!data.config)) throw new Error('formato');
-      if(data.config) state.config=Object.assign(state.config,data.config);
-      if(data.days) state.days=data.days;
-      if(data.game) state.game=data.game;
-      if(data.seededV) state.seededV=data.seededV;
-      state.seeded=true;
+      state=importBackup(state,document.getElementById('backupText').value);
       scheduleSave();
       renderAll();
       showToast('Datos importados ✓','heal');
