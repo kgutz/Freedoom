@@ -1,9 +1,20 @@
+import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
+import { classMaxes, levelFromXp } from './domain/progression.js';
+
+import {
+  DAY_NAMES as DIAS,
+  MONTH_NAMES as MESES,
+  WEEKDAY_INITIALS as DOW,
+  daysBetween,
+  keyOf,
+  minutesOf,
+  mondayOf,
+  parseKey,
+  todayKey
+} from './domain/date-utils.js';
+
 const APP_VERSION='35';
 const KEY='registro-dejar-fumar';
-
-const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-const DOW=['L','M','X','J','V','S','D'];
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -25,22 +36,6 @@ document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
 
 /* ---------- utilidades de fecha ---------- */
-function keyOf(d){
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${dd}`;
-}
-function parseKey(k){const [y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);}
-function todayKey(){return keyOf(new Date());}
-function daysBetween(a,b){
-  const ms=new Date(b.getFullYear(),b.getMonth(),b.getDate()) - new Date(a.getFullYear(),a.getMonth(),a.getDate());
-  return Math.floor(ms/86400000);
-}
-function mondayOf(d){
-  const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-  const off=(x.getDay()+6)%7; /* lunes=0 */
-  x.setDate(x.getDate()-off);
-  return x;
-}
 function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (cualquier día de la semana) */
   return Math.floor(daysBetween(parseKey(state.config.startDate), d)/7);
 }
@@ -206,8 +201,6 @@ function renderHoy(){
     rest.innerHTML=`Hoy te has pasado <b>${-left}</b> del máximo de ${limit} — mañana empiezas de cero`;
   }
 }
-
-function minutesOf(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
 
 function renderPace(now,smoked,limit){
   const clip=document.getElementById('paceClip');
@@ -480,160 +473,7 @@ function renderSettings(){
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
 
-const PAL_COMMON={S:'#E5B98E',O:'#141010',W:'#EDE3D2',P:'#7FA0B8'};
 
-const CLASSES={
-  knight:{
-    name:'Knight',es:'Caballero',
-    tiers:['Escudero','Caballero','Caballero de Élite','Caballero Legendario'],
-    desc:'Fuerza y voluntad. Resiste el antojo con el escudo en alto.',
-    pal:{A:'#98A5B3',B:'#5E6873',C:'#C4553E'},
-    px:[
-      "................",
-      ".......CC.......",
-      ".......CC.......",
-      "....AAAAAAAA....",
-      "...ABBBBBBBBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "....A.SSSS.A....",
-      "...AAAAAAAAAA...",
-      "..SAABAABAABAS..",
-      "..SAABAABAABAS..",
-      "...AAAAAAAAAA...",
-      "....BB....BB....",
-      "....BB....BB....",
-      "...OO......OO..."
-    ],
-    pas:[
-      {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
-      {lvl:5,icon:'yelmo',name:'Yelmo Templado',d:'Pasarte del límite hace −18 en vez de −25.'},
-      {lvl:12,icon:'voluntad',name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
-    ],
-    act:[
-      {lvl:2,id:'muro',icon:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 cigarros no hacen daño.'},
-      {lvl:8,id:'grito',icon:'grito',name:'Grito de Guerra',cost:50,d:'+20 de vida al instante.'},
-      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:90,ulti:true,d:'Tu racha sobrevive al próximo día fallido. 1 uso por semana.'}
-    ]
-  },
-  paladin:{
-    name:'Paladin',es:'Arquero Sagrado',
-    tiers:['Explorador','Paladín','Paladín Real','Paladín Divino'],
-    desc:'Precisión sagrada. Cada flecha (cigarro) solo cuando de verdad toca.',
-    pal:{A:'#7FA366',B:'#55703F',C:'#E8B44A',Y:'#8A6B47'},
-    px:[
-      "................",
-      ".....AAAAAA.....",
-      "....AAAAAAAA....",
-      "...AABBBBBBAA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "....A.SSSS.A....",
-      "...ACCCCCCCCA...",
-      "..SAAAAAAAAS.Y..",
-      "..SAAGAAGAAS.Y..",
-      "...AAAAAAAA..Y..",
-      "....BB..BB......",
-      "....BB..BB......",
-      "...OO....OO....."
-    ],
-    pas:[
-      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Los disparos perfectos dan +4 XP (en vez de +2).'},
-      {lvl:5,icon:'flecha',name:'Flecha Bendita',d:'Cada disparo perfecto además cura +3 de vida.'},
-      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'El bonus por margen sube a +6 XP por cigarro (en vez de +4).'}
-    ],
-    act:[
-      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +8 XP.'},
-      {lvl:8,id:'luz',icon:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy cierras cumpliendo, la XP del día ×2. 1 uso por semana.'}
-    ]
-  },
-  sorcerer:{
-    name:'Sorcerer',es:'Mago de la Muerte',
-    tiers:['Aprendiz Oscuro','Hechicero','Nigromante','Archimago de la Muerte'],
-    desc:'Drena la fuerza del vicio y la convierte en poder tuyo.',
-    pal:{A:'#7E5FA8',B:'#4E3A6E',C:'#C4553E'},
-    px:[
-      ".......AA.......",
-      "......AAAA......",
-      ".....AAAAAA.....",
-      "...AAAAAAAAAA...",
-      "....BSSSSSSB....",
-      "....BSSSSSSB....",
-      "....BSSSSSSB....",
-      "....BSSSSSSB....",
-      ".....SSSS.......",
-      "....AAAAAAAA....",
-      "...SABBAABBAS...",
-      "...SAAAAAAAAS...",
-      "....AAAAAAAA....",
-      "....AAAAAAAA....",
-      "....AAAAAAAA....",
-      "...OOOOOOOOOO..."
-    ],
-    pas:[
-      {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Cada cigarro adelantado te quita −2 menos (drenas su fuerza).'},
-      {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
-      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
-    ],
-    act:[
-      {lvl:2,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
-      {lvl:8,id:'peste',icon:'peste',name:'Peste al Antojo',cost:35,d:'Los cigarros de hoy hacen la mitad de daño.'},
-      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
-    ]
-  },
-  druid:{
-    name:'Druid',es:'Curandero',
-    tiers:['Iniciado','Druida','Druida Ancestral','Avatar del Bosque'],
-    desc:'Sana el cuerpo día a día y hace crecer algo nuevo donde había ceniza.',
-    pal:{A:'#A8C46B',B:'#7A5C3E',C:'#C4553E'},
-    px:[
-      "................",
-      "....C.AAAA.C....",
-      "....AAAAAAAA....",
-      "...AABBBBBBAA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "...ABSSSSSSBA...",
-      "....A.SSSS.A....",
-      "...BBBBBBBBBB...",
-      "..SBBBBBBBBBBS..",
-      "..SBBCBBBBCBBS..",
-      "...BBBBBBBBBB...",
-      "....BBBBBBBB....",
-      "....BBBBBBBB....",
-      "...OOOOOOOOOO..."
-    ],
-    pas:[
-      {lvl:1,icon:'savia',name:'Savia Viva',d:'Regeneras +1 de vida cada 7 minutos (en vez de 10).'},
-      {lvl:5,icon:'pocion',name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
-      {lvl:12,icon:'raices',name:'Raíces Profundas',d:'El primer cigarro adelantado de cada día no hace daño.'}
-    ],
-    act:[
-      {lvl:2,id:'regen',icon:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
-      {lvl:8,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
-    ]
-  }
-};
-
-const BOSSES=[
-  'El Gólem de Humo','Espectro Gris','Araña de Alquitrán','Caballero Ceniza',
-  'Bruja del Antojo','Gusano de Nicotina','Sabueso del Mono','Gárgola Amarilla',
-  'Wyvern de Brea','Nigromante del Mechero','Hidra de Tres Caladas','Titán de Cartón',
-  'Sombra de la Sobremesa','Djinn del Mediodía','Minotauro Nocturno','Liche del Café',
-  'Dragón Menguante','El Último Trío','Gemelos del Ocaso','El Solitario',
-  'El Vacío — jefe final'
-];
-const BOSS_SLUGS=[
-  'golem','espectro','arana','caballero','bruja','gusano','sabueso','gargola',
-  'wyvern','nigromante','hidra','titan','sombra','djinn','minotauro','liche',
-  'dragon','trio','gemelos','solitario','vacio'
-];
 
 /* --- sprite 8-bit --- */
 function spriteSVG(clsId,mood,extraClass){
@@ -646,8 +486,6 @@ function spriteSVG(clsId,mood,extraClass){
 }
 
 /* --- progreso del juego (determinista desde los datos) --- */
-function lvlOfXp(xp){return 1+Math.floor(Math.sqrt(xp/35));}
-
 function computeXp(lvlHint){
   const now=new Date();
   const start=parseKey(state.config.startDate);
@@ -698,28 +536,15 @@ function computeXp(lvlHint){
 function gameStats(){
   /* dos pasadas: las pasivas de XP dependen del nivel, que depende de la XP */
   const p1=computeXp(1);
-  const lvl1=lvlOfXp(p1.xp);
+  const lvl1=levelFromXp(p1.xp);
   const p2=computeXp(lvl1);
   const xp=p2.xp;
-  const lvl=lvlOfXp(xp);
+  const lvl=levelFromXp(xp);
   const curTh=35*(lvl-1)*(lvl-1), nextTh=35*lvl*lvl;
   const prog=Math.min(1,(xp-curTh)/Math.max(1,nextTh-curTh));
   const tier=lvl>=15?3:lvl>=10?2:lvl>=5?1:0;
   const {maxHp,maxMp}=classMaxes(state.game&&state.game.cls, lvl);
   return {xp,lvl,prog,nextTh,streak:p2.streak,bossesDown:p2.bossesDown,currW:p2.currW,tier,maxHp,maxMp};
-}
-
-/* máximos de vida y maná según clase y nivel (Opción A) */
-const CLASS_GROWTH={
-  knight:  {hp:8, mp:2},   /* tanque físico */
-  paladin: {hp:5, mp:5},   /* híbrido equilibrado */
-  sorcerer:{hp:2, mp:8},   /* mago puro */
-  druid:   {hp:3, mp:7}    /* mago sanador */
-};
-function classMaxes(cls, lvl){
-  const g=CLASS_GROWTH[cls]||{hp:5,mp:5};
-  const lv=Math.max(1,lvl||1);
-  return { maxHp:100+g.hp*(lv-1), maxMp:100+g.mp*(lv-1) };
 }
 
 function heroToday(){
@@ -763,7 +588,7 @@ function bossState(){
 }
 
 /* topes dinámicos según clase y nivel */
-function heroMaxes(){ return classMaxes(state.game&&state.game.cls, lvlOfXp(computeXp(1).xp)); }
+function heroMaxes(){ return classMaxes(state.game&&state.game.cls, levelFromXp(computeXp(1).xp)); }
 function capHp(v){ return Math.max(0,Math.min(heroMaxes().maxHp, v)); }
 function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
 
