@@ -1,6 +1,11 @@
 import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
 import { classMaxes, levelFromXp } from './domain/progression.js';
 import {
+  evaluateSmoke,
+  perfectShotRewards,
+  smokeUndoEffects
+} from './domain/smoking-rules.js';
+import {
   STORAGE_KEY,
   createBrowserStore,
   exportBackup,
@@ -737,62 +742,36 @@ function smokeDamage(){
   const now=new Date();
   const lim=limitOfDate(now);
   const rec=getDay(todayKey());
-  const cAfter=rec.c+1;
   const wake=minutesOf(state.config.wakeTime||'09:00');
   const sleep=minutesOf(state.config.sleepTime||'23:00');
-  const nowM=now.getHours()*60+now.getMinutes();
-  const frac=Math.min(1,Math.max(0,(nowM-wake)/Math.max(60,sleep-wake)));
-  const expected=lim*frac;
-  let dmg, perfect=false;
   const lvl=gameStats().lvl;
   const cls=g.cls;
-  /* El primer cigarro marca el inicio real del ritmo del día:
-     desde la hora de levantarse no causa daño. */
-  if(rec.c===0 && nowM>=wake){
-    dmg=0;
-  }else if(rec.c===0 && nowM<wake){
-    dmg=15; /* antes de la hora configurada todavía va por delante del ritmo */
-  }else if(lim<=0||cAfter>lim){
-    dmg=(cls==='knight'&&lvl>=5)?18:25; /* Yelmo Templado */
-  }else{
-    /* disparo perfecto: esperaste hasta la hora aproximada del siguiente */
-    if(rec.t){
-      const lt=new Date(rec.t);
-      const lastM=lt.getHours()*60+lt.getMinutes();
-      const left=lim-rec.c, win=sleep-lastM;
-      if(win>0&&left>0){
-        const nextM=lastM+Math.max(10,Math.round(win/left));
-        if(nowM>=nextM) perfect=true;
-      }
-    }
-    const ratio=expected>0.3? cAfter/expected : (cAfter<=1? 0 : 2);
-    if(perfect||ratio<=1) dmg=0;          /* en ritmo o por detrás */
-    else if(ratio<=1.5) dmg=8;            /* un poco por delante */
-    else dmg=15;                          /* muy por delante */
-  }
-  /* Raíces Profundas (druid nv12): el primer cigarro adelantado del día no hace daño */
-  if(dmg>0 && cls==='druid' && lvl>=12){
-    if(g.rootsDay!==todayKey()){
-      g.rootsDay=todayKey();   /* marca que ya se gastó el perdón hoy */
-      dmg=0;
-    }
-  }
-  /* Absorber Esencia (sorcerer nv1): cada cigarro adelantado quita −2 menos */
-  if(dmg>0 && cls==='sorcerer') dmg=Math.max(1,dmg-2);
-  /* Peste al Antojo (sorcerer nv8): los cigarros de hoy hacen la mitad de daño */
-  if(dmg>0 && g.buffs && g.buffs.pesteDay===todayKey()) dmg=Math.max(1,Math.round(dmg/2));
-  if(dmg>0) dmg=Math.max(1,dmg-heroArmor()); /* la racha es armadura */
-  let shielded=false;
-  if(dmg>0&&g.buffs&&g.buffs.shield>0){    /* Muro de Escudos */
-    g.buffs.shield--; dmg=0; shielded=true;
-  }
-  if(dmg>0) g.hp=Math.max(0,g.hp-dmg);
-  if(perfect&&cls==='paladin'&&lvl>=5){    /* Flecha Bendita */
-    g.hp=capHp(g.hp+3);
+  const result=evaluateSmoke({
+    now,
+    today:todayKey(),
+    record:rec,
+    limit:lim,
+    wakeMinutes:wake,
+    sleepMinutes:sleep,
+    classId:cls,
+    level:lvl,
+    rootsDay:g.rootsDay,
+    pestActive:Boolean(g.buffs&&g.buffs.pesteDay===todayKey()),
+    armor:heroArmor(),
+    shieldCharges:(g.buffs&&g.buffs.shield)||0
+  });
+  if(result.consumesRoots) g.rootsDay=todayKey();
+  if(result.consumesShield) g.buffs.shield--;
+  if(result.dmg>0) g.hp=Math.max(0,g.hp-result.dmg);
+  let healed=0;
+  if(result.healing>0){
+    const hpBefore=g.hp;
+    g.hp=capHp(g.hp+result.healing);
+    healed=g.hp-hpBefore;
   }
   g.hpT=Date.now(); /* fumar reinicia el reloj de regeneración */
   scheduleSave();
-  return {dmg,perfect,shielded};
+  return {...result,healed};
 }
 
 /* --- lanzar hechizos --- */
@@ -1085,24 +1064,30 @@ function bump(id,delta,min=0){
 document.getElementById('addCig').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   const r=smokeDamage();
-  let px=0;
-  if(r.perfect){
-    const st=gameStats();
-    px=(state.game.cls==='paladin')?4:2;                       /* Ojo del Halcón */
-    if(state.game.buffs&&state.game.buffs.certeroUntil>Date.now()) px=8; /* Ojo Certero */
-    let mgain=10;
-    if(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now()) mgain=20; /* Maldición de Ceniza */
-    state.game.mp=capMp((state.game.mp||0)+mgain);
-  }
-  (state.game.cigDmg=state.game.cigDmg||[]).push({d:r.dmg,p:r.perfect,x:px});
+  const rewards=perfectShotRewards({
+    perfect:r.perfect,
+    classId:state.game.cls,
+    marksmanActive:Boolean(state.game.buffs&&state.game.buffs.certeroUntil>Date.now()),
+    ashCurseActive:Boolean(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now())
+  });
+  if(rewards.mana>0) state.game.mp=capMp((state.game.mp||0)+rewards.mana);
+  (state.game.cigDmg=state.game.cigDmg||[]).push({
+    d:r.dmg,
+    p:r.perfect,
+    x:rewards.xp,
+    m:rewards.mana,
+    h:r.healed,
+    r:r.consumesRoots,
+    sh:r.consumesShield
+  });
   setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0));
-  if(px>0&&state.days[k]){
-    state.days[k].sx=(state.days[k].sx||0)+px;
+  if(rewards.xp>0&&state.days[k]){
+    state.days[k].sx=(state.days[k].sx||0)+rewards.xp;
     scheduleSave(); renderHero();
   }
   if(r.shielded) showToast('🛡 Escudo absorbió el golpe','heal');
   else if(r.dmg>0) showToast('⚔ −'+r.dmg+' de vida','dmg');
-  else if(r.perfect) showToast('Disparo perfecto · +'+px+' XP · +10 💧','heal');
+  else if(r.perfect) showToast('Disparo perfecto · +'+rewards.xp+' XP · +'+rewards.mana+' 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -1112,15 +1097,22 @@ document.getElementById('subCig').addEventListener('click',()=>{
   const arr=state.game.cigDmg;
   let wasPerfect=false, exX=0;
   if(arr&&arr.length){
-    const e=arr.pop();
-    const dmg=(typeof e==='number')?e:e.d;
-    wasPerfect=(typeof e==='object')&&e.p;
-    exX=(typeof e==='object')?(e.x||0):0;
-    if(dmg>0&&state.game.hp!==undefined){
-      state.game.hp=capHp(state.game.hp+dmg);
-      showToast('Corregido · +'+dmg+' de vida ♥','heal');
+    const undo=smokeUndoEffects(arr.pop());
+    wasPerfect=undo.perfect;
+    exX=undo.xp;
+    if(undo.damage>0&&state.game.hp!==undefined){
+      state.game.hp=capHp(state.game.hp+undo.damage);
+      showToast('Corregido · +'+undo.damage+' de vida ♥','heal');
     }
-    if(wasPerfect) state.game.mp=Math.max(0,(state.game.mp||0)-10);
+    if(undo.healing>0&&state.game.hp!==undefined){
+      state.game.hp=Math.max(0,state.game.hp-undo.healing);
+    }
+    if(undo.mana>0) state.game.mp=Math.max(0,(state.game.mp||0)-undo.mana);
+    if(undo.restoreRoots&&state.game.rootsDay===k) state.game.rootsDay=null;
+    if(undo.restoreShield){
+      state.game.buffs=state.game.buffs||{};
+      state.game.buffs.shield=(state.game.buffs.shield||0)+1;
+    }
     scheduleSave();
   }
   setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0));
