@@ -1,10 +1,18 @@
 import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
 import { classMaxes, levelFromXp } from './domain/progression.js';
 import {
+  BEER_DAMAGE,
+  dailyRecovery,
+  pillCompletionReward,
+  regenerateHealth,
+  weeklyBossPenalty
+} from './domain/hero-rules.js';
+import {
   evaluateSmoke,
   perfectShotRewards,
   smokeUndoEffects
 } from './domain/smoking-rules.js';
+import { castSpellEffect } from './domain/spell-rules.js';
 import {
   STORAGE_KEY,
   createBrowserStore,
@@ -673,18 +681,27 @@ function ensureHero(){
   if(g.mp===undefined) g.mp=heroMaxes().maxMp;
   g.buffs=g.buffs||{};
   let dirty=false;
+  /* compatibilidad con partidas antiguas que aún no guardaban estas marcas */
+  if(!g.day){g.day=todayKey();dirty=true;}
+  if(!Number.isFinite(g.hpT)){g.hpT=now;dirty=true;}
   /* descanso nocturno */
   if(g.day!==todayKey()){
     const lim=limitOfDate(parseKey(g.day));
     const c=getDay(g.day).c;
     const lvl=gameStats().lvl;
     const mx=heroMaxes();
-    if(c<=lim){
-      g.hp=mx.maxHp; g.mp=mx.maxMp;              /* día cumplido: vida y maná al máximo */
-    }else{
-      if(g.buffs.renacer) g.hp=mx.maxHp;         /* Renacer (Druid) */
-      else if(g.cls==='knight'&&lvl>=12) g.hp=Math.round(mx.maxHp*0.85); /* Voluntad de Acero */
-      else g.hp=Math.round(mx.maxHp*0.75);
+    const recovered=dailyRecovery({
+      completedDay:c<=lim,
+      currentMana:g.mp,
+      maxHp:mx.maxHp,
+      maxMp:mx.maxMp,
+      classId:g.cls,
+      level:lvl,
+      rebirthActive:Boolean(g.buffs.renacer)
+    });
+    g.hp=recovered.hp;
+    g.mp=recovered.mp;
+    if(c>lim){
       if(g.buffs.bastion){                      /* Último Bastión (Knight) */
         (g.pardons=g.pardons||[]).push(g.day);
         g.buffs.bastion=false;
@@ -710,22 +727,26 @@ function ensureHero(){
     }
     if(wHits<4){
       const mx=heroMaxes();
-      g.hp=capHp(g.hp-Math.round(mx.maxHp*0.30));
-      g.mp=Math.round(mx.maxMp*0.20);
+      const penalty=weeklyBossPenalty({hp:g.hp,maxHp:mx.maxHp,maxMp:mx.maxMp});
+      g.hp=penalty.hp;
+      g.mp=penalty.mp;
     }
     g.weekResult={won:wHits>=4,weekIdx:wIdx};
     g.weekModalPending=true;
     dirty=true;
     g.lastWeekChecked++;
   }
-  /* regeneración: +1 cada 10 min (Druid: 7; Regeneración activa: la mitad) */
-  let intMin=(g.cls==='druid')?7:10;
-  if(g.buffs.regenUntil&&g.buffs.regenUntil>now) intMin=intMin/2;
-  const intMs=intMin*60000;
-  const ticks=Math.floor((now-g.hpT)/intMs);
-  if(ticks>0){
-    g.hp=capHp(g.hp+ticks);
-    g.hpT+=ticks*intMs;
+  const regenerated=regenerateHealth({
+    hp:g.hp,
+    hpTimestamp:g.hpT,
+    nowTimestamp:now,
+    maxHp:heroMaxes().maxHp,
+    classId:g.cls,
+    regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now)
+  });
+  if(regenerated.ticks>0){
+    g.hp=regenerated.hp;
+    g.hpT=regenerated.hpTimestamp;
     dirty=true;
   }
   if(dirty) scheduleSave();
@@ -781,62 +802,38 @@ function castSpell(id){
   const st=gameStats();
   const C=CLASSES[g.cls]; if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
-  if(st.lvl<sp.lvl){showToast('Nivel '+sp.lvl+' necesario','dmg');return;}
   const w=Math.max(0,weekIndexOf(new Date()));
-  if(sp.ulti&&g.ultiW===w){showToast('Ya usada esta semana','dmg');return;}
-  g.buffs=g.buffs||{};
   const now=Date.now();
-
-  if(id==='alma'){ /* convierte todo el maná en vida */
-    if((g.mp||0)<sp.cost){showToast('Necesitas al menos '+sp.cost+' 💧','dmg');return;}
-    const spent=g.mp;
-    const heal=Math.floor(g.mp/2);
-    g.hp=capHp(g.hp+heal);
-    g.mp=0;
-    g.ultiW=w;
-    showToast('Robar Alma · −'+spent+' 💧 · +'+heal+' ♥','heal');
-  }else{
-    if((g.mp||0)<sp.cost){showToast('Maná insuficiente ('+sp.cost+' 💧)','dmg');return;}
-    g.mp-=sp.cost;
-    switch(id){
-      case 'ceniza':{
-        const hrs=(st.lvl>=12)?3:2;                    /* Filacteria */
-        g.buffs.cenizaUntil=now+hrs*3600000;
-        showToast('☠ Maldición de Ceniza · −'+sp.cost+' 💧','heal');break;
-      }
-      case 'muro':
-        g.buffs.shield=(g.buffs.shield||0)+2;
-        showToast('🛡 Muro de Escudos · −'+sp.cost+' 💧','heal');break;
-      case 'grito':
-        g.hp=capHp(g.hp+20);
-        showToast('Grito de Guerra · −'+sp.cost+' 💧 · +20 ♥','heal');break;
-      case 'bastion':
-        g.buffs.bastion=true; g.ultiW=w;
-        showToast('🏰 Último Bastión · −'+sp.cost+' 💧','heal');break;
-      case 'certero':
-        g.buffs.certeroUntil=now+3600000;
-        showToast('🎯 Ojo Certero · −'+sp.cost+' 💧','heal');break;
-      case 'luz':
-        g.hp=capHp(g.hp+15);
-        showToast('Luz Sanadora · −'+sp.cost+' 💧 · +15 ♥','heal');break;
-      case 'juicio':
-        g.judgmentDays=g.judgmentDays||[];
-        if(!g.judgmentDays.includes(todayKey())) g.judgmentDays.push(todayKey());
-        g.ultiW=w;
-        showToast('⚖️ Juicio Divino · −'+sp.cost+' 💧','heal');break;
-      case 'peste':
-        g.buffs.pesteDay=todayKey();
-        showToast('☠ Peste al Antojo · −'+sp.cost+' 💧','heal');break;
-      case 'regen':
-        g.buffs.regenUntil=now+2*3600000;
-        showToast('🌿 Regeneración · −'+sp.cost+' 💧','heal');break;
-      case 'balsamo':
-        g.hp=capHp(g.hp+15);
-        showToast('Bálsamo · −'+sp.cost+' 💧 · +15 ♥','heal');break;
-      case 'renacer':
-        g.buffs.renacer=true; g.ultiW=w;
-        showToast('🌅 Renacer · −'+sp.cost+' 💧','heal');break;
-    }
+  const result=castSpellEffect({
+    game:g,
+    spell:sp,
+    level:st.lvl,
+    currentWeek:w,
+    today:todayKey(),
+    nowTimestamp:now,
+    maxHp:st.maxHp
+  });
+  if(!result.ok){
+    if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
+    else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
+    else if(result.minimumMana) showToast('Necesitas al menos '+result.requiredMana+' 💧','dmg');
+    else if(result.reason==='mana') showToast('Maná insuficiente ('+result.requiredMana+' 💧)','dmg');
+    return;
+  }
+  state.game=result.game;
+  switch(id){
+    case 'alma': showToast('Robar Alma · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
+    case 'ceniza': showToast('☠ Maldición de Ceniza · −'+result.spentMana+' 💧','heal');break;
+    case 'muro': showToast('🛡 Muro de Escudos · −'+result.spentMana+' 💧','heal');break;
+    case 'grito': showToast('Grito de Guerra · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
+    case 'bastion': showToast('🏰 Último Bastión · −'+result.spentMana+' 💧','heal');break;
+    case 'certero': showToast('🎯 Ojo Certero · −'+result.spentMana+' 💧','heal');break;
+    case 'luz': showToast('Luz Sanadora · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
+    case 'juicio': showToast('⚖️ Juicio Divino · −'+result.spentMana+' 💧','heal');break;
+    case 'peste': showToast('☠ Peste al Antojo · −'+result.spentMana+' 💧','heal');break;
+    case 'regen': showToast('🌿 Regeneración · −'+result.spentMana+' 💧','heal');break;
+    case 'balsamo': showToast('Bálsamo · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
+    case 'renacer': showToast('🌅 Renacer · −'+result.spentMana+' 💧','heal');break;
   }
   scheduleSave();
   renderHero();
@@ -1127,11 +1124,11 @@ document.getElementById('addPill').addEventListener('click',()=>{
   const goal=state.config.pillsGoal||3;
   if(d.p+1===goal&&state.game.hp!==undefined){
     const st=gameStats();
-    const heal=(state.game.cls==='druid'&&st.lvl>=5)?20:15;    /* Poción Mayor */
-    state.game.hp=capHp(state.game.hp+heal);
-    state.game.mp=capMp((state.game.mp||0)+15);
+    const reward=pillCompletionReward({classId:state.game.cls,level:st.lvl});
+    state.game.hp=capHp(state.game.hp+reward.healing);
+    state.game.mp=capMp((state.game.mp||0)+reward.mana);
     scheduleSave();
-    showToast('Pastillas completas · +'+heal+' ♥ · +15 💧','heal');
+    showToast('Pastillas completas · +'+reward.healing+' ♥ · +'+reward.mana+' 💧','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -1142,11 +1139,11 @@ document.getElementById('subPill').addEventListener('click',()=>{
   const goal=state.config.pillsGoal||3;
   if(d.p===goal&&state.game.hp!==undefined){
     const st=gameStats();
-    const heal=(state.game.cls==='druid'&&st.lvl>=5)?20:15;
-    state.game.hp=Math.max(0,state.game.hp-heal);
-    state.game.mp=Math.max(0,(state.game.mp||0)-15);
+    const reward=pillCompletionReward({classId:state.game.cls,level:st.lvl});
+    state.game.hp=Math.max(0,state.game.hp-reward.healing);
+    state.game.mp=Math.max(0,(state.game.mp||0)-reward.mana);
     scheduleSave();
-    showToast('Poción retirada −'+heal,'dmg');
+    showToast('Poción retirada −'+reward.healing,'dmg');
   }
   setDay(k,d.c,d.p-1);
 });
@@ -1154,7 +1151,7 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
   const g=state.game;
-  const bd=5;                                                /* daño fijo; los poderes ya no dependen de la cerveza */
+  const bd=BEER_DAMAGE;                                      /* daño fijo; los poderes ya no dependen de la cerveza */
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
   (g.beerDmg=g.beerDmg||[]).push(bd);
   scheduleSave();
@@ -1167,7 +1164,7 @@ document.getElementById('subBeer').addEventListener('click',()=>{
   ensureHero();
   const g=state.game;
   const arr=g.beerDmg;
-  const bd=(arr&&arr.length)?arr.pop():5;
+  const bd=(arr&&arr.length)?arr.pop():BEER_DAMAGE;
   if(bd>0&&g.hp!==undefined){
     g.hp=capHp(g.hp+bd);
     showToast('Corregido · +'+bd+' de vida ♥','heal');

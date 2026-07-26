@@ -1,0 +1,97 @@
+import { describe, expect, it } from 'vitest';
+import { castSpellEffect } from './spell-rules.js';
+
+const spell = (id, overrides = {}) => ({
+  id,
+  lvl: 2,
+  cost: 30,
+  ...overrides,
+});
+
+const cast = (selectedSpell, overrides = {}) =>
+  castSpellEffect({
+    game: { cls: 'paladin', hp: 70, mp: 100, buffs: {} },
+    spell: selectedSpell,
+    level: 12,
+    currentWeek: 3,
+    today: '2026-07-26',
+    nowTimestamp: 1_000_000,
+    maxHp: 100,
+    ...overrides,
+  });
+
+describe('validación de hechizos', () => {
+  it('rechaza nivel insuficiente, maná insuficiente y ulti repetida', () => {
+    expect(
+      cast(spell('muro', { lvl: 8 }), { level: 7 }),
+    ).toMatchObject({ ok: false, reason: 'level', requiredLevel: 8 });
+    expect(
+      cast(spell('muro', { cost: 40 }), {
+        game: { hp: 70, mp: 39, buffs: {} },
+      }),
+    ).toMatchObject({ ok: false, reason: 'mana', requiredMana: 40 });
+    expect(
+      cast(spell('bastion', { ulti: true }), {
+        game: { hp: 70, mp: 100, buffs: {}, ultiW: 3 },
+      }),
+    ).toMatchObject({ ok: false, reason: 'ultimate-used' });
+  });
+});
+
+describe('efectos temporales y defensivos', () => {
+  it('activa escudos, peste y regeneración', () => {
+    expect(cast(spell('muro')).game).toMatchObject({
+      mp: 70,
+      buffs: { shield: 2 },
+    });
+    expect(cast(spell('peste')).game.buffs.pesteDay).toBe('2026-07-26');
+    expect(cast(spell('regen')).game.buffs.regenUntil).toBe(
+      1_000_000 + 2 * 3_600_000,
+    );
+  });
+
+  it('amplía Maldición de Ceniza a tres horas desde nivel 12', () => {
+    const result = cast(spell('ceniza'));
+
+    expect(result.durationHours).toBe(3);
+    expect(result.game.buffs.cenizaUntil).toBe(
+      1_000_000 + 3 * 3_600_000,
+    );
+  });
+});
+
+describe('curación y habilidades definitivas', () => {
+  it('limita la curación a la vida máxima', () => {
+    const result = cast(spell('grito'), {
+      game: { hp: 95, mp: 100, buffs: {} },
+    });
+
+    expect(result.game.hp).toBe(100);
+    expect(result.healing).toBe(5);
+  });
+
+  it('Robar Alma convierte todo el maná y marca la ulti semanal', () => {
+    const result = cast(spell('alma', { ulti: true, cost: 40 }), {
+      game: { hp: 40, mp: 80, buffs: {} },
+    });
+
+    expect(result).toMatchObject({ ok: true, spentMana: 80, healing: 40 });
+    expect(result.game).toMatchObject({ hp: 80, mp: 0, ultiW: 3 });
+  });
+
+  it('Juicio Divino no duplica el día y Renacer queda activo', () => {
+    const judgment = cast(spell('juicio', { ulti: true }), {
+      game: {
+        hp: 70,
+        mp: 100,
+        buffs: {},
+        judgmentDays: ['2026-07-26'],
+      },
+    });
+    const rebirth = cast(spell('renacer', { ulti: true }));
+
+    expect(judgment.game.judgmentDays).toEqual(['2026-07-26']);
+    expect(judgment.game.ultiW).toBe(3);
+    expect(rebirth.game.buffs.renacer).toBe(true);
+  });
+});
