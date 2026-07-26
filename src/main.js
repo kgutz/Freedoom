@@ -37,6 +37,11 @@ import {
 } from './ui/calendar-view.js';
 import { renderChartView } from './ui/chart-view.js';
 import { renderTodayView } from './ui/today-view.js';
+import {
+  renderHeroView,
+  renderSkillsView,
+  spriteImage
+} from './ui/hero-view.js';
 
 import {
   DAY_NAMES as DIAS,
@@ -225,48 +230,12 @@ function renderSettings(){
 
 
 
-/* --- sprite 8-bit --- */
-function spriteSVG(clsId,mood,extraClass){
-  /* estados con arte propio; el resto cae a 'happy' hasta que existan */
-  const HAVE={knight:['happy'],paladin:['happy'],sorcerer:['happy'],druid:['happy']};
-  const have=HAVE[clsId]||['happy'];
-  const file=have.includes(mood)?mood:'happy';
-  const hurt=(mood==='hurt')?' hurt':'';
-  return `<img class="sprite-svg${hurt} ${extraClass||''}" src="sprites/${clsId}_${file}.png" alt="${clsId}" draggable="false">`;
-}
-
 function gameStats(){
   return calculateGameStats({
     now:new Date(),
     config:state.config,
     days:state.days,
     game:state.game
-  });
-}
-
-function heroToday(){
-  ensureHero();
-  const g=state.game;
-  const hp=g.hp===undefined?100:g.hp;
-  const mx=heroMaxes().maxHp;
-  const pct=(hp/mx)*100;
-  const now=new Date();
-  const c=getDay(todayKey()).c;
-  const wake=minutesOf(state.config.wakeTime||'09:00');
-  const nowM=now.getHours()*60+now.getMinutes();
-  let mood;
-  if(nowM<wake&&c===0) mood='sleep';
-  else mood=pct>70?'happy':pct>40?'neutral':pct>15?'worried':'hurt';
-  return {hp,mood};
-}
-
-function bossState(){
-  const gs=gameStats();
-  return calculateBossState({
-    now:new Date(),
-    config:state.config,
-    days:state.days,
-    bossesDown:gs.bossesDown
   });
 }
 
@@ -531,187 +500,51 @@ function showToast(txt,type){
 }
 
 function renderHero(){
-  const box=document.getElementById('heroContent');
-  if(!box) return;
   const cls=state.game&&state.game.cls;
-
-  /* --- selección de clase --- */
   if(!cls||!CLASSES[cls]){
-    let cards='';
-    for(const id in CLASSES){
-      const c=CLASSES[id];
-      cards+=`<div class="cls-card" data-cls="${id}">
-        ${spriteSVG(id,'happy')}
-        <div class="cn">${c.name}</div>
-        <div class="ce">${c.es}</div>
-        <div class="cd">${c.desc}</div>
-      </div>`;
-    }
-    box.innerHTML=`<div class="card">
-      <h2>Elige tu clase</h2>
-      <p class="hint" style="margin:0 0 14px">Tu héroe vive de tus datos: gana XP cada día que cumples, sube de nivel, y su salud refleja cómo llevas el día de hoy. Elige con cabeza — el camino son 21 semanas.</p>
-      <div class="cls-grid">${cards}</div>
-    </div>`;
+    renderHeroView({
+      document,
+      now:new Date(),
+      config:state.config,
+      days:state.days,
+      game:state.game,
+      stats:null,
+      boss:null,
+      armor:0
+    });
     return;
   }
-
-  const C=CLASSES[cls];
-  const g=gameStats();
-  const h=heroToday();
-  const bs=bossState();
-  const gm=state.game;
-  const mp=gm.mp===undefined?0:gm.mp;
-  const maxHp=g.maxHp, maxMp=g.maxMp;
-  const hpv=Math.max(0,Math.round(h.hp));
-  const mpv=Math.max(0,Math.round(mp));
-  const hpPct=Math.max(0,Math.min(100,(hpv/maxHp)*100));
-  const mpPct=Math.max(0,Math.min(100,(mpv/maxMp)*100));
-
-  const hpCls=hpPct>70?'hp-hi':hpPct>40?'hp-mid':hpPct>15?'hp-low':'hp-crit';
-  const auraCls=g.tier>0?('t'+(g.tier+1)):'';
-  const zzz=h.mood==='sleep'?'<span class="sprite-zzz">z z</span>':'';
-
-  /* chips de efectos activos */
-  const bf=gm.buffs||{};
-  const nowT=Date.now();
-  const chips=[];
-  if(bf.shield>0)chips.push('🛡×'+bf.shield);
-  if(bf.certeroUntil>nowT)chips.push('🎯 '+Math.ceil((bf.certeroUntil-nowT)/60000)+'m');
-  if(bf.cenizaUntil>nowT)chips.push('☠ '+Math.ceil((bf.cenizaUntil-nowT)/60000)+'m');
-  if(bf.regenUntil>nowT)chips.push('🌿 '+Math.ceil((bf.regenUntil-nowT)/60000)+'m');
-  if(bf.pesteDay===todayKey())chips.push('☠🍺 hoy');
-  if(bf.bastion)chips.push('🏰 armado');
-  if(bf.renacer)chips.push('🌅 esta noche');
-  if((gm.judgmentDays||[]).includes(todayKey()))chips.push('⚖️ hoy');
-  const chipsHtml=chips.length?`<div class="buff-row">${chips.map(c=>`<span class="buff">${c}</span>`).join('')}</div>`:'';
-
-  const pips=bs.pips.map(p=>{
-    const sym=p==='hit'?'✕':p==='fail'?'!':p==='today'?'●':'·';
-    return `<div class="pip ${p}">${sym}</div>`;
-  }).join('');
-  let bState,bCls;
-  if(bs.lost){bState='te ha vencido';bCls='lose';}
-  else if(bs.won){bState='¡derrotado!';bCls='win';}
-  else{bState='';bCls='curr';}
-
-  /* iconos compactos: pasivas y activas en cuadraditos, con respaldo a inicial si falta el pixel art */
-  const skillIcon=(a,type)=>{
-    const on=g.lvl>=a.lvl;
-    const ultiCls=a.ulti?' ulti':'';
-    const src=`spells/${cls}_spells/${cls}_${type}_${a.icon}.png`;
-    const fb=a.name.charAt(0);
-    const openAttr=(type==='act')?`data-cast="${a.id}"`:`data-pas-name="${a.name}" data-pas-lvl="${a.lvl}"`;
-    return `<div class="skill-box ${on?'on':'off'}${ultiCls}" ${openAttr}>
-      <span class="sk-lv">Nv ${a.lvl}</span>
-      <img src="${src}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-      <span class="sk-fallback" style="display:none">${fb}</span>
-    </div>`;
-  };
-  const pasIcons=C.pas.map(a=>skillIcon(a,'pas')).join('');
-  const actIcons=C.act.map(a=>skillIcon(a,'act')).join('');
-
-  box.innerHTML=`
-    <div class="card">
-      <div class="hero-top">
-        <div class="sprite-box"><img class="sprite-bg" src="hero_background/${cls}_bg.png" alt=""><div class="sprite-aura ${auraCls}"></div>${spriteSVG(cls,h.mood)}${zzz}</div>
-        <div class="hero-id">
-          <div class="rango">${C.tiers[g.tier]}</div>
-          <div class="nombre">${C.name}</div>
-          <div class="nivel">Nivel ${g.lvl}</div>
-          <div class="racha">Racha: <b>${g.streak}</b> día${g.streak===1?'':'s'} · Jefes: <b>${g.bossesDown}</b> · Armadura: <b>−${heroArmor()}</b><br>Disparos perfectos hoy: <b>${getDay(todayKey()).s||0}</b></div>
-        </div>
-      </div>
-      ${chipsHtml}
-      <div class="stat-bar">
-        <div class="lbl"><span>SALUD</span><b>${hpv} / ${maxHp}</b></div>
-        <div class="stat-track"><div class="stat-fill ${hpCls}" style="width:${hpPct}%"></div></div>
-      </div>
-      <div class="stat-bar">
-        <div class="lbl"><span>MANÁ</span><b>${mpv} / ${maxMp}</b></div>
-        <div class="stat-track"><div class="stat-fill mp" style="width:${mpPct}%"></div></div>
-      </div>
-      <div class="stat-bar">
-        <div class="lbl"><span>EXPERIENCIA</span><b>${g.xp} / ${g.nextTh} XP</b></div>
-        <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(g.prog*100)}%"></div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="boss-top">
-        <div class="boss-box">
-          <img src="bosses/boss_${String(bs.bossNum).padStart(2,'0')}_${bs.slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-          <span class="boss-fallback" style="display:none">💀</span>
-        </div>
-        <div class="boss-id">
-          <div class="boss-head">
-            <h2 style="margin:0">Jefe de la semana</h2>
-          </div>
-          <div class="boss-name">${bs.name}<small>máx ${bs.lim}/día · cada día cumplido es un golpe</small></div>
-          <div class="pips">${pips}</div>
-        </div>
-      </div>
-      <div class="boss-count">Jefes derrotados: <b>${g.bossesDown}</b> de <b>${state.config.startLimit+1}</b> · quedan <b>${(state.config.startLimit+1)-g.bossesDown-(bs.won?1:0)}</b> por delante</div>
-    </div>
-
-    <div class="card">
-      <div class="skills-head">
-        <h2 style="margin:0">Habilidades</h2>
-        <button class="sk-info-btn" id="skInfoBtn" aria-label="Ver libro de habilidades">ⓘ</button>
-      </div>
-      <div class="sk-row-label">Pasivas</div>
-      <div class="skill-row">${pasIcons}</div>
-      <div class="sk-row-label acts">Activas</div>
-      <div class="skill-row">${actIcons}</div>
-    </div>`;
-
-  window.__skillsCls=cls; /* para que el libro sepa qué clase pintar */
+  ensureHero();
+  const now=new Date();
+  const stats=gameStats();
+  const boss=calculateBossState({
+    now,
+    config:state.config,
+    days:state.days,
+    bossesDown:stats.bossesDown
+  });
+  renderHeroView({
+    document,
+    now,
+    config:state.config,
+    days:state.days,
+    game:state.game,
+    stats,
+    boss,
+    armor:heroArmor()
+  });
 }
 
 /* --- libro de habilidades: detalle completo de las 6 de la clase actual --- */
 function renderSkillsSheet(){
   ensureHero();
-  const gm=state.game;
-  const cls=gm.cls; if(!cls) return;
-  const C=CLASSES[cls];
-  const g=gameStats();
-
-  const iconTag=(a,type)=>{
-    const src=`spells/${cls}_spells/${cls}_${type}_${a.icon}.png`;
-    const fb=a.name.charAt(0);
-    return `<div class="abil-ico"><img src="${src}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${fb}</span></div>`;
-  };
-
-  const pasHtml=C.pas.map(a=>{
-    const on=g.lvl>=a.lvl;
-    return `<div class="abil ${on?'on':'off'}">
-      ${iconTag(a,'pas')}
-      <div style="flex:1">
-        <span class="lv" style="float:right">Nv ${a.lvl}</span>
-        <div class="an">${a.name}${on?' · <span style="color:var(--ok);font-size:11px">activa</span>':''}</div>
-        <div class="ad">${a.d}</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  const actHtml=C.act.map(a=>{
-    const on=g.lvl>=a.lvl;
-    return `<div class="abil ${on?'on':'off'}">
-      ${iconTag(a,'act')}
-      <div style="flex:1">
-        <span class="lv" style="float:right">Nv ${a.lvl}</span>
-        <div class="an">${a.name}${a.ulti?' <span style="color:var(--kodak);font-size:10px">ULTI</span>':''}</div>
-        <div class="ad">${a.d}</div>
-        <div class="ad-cost">Coste: ${a.cost} 💧</div>
-      </div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('skillsBody').innerHTML=`
-    <div class="grim-cls-tag" style="margin-top:0">Pasivas — ${C.es}</div>
-    ${pasHtml}
-    <div class="grim-cls-tag">Hechizos — ${C.es}</div>
-    ${actHtml}
-  `;
+  const cls=state.game&&state.game.cls;
+  if(!cls) return;
+  renderSkillsView({
+    document,
+    classId:cls,
+    level:gameStats().lvl
+  });
 }
 
 /* ==================== fin RPG ==================== */
@@ -1107,7 +940,7 @@ function renderObHeroes(){
   for(const id in CLASSES){
     const c=CLASSES[id];
     cards+=`<div class="cls-card" data-obcls="${id}">
-      ${spriteSVG(id,'happy')}
+      ${spriteImage(id,'happy')}
       <div class="cn">${c.name}</div>
       <div class="ce">${c.es}</div>
       <div class="cd">${c.desc}</div>
@@ -1183,7 +1016,7 @@ document.getElementById('obClsGrid').addEventListener('click',e=>{
   if(card){
     obChosenCls=card.dataset.obcls;
     const c=CLASSES[obChosenCls];
-    document.getElementById('obHeroPreview').innerHTML=spriteSVG(obChosenCls,'happy');
+    document.getElementById('obHeroPreview').innerHTML=spriteImage(obChosenCls,'happy');
     document.getElementById('obName').value='';
     document.getElementById('obName').placeholder=c.es+'…';
     showStep(4);

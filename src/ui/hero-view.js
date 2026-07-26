@@ -1,0 +1,272 @@
+import { CLASSES } from '../data/game-data.js';
+import { keyOf, minutesOf } from '../domain/date-utils.js';
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function spriteImage(classId, mood, extraClass = '') {
+  const available = {
+    knight: ['happy'],
+    paladin: ['happy'],
+    sorcerer: ['happy'],
+    druid: ['happy'],
+  };
+  const file = (available[classId] || ['happy']).includes(mood)
+    ? mood
+    : 'happy';
+  const hurt = mood === 'hurt' ? ' hurt' : '';
+  return `<img class="sprite-svg${hurt} ${extraClass}" src="sprites/${classId}_${file}.png" alt="${classId}" draggable="false">`;
+}
+
+export function createHeroModel({
+  now,
+  config,
+  days,
+  game,
+  stats,
+  boss,
+  armor,
+}) {
+  const classId = game?.cls;
+  if (!classId || !CLASSES[classId]) {
+    return { selection: true };
+  }
+
+  const classData = CLASSES[classId];
+  const hp = Math.max(0, Math.round(game.hp ?? 100));
+  const mana = Math.max(0, Math.round(game.mp ?? 0));
+  const hpPercent = clamp((hp / stats.maxHp) * 100, 0, 100);
+  const manaPercent = clamp((mana / stats.maxMp) * 100, 0, 100);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const wakeMinutes = minutesOf(config.wakeTime || '09:00');
+  const today = keyOf(now);
+  const todayRecord = days[today] || { c: 0, p: 0 };
+  let mood;
+  if (nowMinutes < wakeMinutes && todayRecord.c === 0) mood = 'sleep';
+  else if (hpPercent > 70) mood = 'happy';
+  else if (hpPercent > 40) mood = 'neutral';
+  else if (hpPercent > 15) mood = 'worried';
+  else mood = 'hurt';
+
+  let hpClass = 'hp-crit';
+  if (hpPercent > 70) hpClass = 'hp-hi';
+  else if (hpPercent > 40) hpClass = 'hp-mid';
+  else if (hpPercent > 15) hpClass = 'hp-low';
+
+  const buffs = game.buffs || {};
+  const nowTimestamp = now.getTime();
+  const chips = [];
+  if (buffs.shield > 0) chips.push(`🛡×${buffs.shield}`);
+  if (buffs.certeroUntil > nowTimestamp) {
+    chips.push(`🎯 ${Math.ceil((buffs.certeroUntil - nowTimestamp) / 60_000)}m`);
+  }
+  if (buffs.cenizaUntil > nowTimestamp) {
+    chips.push(`☠ ${Math.ceil((buffs.cenizaUntil - nowTimestamp) / 60_000)}m`);
+  }
+  if (buffs.regenUntil > nowTimestamp) {
+    chips.push(`🌿 ${Math.ceil((buffs.regenUntil - nowTimestamp) / 60_000)}m`);
+  }
+  if (buffs.pesteDay === today) chips.push('☠🍺 hoy');
+  if (buffs.bastion) chips.push('🏰 armado');
+  if (buffs.renacer) chips.push('🌅 esta noche');
+  if ((game.judgmentDays || []).includes(today)) chips.push('⚖️ hoy');
+
+  return {
+    selection: false,
+    classId,
+    classData,
+    hp,
+    mana,
+    hpPercent,
+    manaPercent,
+    hpClass,
+    mood,
+    chips,
+    stats,
+    boss,
+    armor,
+    perfectToday: todayRecord.s || 0,
+  };
+}
+
+function skillIcon(classId, level, ability, type) {
+  const active = level >= ability.lvl;
+  const ultimateClass = ability.ulti ? ' ulti' : '';
+  const source =
+    `spells/${classId}_spells/` +
+    `${classId}_${type}_${ability.icon}.png`;
+  const fallback = ability.name.charAt(0);
+  const attributes =
+    type === 'act'
+      ? `data-cast="${ability.id}"`
+      : `data-pas-name="${ability.name}" data-pas-lvl="${ability.lvl}"`;
+  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}" ${attributes}>
+      <span class="sk-lv">Nv ${ability.lvl}</span>
+      <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <span class="sk-fallback" style="display:none">${fallback}</span>
+    </div>`;
+}
+
+export function renderHeroView({
+  document,
+  now,
+  config,
+  days,
+  game,
+  stats,
+  boss,
+  armor,
+}) {
+  const box = document.getElementById('heroContent');
+  if (!box) return;
+  const model = createHeroModel({
+    now,
+    config,
+    days,
+    game,
+    stats,
+    boss,
+    armor,
+  });
+
+  if (model.selection) {
+    const cards = Object.entries(CLASSES)
+      .map(
+        ([classId, classData]) => `<div class="cls-card" data-cls="${classId}">
+        ${spriteImage(classId, 'happy')}
+        <div class="cn">${classData.name}</div>
+        <div class="ce">${classData.es}</div>
+        <div class="cd">${classData.desc}</div>
+      </div>`,
+      )
+      .join('');
+    box.innerHTML = `<div class="card">
+      <h2>Elige tu clase</h2>
+      <p class="hint" style="margin:0 0 14px">Tu héroe vive de tus datos: gana XP cada día que cumples, sube de nivel, y su salud refleja cómo llevas el día de hoy. Elige con cabeza — el camino son 21 semanas.</p>
+      <div class="cls-grid">${cards}</div>
+    </div>`;
+    return;
+  }
+
+  const {
+    classId,
+    classData,
+    stats: heroStats,
+    boss: bossState,
+  } = model;
+  const chipsHtml = model.chips.length
+    ? `<div class="buff-row">${model.chips.map((chip) => `<span class="buff">${chip}</span>`).join('')}</div>`
+    : '';
+  const pips = bossState.pips
+    .map((pip) => {
+      const symbol =
+        pip === 'hit' ? '✕' : pip === 'fail' ? '!' : pip === 'today' ? '●' : '·';
+      return `<div class="pip ${pip}">${symbol}</div>`;
+    })
+    .join('');
+  const passiveIcons = classData.pas
+    .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'pas'))
+    .join('');
+  const activeIcons = classData.act
+    .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'act'))
+    .join('');
+  const auraClass = heroStats.tier > 0 ? `t${heroStats.tier + 1}` : '';
+  const sleeping = model.mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
+
+  box.innerHTML = `
+    <div class="card">
+      <div class="hero-top">
+        <div class="sprite-box"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt=""><div class="sprite-aura ${auraClass}"></div>${spriteImage(classId, model.mood)}${sleeping}</div>
+        <div class="hero-id">
+          <div class="rango">${classData.tiers[heroStats.tier]}</div>
+          <div class="nombre">${classData.name}</div>
+          <div class="nivel">Nivel ${heroStats.lvl}</div>
+          <div class="racha">Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'} · Jefes: <b>${heroStats.bossesDown}</b> · Armadura: <b>−${model.armor}</b><br>Disparos perfectos hoy: <b>${model.perfectToday}</b></div>
+        </div>
+      </div>
+      ${chipsHtml}
+      <div class="stat-bar">
+        <div class="lbl"><span>SALUD</span><b>${model.hp} / ${heroStats.maxHp}</b></div>
+        <div class="stat-track"><div class="stat-fill ${model.hpClass}" style="width:${model.hpPercent}%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <div class="lbl"><span>MANÁ</span><b>${model.mana} / ${heroStats.maxMp}</b></div>
+        <div class="stat-track"><div class="stat-fill mp" style="width:${model.manaPercent}%"></div></div>
+      </div>
+      <div class="stat-bar">
+        <div class="lbl"><span>EXPERIENCIA</span><b>${heroStats.xp} / ${heroStats.nextTh} XP</b></div>
+        <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(heroStats.prog * 100)}%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="boss-top">
+        <div class="boss-box">
+          <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <span class="boss-fallback" style="display:none">💀</span>
+        </div>
+        <div class="boss-id">
+          <div class="boss-head"><h2 style="margin:0">Jefe de la semana</h2></div>
+          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · cada día cumplido es un golpe</small></div>
+          <div class="pips">${pips}</div>
+        </div>
+      </div>
+      <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${config.startLimit + 1}</b> · quedan <b>${config.startLimit + 1 - heroStats.bossesDown - (bossState.won ? 1 : 0)}</b> por delante</div>
+    </div>
+
+    <div class="card">
+      <div class="skills-head">
+        <h2 style="margin:0">Habilidades</h2>
+        <button class="sk-info-btn" id="skInfoBtn" aria-label="Ver libro de habilidades">ⓘ</button>
+      </div>
+      <div class="sk-row-label">Pasivas</div>
+      <div class="skill-row">${passiveIcons}</div>
+      <div class="sk-row-label acts">Activas</div>
+      <div class="skill-row">${activeIcons}</div>
+    </div>`;
+}
+
+function detailedIcon(classId, ability, type) {
+  const source =
+    `spells/${classId}_spells/` +
+    `${classId}_${type}_${ability.icon}.png`;
+  return `<div class="abil-ico"><img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${ability.name.charAt(0)}</span></div>`;
+}
+
+export function renderSkillsView({ document, classId, level }) {
+  if (!classId || !CLASSES[classId]) return;
+  const classData = CLASSES[classId];
+  const passiveHtml = classData.pas
+    .map((ability) => {
+      const active = level >= ability.lvl;
+      return `<div class="abil ${active ? 'on' : 'off'}">
+      ${detailedIcon(classId, ability, 'pas')}
+      <div style="flex:1">
+        <span class="lv" style="float:right">Nv ${ability.lvl}</span>
+        <div class="an">${ability.name}${active ? ' · <span style="color:var(--ok);font-size:11px">activa</span>' : ''}</div>
+        <div class="ad">${ability.d}</div>
+      </div>
+    </div>`;
+    })
+    .join('');
+  const activeHtml = classData.act
+    .map((ability) => {
+      const active = level >= ability.lvl;
+      return `<div class="abil ${active ? 'on' : 'off'}">
+      ${detailedIcon(classId, ability, 'act')}
+      <div style="flex:1">
+        <span class="lv" style="float:right">Nv ${ability.lvl}</span>
+        <div class="an">${ability.name}${ability.ulti ? ' <span style="color:var(--kodak);font-size:10px">ULTI</span>' : ''}</div>
+        <div class="ad">${ability.d}</div>
+        <div class="ad-cost">Coste: ${ability.cost} 💧</div>
+      </div>
+    </div>`;
+    })
+    .join('');
+  document.getElementById('skillsBody').innerHTML = `
+    <div class="grim-cls-tag" style="margin-top:0">Pasivas — ${classData.es}</div>
+    ${passiveHtml}
+    <div class="grim-cls-tag">Hechizos — ${classData.es}</div>
+    ${activeHtml}`;
+}
