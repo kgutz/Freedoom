@@ -49,10 +49,8 @@ import { showToast as renderToast } from './ui/toast.js';
 import {
   DAY_NAMES as DIAS,
   MONTH_NAMES as MESES,
-  daysBetween,
   keyOf,
   minutesOf,
-  mondayOf,
   parseKey,
   todayKey
 } from './domain/date-utils.js';

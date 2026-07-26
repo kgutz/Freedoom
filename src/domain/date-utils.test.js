@@ -3,7 +3,6 @@ import {
   daysBetween,
   keyOf,
   minutesOf,
-  mondayOf,
   parseKey,
   todayKey
 } from './date-utils.js';
@@ -26,10 +25,6 @@ describe('date-utils', () => {
     expect(daysBetween(new Date(2026, 2, 28), new Date(2026, 2, 29))).toBe(1);
     expect(daysBetween(new Date(2026, 2, 29), new Date(2026, 2, 30))).toBe(1);
     expect(daysBetween(new Date(2026, 9, 24), new Date(2026, 9, 26))).toBe(2);
-  });
-
-  it('encuentra el lunes de la semana', () => {
-    expect(keyOf(mondayOf(new Date(2026, 6, 26)))).toBe('2026-07-20');
   });
 
   it('convierte una hora a minutos desde medianoche', () => {

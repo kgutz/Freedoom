@@ -47,13 +47,6 @@ export function daysBetween(from, to) {
   return Math.round((toUtc - fromUtc) / 86_400_000);
 }
 
-export function mondayOf(date) {
-  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const offset = (monday.getDay() + 6) % 7;
-  monday.setDate(monday.getDate() - offset);
-  return monday;
-}
-
 export function minutesOf(time) {
   const [hours, minutes] = time.split(':').map(Number);
   return hours * 60 + minutes;
