@@ -31,11 +31,15 @@ import {
   parseState,
   serializeState
 } from './storage/state-storage.js';
+import {
+  renderCalendarView,
+  renderWeeksView
+} from './ui/calendar-view.js';
+import { renderChartView } from './ui/chart-view.js';
 
 import {
   DAY_NAMES as DIAS,
   MONTH_NAMES as MESES,
-  WEEKDAY_INITIALS as DOW,
   daysBetween,
   keyOf,
   minutesOf,
@@ -301,68 +305,23 @@ function renderPace(now,smoked,limit){
 }
 
 function renderCal(){
-  const y=calCursor.getFullYear(), m=calCursor.getMonth();
-  document.getElementById('calTitle').textContent=`${MESES[m]} ${y}`;
-  const grid=document.getElementById('calGrid');
-  grid.innerHTML='';
-  DOW.forEach(d=>{const el=document.createElement('div');el.className='cal-dow';el.textContent=d;grid.appendChild(el);});
-  const first=new Date(y,m,1);
-  let offset=(first.getDay()+6)%7;
-  for(let i=0;i<offset;i++){const e=document.createElement('div');e.className='cal-day empty';grid.appendChild(e);}
-  const daysInMonth=new Date(y,m+1,0).getDate();
-  const tk=todayKey(), now=new Date();
-  for(let day=1;day<=daysInMonth;day++){
-    const date=new Date(y,m,day), k=keyOf(date);
-    const cell=document.createElement('div');
-    const isFuture=daysBetween(now,date)>0;
-    cell.className='cal-day'+(k===tk?' today':'')+(isFuture?' future':'');
-    const rec=getDay(k);
-    const over=rec.c>limitOfDate(date);
-    const extras=[];
-    if(rec.p>0)extras.push('💊'+rec.p);
-    if(rec.b>0)extras.push('🍺'+rec.b);
-    cell.innerHTML=`<span class="n">${day}</span>`+
-      (rec.c>0?`<span class="c${over?' over':''}">${rec.c}</span>`:'')+
-      (extras.length?`<span class="p">${extras.join(' ')}</span>`:'');
-    if(!isFuture){
-      cell.addEventListener('click',()=>openModal(k));
-    }
-    grid.appendChild(cell);
-  }
+  renderCalendarView({
+    document,
+    cursor:calCursor,
+    now:new Date(),
+    config:state.config,
+    days:state.days,
+    onDayClick:openModal
+  });
 }
 
 function renderWeeks(){
-  const list=document.getElementById('weekList');
-  list.innerHTML='';
-  const now=new Date();
-  const currIdx=Math.max(0,weekIndexOf(now));
-  for(let i=0;i<=currIdx;i++){
-    const [a,b]=weekRange(i);
-    const limit=limitOfWeek(i);
-    let total=0, over=0;
-    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)){
-      if(daysBetween(now,d)>0) break; /* no contar días futuros */
-      const c=getDay(keyOf(d)).c;
-      total+=c;
-      if(c>limit) over++;
-    }
-    const row=document.createElement('div');
-    row.className='wk-row';
-    let cls, mark;
-    if(i===currIdx){cls='curr';mark='en curso';}
-    else if(over===0){cls='ok';mark='✓ cumplida';}
-    else{cls='bad';mark=`✗ ${over} día${over>1?'s':''} pasado${over>1?'s':''}`;}
-    const fmt=d=>`${d.getDate()} ${MESES[d.getMonth()].slice(0,3)}`;
-    row.innerHTML=`<div>Semana ${i+1} · máx ${limit}/día<span class="rng">${fmt(a)} – ${fmt(b)}</span></div>
-      <div class="stat ${cls}">${mark}<span class="sub">${total} en total</span></div>`;
-    list.appendChild(row);
-  }
-  if(limitOfWeek(currIdx)<=0){
-    const done=document.createElement('p');
-    done.className='hint';
-    done.textContent='Has llegado al final del plan. Enhorabuena por el camino recorrido.';
-    list.appendChild(done);
-  }
+  renderWeeksView({
+    document,
+    now:new Date(),
+    config:state.config,
+    days:state.days
+  });
 }
 
 /* ---------- gráfica ---------- */
@@ -371,104 +330,18 @@ let grafWeek=null;   /* índice de semana del plan */
 let grafMonth=new Date();
 
 function renderGraf(){
-  const svg=document.getElementById('grafSvg');
-  if(!svg) return;
   const now=new Date();
   const currIdx=Math.max(0,weekIndexOf(now));
   if(grafWeek===null) grafWeek=currIdx;
-
-  /* días del rango */
-  let days=[], title='';
-  if(grafMode==='semana'){
-    const [a,b]=weekRange(grafWeek);
-    const fmt=d=>`${d.getDate()} ${MESES[d.getMonth()].slice(0,3)}`;
-    title=`Semana ${grafWeek+1} · ${fmt(a)} – ${fmt(b)}`;
-    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)) days.push(new Date(d));
-  }else{
-    const y=grafMonth.getFullYear(), m=grafMonth.getMonth();
-    title=`${MESES[m]} ${y}`;
-    const n=new Date(y,m+1,0).getDate();
-    for(let i=1;i<=n;i++) days.push(new Date(y,m,i));
-  }
-  document.getElementById('grafTitle').textContent=title;
-
-  /* datos: solo días ya vividos */
-  const startPlan=parseKey(state.config.startDate);
-  const pts=days.map(d=>{
-    const past=daysBetween(now,d)<=0;
-    const tracked=past && daysBetween(startPlan,d)>=0;
-    return {d, past, tracked, c:getDay(keyOf(d)).c, lim:limitOfDate(d)};
+  renderChartView({
+    document,
+    mode:grafMode,
+    weekIndex:grafWeek,
+    month:grafMonth,
+    now,
+    config:state.config,
+    records:state.days
   });
-
-  /* escala */
-  let yMax=5;
-  pts.forEach(p=>{yMax=Math.max(yMax,p.c,p.lim);});
-  yMax=Math.ceil(yMax*1.15);
-
-  /* pico y mínimo entre días registrados */
-  const reg=pts.filter(p=>p.tracked);
-  let pico=null,minimo=null,total=0;
-  reg.forEach(p=>{
-    total+=p.c;
-    if(!pico||p.c>pico.c)pico=p;
-    if(!minimo||p.c<minimo.c)minimo=p;
-  });
-
-  /* geometría */
-  const L=30,R=354,T=14,B=196,XL=222;
-  const plotW=R-L, plotH=B-T;
-  const n=days.length;
-  const slot=plotW/n;
-  const bw=Math.max(4,Math.min(30,slot*0.62));
-  const yOf=v=>B-(v/yMax)*plotH;
-
-  let s='';
-  /* rejilla horizontal */
-  const stepY=yMax>12?5:(yMax>6?2:1);
-  for(let v=0;v<=yMax;v+=stepY){
-    s+=`<line x1="${L}" y1="${yOf(v)}" x2="${R}" y2="${yOf(v)}" stroke="#3A3229" stroke-width="0.6"/>`;
-    s+=`<text x="${L-5}" y="${yOf(v)+3}" font-size="8" fill="#9C8F7C" text-anchor="end" font-family="IBM Plex Mono">${v}</text>`;
-  }
-  /* línea de límite (escalonada, discontinua) */
-  let lim='';
-  pts.forEach((p,i)=>{
-    const x0=L+i*slot, x1=L+(i+1)*slot, y=yOf(p.lim);
-    lim+=(i===0?`M${x0},${y}`:`L${x0},${y}`)+`L${x1},${y}`;
-  });
-  s+=`<path d="${lim}" stroke="#EDE3D2" stroke-width="1" stroke-dasharray="4 3" fill="none" opacity="0.55"/>`;
-  /* barras */
-  pts.forEach((p,i)=>{
-    const cx=L+i*slot+slot/2;
-    if(p.past && (p.c>0 || p.tracked)){
-      const h=Math.max(p.c>0?2:0,(p.c/yMax)*plotH);
-      let col='var(--kodak)';
-      if(p.c>p.lim)col='var(--warn)';
-      else if(minimo&&keyOf(p.d)===keyOf(minimo.d))col='var(--ok)';
-      if(h>0){
-        s+=`<rect x="${cx-bw/2}" y="${B-h}" width="${bw}" height="${h}" rx="2" fill="${col}"/>`;
-        if(grafMode==='semana'||n<=15){
-          s+=`<text x="${cx}" y="${B-h-4}" font-size="9" fill="#EDE3D2" text-anchor="middle" font-family="IBM Plex Mono">${p.c}</text>`;
-        }
-      }
-    }
-    /* etiquetas eje x */
-    const showLbl=grafMode==='semana'||p.d.getDate()===1||p.d.getDate()%5===0;
-    if(showLbl){
-      const lbl=grafMode==='semana'
-        ? DIAS[p.d.getDay()].slice(0,2).toUpperCase()+' '+p.d.getDate()
-        : p.d.getDate();
-      s+=`<text x="${cx}" y="${XL-12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Sora">${lbl}</text>`;
-    }
-  });
-  svg.innerHTML=s;
-
-  /* resumen */
-  const fmtDia=p=>p?`${DIAS[p.d.getDay()].slice(0,3)} ${p.d.getDate()}`:'';
-  document.getElementById('sumPico').textContent=pico?pico.c:'–';
-  document.getElementById('sumPicoDia').textContent=fmtDia(pico);
-  document.getElementById('sumMin').textContent=minimo?minimo.c:'–';
-  document.getElementById('sumMinDia').textContent=fmtDia(minimo);
-  document.getElementById('sumMedia').textContent=reg.length?(total/reg.length).toFixed(1).replace('.',','):'–';
 }
 
 function renderSettings(){
