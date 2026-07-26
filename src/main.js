@@ -25,8 +25,6 @@ import { castSpellEffect } from './domain/spell-rules.js';
 import {
   STORAGE_KEY,
   createBrowserStore,
-  exportBackup,
-  importBackup,
   mergeState,
   parseState,
   serializeState
@@ -42,6 +40,9 @@ import {
   renderSkillsView,
   spriteImage
 } from './ui/hero-view.js';
+import { renderSettingsView } from './ui/settings-view.js';
+import { bindBackupControls } from './ui/backup-controller.js';
+import { createOnboardingController } from './ui/onboarding-controller.js';
 
 import {
   DAY_NAMES as DIAS,
@@ -211,19 +212,11 @@ function renderGraf(){
 }
 
 function renderSettings(){
-  document.getElementById('cfgStart').value=state.config.startDate;
-  document.getElementById('cfgLimit').value=state.config.startLimit;
-  document.getElementById('cfgWake').value=state.config.wakeTime||'09:00';
-  document.getElementById('cfgSleep').value=state.config.sleepTime||'23:00';
-  document.getElementById('cfgPills').value=state.config.pillsGoal||3;
-  const hn=document.getElementById('cfgHeroName');
-  if(hn) hn.value=(state.game&&state.game.name)?state.game.name:'';
-  const bYes=document.getElementById('beerYes'), bNo=document.getElementById('beerNo');
-  if(bYes&&bNo){
-    const on=(state.config.tracksBeer!==false);
-    bYes.classList.toggle('active',on);
-    bNo.classList.toggle('active',!on);
-  }
+  renderSettingsView({
+    document,
+    config:state.config,
+    game:state.game
+  });
 }
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
@@ -876,46 +869,16 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
 });
 
 /* copia de seguridad: exportar / importar */
-let backupMode='export';
-document.getElementById('btnExport').addEventListener('click',async()=>{
-  const data=exportBackup(state);
-  try{
-    await navigator.clipboard.writeText(data);
-    showToast('Datos copiados al portapapeles ✓','heal');
-  }catch(e){
-    backupMode='export';
-    document.getElementById('backupTitle').textContent='Exportar datos';
-    const ta=document.getElementById('backupText');
-    ta.value=data; ta.readOnly=true;
-    document.getElementById('backupAction').textContent='Cerrar';
-    document.getElementById('backupBg').classList.add('show');
-    ta.focus(); ta.select();
-  }
-});
-document.getElementById('btnImport').addEventListener('click',()=>{
-  backupMode='import';
-  document.getElementById('backupTitle').textContent='Importar datos';
-  const ta=document.getElementById('backupText');
-  ta.value=''; ta.readOnly=false;
-  document.getElementById('backupAction').textContent='Importar';
-  document.getElementById('backupBg').classList.add('show');
-});
-document.getElementById('backupAction').addEventListener('click',()=>{
-  if(backupMode==='import'){
-    try{
-      state=importBackup(state,document.getElementById('backupText').value);
-      scheduleSave();
-      renderAll();
-      showToast('Datos importados ✓','heal');
-    }catch(e){
-      showToast('No se pudo leer la copia','dmg');
-      return;
-    }
-  }
-  document.getElementById('backupBg').classList.remove('show');
-});
-document.getElementById('backupBg').addEventListener('click',e=>{
-  if(e.target.id==='backupBg')e.target.classList.remove('show');
+bindBackupControls({
+  document,
+  navigator,
+  getState:()=>state,
+  onImported:(importedState)=>{
+    state=importedState;
+    scheduleSave();
+    renderAll();
+  },
+  showToast
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
@@ -934,97 +897,26 @@ window.addEventListener('focus',checkDay);
 
 /* ---------- init ---------- */
 /* ---------- onboarding ---------- */
-let obPillsYes=true;
-function renderObHeroes(){
-  let cards='';
-  for(const id in CLASSES){
-    const c=CLASSES[id];
-    cards+=`<div class="cls-card" data-obcls="${id}">
-      ${spriteImage(id,'happy')}
-      <div class="cn">${c.name}</div>
-      <div class="ce">${c.es}</div>
-      <div class="cd">${c.desc}</div>
-    </div>`;
+const onboarding=createOnboardingController({
+  document,
+  todayKey,
+  spriteImage,
+  onFinish:(result)=>{
+    state.config={...state.config,...result.config};
+    state.game=result.game;
+    state.onboarded=result.onboarded;
+    ensureHero();
+    scheduleSave();
+    document.getElementById('onboard').style.display='none';
+    document.getElementById('app').style.display='block';
+    document.getElementById('mainNav').classList.add('show');
+    switchView('view-hoy','navHoy');
+    renderAll();
   }
-  document.getElementById('obClsGrid').innerHTML=cards;
-}
-function showStep(n){
-  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
-  document.getElementById('ob'+n).classList.add('active');
-  document.getElementById('onboard').scrollTop=0;
-}
+});
 function startOnboarding(){
-  document.getElementById('loading').style.display='none';
-  document.getElementById('app').style.display='none';
-  document.getElementById('mainNav').classList.remove('show');
-  const ob=document.getElementById('onboard');
-  ob.style.display='flex';
-  // fecha por defecto = hoy
-  document.getElementById('obStart2').value=todayKey();
-  renderObHeroes();
-  showStep(1);
+  onboarding.start();
 }
-function finishOnboarding(clsId){
-  state.config.startDate=document.getElementById('obStart2').value||todayKey();
-  state.config.startLimit=parseInt(document.getElementById('obLimit').value,10)||20;
-  state.config.wakeTime=document.getElementById('obWake').value||'09:00';
-  state.config.sleepTime=document.getElementById('obSleep').value||'23:00';
-  if(obPillsYes){
-    state.config.takesPills=true;
-    state.config.pillsGoal=parseInt(document.getElementById('obPills').value,10)||3;
-  }else{
-    state.config.takesPills=false;
-    state.config.pillsGoal=0;
-  }
-  state.config.tracksBeer=obBeerYes;
-  const nm=document.getElementById('obName').value.trim();
-  state.game={cls:clsId, name:nm||CLASSES[clsId].es};
-  state.onboarded=true;
-  ensureHero();
-  scheduleSave();
-  document.getElementById('onboard').style.display='none';
-  document.getElementById('app').style.display='block';
-  document.getElementById('mainNav').classList.add('show');
-  switchView('view-hoy','navHoy');
-  renderAll();
-}
-document.getElementById('onboard').addEventListener('click',()=>{
-  if(document.getElementById('ob1').classList.contains('active')) showStep(2);
-});
-document.querySelectorAll('[data-ob-back]').forEach(b=>{
-  b.addEventListener('click',()=>showStep(Number(b.dataset.obBack)));
-});
-let obBeerYes=true;
-document.querySelectorAll('.ob-tg').forEach(b=>{
-  b.addEventListener('click',()=>{
-    const group=b.dataset.pills!==undefined?'pills':'beer';
-    const attr=group==='pills'?'pills':'beer';
-    b.parentElement.querySelectorAll('.ob-tg').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-    if(group==='pills'){
-      obPillsYes=(b.dataset.pills==='yes');
-      document.getElementById('obPillsQty').style.display=obPillsYes?'block':'none';
-    }else{
-      obBeerYes=(b.dataset.beer==='yes');
-    }
-  });
-});
-document.getElementById('obToHero').addEventListener('click',()=>showStep(3));
-let obChosenCls=null;
-document.getElementById('obClsGrid').addEventListener('click',e=>{
-  const card=e.target.closest('[data-obcls]');
-  if(card){
-    obChosenCls=card.dataset.obcls;
-    const c=CLASSES[obChosenCls];
-    document.getElementById('obHeroPreview').innerHTML=spriteImage(obChosenCls,'happy');
-    document.getElementById('obName').value='';
-    document.getElementById('obName').placeholder=c.es+'…';
-    showStep(4);
-  }
-});
-document.getElementById('obFinish').addEventListener('click',()=>{
-  finishOnboarding(obChosenCls||'knight');
-});
 
 /* reiniciar app */
 document.getElementById('btnReset').addEventListener('click',()=>{
