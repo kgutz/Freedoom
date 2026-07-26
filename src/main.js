@@ -43,6 +43,8 @@ import {
 import { renderSettingsView } from './ui/settings-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
+import { bindNavigation } from './ui/navigation-controller.js';
+import { showToast as renderToast } from './ui/toast.js';
 
 import {
   DAY_NAMES as DIAS,
@@ -484,12 +486,7 @@ function castSpell(id){
 }
 
 function showToast(txt,type){
-  const t=document.getElementById('toast');
-  if(!t) return;
-  t.textContent=txt;
-  t.className='toast show '+(type||'');
-  clearTimeout(t._h);
-  t._h=setTimeout(()=>{t.className='toast';},2000);
+  renderToast(document,txt,type);
 }
 
 function renderHero(){
@@ -749,55 +746,28 @@ document.getElementById('beerNo').addEventListener('click',()=>{
   state.config.tracksBeer=false;scheduleSave();renderSettings();renderHoy();
 });
 
-const views={navHoy:'view-hoy',navHero:'view-hero',navCal:'view-cal',navGraf:'view-graf'};
-function switchView(vid,btnId){
-  document.querySelectorAll('nav button, .gear-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById(vid).classList.add('active');
-  document.getElementById(btnId).classList.add('active');
-  window.scrollTo(0,0);
-  document.getElementById('scrollArea').scrollTop=0;
-}
-Object.keys(views).forEach(nid=>{
-  document.getElementById(nid).addEventListener('click',()=>{
-    switchView(views[nid],nid);
-    if(nid==='navCal'){calCursor=new Date();renderCal();renderWeeks();}
-    if(nid==='navGraf'){grafWeek=Math.max(0,weekIndexOf(new Date()));grafMonth=new Date();renderGraf();}
-  });
-});
-
-/* menú hamburguesa: abre hojas superpuestas */
 function openAjustes(){
   renderSettings();
   document.getElementById('sheetSet').classList.add('show');
 }
-document.getElementById('view-hoy').addEventListener('click',e=>{
-  if(e.target.closest('.hoy-face')) openAjustes();
+const navigation=bindNavigation({
+  document,
+  window,
+  onOpenSettings:openAjustes,
+  onCalendar:()=>{
+    calCursor=new Date();
+    renderCal();
+    renderWeeks();
+  },
+  onChart:()=>{
+    grafWeek=Math.max(0,weekIndexOf(new Date()));
+    grafMonth=new Date();
+    renderGraf();
+  }
 });
-document.getElementById('navMenu').addEventListener('click',()=>{
-  document.getElementById('menuBg').classList.add('show');
-});
-document.getElementById('menuAjustes').addEventListener('click',()=>{
-  document.getElementById('menuBg').classList.remove('show');
-  openAjustes();
-});
-document.getElementById('menuInstr').addEventListener('click',()=>{
-  document.getElementById('menuBg').classList.remove('show');
-  document.getElementById('sheetInstr').classList.add('show');
-});
-document.getElementById('menuBg').addEventListener('click',e=>{
-  if(e.target.id==='menuBg')e.target.classList.remove('show');
-});
-document.querySelectorAll('.sheet-close').forEach(b=>{
-  b.addEventListener('click',()=>{
-    document.getElementById(b.dataset.sheet).classList.remove('show');
-  });
-});
-document.querySelectorAll('.sheet-bg').forEach(s=>{
-  s.addEventListener('click',e=>{
-    if(e.target===s)s.classList.remove('show');
-  });
-});
+function switchView(viewId,buttonId){
+  navigation.switchView(viewId,buttonId);
+}
 
 /* controles de la gráfica */
 document.getElementById('segSem').addEventListener('click',()=>{
