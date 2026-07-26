@@ -1,5 +1,14 @@
 import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
-import { classMaxes, levelFromXp } from './domain/progression.js';
+import {
+  calculateBossState,
+  calculateGameStats
+} from './domain/progression-rules.js';
+import {
+  limitForDate,
+  limitForWeek,
+  weekIndexFor,
+  weekRangeFor
+} from './domain/plan-rules.js';
 import {
   BEER_DAMAGE,
   dailyRecovery,
@@ -58,16 +67,19 @@ document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
 
 /* ---------- utilidades de fecha ---------- */
 function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (cualquier día de la semana) */
-  return Math.floor(daysBetween(parseKey(state.config.startDate), d)/7);
+  return weekIndexFor(state.config.startDate,d);
 }
 function weekRange(idx){
-  const a=parseKey(state.config.startDate);
-  a.setDate(a.getDate()+idx*7);
-  const b=new Date(a); b.setDate(b.getDate()+6);
-  return [a,b];
+  return weekRangeFor(state.config.startDate,idx);
 }
-function limitOfWeek(idx){return Math.max(0, state.config.startLimit - idx);}
-function limitOfDate(d){return limitOfWeek(Math.max(0,weekIndexOf(d)));}
+function limitOfWeek(idx){return limitForWeek(state.config.startLimit,idx);}
+function limitOfDate(d){
+  return limitForDate({
+    startDate:state.config.startDate,
+    startLimit:state.config.startLimit,
+    date:d
+  });
+}
 function getDay(k){return state.days[k]||{c:0,p:0};}
 function setDay(k,c,p,t,b,s){
   c=Math.max(0,c); p=Math.max(0,p);
@@ -489,66 +501,13 @@ function spriteSVG(clsId,mood,extraClass){
   return `<img class="sprite-svg${hurt} ${extraClass||''}" src="sprites/${clsId}_${file}.png" alt="${clsId}" draggable="false">`;
 }
 
-/* --- progreso del juego (determinista desde los datos) --- */
-function computeXp(lvlHint){
-  const now=new Date();
-  const start=parseKey(state.config.startDate);
-  const goal=state.config.pillsGoal||3;
-  const cls=state.game&&state.game.cls;
-  const marginF=(cls==='paladin'&&lvlHint>=12)?6:4;      /* Punteria Divina */
-  const recordXp=(cls==='sorcerer'&&lvlHint>=5)?40:25;   /* Cosecha Oscura */
-  const pardons=(state.game&&state.game.pardons)||[];
-  const judg=(state.game&&state.game.judgmentDays)||[];
-  let xp=(state.game&&state.game.bonusXp)||0;            /* Pactos Oscuros */
-  let cur=0,minC=null;
-  for(let d=new Date(start); daysBetween(now,d)<0; d.setDate(d.getDate()+1)){
-    const k=keyOf(d);
-    const rec=getDay(k);
-    const lim=limitOfDate(d), c=rec.c;
-    xp+=(rec.sx!==undefined? rec.sx : 2*(rec.s||0));     /* XP de disparos perfectos */
-    if(c<=lim){
-      let dayXp=50+marginF*Math.max(0,lim-c);
-      if(rec.p>=goal && state.config.takesPills!==false) dayXp+=10;
-      if(c<=Math.floor(lim/2)) dayXp+=10;                /* día con la mitad o menos del límite */
-      if(judg.includes(k)) dayXp*=2;                     /* Juicio Divino */
-      xp+=dayXp;
-      cur++;
-      if(cur===7)xp+=75; else if(cur===14)xp+=150; else if(cur===30)xp+=300;
-    }else if(pardons.includes(k)){
-      cur++;                                             /* Ultimo Bastion: racha perdonada, sin XP */
-    }else{cur=0;}
-    if(minC===null){minC=c;}
-    else if(c<minC){minC=c;xp+=recordXp;}
-  }
-  const trec=getDay(todayKey());
-  xp+=(trec.sx!==undefined? trec.sx : 2*(trec.s||0));    /* perfectos de hoy, en tiempo real */
-  const streak=cur;
-  const currW=Math.max(0,weekIndexOf(now));
-  let bossesDown=0;
-  for(let w=0;w<currW;w++){
-    const lim=limitOfWeek(w);
-    const [a,b]=weekRange(w);
-    let hits=0;
-    for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
-      if(getDay(keyOf(d)).c<=lim) hits++;
-    }
-    if(hits>=4){xp+=200;bossesDown++;}    /* jefe vencido: 4 de 7 días cumplidos (mayoría) */
-  }
-  return {xp,streak,bossesDown,currW};
-}
-
 function gameStats(){
-  /* dos pasadas: las pasivas de XP dependen del nivel, que depende de la XP */
-  const p1=computeXp(1);
-  const lvl1=levelFromXp(p1.xp);
-  const p2=computeXp(lvl1);
-  const xp=p2.xp;
-  const lvl=levelFromXp(xp);
-  const curTh=35*(lvl-1)*(lvl-1), nextTh=35*lvl*lvl;
-  const prog=Math.min(1,(xp-curTh)/Math.max(1,nextTh-curTh));
-  const tier=lvl>=15?3:lvl>=10?2:lvl>=5?1:0;
-  const {maxHp,maxMp}=classMaxes(state.game&&state.game.cls, lvl);
-  return {xp,lvl,prog,nextTh,streak:p2.streak,bossesDown:p2.bossesDown,currW:p2.currW,tier,maxHp,maxMp};
+  return calculateGameStats({
+    now:new Date(),
+    config:state.config,
+    days:state.days,
+    game:state.game
+  });
 }
 
 function heroToday(){
@@ -568,31 +527,20 @@ function heroToday(){
 }
 
 function bossState(){
-  const now=new Date();
-  const w=Math.max(0,weekIndexOf(now));
-  const lim=limitOfWeek(w);
-  const [a,b]=weekRange(w);
-  const pips=[]; let hits=0, fails=0;
-  for(let d=new Date(a);d<=b;d.setDate(d.getDate()+1)){
-    const isPast=daysBetween(now,d)<0;
-    const isToday=keyOf(d)===todayKey();
-    const c=getDay(keyOf(d)).c;
-    let st='pend';
-    if(isPast){st=c<=lim?'hit':'fail';}
-    else if(isToday){st=(c>lim)?'fail':'today';}
-    if(st==='hit'||st==='today') hits++;
-    else if(st==='fail') fails++;
-    pips.push(st);
-  }
-  const won=hits>=4;     /* mayoría (4 de 7) ya asegurada, aunque no hayan pasado los 7 días */
-  const lost=fails>=4;   /* 4 fallos ya aseguran que no se puede llegar a la mayoría */
   const gs=gameStats();
-  const idx=Math.min(gs.bossesDown,BOSSES.length-1); /* el puntero solo avanza cuando GANAS una semana completa */
-  return {name:BOSSES[idx],slug:BOSS_SLUGS[idx],bossNum:idx+1,lim,pips,hits,fails,won,lost,w};
+  return calculateBossState({
+    now:new Date(),
+    config:state.config,
+    days:state.days,
+    bossesDown:gs.bossesDown
+  });
 }
 
 /* topes dinámicos según clase y nivel */
-function heroMaxes(){ return classMaxes(state.game&&state.game.cls, levelFromXp(computeXp(1).xp)); }
+function heroMaxes(){
+  const stats=gameStats();
+  return {maxHp:stats.maxHp,maxMp:stats.maxMp};
+}
 function capHp(v){ return Math.max(0,Math.min(heroMaxes().maxHp, v)); }
 function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
 
