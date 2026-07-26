@@ -1,0 +1,244 @@
+import { CLASSES } from '../data/game-data.js';
+import {
+  DAY_NAMES,
+  MONTH_NAMES,
+  keyOf,
+  minutesOf,
+} from '../domain/date-utils.js';
+import { limitForWeek, weekIndexFor } from '../domain/plan-rules.js';
+
+const EMPTY_DAY = { c: 0, p: 0 };
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatMinutes(value) {
+  const hours = String(Math.floor(value / 60)).padStart(2, '0');
+  const minutes = String(Math.round(value % 60)).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+export function createPaceModel({ now, smoked, limit, config, record }) {
+  const wake = minutesOf(config.wakeTime || '09:00');
+  const sleep = minutesOf(config.sleepTime || '23:00');
+  const awakeMinutes = Math.max(60, sleep - wake);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const fraction = clamp((nowMinutes - wake) / awakeMinutes, 0, 1);
+  const expected = limit * fraction;
+  const smokedPercent = Math.min(
+    100,
+    limit > 0 ? (smoked / limit) * 100 : 100,
+  );
+
+  let statusClass;
+  let status;
+  if (limit <= 0) {
+    statusClass = 'r';
+    status = 'Semana de 0';
+  } else if (nowMinutes < wake) {
+    if (smoked === 0) {
+      statusClass = 'g';
+      status = 'Tu día aún no empieza';
+    } else {
+      statusClass = 'o';
+      status = 'Antes de hora';
+    }
+  } else if (smoked >= limit) {
+    statusClass = 'r';
+    status = smoked > limit ? 'Límite superado' : 'Límite alcanzado';
+  } else {
+    const ratio = expected > 0.3 ? smoked / expected : smoked <= 1 ? 0 : 2;
+    if (ratio <= 1) {
+      statusClass = 'g';
+      status = 'Vas bien';
+    } else if (ratio <= 1.25) {
+      statusClass = 'y';
+      status = 'Un poco por encima';
+    } else if (ratio <= 1.55) {
+      statusClass = 'o';
+      status = 'Vas rápido';
+    } else {
+      statusClass = 'r';
+      status = 'Vas muy rápido';
+    }
+  }
+
+  const minutesPerCigarette = Math.round(
+    awakeMinutes / Math.max(1, limit),
+  );
+  const roundedExpected = Math.round(expected);
+  let differenceText = '';
+  if (nowMinutes >= wake && nowMinutes <= sleep && limit > 0) {
+    const difference = smoked - roundedExpected;
+    if (difference < 0) {
+      differenceText = ` · vas <b>${-difference}</b> por debajo ✓`;
+    } else if (difference === 0) {
+      differenceText = ' · justo en el ritmo';
+    } else {
+      differenceText = ` · vas <b>${difference}</b> por encima`;
+    }
+  }
+
+  const left = limit - smoked;
+  let nextLine = '';
+  if (left <= 0) {
+    nextLine = 'Límite de hoy completo — el siguiente, mañana';
+  } else if (record.t) {
+    const lastSmoke = new Date(record.t);
+    const lastMinutes = lastSmoke.getHours() * 60 + lastSmoke.getMinutes();
+    const remainingWindow = sleep - lastMinutes;
+    const editableLast =
+      `<span class="edit-time" data-edit-time="1">` +
+      `${formatMinutes(lastMinutes)}</span>`;
+    if (remainingWindow > 0) {
+      const interval = Math.max(10, Math.round(remainingWindow / left));
+      const nextMinutes = lastMinutes + interval;
+      if (nextMinutes <= nowMinutes) {
+        nextLine = `Último: ${editableLast} · ya podría tocar el siguiente — tú decides`;
+      } else {
+        nextLine = `Último: ${editableLast} · el siguiente aprox. a las <b>~${formatMinutes(nextMinutes)}</b>`;
+      }
+    } else {
+      nextLine = `Último: ${editableLast} — ya fuera de tu horario, el siguiente mañana`;
+    }
+  }
+
+  return {
+    expectedPercent: fraction * 100,
+    smokedPercent,
+    gradientWidth: smokedPercent > 0 ? (100 / smokedPercent) * 100 : 100,
+    statusClass,
+    status,
+    info:
+      `Ritmo objetivo: <b>1</b> cada <b>~${minutesPerCigarette} min</b>` +
+      `<br>A esta hora tocarían <b>~${roundedExpected}</b>${differenceText}` +
+      (nextLine ? `<br>${nextLine}` : ''),
+  };
+}
+
+export function createTodayModel({ now, config, days, game, stats }) {
+  const today = keyOf(now);
+  const record = days[today] || EMPTY_DAY;
+  const weekIndex = Math.max(0, weekIndexFor(config.startDate, now));
+  const limit = limitForWeek(config.startLimit, weekIndex);
+  const abbreviatedDay = DAY_NAMES[now.getDay()].slice(0, 3);
+  const abbreviatedMonth = MONTH_NAMES[now.getMonth()].slice(0, 3);
+  const dateLabel =
+    `${abbreviatedDay.charAt(0).toUpperCase()}${abbreviatedDay.slice(1)}, ` +
+    `${now.getDate()}/${abbreviatedMonth.charAt(0).toUpperCase()}${abbreviatedMonth.slice(1)}`;
+
+  let hero = null;
+  if (game?.cls && CLASSES[game.cls] && stats) {
+    const hp = Math.max(0, Math.round(game.hp));
+    const hpPercent = clamp((hp / stats.maxHp) * 100, 0, 100);
+    let hpClass = 'hp-hi';
+    if (hpPercent <= 15) hpClass = 'hp-crit';
+    else if (hpPercent <= 40) hpClass = 'hp-low';
+    else if (hpPercent <= 70) hpClass = 'hp-mid';
+    hero = {
+      classId: game.cls,
+      name: game.name || CLASSES[game.cls].es,
+      className: CLASSES[game.cls].name,
+      hp,
+      maxHp: stats.maxHp,
+      hpPercent,
+      hpClass,
+    };
+  }
+
+  return {
+    dateLabel,
+    weekNumber: weekIndex + 1,
+    limit,
+    record,
+    hero,
+    frameCount: Math.max(limit, record.c, 1),
+    remaining: limit - record.c,
+    pace: createPaceModel({
+      now,
+      smoked: record.c,
+      limit,
+      config,
+      record,
+    }),
+  };
+}
+
+export function renderTodayView({
+  document,
+  now,
+  config,
+  days,
+  game,
+  stats,
+}) {
+  const model = createTodayModel({ now, config, days, game, stats });
+  const pillCard = document.getElementById('pillCard');
+  if (pillCard) pillCard.style.display = config.takesPills === false ? 'none' : '';
+  const beerCounter = document.getElementById('beerCounter');
+  if (beerCounter) {
+    beerCounter.style.display = config.tracksBeer === false ? 'none' : '';
+  }
+
+  document.getElementById('fechaHoy').textContent = model.dateLabel;
+  document.getElementById('semanaNum').textContent = model.weekNumber;
+  document.getElementById('limiteDia').textContent = model.limit;
+  document.getElementById('cigHoy').textContent = model.record.c;
+  document.getElementById('pillHoy').textContent = model.record.p;
+  document.getElementById('beerHoy').textContent = model.record.b || 0;
+
+  if (model.hero) {
+    document.getElementById('hoyHeroName').textContent = model.hero.name;
+    document.getElementById('hoyHeroCls').textContent = model.hero.className;
+    document.getElementById('hoyFace').innerHTML =
+      `<img src="hero_face/${model.hero.classId}_face.png" alt="" ` +
+      `onerror="this.onerror=null;this.src='sprites/${model.hero.classId}_happy.png';this.className='face-full'">`;
+    const fill = document.getElementById('hoyHpFill');
+    fill.style.width = `${model.hero.hpPercent}%`;
+    fill.className = `stat-fill ${model.hero.hpClass}`;
+    document.getElementById('hoyHpVal').textContent =
+      `${model.hero.hp} / ${model.hero.maxHp}`;
+  }
+
+  document.getElementById('hoyTotal').textContent = model.record.c;
+  document.getElementById('hoyLimite').textContent = model.limit;
+
+  const strip = document.getElementById('filmstrip');
+  strip.innerHTML = '';
+  for (let index = 0; index < model.frameCount; index += 1) {
+    const frame = document.createElement('div');
+    frame.className =
+      'frame' +
+      (index < model.record.c
+        ? index < model.limit
+          ? ' used'
+          : ' over'
+        : '');
+    strip.appendChild(frame);
+  }
+
+  document.getElementById('paceExpected').style.width =
+    `${model.pace.expectedPercent}%`;
+  document.getElementById('paceClip').style.width =
+    `${model.pace.smokedPercent}%`;
+  document.getElementById('paceGrad').style.width =
+    `${model.pace.gradientWidth}%`;
+  const status = document.getElementById('paceEstado');
+  status.className = `estado ${model.pace.statusClass}`;
+  status.textContent = model.pace.status;
+  document.getElementById('paceInfo').innerHTML = model.pace.info;
+
+  const remaining = document.getElementById('restantes');
+  if (model.remaining >= 0) {
+    remaining.className = 'restantes';
+    remaining.innerHTML =
+      `Llevas <b>${model.record.c}</b> de un máximo de <b>${model.limit}</b>` +
+      ` — te quedan <b>${model.remaining}</b>`;
+  } else {
+    remaining.className = 'restantes excedido';
+    remaining.innerHTML =
+      `Hoy te has pasado <b>${-model.remaining}</b> del máximo de ${model.limit}` +
+      ' — mañana empiezas de cero';
+  }
+}

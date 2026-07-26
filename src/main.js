@@ -36,6 +36,7 @@ import {
   renderWeeksView
 } from './ui/calendar-view.js';
 import { renderChartView } from './ui/chart-view.js';
+import { renderTodayView } from './ui/today-view.js';
 
 import {
   DAY_NAMES as DIAS,
@@ -149,159 +150,19 @@ window.addEventListener('pagehide',()=>{
 function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
 
 function renderHoy(){
-  const now=new Date(), tk=todayKey();
-  const pc=document.getElementById('pillCard');
-  if(pc) pc.style.display=(state.config.takesPills===false)?'none':'';
-  const bc=document.getElementById('beerCounter');
-  if(bc) bc.style.display=(state.config.tracksBeer===false)?'none':'';
-  const diaAb=DIAS[now.getDay()].slice(0,3);
-  const diaCap=diaAb.charAt(0).toUpperCase()+diaAb.slice(1);
-  const mesAb=MESES[now.getMonth()].slice(0,3);
-  const mesCap=mesAb.charAt(0).toUpperCase()+mesAb.slice(1);
-  document.getElementById('fechaHoy').textContent=
-    `${diaCap}, ${now.getDate()}/${mesCap}`;
-
-  const wIdx=Math.max(0,weekIndexOf(now));
-  const limit=limitOfWeek(wIdx);
-  document.getElementById('semanaNum').textContent=wIdx+1;
-  document.getElementById('limiteDia').textContent=limit;
-
-  const d=getDay(tk);
-  document.getElementById('cigHoy').textContent=d.c;
-  document.getElementById('pillHoy').textContent=d.p;
-  document.getElementById('beerHoy').textContent=d.b||0;
-  /* nombre del héroe y barra de salud vinculada (misma info que en Héroe) */
+  let stats=null;
   if(state.game && state.game.cls){
     ensureHero();
-    const g=state.game;
-    const nameEl=document.getElementById('hoyHeroName');
-    if(nameEl) nameEl.textContent=g.name||CLASSES[g.cls].es;
-    const clsEl=document.getElementById('hoyHeroCls');
-    if(clsEl) clsEl.textContent=CLASSES[g.cls].name;
-    const faceEl=document.getElementById('hoyFace');
-    if(faceEl){
-      /* usa hero_face/ si existe; si no, cae al sprite de cuerpo entero recortado */
-      faceEl.innerHTML=`<img src="hero_face/${g.cls}_face.png" alt="" onerror="this.onerror=null;this.src='sprites/${g.cls}_happy.png';this.className='face-full'">`;
-    }
-    const st=gameStats();
-    const maxHp=st.maxHp;
-    const hpv=Math.max(0,Math.round(g.hp));
-    const pctFill=Math.max(0,Math.min(100,(hpv/maxHp)*100));
-    const fill=document.getElementById('hoyHpFill');
-    const val=document.getElementById('hoyHpVal');
-    if(fill){
-      fill.style.width=pctFill+'%';
-      let cls='hp-hi'; if(pctFill<=15)cls='hp-crit'; else if(pctFill<=40)cls='hp-low'; else if(pctFill<=70)cls='hp-mid';
-      fill.className='stat-fill '+cls;
-    }
-    if(val) val.textContent=hpv+' / '+maxHp;
+    stats=gameStats();
   }
-
-  document.getElementById('hoyTotal').textContent=d.c;
-  document.getElementById('hoyLimite').textContent=limit;
-
-  /* tira de película: un fotograma por cada cigarro del límite de hoy */
-  const strip=document.getElementById('filmstrip');
-  strip.innerHTML='';
-  const frames=Math.max(limit,d.c,1);
-  for(let i=0;i<frames;i++){
-    const f=document.createElement('div');
-    f.className='frame'+(i<d.c ? (i<limit?' used':' over') : '');
-    strip.appendChild(f);
-  }
-  renderPace(now,d.c,limit);
-
-  const rest=document.getElementById('restantes');
-  const left=limit-d.c;
-  if(left>=0){
-    rest.className='restantes';
-    rest.innerHTML=`Llevas <b>${d.c}</b> de un máximo de <b>${limit}</b> — te quedan <b>${left}</b>`;
-  }else{
-    rest.className='restantes excedido';
-    rest.innerHTML=`Hoy te has pasado <b>${-left}</b> del máximo de ${limit} — mañana empiezas de cero`;
-  }
-}
-
-function renderPace(now,smoked,limit){
-  const clip=document.getElementById('paceClip');
-  const grad=document.getElementById('paceGrad');
-  const expectedEl=document.getElementById('paceExpected');
-  const estado=document.getElementById('paceEstado');
-  const info=document.getElementById('paceInfo');
-
-  const wake=minutesOf(state.config.wakeTime||'09:00');
-  const sleep=minutesOf(state.config.sleepTime||'23:00');
-  const span=Math.max(60, sleep-wake); /* minutos despierto */
-  const nowM=now.getHours()*60+now.getMinutes();
-  const frac=Math.min(1, Math.max(0,(nowM-wake)/span)); /* fracción del día transcurrida */
-  const expected=limit*frac; /* los que "tocarían" a esta hora */
-
-  /* zona clara = hasta dónde deberías ir ahora */
-  expectedEl.style.width=(frac*100)+'%';
-
-  /* barra degradada: el gradiente ocupa el ancho total de la barra
-     y el clip lo va destapando -> empieza verde, avanza a amarillo,
-     naranja y acaba en rojo al acercarse al límite */
-  const pct=Math.min(100,(limit>0? smoked/limit*100 : 100));
-  clip.style.width=pct+'%';
-  grad.style.width=(pct>0? (100/pct)*100 : 100)+'%';
-
-  /* estado por color según el ritmo */
-  let cls, txt;
-  if(limit<=0){
-    cls='r'; txt='Semana de 0';
-  }else if(nowM<wake){
-    if(smoked===0){cls='g'; txt='Tu día aún no empieza';}
-    else{cls='o'; txt='Antes de hora';}
-  }else if(smoked>=limit){
-    cls='r'; txt=smoked>limit?'Límite superado':'Límite alcanzado';
-  }else{
-    const ratio=expected>0.3? smoked/expected : (smoked<=1? 0 : 2);
-    if(ratio<=1.0){cls='g'; txt='Vas bien';}
-    else if(ratio<=1.25){cls='y'; txt='Un poco por encima';}
-    else if(ratio<=1.55){cls='o'; txt='Vas rápido';}
-    else{cls='r'; txt='Vas muy rápido';}
-  }
-  estado.className='estado '+cls;
-  estado.textContent=txt;
-
-  /* info: ritmo objetivo y diferencia con lo esperado */
-  const minPerCig=Math.round(span/Math.max(1,limit));
-  const exp=Math.round(expected);
-  let diffTxt='';
-  if(nowM>=wake && nowM<=sleep && limit>0){
-    const diff=smoked-exp;
-    if(diff<0) diffTxt=` · vas <b>${-diff}</b> por debajo ✓`;
-    else if(diff===0) diffTxt=' · justo en el ritmo';
-    else diffTxt=` · vas <b>${diff}</b> por encima`;
-  }
-  info.innerHTML=`Ritmo objetivo: <b>1</b> cada <b>~${minPerCig} min</b><br>A esta hora tocarían <b>~${exp}</b>${diffTxt}`;
-
-  /* aproximación del siguiente: reparte lo que queda entre el tiempo que queda */
-  const rec=getDay(todayKey());
-  const left=limit-smoked;
-  const fmtH=m=>`${String(Math.floor(m/60)).padStart(2,'0')}:${String(Math.round(m%60)).padStart(2,'0')}`;
-  let nextLine='';
-  if(limit>0 && left<=0){
-    nextLine='Límite de hoy completo — el siguiente, mañana';
-  }else if(rec.t){
-    const lt=new Date(rec.t);
-    const lastM=lt.getHours()*60+lt.getMinutes();
-    const window=sleep-lastM;
-    const lastEd=`<span class="edit-time" data-edit-time="1">${fmtH(lastM)}</span>`;
-    if(window>0){
-      const interval=Math.max(10,Math.round(window/left));
-      const nextM=lastM+interval;
-      if(nextM<=nowM){
-        nextLine=`Último: ${lastEd} · ya podría tocar el siguiente — tú decides`;
-      }else{
-        nextLine=`Último: ${lastEd} · el siguiente aprox. a las <b>~${fmtH(nextM)}</b>`;
-      }
-    }else{
-      nextLine=`Último: ${lastEd} — ya fuera de tu horario, el siguiente mañana`;
-    }
-  }
-  if(nextLine) info.innerHTML+=`<br>${nextLine}`;
+  renderTodayView({
+    document,
+    now:new Date(),
+    config:state.config,
+    days:state.days,
+    game:state.game,
+    stats
+  });
 }
 
 function renderCal(){
