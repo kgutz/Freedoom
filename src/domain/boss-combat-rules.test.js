@@ -69,27 +69,29 @@ describe('daño diario al jefe', () => {
 });
 
 describe('combate semanal', () => {
-  it('cuatro días exactos derrotan un jefe de 100 HP', () => {
+  it('necesita seis días exactos para derrotar un jefe de 150 HP', () => {
     const combat = createBossCombat({
       currentWeek: 0,
       legacyBossesDown: 0,
     });
     const status = calculateBossCombatStatus({
       combat,
-      now: new Date(2026, 6, 21, 12),
+      now: new Date(2026, 6, 23, 12),
       config,
       days: {
         '2026-07-17': { c: 20 },
         '2026-07-18': { c: 20 },
         '2026-07-19': { c: 20 },
         '2026-07-20': { c: 20 },
+        '2026-07-21': { c: 20 },
+        '2026-07-22': { c: 20 },
       },
     });
 
     expect(status.hp).toBe(0);
     expect(status.won).toBe(true);
     expect(status.recentHits[0]).toMatchObject({
-      key: '2026-07-20',
+      key: '2026-07-22',
       total: 25,
     });
   });
@@ -115,10 +117,10 @@ describe('combate semanal', () => {
 
     expect(first.weekResults[0]).toMatchObject({
       won: false,
-      remainingHp: 75,
+      remainingHp: 125,
     });
-    expect(first.combat.hpAtWeekStart).toBe(100);
-    expect(first.status.hp).toBe(100);
+    expect(first.combat.hpAtWeekStart).toBe(150);
+    expect(first.status.hp).toBe(150);
     expect(first.status.bossNum).toBe(3);
   });
 
@@ -153,6 +155,25 @@ describe('combate semanal', () => {
     expect(stable.combat.defeated).toBe(1);
     expect(revoked.defeatRevoked).toBe(true);
     expect(revoked.combat.defeated).toBe(0);
-    expect(revoked.status.hp).toBe(BOSS_MAX_HP - 98);
+    expect(revoked.status.hp).toBe(2);
+  });
+
+  it('migra proporcionalmente los combates creados con 100 HP', () => {
+    const migrated = reconcileBossCombat({
+      combat: {
+        ...createBossCombat({
+          currentWeek: 0,
+          legacyBossesDown: 0,
+        }),
+        version: 1,
+        hpAtWeekStart: 60,
+      },
+      now: new Date(2026, 6, 17, 12),
+      config,
+      days: {},
+    });
+
+    expect(migrated.combat.version).toBe(2);
+    expect(migrated.combat.hpAtWeekStart).toBe(90);
   });
 });

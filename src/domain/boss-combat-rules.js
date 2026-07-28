@@ -6,7 +6,7 @@ import {
   weekRangeFor,
 } from './plan-rules.js';
 
-export const BOSS_MAX_HP = 100;
+export const BOSS_MAX_HP = 150;
 export const BOSS_DAY_DAMAGE = 25;
 export const BOSS_MARGIN_DAMAGE = 2;
 export const BOSS_MARGIN_DAMAGE_CAP = 10;
@@ -82,7 +82,7 @@ export function createBossCombat({
 }) {
   const safeLegacy = Math.max(0, legacyBossesDown || 0);
   return {
-    version: 1,
+    version: 2,
     startedWeek: currentWeek,
     legacyBossesDown: safeLegacy,
     defeated: 0,
@@ -262,6 +262,12 @@ export function reconcileBossCombat({
         history: [...(combat.history || [])],
       }
     : createBossCombat({ currentWeek, legacyBossesDown });
+  if ((next.version || 1) < 2) {
+    next.hpAtWeekStart = Math.round(
+      (Math.max(0, next.hpAtWeekStart || 100) / 100) * BOSS_MAX_HP,
+    );
+    next.version = 2;
+  }
   const weekResults = [];
 
   while (next.week < currentWeek) {

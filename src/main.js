@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='40';
+const APP_VERSION='41';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -282,7 +282,7 @@ function renderWeekResultModal(){
       <div style="font-size:12px;color:var(--ok);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">¡Semana superada!</div>
       <h3 style="margin-bottom:2px">Has vencido a ${beatenName}</h3>
       ${bossImg(beatenIdx+1,beatenSlug)}
-      <p class="hint" style="margin:0 0 18px">De puta madre — le quitaste sus 100 puntos de vida. Esta semana entra un rival nuevo.</p>
+      <p class="hint" style="margin:0 0 18px">De puta madre — le quitaste sus 150 puntos de vida. Esta semana entra un rival nuevo.</p>
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Te espera:</div>
       <h3 style="margin-bottom:2px">${nextName}</h3>
       ${bossImg(nextIdx+1,nextSlug)}
@@ -302,7 +302,7 @@ function renderWeekResultModal(){
       <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
       <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
       ${bossImg(idx+1,slug)}
-      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>100 HP</b>.</p>
+      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>150 HP</b>.</p>
       <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>

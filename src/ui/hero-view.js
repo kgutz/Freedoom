@@ -244,7 +244,7 @@ export function renderHeroView({
         </div>
         <div class="boss-id">
           <div class="boss-head"><h2 style="margin:0">Jefe de la semana</h2></div>
-          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · cuatro días cumplidos garantizan la victoria</small></div>
+          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · seis días cumplidos garantizan la victoria</small></div>
           <div class="pips">${pips}</div>
         </div>
       </div>
