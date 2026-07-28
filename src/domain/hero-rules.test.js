@@ -58,6 +58,20 @@ describe('descanso diario', () => {
       }),
     ).toEqual({ hp: 140, mp: 25 });
   });
+
+  it('reduce proporcionalmente Voluntad de Acero por borrachera', () => {
+    expect(
+      dailyRecovery({
+        completedDay: false,
+        currentMana: 40,
+        maxHp: 120,
+        maxMp: 110,
+        classId: 'knight',
+        level: 12,
+        passiveMultiplier: 0.55,
+      }).hp,
+    ).toBe(97);
+  });
 });
 
 describe('regeneración', () => {
@@ -70,6 +84,15 @@ describe('regeneración', () => {
         regenerationActive: true,
       }),
     ).toBe(3.5);
+  });
+
+  it('debilita Savia Viva mientras dura la borrachera', () => {
+    expect(
+      regenerationIntervalMinutes({
+        classId: 'druid',
+        passiveMultiplier: 0.55,
+      }),
+    ).toBeCloseTo(8.35);
   });
 
   it('aplica los ticks transcurridos sin superar la vida máxima', () => {
@@ -115,5 +138,15 @@ describe('otras reglas de salud', () => {
       mana: 15,
     });
     expect(BEER_DAMAGE).toBe(5);
+  });
+
+  it('reduce únicamente la mejora de Poción Mayor', () => {
+    expect(
+      pillCompletionReward({
+        classId: 'druid',
+        level: 5,
+        passiveMultiplier: 0.55,
+      }),
+    ).toEqual({ healing: 18, mana: 15 });
   });
 });

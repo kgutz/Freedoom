@@ -23,6 +23,13 @@ import {
 } from './domain/smoking-rules.js';
 import { castSpellEffect } from './domain/spell-rules.js';
 import {
+  addBeerIntoxication,
+  beerUndoEffects,
+  intoxicationStatus,
+  removeBeerIntoxication,
+  scalePassiveUpgrade
+} from './domain/intoxication-rules.js';
+import {
   STORAGE_KEY,
   createBrowserStore,
   mergeState,
@@ -55,7 +62,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='35';
+const APP_VERSION='36';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -152,11 +159,23 @@ window.addEventListener('pagehide',()=>{
   }
 });
 
+function currentIntoxication(nowTimestamp=Date.now()){
+  if(!state.game) return intoxicationStatus([],nowTimestamp);
+  const previous=state.game.intoxication||[];
+  const status=intoxicationStatus(previous,nowTimestamp);
+  if(status.effects.length!==previous.length){
+    state.game.intoxication=status.effects;
+    scheduleSave();
+  }
+  return status;
+}
+
 /* ---------- render ---------- */
 function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
 
 function renderHoy(){
   let stats=null;
+  const intoxication=currentIntoxication();
   if(state.game && state.game.cls){
     ensureHero();
     stats=gameStats();
@@ -167,7 +186,8 @@ function renderHoy(){
     config:state.config,
     days:state.days,
     game:state.game,
-    stats
+    stats,
+    intoxication
   });
 }
 
@@ -224,11 +244,13 @@ function renderSettings(){
 
 
 function gameStats(){
+  const intoxication=currentIntoxication();
   return calculateGameStats({
     now:new Date(),
     config:state.config,
     days:state.days,
-    game:state.game
+    game:state.game,
+    passiveMultiplier:intoxication.passiveMultiplier
   });
 }
 
@@ -321,6 +343,7 @@ function ensureHero(){
   if(!state.game) state.game={cls:null};
   const g=state.game;
   const now=Date.now();
+  const intoxication=currentIntoxication(now);
   if(g.hp===undefined){const mx=heroMaxes();g.hp=mx.maxHp;g.mp=mx.maxMp;g.hpT=now;g.day=todayKey();scheduleSave();return;}
   if(g.mp===undefined) g.mp=heroMaxes().maxMp;
   g.buffs=g.buffs||{};
@@ -341,7 +364,8 @@ function ensureHero(){
       maxMp:mx.maxMp,
       classId:g.cls,
       level:lvl,
-      rebirthActive:Boolean(g.buffs.renacer)
+      rebirthActive:Boolean(g.buffs.renacer),
+      passiveMultiplier:intoxication.passiveMultiplier
     });
     g.hp=recovered.hp;
     g.mp=recovered.mp;
@@ -386,7 +410,8 @@ function ensureHero(){
     nowTimestamp:now,
     maxHp:heroMaxes().maxHp,
     classId:g.cls,
-    regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now)
+    regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now),
+    passiveMultiplier:intoxication.passiveMultiplier
   });
   if(regenerated.ticks>0){
     g.hp=regenerated.hp;
@@ -397,8 +422,17 @@ function ensureHero(){
 }
 
 function heroArmor(){
-  const per=(state.game&&state.game.cls==='knight')?2:3; /* Piel de Hierro */
-  return Math.min(5,Math.floor(gameStats().streak/per));
+  const streak=gameStats().streak;
+  const baseArmor=Math.min(5,Math.floor(streak/3));
+  if(state.game&&state.game.cls==='knight'){
+    const upgradedArmor=Math.min(5,Math.floor(streak/2)); /* Piel de Hierro */
+    return scalePassiveUpgrade(
+      baseArmor,
+      upgradedArmor,
+      currentIntoxication().passiveMultiplier
+    );
+  }
+  return baseArmor;
 }
 
 function smokeDamage(){
@@ -411,6 +445,7 @@ function smokeDamage(){
   const sleep=minutesOf(state.config.sleepTime||'23:00');
   const lvl=gameStats().lvl;
   const cls=g.cls;
+  const intoxication=currentIntoxication(now.getTime());
   const result=evaluateSmoke({
     now,
     today:todayKey(),
@@ -423,7 +458,8 @@ function smokeDamage(){
     rootsDay:g.rootsDay,
     pestActive:Boolean(g.buffs&&g.buffs.pesteDay===todayKey()),
     armor:heroArmor(),
-    shieldCharges:(g.buffs&&g.buffs.shield)||0
+    shieldCharges:(g.buffs&&g.buffs.shield)||0,
+    passiveMultiplier:intoxication.passiveMultiplier
   });
   if(result.consumesRoots) g.rootsDay=todayKey();
   if(result.consumesShield) g.buffs.shield--;
@@ -448,6 +484,7 @@ function castSpell(id){
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
   const w=Math.max(0,weekIndexOf(new Date()));
   const now=Date.now();
+  const intoxication=currentIntoxication(now);
   const result=castSpellEffect({
     game:g,
     spell:sp,
@@ -455,13 +492,22 @@ function castSpell(id){
     currentWeek:w,
     today:todayKey(),
     nowTimestamp:now,
-    maxHp:st.maxHp
+    maxHp:st.maxHp,
+    activeFailureChance:intoxication.activeFailureChance,
+    passiveMultiplier:intoxication.passiveMultiplier
   });
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
     else if(result.minimumMana) showToast('Necesitas al menos '+result.requiredMana+' 💧','dmg');
     else if(result.reason==='mana') showToast('Maná insuficiente ('+result.requiredMana+' 💧)','dmg');
+    else if(result.reason==='intoxicated'){
+      state.game=result.game;
+      scheduleSave();
+      renderHero();
+      renderHoy();
+      showToast('🍺 La habilidad falló · −'+result.spentMana+' 💧','dmg');
+    }
     return;
   }
   state.game=result.game;
@@ -505,6 +551,7 @@ function renderHero(){
   ensureHero();
   const now=new Date();
   const stats=gameStats();
+  const intoxication=currentIntoxication(now.getTime());
   const boss=calculateBossState({
     now,
     config:state.config,
@@ -519,7 +566,8 @@ function renderHero(){
     game:state.game,
     stats,
     boss,
-    armor:heroArmor()
+    armor:heroArmor(),
+    intoxication
   });
 }
 
@@ -531,7 +579,8 @@ function renderSkillsSheet(){
   renderSkillsView({
     document,
     classId:cls,
-    level:gameStats().lvl
+    level:gameStats().lvl,
+    intoxication:currentIntoxication()
   });
 }
 
@@ -568,7 +617,8 @@ document.getElementById('addCig').addEventListener('click',()=>{
     perfect:r.perfect,
     classId:state.game.cls,
     marksmanActive:Boolean(state.game.buffs&&state.game.buffs.certeroUntil>Date.now()),
-    ashCurseActive:Boolean(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now())
+    ashCurseActive:Boolean(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now()),
+    passiveMultiplier:currentIntoxication().passiveMultiplier
   });
   if(rewards.mana>0) state.game.mp=capMp((state.game.mp||0)+rewards.mana);
   (state.game.cigDmg=state.game.cigDmg||[]).push({
@@ -627,7 +677,11 @@ document.getElementById('addPill').addEventListener('click',()=>{
   const goal=state.config.pillsGoal||3;
   if(d.p+1===goal&&state.game.hp!==undefined){
     const st=gameStats();
-    const reward=pillCompletionReward({classId:state.game.cls,level:st.lvl});
+    const reward=pillCompletionReward({
+      classId:state.game.cls,
+      level:st.lvl,
+      passiveMultiplier:currentIntoxication().passiveMultiplier
+    });
     state.game.hp=capHp(state.game.hp+reward.healing);
     state.game.mp=capMp((state.game.mp||0)+reward.mana);
     scheduleSave();
@@ -642,7 +696,11 @@ document.getElementById('subPill').addEventListener('click',()=>{
   const goal=state.config.pillsGoal||3;
   if(d.p===goal&&state.game.hp!==undefined){
     const st=gameStats();
-    const reward=pillCompletionReward({classId:state.game.cls,level:st.lvl});
+    const reward=pillCompletionReward({
+      classId:state.game.cls,
+      level:st.lvl,
+      passiveMultiplier:currentIntoxication().passiveMultiplier
+    });
     state.game.hp=Math.max(0,state.game.hp-reward.healing);
     state.game.mp=Math.max(0,(state.game.mp||0)-reward.mana);
     scheduleSave();
@@ -654,12 +712,17 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
   ensureHero();
   const g=state.game;
+  const added=addBeerIntoxication(g.intoxication||[],Date.now());
+  g.intoxication=added.effects;
   const bd=BEER_DAMAGE;                                      /* daño fijo; los poderes ya no dependen de la cerveza */
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
-  (g.beerDmg=g.beerDmg||[]).push(bd);
+  (g.beerDmg=g.beerDmg||[]).push({d:bd,i:added.effect.id});
   scheduleSave();
   setDay(k,d.c,d.p,undefined,(d.b||0)+1);
-  showToast('🍺 −'+bd+' de vida','dmg');
+  showToast(
+    '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
+    'dmg'
+  );
 });
 document.getElementById('subBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
@@ -667,10 +730,17 @@ document.getElementById('subBeer').addEventListener('click',()=>{
   ensureHero();
   const g=state.game;
   const arr=g.beerDmg;
-  const bd=(arr&&arr.length)?arr.pop():BEER_DAMAGE;
-  if(bd>0&&g.hp!==undefined){
-    g.hp=capHp(g.hp+bd);
-    showToast('Corregido · +'+bd+' de vida ♥','heal');
+  const undo=beerUndoEffects(
+    (arr&&arr.length)?arr.pop():BEER_DAMAGE
+  );
+  g.intoxication=removeBeerIntoxication(
+    g.intoxication||[],
+    undo.intoxicationEffectId,
+    Date.now()
+  );
+  if(undo.damage>0&&g.hp!==undefined){
+    g.hp=capHp(g.hp+undo.damage);
+    showToast('Corregido · +'+undo.damage+' de vida ♥','heal');
   }
   scheduleSave();
   setDay(k,d.c,d.p,undefined,(d.b||0)-1);
@@ -854,7 +924,7 @@ bindBackupControls({
 let lastDay=todayKey();
 function checkDay(){
   if(todayKey()!==lastDay){lastDay=todayKey();renderAll();}
-  else{renderHoy();}
+  else{renderHoy();renderHero();}
 }
 setInterval(checkDay,60000);
 /* al volver la app de segundo plano (iOS la congela), refrescar al instante:

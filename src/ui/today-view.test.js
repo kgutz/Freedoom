@@ -56,6 +56,7 @@ describe('modelo de Hoy', () => {
       },
       game: { cls: 'paladin', name: 'Kike', hp: 75 },
       stats: { maxHp: 100 },
+      intoxication: { level: 45, remainingMinutes: 52 },
     });
 
     expect(model).toMatchObject({
@@ -68,6 +69,7 @@ describe('modelo de Hoy', () => {
         className: 'Paladin',
         hpClass: 'hp-hi',
       },
+      intoxication: { level: 45, remainingMinutes: 52 },
     });
   });
 });

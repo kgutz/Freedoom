@@ -14,12 +14,25 @@ function dayRecord(days, key) {
   return days[key] || EMPTY_DAY;
 }
 
-function calculateXpPass({ now, config, days, game, levelHint }) {
+function calculateXpPass({
+  now,
+  config,
+  days,
+  game,
+  levelHint,
+  passiveMultiplier,
+}) {
   const start = parseKey(config.startDate);
   const goal = config.pillsGoal || 3;
   const classId = game?.cls;
-  const marginXp = classId === 'paladin' && levelHint >= 12 ? 6 : 4;
-  const recordXp = classId === 'sorcerer' && levelHint >= 5 ? 40 : 25;
+  const marginXp =
+    classId === 'paladin' && levelHint >= 12
+      ? 4 + Math.round(2 * passiveMultiplier)
+      : 4;
+  const recordXp =
+    classId === 'sorcerer' && levelHint >= 5
+      ? 25 + Math.round(15 * passiveMultiplier)
+      : 25;
   const pardons = game?.pardons || [];
   const judgmentDays = game?.judgmentDays || [];
   let xp = game?.bonusXp || 0;
@@ -89,13 +102,20 @@ function calculateXpPass({ now, config, days, game, levelHint }) {
   return { xp, streak, bossesDown, currentWeek };
 }
 
-export function calculateGameStats({ now, config, days, game }) {
+export function calculateGameStats({
+  now,
+  config,
+  days,
+  game,
+  passiveMultiplier = 1,
+}) {
   const firstPass = calculateXpPass({
     now,
     config,
     days,
     game,
     levelHint: 1,
+    passiveMultiplier,
   });
   const firstLevel = levelFromXp(firstPass.xp);
   const result = calculateXpPass({
@@ -104,6 +124,7 @@ export function calculateGameStats({ now, config, days, game }) {
     days,
     game,
     levelHint: firstLevel,
+    passiveMultiplier,
   });
   const level = levelFromXp(result.xp);
   const currentThreshold = 35 * (level - 1) * (level - 1);

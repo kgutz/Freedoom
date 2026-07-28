@@ -36,6 +36,33 @@ describe('validación de hechizos', () => {
       }),
     ).toMatchObject({ ok: false, reason: 'ultimate-used' });
   });
+
+  it('hace fallar una activa por borrachera, gasta maná y conserva la ulti', () => {
+    const result = cast(spell('bastion', { ulti: true, cost: 30 }), {
+      game: { hp: 70, mp: 100, buffs: {} },
+      activeFailureChance: 0.45,
+      randomValue: 0.2,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: 'intoxicated',
+      spentMana: 30,
+      game: { mp: 70 },
+    });
+    expect(result.game.ultiW).toBeUndefined();
+    expect(result.game.buffs.bastion).toBeUndefined();
+  });
+
+  it('permite lanzar la activa cuando supera la tirada de fallo', () => {
+    const result = cast(spell('muro'), {
+      activeFailureChance: 0.45,
+      randomValue: 0.5,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.game.buffs.shield).toBe(2);
+  });
 });
 
 describe('efectos temporales y defensivos', () => {
@@ -57,6 +84,14 @@ describe('efectos temporales y defensivos', () => {
     expect(result.game.buffs.cenizaUntil).toBe(
       1_000_000 + 3 * 3_600_000,
     );
+  });
+
+  it('reduce Filacteria proporcionalmente por borrachera', () => {
+    const result = cast(spell('ceniza'), {
+      passiveMultiplier: 0.55,
+    });
+
+    expect(result.durationHours).toBe(2.55);
   });
 });
 

@@ -27,6 +27,7 @@ export function createHeroModel({
   stats,
   boss,
   armor,
+  intoxication,
 }) {
   const classId = game?.cls;
   if (!classId || !CLASSES[classId]) {
@@ -71,6 +72,11 @@ export function createHeroModel({
   if (buffs.bastion) chips.push('🏰 armado');
   if (buffs.renacer) chips.push('🌅 esta noche');
   if ((game.judgmentDays || []).includes(today)) chips.push('⚖️ hoy');
+  if (intoxication?.level > 0) {
+    chips.push(
+      `🍺 ${intoxication.level}% · ${intoxication.remainingMinutes}m`,
+    );
+  }
 
   return {
     selection: false,
@@ -87,6 +93,7 @@ export function createHeroModel({
     boss,
     armor,
     perfectToday: todayRecord.s || 0,
+    intoxication,
   };
 }
 
@@ -117,6 +124,7 @@ export function renderHeroView({
   stats,
   boss,
   armor,
+  intoxication,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -128,6 +136,7 @@ export function renderHeroView({
     stats,
     boss,
     armor,
+    intoxication,
   });
 
   if (model.selection) {
@@ -234,7 +243,12 @@ function detailedIcon(classId, ability, type) {
   return `<div class="abil-ico"><img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${ability.name.charAt(0)}</span></div>`;
 }
 
-export function renderSkillsView({ document, classId, level }) {
+export function renderSkillsView({
+  document,
+  classId,
+  level,
+  intoxication,
+}) {
   if (!classId || !CLASSES[classId]) return;
   const classData = CLASSES[classId];
   const passiveHtml = classData.pas
@@ -265,6 +279,11 @@ export function renderSkillsView({ document, classId, level }) {
     })
     .join('');
   document.getElementById('skillsBody').innerHTML = `
+    ${
+      intoxication?.level > 0
+        ? `<div class="drunk-warning">🍺 Borrachera ${intoxication.level}% · las pasivas tienen −${intoxication.level}% de potencia y las activas ${intoxication.level}% de fallo.</div>`
+        : ''
+    }
     <div class="grim-cls-tag" style="margin-top:0">Pasivas — ${classData.es}</div>
     ${passiveHtml}
     <div class="grim-cls-tag">Hechizos — ${classData.es}</div>

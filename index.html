@@ -77,7 +77,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v35</div>
+  <div class="ob-version" id="obVersion">v36</div>
 </div>
 
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
@@ -149,6 +149,14 @@
       <button class="pc-sub" id="subBeer" aria-label="Restar una cerveza">−</button>
       <div class="pc-body"><span class="pc-label">Cervezas hoy</span><span class="pc-num" id="beerHoy">0</span></div>
       <button class="pc-add" id="addBeer" aria-label="Sumar una cerveza">+</button>
+    </div>
+    <div class="beer-status" id="beerStatus" style="display:none">
+      <div class="beer-status-top">
+        <span>🍺 Borrachera</span>
+        <b id="beerDrunkPercent">0%</b>
+      </div>
+      <div class="beer-meter"><div id="beerDrunkFill"></div></div>
+      <div class="beer-status-info" id="beerDrunkInfo"></div>
     </div>
   </section>
 
@@ -248,7 +256,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v35</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v36</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -276,6 +284,11 @@
       <h2>💧 Maná y hechizos</h2>
       <p class="hint" style="margin-top:0">El maná es tu fuerza de voluntad acumulada. Su máximo sube con el nivel y depende de tu clase (los magos tienen mucho más; el caballero, poco). Se gana por méritos: <b style="color:var(--pill)">+10</b> por disparo perfecto, <b style="color:var(--pill)">+15</b> al completar las pastillas, y al cerrar un día cumplido amaneces con él <b style="color:var(--pill)">al máximo</b>. Si fallas el día, conservas el que tuvieras.</p>
       <p class="hint">Los hechizos activos se lanzan tocando directamente su icono en el bloque de Habilidades (la ⓘ abre el Libro de habilidades con el detalle completo de las 6). Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos temporales se ven como chips junto a tu héroe.</p>
+    </div>
+    <div class="card">
+      <h2>🍺 Borrachera</h2>
+      <p class="hint" style="margin-top:0">Cada cerveza añade un efecto independiente: <b style="color:var(--warn)">10%</b> durante 30 min, <b style="color:var(--warn)">25%</b> durante 45 min, <b style="color:var(--warn)">45%</b> durante 60 min, <b style="color:var(--warn)">70%</b> durante 75 min y <b style="color:var(--warn)">85%</b> durante 90 min a partir de la quinta.</p>
+      <p class="hint">La borrachera es la probabilidad de que falle una habilidad activa y el porcentaje que reduce las pasivas. Una habilidad fallida gasta maná, pero no consume la habilidad semanal. Cada efecto desaparece por separado al terminar su tiempo.</p>
     </div>
     <div class="card">
       <h2>Jefes y experiencia</h2>

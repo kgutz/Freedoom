@@ -1,3 +1,9 @@
+import {
+  passiveActivates,
+  scalePassiveAmount,
+  scalePassiveUpgrade,
+} from './intoxication-rules.js';
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -25,6 +31,8 @@ export function evaluateSmoke({
   pestActive = false,
   armor = 0,
   shieldCharges = 0,
+  passiveMultiplier = 1,
+  passiveRandomValue = Math.random(),
 }) {
   const smoked = record.c || 0;
   const smokedAfter = smoked + 1;
@@ -44,7 +52,10 @@ export function evaluateSmoke({
   } else if (smoked === 0 && nowMinutes < wakeMinutes) {
     damage = 15;
   } else if (limit <= 0 || smokedAfter > limit) {
-    damage = classId === 'knight' && level >= 5 ? 18 : 25;
+    damage =
+      classId === 'knight' && level >= 5
+        ? scalePassiveUpgrade(25, 18, passiveMultiplier)
+        : 25;
   } else {
     const lastSmokeMinutes = smokeTimeOfDay(record.t);
     if (lastSmokeMinutes !== null) {
@@ -66,18 +77,23 @@ export function evaluateSmoke({
   }
 
   let consumesRoots = false;
-  if (
+  const rootsEligible =
     damage > 0 &&
     classId === 'druid' &&
     level >= 12 &&
-    rootsDay !== today
-  ) {
+    rootsDay !== today;
+  if (rootsEligible) {
     consumesRoots = true;
-    damage = 0;
+    if (passiveActivates(passiveMultiplier, passiveRandomValue)) {
+      damage = 0;
+    }
   }
 
   if (damage > 0 && classId === 'sorcerer') {
-    damage = Math.max(1, damage - 2);
+    damage = Math.max(
+      1,
+      damage - scalePassiveAmount(2, passiveMultiplier),
+    );
   }
   if (damage > 0 && pestActive) {
     damage = Math.max(1, Math.round(damage / 2));
@@ -98,7 +114,10 @@ export function evaluateSmoke({
     shielded,
     consumesRoots,
     consumesShield: shielded,
-    healing: perfect && classId === 'paladin' && level >= 5 ? 3 : 0,
+    healing:
+      perfect && classId === 'paladin' && level >= 5
+        ? scalePassiveAmount(3, passiveMultiplier)
+        : 0,
   };
 }
 
@@ -107,11 +126,16 @@ export function perfectShotRewards({
   classId,
   marksmanActive = false,
   ashCurseActive = false,
+  passiveMultiplier = 1,
 }) {
   if (!perfect) return { xp: 0, mana: 0 };
 
   return {
-    xp: marksmanActive ? 8 : classId === 'paladin' ? 4 : 2,
+    xp: marksmanActive
+      ? 8
+      : classId === 'paladin'
+        ? scalePassiveUpgrade(2, 4, passiveMultiplier)
+        : 2,
     mana: ashCurseActive ? 20 : 10,
   };
 }

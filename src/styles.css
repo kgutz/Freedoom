@@ -90,6 +90,17 @@
   .st-tg.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
   #beerCounter .pc-add{background:#C98A3C;color:#241703}
   #beerCounter .pc-add:active{background:#B87A2E}
+  .beer-status{background:linear-gradient(135deg,#2A1D12,#18120D);border:1px solid #805A2E;
+    border-radius:14px;padding:12px 14px;margin:-2px 0 14px;color:#D9B06C}
+  .beer-status-top{display:flex;align-items:center;justify-content:space-between;
+    font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .beer-status-top b{font-family:'IBM Plex Mono',monospace;font-size:17px;color:#E7B85C}
+  .beer-meter{height:7px;border-radius:99px;background:#0E0B09;overflow:hidden;margin:8px 0 7px}
+  .beer-meter>div{height:100%;width:0;background:linear-gradient(90deg,#D3A441,#D97732,#C44432);
+    border-radius:inherit;transition:width .3s}
+  .beer-status-info{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#BDA57D;line-height:1.45}
+  .drunk-warning{border:1px solid #805A2E;background:#261A10;color:#D9B06C;border-radius:9px;
+    padding:8px 10px;margin:0 0 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;line-height:1.45}
   .digits{
     font-family:'IBM Plex Mono',monospace;font-size:64px;font-weight:600;line-height:1;
     color:var(--text);min-width:110px;letter-spacing:.02em;

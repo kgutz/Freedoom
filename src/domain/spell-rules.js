@@ -10,6 +10,9 @@ export function castSpellEffect({
   today,
   nowTimestamp,
   maxHp,
+  activeFailureChance = 0,
+  passiveMultiplier = 1,
+  randomValue = Math.random(),
 }) {
   if (!spell) return { ok: false, reason: 'unknown-spell' };
   if (level < spell.lvl) {
@@ -26,6 +29,19 @@ export function castSpellEffect({
       reason: 'mana',
       requiredMana: spell.cost,
       minimumMana: spell.id === 'alma',
+    };
+  }
+
+  if (randomValue < activeFailureChance) {
+    return {
+      ok: false,
+      reason: 'intoxicated',
+      game: {
+        ...game,
+        buffs: { ...(game.buffs || {}) },
+        mp: mana - spell.cost,
+      },
+      spentMana: spell.cost,
     };
   }
 
@@ -58,7 +74,8 @@ export function castSpellEffect({
 
   switch (spell.id) {
     case 'ceniza': {
-      result.durationHours = level >= 12 ? 3 : 2;
+      result.durationHours =
+        level >= 12 ? 2 + passiveMultiplier : 2;
       nextGame.buffs.cenizaUntil =
         nowTimestamp + result.durationHours * 3_600_000;
       break;

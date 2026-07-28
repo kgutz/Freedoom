@@ -116,6 +116,41 @@ describe('habilidades defensivas', () => {
       consumesShield: true,
     });
   });
+
+  it('reduce Yelmo, Absorber Esencia y Raíces según la borrachera', () => {
+    expect(
+      evaluateSmoke(
+        base({
+          record: { c: 20 },
+          classId: 'knight',
+          level: 5,
+          passiveMultiplier: 0.55,
+        }),
+      ).dmg,
+    ).toBe(21);
+    expect(
+      evaluateSmoke(
+        base({
+          now: at(7, 10),
+          record: { c: 1 },
+          classId: 'sorcerer',
+          passiveMultiplier: 0.55,
+        }),
+      ).dmg,
+    ).toBe(14);
+    expect(
+      evaluateSmoke(
+        base({
+          now: at(7, 10),
+          record: { c: 1 },
+          classId: 'druid',
+          level: 12,
+          passiveMultiplier: 0.55,
+          passiveRandomValue: 0.7,
+        }),
+      ),
+    ).toMatchObject({ dmg: 15, consumesRoots: true });
+  });
 });
 
 describe('recompensas de disparo perfecto', () => {
@@ -131,6 +166,16 @@ describe('recompensas de disparo perfecto', () => {
         ashCurseActive: true,
       }),
     ).toEqual({ xp: 8, mana: 20 });
+  });
+
+  it('reduce Ojo del Halcón con la borrachera', () => {
+    expect(
+      perfectShotRewards({
+        perfect: true,
+        classId: 'paladin',
+        passiveMultiplier: 0.55,
+      }),
+    ).toEqual({ xp: 3, mana: 10 });
   });
 });
 

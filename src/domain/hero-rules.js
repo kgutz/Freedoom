@@ -10,6 +10,7 @@ export function dailyRecovery({
   classId,
   level,
   rebirthActive = false,
+  passiveMultiplier = 1,
 }) {
   if (completedDay) {
     return { hp: maxHp, mp: maxMp };
@@ -18,7 +19,7 @@ export function dailyRecovery({
   let hp;
   if (rebirthActive) hp = maxHp;
   else if (classId === 'knight' && level >= 12) {
-    hp = Math.round(maxHp * 0.85);
+    hp = Math.round(maxHp * (0.75 + 0.1 * passiveMultiplier));
   } else {
     hp = Math.round(maxHp * 0.75);
   }
@@ -36,8 +37,10 @@ export function weeklyBossPenalty({ hp, maxHp, maxMp }) {
 export function regenerationIntervalMinutes({
   classId,
   regenerationActive = false,
+  passiveMultiplier = 1,
 }) {
-  const baseInterval = classId === 'druid' ? 7 : 10;
+  const baseInterval =
+    classId === 'druid' ? 10 - 3 * passiveMultiplier : 10;
   return regenerationActive ? baseInterval / 2 : baseInterval;
 }
 
@@ -48,9 +51,14 @@ export function regenerateHealth({
   maxHp,
   classId,
   regenerationActive = false,
+  passiveMultiplier = 1,
 }) {
   const intervalMs =
-    regenerationIntervalMinutes({ classId, regenerationActive }) * 60_000;
+    regenerationIntervalMinutes({
+      classId,
+      regenerationActive,
+      passiveMultiplier,
+    }) * 60_000;
   const elapsed = Math.max(0, nowTimestamp - hpTimestamp);
   const ticks = Math.floor(elapsed / intervalMs);
 
@@ -65,9 +73,16 @@ export function regenerateHealth({
   };
 }
 
-export function pillCompletionReward({ classId, level }) {
+export function pillCompletionReward({
+  classId,
+  level,
+  passiveMultiplier = 1,
+}) {
   return {
-    healing: classId === 'druid' && level >= 5 ? 20 : 15,
+    healing:
+      classId === 'druid' && level >= 5
+        ? 15 + Math.round(5 * passiveMultiplier)
+        : 15,
     mana: 15,
   };
 }

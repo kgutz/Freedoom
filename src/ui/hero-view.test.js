@@ -37,6 +37,7 @@ describe('modelo de Héroe', () => {
           mp: 40,
           buffs: { shield: 2, certeroUntil: now.getTime() + 120_000 },
         },
+        intoxication: { level: 25, remainingMinutes: 41 },
       }),
     );
 
@@ -47,7 +48,7 @@ describe('modelo de Héroe', () => {
       manaPercent: 40,
       perfectToday: 1,
     });
-    expect(model.chips).toEqual(['🛡×2', '🎯 2m']);
+    expect(model.chips).toEqual(['🛡×2', '🎯 2m', '🍺 25% · 41m']);
   });
 
   it('mantiene dormido al héroe antes de levantarse', () => {

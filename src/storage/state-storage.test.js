@@ -82,6 +82,33 @@ describe('copias de seguridad', () => {
     expect(restored).toEqual(v34State);
   });
 
+  it('conserva los efectos de borrachera de la v36', () => {
+    const v36State = {
+      ...v34State,
+      game: {
+        ...v34State.game,
+        intoxication: [
+          {
+            id: 'beer-1',
+            contribution: 10,
+            startedAt: 1785247200000,
+            expiresAt: 1785249000000,
+          },
+          {
+            id: 'beer-2',
+            contribution: 15,
+            startedAt: 1785247800000,
+            expiresAt: 1785250500000,
+          },
+        ],
+      },
+    };
+
+    expect(importBackup(defaultState(), exportBackup(v36State))).toEqual(
+      v36State,
+    );
+  });
+
   it('rechaza texto y objetos que no son copias de Freedoom', () => {
     expect(() => importBackup(defaultState(), 'no es json')).toThrow();
     expect(() => importBackup(defaultState(), '{"foo":"bar"}')).toThrow(

@@ -117,7 +117,14 @@ export function createPaceModel({ now, smoked, limit, config, record }) {
   };
 }
 
-export function createTodayModel({ now, config, days, game, stats }) {
+export function createTodayModel({
+  now,
+  config,
+  days,
+  game,
+  stats,
+  intoxication,
+}) {
   const today = keyOf(now);
   const record = days[today] || EMPTY_DAY;
   const weekIndex = Math.max(0, weekIndexFor(config.startDate, now));
@@ -162,6 +169,7 @@ export function createTodayModel({ now, config, days, game, stats }) {
       config,
       record,
     }),
+    intoxication,
   };
 }
 
@@ -172,8 +180,16 @@ export function renderTodayView({
   days,
   game,
   stats,
+  intoxication,
 }) {
-  const model = createTodayModel({ now, config, days, game, stats });
+  const model = createTodayModel({
+    now,
+    config,
+    days,
+    game,
+    stats,
+    intoxication,
+  });
   const pillCard = document.getElementById('pillCard');
   if (pillCard) pillCard.style.display = config.takesPills === false ? 'none' : '';
   const beerCounter = document.getElementById('beerCounter');
@@ -187,6 +203,18 @@ export function renderTodayView({
   document.getElementById('cigHoy').textContent = model.record.c;
   document.getElementById('pillHoy').textContent = model.record.p;
   document.getElementById('beerHoy').textContent = model.record.b || 0;
+  const beerStatus = document.getElementById('beerStatus');
+  if (beerStatus) {
+    const level = model.intoxication?.level || 0;
+    beerStatus.style.display = level > 0 ? 'block' : 'none';
+    if (level > 0) {
+      document.getElementById('beerDrunkPercent').textContent = `${level}%`;
+      document.getElementById('beerDrunkFill').style.width = `${level}%`;
+      document.getElementById('beerDrunkInfo').textContent =
+        `Fallo de activas ${level}% · pasivas −${level}% · ` +
+        `sobrio en ~${model.intoxication.remainingMinutes} min`;
+    }
+  }
 
   if (model.hero) {
     document.getElementById('hoyHeroName').textContent = model.hero.name;
