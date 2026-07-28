@@ -94,7 +94,7 @@ describe('combate semanal', () => {
     });
   });
 
-  it('conserva la vida restante si el jefe sobrevive', () => {
+  it('recupera toda la vida si el jefe sobrevive', () => {
     const first = reconcileBossCombat({
       combat: createBossCombat({
         currentWeek: 0,
@@ -117,7 +117,8 @@ describe('combate semanal', () => {
       won: false,
       remainingHp: 75,
     });
-    expect(first.combat.hpAtWeekStart).toBe(75);
+    expect(first.combat.hpAtWeekStart).toBe(100);
+    expect(first.status.hp).toBe(100);
     expect(first.status.bossNum).toBe(3);
   });
 

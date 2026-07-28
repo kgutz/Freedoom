@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='39';
+const APP_VERSION='40';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -302,7 +302,7 @@ function renderWeekResultModal(){
       <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
       <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
       ${bossImg(idx+1,slug)}
-      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe conserva <b>${Number.isFinite(wr.remainingHp)?wr.remainingHp:100}/100 HP</b> y todo el daño que ya le hiciste.</p>
+      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>100 HP</b>.</p>
       <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>

@@ -301,7 +301,7 @@ export function reconcileBossCombat({
       );
       next.hpAtWeekStart = BOSS_MAX_HP;
     } else {
-      next.hpAtWeekStart = remainingHp;
+      next.hpAtWeekStart = BOSS_MAX_HP;
     }
     next.week += 1;
     next.victoryRecorded = false;
