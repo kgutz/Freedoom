@@ -109,6 +109,39 @@ describe('copias de seguridad', () => {
     );
   });
 
+  it('conserva la vida y el historial del jefe de la v39', () => {
+    const v39State = {
+      ...v34State,
+      game: {
+        ...v34State.game,
+        bossCombat: {
+          version: 1,
+          startedWeek: 2,
+          legacyBossesDown: 1,
+          defeated: 0,
+          bossIndex: 1,
+          week: 3,
+          hpAtWeekStart: 62,
+          victoryRecorded: false,
+          spellHits: [],
+          history: [
+            {
+              week: 2,
+              bossIndex: 1,
+              won: false,
+              damage: 38,
+              remainingHp: 62,
+            },
+          ],
+        },
+      },
+    };
+
+    expect(importBackup(defaultState(), exportBackup(v39State))).toEqual(
+      v39State,
+    );
+  });
+
   it('rechaza texto y objetos que no son copias de Freedoom', () => {
     expect(() => importBackup(defaultState(), 'no es json')).toThrow();
     expect(() => importBackup(defaultState(), '{"foo":"bar"}')).toThrow(

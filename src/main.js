@@ -1,8 +1,9 @@
 import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
+import { calculateGameStats } from './domain/progression-rules.js';
 import {
-  calculateBossState,
-  calculateGameStats
-} from './domain/progression-rules.js';
+  calculateBossCombatStatus,
+  reconcileBossCombat
+} from './domain/boss-combat-rules.js';
 import {
   limitForDate,
   limitForWeek,
@@ -62,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='38';
+const APP_VERSION='39';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -267,20 +268,21 @@ function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
 function renderWeekResultModal(){
   const g=state.game;
   const wr=g.weekResult; if(!wr) return;
-  const gs=gameStats();
   const body=document.getElementById('weekResultModal');
   const bossImg=(num,slug)=>`<div class="boss-box" style="margin:14px auto"><img src="bosses/boss_${String(num).padStart(2,'0')}_${slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="boss-fallback" style="display:none">💀</span></div>`;
 
   if(wr.won){
-    const beatenIdx=Math.max(0,gs.bossesDown-1);
+    const beatenIdx=Number.isFinite(wr.bossIndex)
+      ? Math.max(0,wr.bossIndex)
+      : Math.max(0,gameStats().bossesDown-1);
     const beatenName=BOSSES[beatenIdx], beatenSlug=BOSS_SLUGS[beatenIdx];
-    const nextIdx=Math.min(gs.bossesDown,BOSSES.length-1);
+    const nextIdx=Math.min(beatenIdx+1,BOSSES.length-1);
     const nextName=BOSSES[nextIdx], nextSlug=BOSS_SLUGS[nextIdx];
     body.innerHTML=`
       <div style="font-size:12px;color:var(--ok);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">¡Semana superada!</div>
       <h3 style="margin-bottom:2px">Has vencido a ${beatenName}</h3>
       ${bossImg(beatenIdx+1,beatenSlug)}
-      <p class="hint" style="margin:0 0 18px">De puta madre — cumpliste al menos 4 de tus 7 días. Esta semana entra un rival nuevo.</p>
+      <p class="hint" style="margin:0 0 18px">De puta madre — le quitaste sus 100 puntos de vida. Esta semana entra un rival nuevo.</p>
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Te espera:</div>
       <h3 style="margin-bottom:2px">${nextName}</h3>
       ${bossImg(nextIdx+1,nextSlug)}
@@ -290,7 +292,9 @@ function renderWeekResultModal(){
       document.getElementById('weekResultBg').classList.remove('show');
     });
   }else{
-    const idx=Math.min(gs.bossesDown,BOSSES.length-1);
+    const idx=Number.isFinite(wr.bossIndex)
+      ? Math.min(wr.bossIndex,BOSSES.length-1)
+      : Math.min(gameStats().bossesDown,BOSSES.length-1);
     const name=BOSSES[idx], slug=BOSS_SLUGS[idx];
     const lastLim=limitOfWeek(wr.weekIdx);
     const newWeekIdx=wr.weekIdx+1;
@@ -298,7 +302,7 @@ function renderWeekResultModal(){
       <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
       <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
       ${bossImg(idx+1,slug)}
-      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo hasta que sumes 4 de 7 días cumplidos.</p>
+      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe conserva <b>${Number.isFinite(wr.remainingHp)?wr.remainingHp:100}/100 HP</b> y todo el daño que ya le hiciste.</p>
       <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>
@@ -336,6 +340,57 @@ function renderWeekResultModal(){
       renderAll();
     });
   }
+}
+
+function showPendingWeekResult(){
+  if(state.game&&state.game.weekModalPending){
+    renderWeekResultModal();
+    document.getElementById('weekResultBg').classList.add('show');
+    state.game.weekModalPending=false;
+    scheduleSave();
+  }
+}
+
+function syncBossCombat(nowDate=new Date()){
+  const g=state.game;
+  if(!g||!g.cls) return null;
+  let legacyBossesDown=0;
+  if(!g.bossCombat){
+    legacyBossesDown=calculateGameStats({
+      now:nowDate,
+      config:state.config,
+      days:state.days,
+      game:g,
+      passiveMultiplier:currentIntoxication(nowDate.getTime()).passiveMultiplier
+    }).bossesDown;
+  }
+  const previous=JSON.stringify(g.bossCombat||null);
+  const result=reconcileBossCombat({
+    combat:g.bossCombat,
+    now:nowDate,
+    config:state.config,
+    days:state.days,
+    legacyBossesDown
+  });
+  g.bossCombat=result.combat;
+  for(const weekResult of result.weekResults){
+    if(!weekResult.won){
+      const mx=heroMaxes();
+      const penalty=weeklyBossPenalty({
+        hp:g.hp,
+        maxHp:mx.maxHp,
+        maxMp:mx.maxMp
+      });
+      g.hp=penalty.hp;
+      g.mp=penalty.mp;
+    }
+    g.weekResult=weekResult;
+    g.weekModalPending=true;
+  }
+  if(previous!==JSON.stringify(g.bossCombat)||result.weekResults.length){
+    scheduleSave();
+  }
+  return result.status;
 }
 
 /* --- sistema de vida y maná por eventos --- */
@@ -381,29 +436,7 @@ function ensureHero(){
     g.cigDmg=[]; g.beerDmg=[];
     dirty=true;
   }
-  /* penalización semanal del jefe: si una semana se cierra con menos de 4 días cumplidos (mayoría),
-     el jefe no se vence — se repite la semana siguiente, y una sola vez se aplica el castigo */
-  const curWk=Math.max(0,weekIndexOf(new Date()));
-  if(g.lastWeekChecked===undefined) g.lastWeekChecked=curWk; /* primera vez visto: no penalizar retroactivamente */
-  while(g.lastWeekChecked<curWk){
-    const wIdx=g.lastWeekChecked;
-    const wLim=limitOfWeek(wIdx);
-    const [wa,wb]=weekRange(wIdx);
-    let wHits=0;
-    for(let d=new Date(wa);d<=wb;d.setDate(d.getDate()+1)){
-      if(getDay(keyOf(d)).c<=wLim) wHits++;
-    }
-    if(wHits<4){
-      const mx=heroMaxes();
-      const penalty=weeklyBossPenalty({hp:g.hp,maxHp:mx.maxHp,maxMp:mx.maxMp});
-      g.hp=penalty.hp;
-      g.mp=penalty.mp;
-    }
-    g.weekResult={won:wHits>=4,weekIdx:wIdx};
-    g.weekModalPending=true;
-    dirty=true;
-    g.lastWeekChecked++;
-  }
+  syncBossCombat(new Date(now));
   const regenerated=regenerateHealth({
     hp:g.hp,
     hpTimestamp:g.hpT,
@@ -552,11 +585,11 @@ function renderHero(){
   const now=new Date();
   const stats=gameStats();
   const intoxication=currentIntoxication(now.getTime());
-  const boss=calculateBossState({
+  const boss=calculateBossCombatStatus({
+    combat:state.game.bossCombat,
     now,
     config:state.config,
-    days:state.days,
-    bossesDown:stats.bossesDown
+    days:state.days
   });
   renderHeroView({
     document,
@@ -635,9 +668,9 @@ document.getElementById('addCig').addEventListener('click',()=>{
     state.days[k].sx=(state.days[k].sx||0)+rewards.xp;
     scheduleSave(); renderHero();
   }
-  if(r.shielded) showToast('🛡 Escudo absorbió el golpe','heal');
-  else if(r.dmg>0) showToast('⚔ −'+r.dmg+' de vida','dmg');
-  else if(r.perfect) showToast('Disparo perfecto · +'+rewards.xp+' XP · +'+rewards.mana+' 💧','heal');
+  if(r.shielded) showToast('🛡 Escudo absorbió el ataque del jefe','heal');
+  else if(r.dmg>0) showToast('⚔ El jefe ataca · −'+r.dmg+' de vida','dmg');
+  else if(r.perfect) showToast('Disparo perfecto · −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+rewards.mana+' 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -685,7 +718,7 @@ document.getElementById('addPill').addEventListener('click',()=>{
     state.game.hp=capHp(state.game.hp+reward.healing);
     state.game.mp=capMp((state.game.mp||0)+reward.mana);
     scheduleSave();
-    showToast('Pastillas completas · +'+reward.healing+' ♥ · +'+reward.mana+' 💧','heal');
+    showToast('Pastillas completas · −5 jefe · +'+reward.healing+' ♥ · +'+reward.mana+' 💧','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -923,7 +956,7 @@ bindBackupControls({
    y resetea todo al pasar la medianoche (nuevo día, nuevo límite si toca semana nueva) */
 let lastDay=todayKey();
 function checkDay(){
-  if(todayKey()!==lastDay){lastDay=todayKey();renderAll();}
+  if(todayKey()!==lastDay){lastDay=todayKey();renderAll();showPendingWeekResult();}
   else{renderHoy();renderHero();}
 }
 setInterval(checkDay,60000);
@@ -979,11 +1012,6 @@ document.getElementById('btnReset').addEventListener('click',()=>{
     document.getElementById('mainNav').classList.add('show');
     renderAll();
     ensureHero();
-    if(state.game&&state.game.weekModalPending){
-      renderWeekResultModal();
-      document.getElementById('weekResultBg').classList.add('show');
-      state.game.weekModalPending=false;
-      scheduleSave();
-    }
+    showPendingWeekResult();
   }
 })();

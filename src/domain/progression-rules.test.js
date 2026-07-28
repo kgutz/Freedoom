@@ -60,6 +60,24 @@ describe('progreso completo', () => {
 
     expect(stats.streak).toBe(3);
   });
+
+  it('usa las victorias congeladas del nuevo combate sin recalcularlas', () => {
+    const stats = calculateGameStats({
+      now: new Date(2026, 6, 24, 12),
+      config,
+      days: {},
+      game: {
+        cls: 'knight',
+        bossCombat: {
+          legacyBossesDown: 2,
+          defeated: 1,
+        },
+      },
+    });
+
+    expect(stats.bossesDown).toBe(3);
+    expect(stats.xp).toBeGreaterThanOrEqual(600);
+  });
 });
 
 describe('estado del jefe', () => {

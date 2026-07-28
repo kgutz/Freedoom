@@ -182,6 +182,33 @@ export function renderHeroView({
     .join('');
   const auraClass = heroStats.tier > 0 ? `t${heroStats.tier + 1}` : '';
   const sleeping = model.mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
+  const todayBreakdown = [
+    ['Día', bossState.breakdownToday.completion],
+    ['Margen', bossState.breakdownToday.margin],
+    ['Pastillas', bossState.breakdownToday.pills],
+    ['Perfectos', bossState.breakdownToday.perfect],
+    ['Cero', bossState.breakdownToday.zero],
+  ]
+    .filter(([, value]) => value > 0)
+    .map(
+      ([label, value]) =>
+        `<span class="boss-hit-chip">${label} <b>−${value}</b></span>`,
+    )
+    .join('');
+  const totalBosses = Math.min(config.startLimit + 1, 21);
+  const remainingBosses = Math.max(0, totalBosses - heroStats.bossesDown);
+  const combatLog = (bossState.recentHits || [])
+    .map((hit) => {
+      const parts = [
+        hit.completion ? `día ${hit.completion}` : '',
+        hit.margin ? `margen ${hit.margin}` : '',
+        hit.pills ? `pastillas ${hit.pills}` : '',
+        hit.perfect ? `perfectos ${hit.perfect}` : '',
+        hit.zero ? `cero ${hit.zero}` : '',
+      ].filter(Boolean);
+      return `<div class="boss-log-row"><span>${hit.key.slice(8, 10)}/${hit.key.slice(5, 7)} · ${parts.join(' + ')}</span><b>−${hit.total} HP</b></div>`;
+    })
+    .join('');
 
   box.innerHTML = `
     <div class="card">
@@ -217,11 +244,35 @@ export function renderHeroView({
         </div>
         <div class="boss-id">
           <div class="boss-head"><h2 style="margin:0">Jefe de la semana</h2></div>
-          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · cada día cumplido es un golpe</small></div>
+          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · cuatro días cumplidos garantizan la victoria</small></div>
           <div class="pips">${pips}</div>
         </div>
       </div>
-      <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${config.startLimit + 1}</b> · quedan <b>${config.startLimit + 1 - heroStats.bossesDown - (bossState.won ? 1 : 0)}</b> por delante</div>
+      <div class="boss-hp-label">
+        <span>${bossState.won ? 'DERROTADO' : 'VIDA DEL JEFE'}</span>
+        <b>${bossState.hp} / ${bossState.maxHp} HP</b>
+      </div>
+      <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
+      <div class="boss-damage-summary">
+        <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
+        <span>Daño hoy <b>${bossState.damageToday}</b></span>
+      </div>
+      ${
+        todayBreakdown
+          ? `<div class="boss-hit-chips">${todayBreakdown}</div>`
+          : ''
+      }
+      ${
+        !bossState.won
+          ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
+          : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
+      }
+      ${
+        combatLog
+          ? `<div class="boss-log"><div class="boss-log-title">Últimos golpes</div>${combatLog}</div>`
+          : ''
+      }
+      <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>
 
     <div class="card">

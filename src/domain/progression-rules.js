@@ -82,20 +82,27 @@ function calculateXpPass({
 
   const currentWeek = Math.max(0, weekIndexFor(config.startDate, now));
   let bossesDown = 0;
-  for (let week = 0; week < currentWeek; week += 1) {
-    const limit = limitForWeek(config.startLimit, week);
-    const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
-    let hits = 0;
-    for (
-      let date = new Date(firstDay);
-      date <= lastDay;
-      date.setDate(date.getDate() + 1)
-    ) {
-      if (dayRecord(days, keyOf(date)).c <= limit) hits += 1;
-    }
-    if (hits >= 4) {
-      xp += 200;
-      bossesDown += 1;
+  if (game?.bossCombat) {
+    bossesDown =
+      Math.max(0, game.bossCombat.legacyBossesDown || 0) +
+      Math.max(0, game.bossCombat.defeated || 0);
+    xp += bossesDown * 200;
+  } else {
+    for (let week = 0; week < currentWeek; week += 1) {
+      const limit = limitForWeek(config.startLimit, week);
+      const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
+      let hits = 0;
+      for (
+        let date = new Date(firstDay);
+        date <= lastDay;
+        date.setDate(date.getDate() + 1)
+      ) {
+        if (dayRecord(days, keyOf(date)).c <= limit) hits += 1;
+      }
+      if (hits >= 4) {
+        xp += 200;
+        bossesDown += 1;
+      }
     }
   }
 

@@ -14,7 +14,15 @@ const base = (overrides = {}) => ({
     streak: 3,
     bossesDown: 1,
   },
-  boss: { pips: [], bossNum: 2, slug: 'espectro', won: false },
+  boss: {
+    pips: [],
+    bossNum: 2,
+    slug: 'espectro',
+    won: false,
+    hp: 62,
+    maxHp: 100,
+    hpPercent: 62,
+  },
   armor: 1,
   ...overrides,
 });
@@ -47,6 +55,7 @@ describe('modelo de Héroe', () => {
       hpPercent: 75,
       manaPercent: 40,
       perfectToday: 1,
+      boss: { hp: 62, maxHp: 100, hpPercent: 62 },
     });
     expect(model.chips).toEqual(['🛡×2', '🎯 2m', '🍺 25% · 41m']);
   });
