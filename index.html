@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<base href="./public/">
 <title>Freedoom</title>
 <link rel="apple-touch-icon" href="icono.png">
 <link rel="icon" type="image/png" href="icono.png">
@@ -12,7 +13,7 @@
 <meta name="theme-color" content="#171310">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/src/styles.css">
+<link rel="stylesheet" href="../src/styles.css">
 </head>
 <body>
 
@@ -77,7 +78,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v37</div>
+  <div class="ob-version" id="obVersion">v38</div>
 </div>
 
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
@@ -256,7 +257,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v37</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v38</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -407,6 +408,6 @@
   </div>
 </div>
 
-<script type="module" src="/src/main.js"></script>
+<script src="../app.js"></script>
 </body>
 </html>
