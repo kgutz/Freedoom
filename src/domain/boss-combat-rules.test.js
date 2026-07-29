@@ -32,7 +32,7 @@ describe('daño diario al jefe', () => {
     ).toMatchObject({ completion: 25, margin: 10, total: 35 });
   });
 
-  it('añade pastillas, perfectos limitados y bonus de cero', () => {
+  it('ignora las pastillas y añade perfectos limitados y bonus de cero', () => {
     expect(
       calculateDailyBossDamage({
         record: { c: 0, p: 3, s: 9 },
@@ -43,14 +43,14 @@ describe('daño diario al jefe', () => {
     ).toMatchObject({
       completion: 25,
       margin: 10,
-      pills: 5,
+      pills: 0,
       perfect: 3,
       zero: 15,
-      total: 58,
+      total: 53,
     });
   });
 
-  it('durante el día solo aplica pastillas y disparos perfectos', () => {
+  it('durante el día solo aplica disparos perfectos', () => {
     expect(
       calculateDailyBossDamage({
         record: { c: 5, p: 3, s: 2 },
@@ -60,10 +60,10 @@ describe('daño diario al jefe', () => {
     ).toMatchObject({
       completion: 0,
       margin: 0,
-      pills: 5,
+      pills: 0,
       perfect: 2,
       zero: 0,
-      total: 7,
+      total: 2,
     });
   });
 });

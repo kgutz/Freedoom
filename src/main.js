@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='42';
+const APP_VERSION='43';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -107,6 +107,7 @@ function setDay(k,c,p,t,b,s){
   const beers=(b!==undefined)? Math.max(0,b) : (prev? (prev.b||0) : 0);
   const shots=(s!==undefined)? Math.max(0,s) : (prev? (prev.s||0) : 0);
   const shotXp=prev? (prev.sx||0) : 0;
+  const pillHealing=prev? prev.ph : undefined;
   if(c===0&&p===0&&beers===0){delete state.days[k];}
   else{
     state.days[k]={c,p};
@@ -114,6 +115,7 @@ function setDay(k,c,p,t,b,s){
     if(beers>0) state.days[k].b=beers;
     if(shots>0) state.days[k].s=shots;
     if(shotXp>0) state.days[k].sx=shotXp;
+    if(pillHealing!==undefined) state.days[k].ph=pillHealing;
   }
   scheduleSave(); renderAll();
 }
@@ -715,10 +717,11 @@ document.getElementById('addPill').addEventListener('click',()=>{
       level:st.lvl,
       passiveMultiplier:currentIntoxication().passiveMultiplier
     });
-    state.game.hp=capHp(state.game.hp+reward.healing);
-    state.game.mp=capMp((state.game.mp||0)+reward.mana);
+    const hpBefore=state.game.hp;
+    state.game.hp=capHp(hpBefore+reward.healing);
+    d.ph=state.game.hp-hpBefore;
     scheduleSave();
-    showToast('Pastillas completas · −5 jefe · +'+reward.healing+' ♥ · +'+reward.mana+' 💧','heal');
+    showToast('Pastillas completas · +'+d.ph+' ♥','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -728,16 +731,11 @@ document.getElementById('subPill').addEventListener('click',()=>{
   ensureHero();
   const goal=state.config.pillsGoal||3;
   if(d.p===goal&&state.game.hp!==undefined){
-    const st=gameStats();
-    const reward=pillCompletionReward({
-      classId:state.game.cls,
-      level:st.lvl,
-      passiveMultiplier:currentIntoxication().passiveMultiplier
-    });
-    state.game.hp=Math.max(0,state.game.hp-reward.healing);
-    state.game.mp=Math.max(0,(state.game.mp||0)-reward.mana);
+    const appliedHealing=Math.max(0,d.ph||0);
+    state.game.hp=Math.max(0,state.game.hp-appliedHealing);
+    delete d.ph;
     scheduleSave();
-    showToast('Poción retirada −'+reward.healing,'dmg');
+    showToast('Poción retirada −'+appliedHealing+' ♥','dmg');
   }
   setDay(k,d.c,d.p-1);
 });

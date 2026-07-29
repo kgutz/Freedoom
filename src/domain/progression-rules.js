@@ -23,7 +23,6 @@ function calculateXpPass({
   passiveMultiplier,
 }) {
   const start = parseKey(config.startDate);
-  const goal = config.pillsGoal || 3;
   const classId = game?.cls;
   const marginXp =
     classId === 'paladin' && levelHint >= 12
@@ -56,7 +55,6 @@ function calculateXpPass({
     xp += record.sx !== undefined ? record.sx : 2 * (record.s || 0);
     if (cigarettes <= limit) {
       let dayXp = 50 + marginXp * Math.max(0, limit - cigarettes);
-      if (record.p >= goal && config.takesPills !== false) dayXp += 10;
       if (cigarettes <= Math.floor(limit / 2)) dayXp += 10;
       if (judgmentDays.includes(key)) dayXp *= 2;
       xp += dayXp;

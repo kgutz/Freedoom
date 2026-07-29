@@ -185,7 +185,6 @@ export function renderHeroView({
   const todayBreakdown = [
     ['Día', bossState.breakdownToday.completion],
     ['Margen', bossState.breakdownToday.margin],
-    ['Pastillas', bossState.breakdownToday.pills],
     ['Perfectos', bossState.breakdownToday.perfect],
     ['Cero', bossState.breakdownToday.zero],
   ]
@@ -202,7 +201,6 @@ export function renderHeroView({
       const parts = [
         hit.completion ? `día ${hit.completion}` : '',
         hit.margin ? `margen ${hit.margin}` : '',
-        hit.pills ? `pastillas ${hit.pills}` : '',
         hit.perfect ? `perfectos ${hit.perfect}` : '',
         hit.zero ? `cero ${hit.zero}` : '',
       ].filter(Boolean);

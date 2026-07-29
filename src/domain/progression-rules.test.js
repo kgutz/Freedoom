@@ -61,6 +61,24 @@ describe('progreso completo', () => {
     expect(stats.streak).toBe(3);
   });
 
+  it('no concede XP por completar las pastillas', () => {
+    const base = {
+      now: new Date(2026, 6, 18, 12),
+      config,
+      game: { cls: 'paladin' },
+    };
+    const withoutPills = calculateGameStats({
+      ...base,
+      days: { '2026-07-17': { c: 20, p: 0 } },
+    });
+    const withPills = calculateGameStats({
+      ...base,
+      days: { '2026-07-17': { c: 20, p: 3 } },
+    });
+
+    expect(withPills.xp).toBe(withoutPills.xp);
+  });
+
   it('usa las victorias congeladas del nuevo combate sin recalcularlas', () => {
     const stats = calculateGameStats({
       now: new Date(2026, 6, 24, 12),

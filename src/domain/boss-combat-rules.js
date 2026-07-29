@@ -11,7 +11,6 @@ export const BOSS_REQUIRED_DAYS = 6;
 export const BOSS_DAY_DAMAGE = 25;
 export const BOSS_MARGIN_DAMAGE = 2;
 export const BOSS_MARGIN_DAMAGE_CAP = 10;
-export const BOSS_PILLS_DAMAGE = 5;
 export const BOSS_PERFECT_DAMAGE = 1;
 export const BOSS_PERFECT_DAMAGE_CAP = 3;
 export const BOSS_ZERO_DAY_DAMAGE = 15;
@@ -48,10 +47,7 @@ export function calculateDailyBossDamage({
     BOSS_PERFECT_DAMAGE_CAP,
     Math.max(0, record.s || 0) * BOSS_PERFECT_DAMAGE,
   );
-  const pills =
-    takesPills !== false && (record.p || 0) >= pillsGoal
-      ? BOSS_PILLS_DAMAGE
-      : 0;
+  const pills = 0;
   const completion =
     settled && completed ? BOSS_DAY_DAMAGE : 0;
   const margin =
