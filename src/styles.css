@@ -284,8 +284,8 @@
   }
 
   /* ---------- ajustes ---------- */
-  .set-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--line);font-size:14px}
-  .set-row:last-child{border-bottom:none}
+  .settings-content{padding:0 2px}
+  .set-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 0;border:none;font-size:14px}
   .set-row label{color:var(--muted)}
   .set-row input{
     background:var(--panel2);border:1px solid var(--line);color:var(--text);
