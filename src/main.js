@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='43';
+const APP_VERSION='44';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -108,6 +108,7 @@ function setDay(k,c,p,t,b,s){
   const shots=(s!==undefined)? Math.max(0,s) : (prev? (prev.s||0) : 0);
   const shotXp=prev? (prev.sx||0) : 0;
   const pillHealing=prev? prev.ph : undefined;
+  const pillMana=prev? prev.pm : undefined;
   if(c===0&&p===0&&beers===0){delete state.days[k];}
   else{
     state.days[k]={c,p};
@@ -116,6 +117,7 @@ function setDay(k,c,p,t,b,s){
     if(shots>0) state.days[k].s=shots;
     if(shotXp>0) state.days[k].sx=shotXp;
     if(pillHealing!==undefined) state.days[k].ph=pillHealing;
+    if(pillMana!==undefined) state.days[k].pm=pillMana;
   }
   scheduleSave(); renderAll();
 }
@@ -718,10 +720,13 @@ document.getElementById('addPill').addEventListener('click',()=>{
       passiveMultiplier:currentIntoxication().passiveMultiplier
     });
     const hpBefore=state.game.hp;
+    const mpBefore=state.game.mp||0;
     state.game.hp=capHp(hpBefore+reward.healing);
+    state.game.mp=capMp(mpBefore+reward.mana);
     d.ph=state.game.hp-hpBefore;
+    d.pm=state.game.mp-mpBefore;
     scheduleSave();
-    showToast('Pastillas completas · +'+d.ph+' ♥','heal');
+    showToast('Pastillas completas · +'+d.ph+' ♥ · +'+d.pm+' 💧','heal');
   }
   setDay(k,d.c,d.p+1);
 });
@@ -732,10 +737,13 @@ document.getElementById('subPill').addEventListener('click',()=>{
   const goal=state.config.pillsGoal||3;
   if(d.p===goal&&state.game.hp!==undefined){
     const appliedHealing=Math.max(0,d.ph||0);
+    const appliedMana=Math.max(0,d.pm||0);
     state.game.hp=Math.max(0,state.game.hp-appliedHealing);
+    state.game.mp=Math.max(0,(state.game.mp||0)-appliedMana);
     delete d.ph;
+    delete d.pm;
     scheduleSave();
-    showToast('Poción retirada −'+appliedHealing+' ♥','dmg');
+    showToast('Poción retirada −'+appliedHealing+' ♥ · −'+appliedMana+' 💧','dmg');
   }
   setDay(k,d.c,d.p-1);
 });

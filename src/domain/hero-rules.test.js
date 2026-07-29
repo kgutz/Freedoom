@@ -131,9 +131,11 @@ describe('otras reglas de salud', () => {
   it('mejora la poción del druida desde nivel 5', () => {
     expect(pillCompletionReward({ classId: 'paladin', level: 8 })).toEqual({
       healing: 15,
+      mana: 15,
     });
     expect(pillCompletionReward({ classId: 'druid', level: 5 })).toEqual({
       healing: 20,
+      mana: 15,
     });
     expect(BEER_DAMAGE).toBe(5);
   });
@@ -145,6 +147,6 @@ describe('otras reglas de salud', () => {
         level: 5,
         passiveMultiplier: 0.55,
       }),
-    ).toEqual({ healing: 18 });
+    ).toEqual({ healing: 18, mana: 15 });
   });
 });

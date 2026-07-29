@@ -83,6 +83,7 @@ export function pillCompletionReward({
       classId === 'druid' && level >= 5
         ? 15 + Math.round(5 * passiveMultiplier)
         : 15,
+    mana: 15,
   };
 }
 
