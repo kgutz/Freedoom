@@ -69,17 +69,21 @@
   .hoy-hp-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
   .hoy-hp-lbl b{font-family:'IBM Plex Mono',monospace;color:var(--text);font-size:13px}
   .daily-wake{
-    display:flex;align-items:center;justify-content:space-between;gap:14px;
-    min-height:54px;margin-bottom:14px;padding:10px 14px;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    display:flex;align-items:center;justify-content:flex-start;gap:9px;
+    min-height:24px;margin:-18px 4px 8px;padding:0 2px;
+    background:transparent;border:0;
   }
-  .daily-wake>div{display:flex;flex-direction:column;gap:3px;min-width:0}
-  .daily-wake span{font-size:13px;font-weight:600;color:var(--text)}
-  .daily-wake small{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .daily-wake-copy{display:flex;align-items:center;justify-content:flex-end;min-width:0}
+  .daily-wake-copy>span{font-size:11px;font-weight:500;color:var(--muted)}
+  .daily-wake-editor{display:flex;align-items:center;gap:0;flex-shrink:0;cursor:pointer}
   .daily-wake input{
-    width:102px;flex-shrink:0;padding:8px 9px;border-radius:9px;border:1px solid var(--line);
-    background:var(--panel2);color:var(--kodak);font-family:'IBM Plex Mono',monospace;font-size:14px;
+    width:47px;min-width:0;padding:2px 0;border:0;border-radius:0;outline:0;
+    background:transparent;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;
+    appearance:none;-webkit-appearance:none;
   }
+  .daily-wake input::-webkit-calendar-picker-indicator{display:none;opacity:0;width:0;margin:0;padding:0;-webkit-appearance:none}
+  .daily-wake input:focus{color:var(--kodak)}
+  .daily-wake-editor>span{font-size:12px;color:var(--muted);opacity:.72}
   .pill-counter{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
     border-radius:999px;overflow:hidden;margin-bottom:12px;height:60px}
   .pill-counter .pc-body{flex:1;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
@@ -148,12 +152,12 @@
   .filmstrip-label{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:8px}
   .filmstrip-label .mono b{color:var(--text)}
   .filmstrip{
-    display:flex;flex-wrap:wrap;gap:4px;
+    display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;
     background:#0E0B09;border-radius:8px;padding:10px 8px;
     border:1px solid var(--line);
   }
   .frame{
-    flex:1 1 calc(10% - 4px);min-width:24px;height:30px;border-radius:3px;
+    width:100%;min-width:0;aspect-ratio:1;border-radius:3px;
     border:1px dashed #4A4034;background:transparent;
     transition:background .3s;
   }

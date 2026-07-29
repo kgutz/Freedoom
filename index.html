@@ -83,7 +83,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v55</div>
+  <div class="ob-version" id="obVersion">v65</div>
 </div>
 
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
@@ -99,6 +99,16 @@
 
   <!-- VISTA HOY -->
   <section id="view-hoy" class="view active">
+    <div class="daily-wake">
+      <div class="daily-wake-copy">
+        <span>Despertar de hoy</span>
+      </div>
+      <label class="daily-wake-editor">
+        <input type="time" id="todayWakeInput" aria-label="Hora de despertar de hoy">
+        <span aria-hidden="true">✎</span>
+      </label>
+    </div>
+
     <div class="hoy-hero">
       <div class="hoy-hero-top">
         <div class="hoy-hero-id">
@@ -114,14 +124,6 @@
         <div class="hoy-hp-lbl"><span>Salud</span><b id="hoyHpVal">100%</b></div>
         <div class="stat-track"><div class="stat-fill" id="hoyHpFill" style="width:100%"></div></div>
       </div>
-    </div>
-
-    <div class="daily-wake">
-      <div>
-        <span>Despertar de hoy</span>
-        <small id="todayWakeSource">hora habitual</small>
-      </div>
-      <input type="time" id="todayWakeInput" aria-label="Hora de despertar de hoy">
     </div>
 
     <div class="pill-counter" id="cigCounter">
@@ -273,7 +275,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v55</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v65</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>

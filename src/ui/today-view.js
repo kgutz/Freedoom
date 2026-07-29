@@ -223,14 +223,6 @@ export function renderTodayView({
   document.getElementById('beerHoy').textContent = model.record.b || 0;
   const wakeInput = document.getElementById('todayWakeInput');
   if (wakeInput) wakeInput.value = model.wakeTime;
-  const wakeSource = document.getElementById('todayWakeSource');
-  if (wakeSource) {
-    wakeSource.textContent = model.wakeEstimated
-      ? 'estimado al abrir'
-      : model.record.w
-        ? 'ajustado para hoy'
-        : 'hora habitual';
-  }
   const beerStatus = document.getElementById('beerStatus');
   if (beerStatus) {
     const level = model.intoxication?.level || 0;
