@@ -227,6 +227,18 @@ export function renderHeroView({
         <span>Daño hoy <b>${bossState.damageToday}</b></span>
       </div>
       ${
+        todayBreakdown
+          ? `<div class="boss-hit-chips">${todayBreakdown}</div>`
+          : ''
+      }
+      ${
+        bossState.lockedByDays
+          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas cerrar ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más dentro del límite.</div>`
+          : !bossState.won
+          ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
+          : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
+      }
+      ${
         combatLog
           ? `<div class="boss-log boss-log-sheet"><div class="boss-log-title">Últimos golpes</div>${combatLog}</div>`
           : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'
@@ -270,7 +282,7 @@ export function renderHeroView({
             <h2 style="margin:0">Jefe de la semana</h2>
             <button class="sk-info-btn boss-info-btn" id="bossInfoBtn" aria-label="Ver historial de golpes">ⓘ</button>
           </div>
-          <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · seis días cumplidos garantizan la victoria</small></div>
+          <div class="boss-name">${bossState.name}<small>Seis días cumplidos garantizan la victoria</small></div>
           <div class="pips">${pips}</div>
         </div>
       </div>
@@ -283,22 +295,6 @@ export function renderHeroView({
         <span>SELLOS DE VICTORIA</span>
         <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
       </div>
-      <div class="boss-damage-summary">
-        <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
-        <span>Daño hoy <b>${bossState.damageToday}</b></span>
-      </div>
-      ${
-        todayBreakdown
-          ? `<div class="boss-hit-chips">${todayBreakdown}</div>`
-          : ''
-      }
-      ${
-        bossState.lockedByDays
-          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas cerrar ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más dentro del límite.</div>`
-          : !bossState.won
-          ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
-          : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
-      }
       <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>
 
