@@ -70,7 +70,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='67';
+const APP_VERSION='68';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};

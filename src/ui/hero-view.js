@@ -222,6 +222,10 @@ export function renderHeroView({
   if (bossHistoryBody) {
     bossHistoryBody.innerHTML = `
       <p class="boss-history-intro">Aquí puedes consultar los golpes registrados contra ${bossState.name} durante esta semana.</p>
+      <div class="boss-gate">
+        <span>SELLOS DE VICTORIA</span>
+        <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
+      </div>
       <div class="boss-damage-summary">
         <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
         <span>Daño hoy <b>${bossState.damageToday}</b></span>
@@ -291,10 +295,6 @@ export function renderHeroView({
         <b>${bossState.hp} / ${bossState.maxHp} HP</b>
       </div>
       <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
-      <div class="boss-gate">
-        <span>SELLOS DE VICTORIA</span>
-        <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
-      </div>
       <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>
 
