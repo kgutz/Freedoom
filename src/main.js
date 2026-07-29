@@ -53,31 +53,38 @@ import { bindBackupControls } from './ui/backup-controller.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
+import {
+  DEFAULT_DAY_START_TIME,
+  dayStartMinutes,
+  logicalDayDate,
+  logicalDayKey,
+  timeLabel,
+  timestampForLogicalDayTime
+} from './domain/day-boundary-rules.js';
 
 import {
   DAY_NAMES as DIAS,
   MONTH_NAMES as MESES,
   keyOf,
   minutesOf,
-  parseKey,
-  todayKey
+  parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='51';
+const APP_VERSION='52';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
 const SEED_V=3;
 
 let state={
-  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true, tracksBeer:true},
+  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
   days:{},
   seeded:false,
   seededV:0,
   game:{cls:null},
   onboarded:false
 };
-let calCursor=new Date();
+let calCursor=currentDayDate();
 let editingKey=null;
 let saveTimer=null;
 
@@ -85,6 +92,15 @@ document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
 
 /* ---------- utilidades de fecha ---------- */
+function currentDayDate(now=new Date()){
+  return logicalDayDate(now,state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+}
+function todayKey(now=new Date()){
+  return logicalDayKey(now,state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+}
+function wakeTimeForDay(key=todayKey()){
+  return (state.days[key]&&state.days[key].w)||state.config.wakeTime||'09:00';
+}
 function weekIndexOf(d){ /* semana 0-based: la semana 1 empieza el día exacto de inicio del plan (cualquier día de la semana) */
   return weekIndexFor(state.config.startDate,d);
 }
@@ -109,7 +125,9 @@ function setDay(k,c,p,t,b,s){
   const shotXp=prev? (prev.sx||0) : 0;
   const pillHealing=prev? prev.ph : undefined;
   const pillMana=prev? prev.pm : undefined;
-  if(c===0&&p===0&&beers===0){delete state.days[k];}
+  const dailyWake=prev? prev.w : undefined;
+  const wakeEstimated=prev? prev.we : undefined;
+  if(c===0&&p===0&&beers===0&&dailyWake===undefined){delete state.days[k];}
   else{
     state.days[k]={c,p};
     if(last!==undefined) state.days[k].t=last;
@@ -118,6 +136,8 @@ function setDay(k,c,p,t,b,s){
     if(shotXp>0) state.days[k].sx=shotXp;
     if(pillHealing!==undefined) state.days[k].ph=pillHealing;
     if(pillMana!==undefined) state.days[k].pm=pillMana;
+    if(dailyWake!==undefined) state.days[k].w=dailyWake;
+    if(wakeEstimated) state.days[k].we=1;
   }
   scheduleSave(); renderAll();
 }
@@ -130,7 +150,17 @@ async function load(){
   try{
     const r=await store.get(STORAGE_KEY);
     if(r&&r.value){
-      state=mergeState(state,parseState(r.value));
+      const saved=parseState(r.value);
+      const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
+      state=mergeState(state,saved);
+      if(legacyDayBoundary&&state.onboarded){
+        const key=todayKey();
+        const record=state.days[key]||{c:0,p:0};
+        if(!record.w){
+          state.days[key]={...record,w:state.config.wakeTime||'09:00'};
+        }
+        scheduleSave();
+      }
     }
   }catch(e){ /* primera vez: la clave no existe todavía */ }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -185,9 +215,11 @@ function renderHoy(){
     ensureHero();
     stats=gameStats();
   }
+  const now=new Date();
   renderTodayView({
     document,
-    now:new Date(),
+    now,
+    currentDate:currentDayDate(now),
     config:state.config,
     days:state.days,
     game:state.game,
@@ -200,7 +232,7 @@ function renderCal(){
   renderCalendarView({
     document,
     cursor:calCursor,
-    now:new Date(),
+    now:currentDayDate(),
     config:state.config,
     days:state.days,
     onDayClick:openModal
@@ -210,7 +242,7 @@ function renderCal(){
 function renderWeeks(){
   renderWeeksView({
     document,
-    now:new Date(),
+    now:currentDayDate(),
     config:state.config,
     days:state.days
   });
@@ -219,10 +251,10 @@ function renderWeeks(){
 /* ---------- gráfica ---------- */
 let grafMode='semana';
 let grafWeek=null;   /* índice de semana del plan */
-let grafMonth=new Date();
+let grafMonth=currentDayDate();
 
 function renderGraf(){
-  const now=new Date();
+  const now=currentDayDate();
   const currIdx=Math.max(0,weekIndexOf(now));
   if(grafWeek===null) grafWeek=currIdx;
   renderChartView({
@@ -251,7 +283,7 @@ function renderSettings(){
 function gameStats(){
   const intoxication=currentIntoxication();
   return calculateGameStats({
-    now:new Date(),
+    now:currentDayDate(),
     config:state.config,
     days:state.days,
     game:state.game,
@@ -345,6 +377,17 @@ function renderWeekResultModal(){
     });
   }
 }
+function registerDailyWakeEstimate(now=new Date()){
+  const cutoff=dayStartMinutes(state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+  const currentMinutes=now.getHours()*60+now.getMinutes();
+  if(currentMinutes<cutoff) return false;
+  const key=todayKey(now);
+  const record=state.days[key]||{c:0,p:0};
+  if(record.w) return false;
+  state.days[key]={...record,w:timeLabel(now),we:1};
+  scheduleSave();
+  return true;
+}
 
 function showPendingWeekResult(){
   if(state.game&&state.game.weekModalPending){
@@ -355,7 +398,7 @@ function showPendingWeekResult(){
   }
 }
 
-function syncBossCombat(nowDate=new Date()){
+function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   const g=state.game;
   if(!g||!g.cls) return null;
   let legacyBossesDown=0;
@@ -365,7 +408,7 @@ function syncBossCombat(nowDate=new Date()){
       config:state.config,
       days:state.days,
       game:g,
-      passiveMultiplier:currentIntoxication(nowDate.getTime()).passiveMultiplier
+      passiveMultiplier:currentIntoxication(actualTimestamp).passiveMultiplier
     }).bossesDown;
   }
   const previous=JSON.stringify(g.bossCombat||null);
@@ -409,6 +452,9 @@ function ensureHero(){
   let dirty=false;
   /* compatibilidad con partidas antiguas que aún no guardaban estas marcas */
   if(!g.day){g.day=todayKey();dirty=true;}
+  /* Una partida antigua podía haber cambiado de fecha a medianoche. Durante
+     la madrugada, al adoptar el nuevo corte, no debe aplicar descanso hacia atrás. */
+  if(g.day>todayKey()){g.day=todayKey();dirty=true;}
   if(!Number.isFinite(g.hpT)){g.hpT=now;dirty=true;}
   /* descanso nocturno */
   if(g.day!==todayKey()){
@@ -440,7 +486,7 @@ function ensureHero(){
     g.cigDmg=[]; g.beerDmg=[];
     dirty=true;
   }
-  syncBossCombat(new Date(now));
+  syncBossCombat(currentDayDate(new Date(now)),now);
   const regenerated=regenerateHealth({
     hp:g.hp,
     hpTimestamp:g.hpT,
@@ -476,16 +522,17 @@ function smokeDamage(){
   ensureHero();
   const g=state.game;
   const now=new Date();
-  const lim=limitOfDate(now);
-  const rec=getDay(todayKey());
-  const wake=minutesOf(state.config.wakeTime||'09:00');
+  const key=todayKey(now);
+  const lim=limitOfDate(currentDayDate(now));
+  const rec=getDay(key);
+  const wake=minutesOf(wakeTimeForDay(key));
   const sleep=minutesOf(state.config.sleepTime||'23:00');
   const lvl=gameStats().lvl;
   const cls=g.cls;
   const intoxication=currentIntoxication(now.getTime());
   const result=evaluateSmoke({
     now,
-    today:todayKey(),
+    today:key,
     record:rec,
     limit:lim,
     wakeMinutes:wake,
@@ -493,12 +540,13 @@ function smokeDamage(){
     classId:cls,
     level:lvl,
     rootsDay:g.rootsDay,
-    pestActive:Boolean(g.buffs&&g.buffs.pesteDay===todayKey()),
+    pestActive:Boolean(g.buffs&&g.buffs.pesteDay===key),
     armor:heroArmor(),
     shieldCharges:(g.buffs&&g.buffs.shield)||0,
-    passiveMultiplier:intoxication.passiveMultiplier
+    passiveMultiplier:intoxication.passiveMultiplier,
+    dayStartTime:state.config.dayStartTime||DEFAULT_DAY_START_TIME
   });
-  if(result.consumesRoots) g.rootsDay=todayKey();
+  if(result.consumesRoots) g.rootsDay=key;
   if(result.consumesShield) g.buffs.shield--;
   if(result.dmg>0) g.hp=Math.max(0,g.hp-result.dmg);
   let healed=0;
@@ -519,7 +567,7 @@ function castSpell(id){
   const st=gameStats();
   const C=CLASSES[g.cls]; if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
-  const w=Math.max(0,weekIndexOf(new Date()));
+  const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
   const intoxication=currentIntoxication(now);
   const result=castSpellEffect({
@@ -587,24 +635,28 @@ function renderHero(){
   }
   ensureHero();
   const now=new Date();
+  const dayDate=currentDayDate(now);
+  const dayKey=todayKey(now);
+  const dailyConfig={...state.config,wakeTime:wakeTimeForDay(dayKey)};
   const stats=gameStats();
   const intoxication=currentIntoxication(now.getTime());
   const boss=calculateBossCombatStatus({
     combat:state.game.bossCombat,
-    now,
+    now:dayDate,
     config:state.config,
     days:state.days
   });
   renderHeroView({
     document,
     now,
-    config:state.config,
+    config:dailyConfig,
     days:state.days,
     game:state.game,
     stats,
     boss,
     armor:heroArmor(),
-    intoxication
+    intoxication,
+    dayKey
   });
 }
 
@@ -648,6 +700,7 @@ function bump(id,delta,min=0){
   el.textContent=Math.max(min,+el.textContent+delta);
 }
 document.getElementById('addCig').addEventListener('click',()=>{
+  registerDailyWakeEstimate();
   const k=todayKey(),d=getDay(k);
   const r=smokeDamage();
   const rewards=perfectShotRewards({
@@ -808,10 +861,13 @@ document.getElementById('paceInfo').addEventListener('click',e=>{
 document.getElementById('timeModalSave').addEventListener('click',()=>{
   const v=document.getElementById('lastTimeInput').value;
   if(v){
-    const [h,m]=v.split(':').map(Number);
-    const d=new Date(); d.setHours(h,m,0,0);
     const k=todayKey(), rec=getDay(k);
-    setDay(k,rec.c,rec.p,d.getTime());
+    const timestamp=timestampForLogicalDayTime({
+      dayKey:k,
+      time:v,
+      dayStartTime:state.config.dayStartTime||DEFAULT_DAY_START_TIME
+    });
+    setDay(k,rec.c,rec.p,timestamp);
   }
   document.getElementById('timeModalBg').classList.remove('show');
 });
@@ -834,6 +890,25 @@ document.getElementById('cfgWake').addEventListener('change',e=>{
 });
 document.getElementById('cfgSleep').addEventListener('change',e=>{
   if(e.target.value){state.config.sleepTime=e.target.value;scheduleSave();renderAll();}
+});
+document.getElementById('cfgDayStart').addEventListener('change',e=>{
+  if(e.target.value){
+    state.config.dayStartTime=e.target.value;
+    lastDay=todayKey();
+    registerDailyWakeEstimate();
+    scheduleSave();
+    renderAll();
+  }
+});
+document.getElementById('todayWakeInput').addEventListener('change',e=>{
+  if(!e.target.value) return;
+  const key=todayKey();
+  const record=state.days[key]||{c:0,p:0};
+  state.days[key]={...record,w:e.target.value};
+  delete state.days[key].we;
+  scheduleSave();
+  renderAll();
+  showToast('Despertar de hoy actualizado · '+e.target.value,'heal');
 });
 document.getElementById('cfgPills').addEventListener('change',e=>{
   const v=parseInt(e.target.value,10);
@@ -862,13 +937,13 @@ const navigation=bindNavigation({
   window,
   onOpenSettings:openAjustes,
   onCalendar:()=>{
-    calCursor=new Date();
+    calCursor=currentDayDate();
     renderCal();
     renderWeeks();
   },
   onChart:()=>{
-    grafWeek=Math.max(0,weekIndexOf(new Date()));
-    grafMonth=new Date();
+    grafWeek=Math.max(0,weekIndexOf(currentDayDate()));
+    grafMonth=currentDayDate();
     renderGraf();
   }
 });
@@ -956,6 +1031,7 @@ bindBackupControls({
   getState:()=>state,
   onImported:(importedState)=>{
     state=importedState;
+    registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
   },
@@ -963,7 +1039,7 @@ bindBackupControls({
 });
 
 /* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
-   y resetea todo al pasar la medianoche (nuevo día, nuevo límite si toca semana nueva) */
+   y resetea todo al alcanzar la hora configurable de cambio de día */
 let lastDay=todayKey();
 function checkDay(){
   if(todayKey()!==lastDay){lastDay=todayKey();renderAll();showPendingWeekResult();}
@@ -972,9 +1048,13 @@ function checkDay(){
 setInterval(checkDay,60000);
 /* al volver la app de segundo plano (iOS la congela), refrescar al instante:
    si ya es otro día, los contadores vuelven a 0 sin esperar */
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDay();});
-window.addEventListener('pageshow',checkDay);
-window.addEventListener('focus',checkDay);
+function resumeApp(){
+  registerDailyWakeEstimate();
+  checkDay();
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeApp();});
+window.addEventListener('pageshow',resumeApp);
+window.addEventListener('focus',resumeApp);
 
 /* ---------- init ---------- */
 /* ---------- onboarding ---------- */
@@ -986,6 +1066,7 @@ const onboarding=createOnboardingController({
     state.config={...state.config,...result.config};
     state.game=result.game;
     state.onboarded=result.onboarded;
+    registerDailyWakeEstimate();
     ensureHero();
     scheduleSave();
     document.getElementById('onboard').style.display='none';
@@ -1003,7 +1084,7 @@ function startOnboarding(){
 document.getElementById('btnReset').addEventListener('click',()=>{
   if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
   state={
-    config:{startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', pillsGoal:3, takesPills:true},
+    config:{startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
     days:{}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
   };
   scheduleSave();
@@ -1018,6 +1099,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
   if(!state.onboarded || !(state.game && state.game.cls)){
     startOnboarding();
   }else{
+    registerDailyWakeEstimate();
     document.getElementById('app').style.display='block';
     document.getElementById('mainNav').classList.add('show');
     renderAll();

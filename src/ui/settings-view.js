@@ -4,6 +4,7 @@ export function createSettingsModel({ config, game }) {
     startLimit: config.startLimit,
     wakeTime: config.wakeTime || '09:00',
     sleepTime: config.sleepTime || '23:00',
+    dayStartTime: config.dayStartTime || '04:00',
     pillsGoal: config.pillsGoal || 3,
     heroName: game?.name || '',
     tracksBeer: config.tracksBeer !== false,
@@ -16,6 +17,7 @@ export function renderSettingsView({ document, config, game }) {
   document.getElementById('cfgLimit').value = model.startLimit;
   document.getElementById('cfgWake').value = model.wakeTime;
   document.getElementById('cfgSleep').value = model.sleepTime;
+  document.getElementById('cfgDayStart').value = model.dayStartTime;
   document.getElementById('cfgPills').value = model.pillsGoal;
   const heroName = document.getElementById('cfgHeroName');
   if (heroName) heroName.value = model.heroName;

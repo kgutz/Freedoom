@@ -40,6 +40,19 @@ describe('primer cigarrillo del día', () => {
 
     expect(result.dmg).toBe(15);
   });
+
+  it('trata la 1:00 como el final del día anterior con corte a las 4:00', () => {
+    const result = evaluateSmoke(
+      base({
+        now: new Date(2026, 6, 27, 1, 0),
+        today: '2026-07-26',
+        record: { c: 5 },
+        dayStartTime: '04:00',
+      }),
+    );
+
+    expect(result.dmg).toBe(0);
+  });
 });
 
 describe('ritmo y límite', () => {

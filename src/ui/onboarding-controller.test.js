@@ -9,6 +9,7 @@ describe('resultado del onboarding', () => {
         startLimit: '18',
         wakeTime: '07:00',
         sleepTime: '23:30',
+        dayStartTime: '04:30',
         takesPills: true,
         pillsGoal: '2',
         tracksBeer: false,
@@ -21,6 +22,7 @@ describe('resultado del onboarding', () => {
         startLimit: 18,
         wakeTime: '07:00',
         sleepTime: '23:30',
+        dayStartTime: '04:30',
         takesPills: true,
         pillsGoal: 2,
         tracksBeer: false,
@@ -36,6 +38,7 @@ describe('resultado del onboarding', () => {
       startLimit: '',
       wakeTime: '',
       sleepTime: '',
+      dayStartTime: '',
       takesPills: false,
       pillsGoal: '9',
       tracksBeer: true,
@@ -47,6 +50,7 @@ describe('resultado del onboarding', () => {
       startLimit: 20,
       wakeTime: '09:00',
       sleepTime: '23:00',
+      dayStartTime: '04:00',
       pillsGoal: 0,
     });
     expect(result.game).toEqual({ cls: 'knight', name: 'Caballero' });

@@ -1,5 +1,9 @@
 import { CLASSES } from '../data/game-data.js';
 import { keyOf, minutesOf } from '../domain/date-utils.js';
+import {
+  logicalClockMinutes,
+  logicalTimeMinutes,
+} from '../domain/day-boundary-rules.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -28,6 +32,7 @@ export function createHeroModel({
   boss,
   armor,
   intoxication,
+  dayKey = keyOf(now),
 }) {
   const classId = game?.cls;
   if (!classId || !CLASSES[classId]) {
@@ -39,9 +44,13 @@ export function createHeroModel({
   const mana = Math.max(0, Math.round(game.mp ?? 0));
   const hpPercent = clamp((hp / stats.maxHp) * 100, 0, 100);
   const manaPercent = clamp((mana / stats.maxMp) * 100, 0, 100);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const wakeMinutes = minutesOf(config.wakeTime || '09:00');
-  const today = keyOf(now);
+  const dayStartTime = config.dayStartTime || '04:00';
+  const nowMinutes = logicalTimeMinutes(now, dayStartTime);
+  const wakeMinutes = logicalClockMinutes(
+    minutesOf(config.wakeTime || '09:00'),
+    dayStartTime,
+  );
+  const today = dayKey;
   const todayRecord = days[today] || { c: 0, p: 0 };
   let mood;
   if (nowMinutes < wakeMinutes && todayRecord.c === 0) mood = 'sleep';
@@ -125,6 +134,7 @@ export function renderHeroView({
   boss,
   armor,
   intoxication,
+  dayKey,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -137,6 +147,7 @@ export function renderHeroView({
     boss,
     armor,
     intoxication,
+    dayKey,
   });
 
   if (model.selection) {

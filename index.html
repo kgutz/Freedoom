@@ -60,6 +60,11 @@
       <div><label>Me levanto</label><input type="time" id="obWake" value="09:00"></div>
       <div><label>Me acuesto</label><input type="time" id="obSleep" value="23:00"></div>
     </div>
+    <div class="ob-field">
+      <label>Mi día cambia a las</label>
+      <input type="time" id="obDayStart" value="04:00">
+      <p class="ob-note">Lo que registres antes de esta hora contará para el día anterior.</p>
+    </div>
     <button class="ob-next" id="obToHero">Continuar</button>
   </div>
   <div class="ob-step" id="ob3">
@@ -78,7 +83,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v51</div>
+  <div class="ob-version" id="obVersion">v52</div>
 </div>
 
 <div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"><div class="load-txt">Cargando…</div></div>
@@ -109,6 +114,14 @@
         <div class="hoy-hp-lbl"><span>Salud</span><b id="hoyHpVal">100%</b></div>
         <div class="stat-track"><div class="stat-fill" id="hoyHpFill" style="width:100%"></div></div>
       </div>
+    </div>
+
+    <div class="daily-wake">
+      <div>
+        <span>Despertar de hoy</span>
+        <small id="todayWakeSource">hora habitual</small>
+      </div>
+      <input type="time" id="todayWakeInput" aria-label="Hora de despertar de hoy">
     </div>
 
     <div class="pill-counter" id="cigCounter">
@@ -231,6 +244,10 @@
         <input type="time" id="cfgSleep">
       </div>
       <div class="set-row">
+        <label for="cfgDayStart">El día cambia a las</label>
+        <input type="time" id="cfgDayStart">
+      </div>
+      <div class="set-row">
         <label for="cfgPills">Pastillas al día</label>
         <input type="number" id="cfgPills" min="1" max="10" style="width:80px">
       </div>
@@ -257,7 +274,7 @@
         </div>
       </div>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v51</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v52</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -315,7 +332,7 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🗓</span><span>El plan</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio (el que elegiste al empezar), y cada semana, ese mismo día, el límite diario baja 1 automáticamente hasta llegar a 0. El contador del día se reinicia solo a medianoche. Las pastillas y las cervezas son opcionales: puedes activarlas o desactivarlas en Ajustes según tu caso. Todos los datos se guardan en este dispositivo.</p>
+          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio (el que elegiste al empezar), y cada semana, ese mismo día, el límite diario baja 1 automáticamente hasta llegar a 0. Por defecto, el día de Freedoom cambia a las 04:00: lo que registres antes cuenta para el día anterior. Puedes modificar esa hora en Ajustes. La primera apertura posterior estima tu despertar de ese día y puedes corregirlo directamente en Hoy. Las pastillas y las cervezas son opcionales. Todos los datos se guardan en este dispositivo.</p>
         </div>
       </details>
     </div>

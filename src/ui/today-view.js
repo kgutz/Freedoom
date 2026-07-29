@@ -6,6 +6,11 @@ import {
   minutesOf,
 } from '../domain/date-utils.js';
 import { limitForWeek, weekIndexFor } from '../domain/plan-rules.js';
+import {
+  DEFAULT_DAY_START_TIME,
+  logicalClockMinutes,
+  logicalTimeMinutes,
+} from '../domain/day-boundary-rules.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -14,16 +19,24 @@ function clamp(value, min, max) {
 }
 
 function formatMinutes(value) {
-  const hours = String(Math.floor(value / 60)).padStart(2, '0');
-  const minutes = String(Math.round(value % 60)).padStart(2, '0');
+  const normalized = ((Math.round(value) % 1440) + 1440) % 1440;
+  const hours = String(Math.floor(normalized / 60)).padStart(2, '0');
+  const minutes = String(normalized % 60).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
 
 export function createPaceModel({ now, smoked, limit, config, record }) {
-  const wake = minutesOf(config.wakeTime || '09:00');
-  const sleep = minutesOf(config.sleepTime || '23:00');
+  const dayStartTime = config.dayStartTime || DEFAULT_DAY_START_TIME;
+  const wake = logicalClockMinutes(
+    minutesOf(record.w || config.wakeTime || '09:00'),
+    dayStartTime,
+  );
+  const sleep = logicalClockMinutes(
+    minutesOf(config.sleepTime || '23:00'),
+    dayStartTime,
+  );
   const awakeMinutes = Math.max(60, sleep - wake);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const nowMinutes = logicalTimeMinutes(now, dayStartTime);
   const fraction = clamp((nowMinutes - wake) / awakeMinutes, 0, 1);
   const expected = limit * fraction;
   const smokedPercent = Math.min(
@@ -86,7 +99,7 @@ export function createPaceModel({ now, smoked, limit, config, record }) {
     nextLine = 'Límite de hoy completo — el siguiente, mañana';
   } else if (record.t) {
     const lastSmoke = new Date(record.t);
-    const lastMinutes = lastSmoke.getHours() * 60 + lastSmoke.getMinutes();
+    const lastMinutes = logicalTimeMinutes(lastSmoke, dayStartTime);
     const remainingWindow = sleep - lastMinutes;
     const editableLast =
       `<span class="edit-time" data-edit-time="1">` +
@@ -124,16 +137,17 @@ export function createTodayModel({
   game,
   stats,
   intoxication,
+  currentDate = now,
 }) {
-  const today = keyOf(now);
+  const today = keyOf(currentDate);
   const record = days[today] || EMPTY_DAY;
-  const weekIndex = Math.max(0, weekIndexFor(config.startDate, now));
+  const weekIndex = Math.max(0, weekIndexFor(config.startDate, currentDate));
   const limit = limitForWeek(config.startLimit, weekIndex);
-  const abbreviatedDay = DAY_NAMES[now.getDay()].slice(0, 3);
-  const abbreviatedMonth = MONTH_NAMES[now.getMonth()].slice(0, 3);
+  const abbreviatedDay = DAY_NAMES[currentDate.getDay()].slice(0, 3);
+  const abbreviatedMonth = MONTH_NAMES[currentDate.getMonth()].slice(0, 3);
   const dateLabel =
     `${abbreviatedDay.charAt(0).toUpperCase()}${abbreviatedDay.slice(1)}, ` +
-    `${now.getDate()}/${abbreviatedMonth.charAt(0).toUpperCase()}${abbreviatedMonth.slice(1)}`;
+    `${currentDate.getDate()}/${abbreviatedMonth.charAt(0).toUpperCase()}${abbreviatedMonth.slice(1)}`;
 
   let hero = null;
   if (game?.cls && CLASSES[game.cls] && stats) {
@@ -170,6 +184,8 @@ export function createTodayModel({
       record,
     }),
     intoxication,
+    wakeTime: record.w || config.wakeTime || '09:00',
+    wakeEstimated: Boolean(record.we),
   };
 }
 
@@ -181,6 +197,7 @@ export function renderTodayView({
   game,
   stats,
   intoxication,
+  currentDate = now,
 }) {
   const model = createTodayModel({
     now,
@@ -189,6 +206,7 @@ export function renderTodayView({
     game,
     stats,
     intoxication,
+    currentDate,
   });
   const pillCard = document.getElementById('pillCard');
   if (pillCard) pillCard.style.display = config.takesPills === false ? 'none' : '';
@@ -203,6 +221,16 @@ export function renderTodayView({
   document.getElementById('cigHoy').textContent = model.record.c;
   document.getElementById('pillHoy').textContent = model.record.p;
   document.getElementById('beerHoy').textContent = model.record.b || 0;
+  const wakeInput = document.getElementById('todayWakeInput');
+  if (wakeInput) wakeInput.value = model.wakeTime;
+  const wakeSource = document.getElementById('todayWakeSource');
+  if (wakeSource) {
+    wakeSource.textContent = model.wakeEstimated
+      ? 'estimado al abrir'
+      : model.record.w
+        ? 'ajustado para hoy'
+        : 'hora habitual';
+  }
   const beerStatus = document.getElementById('beerStatus');
   if (beerStatus) {
     const level = model.intoxication?.level || 0;

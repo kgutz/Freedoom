@@ -44,6 +44,18 @@ describe('barra de ritmo', () => {
       }),
     ).toMatchObject({ statusClass: 'r', status: 'Límite superado' });
   });
+
+  it('mantiene el ritmo del día anterior durante la madrugada', () => {
+    const pace = createPaceModel({
+      now: new Date(2026, 6, 27, 1, 0),
+      smoked: 5,
+      limit: 19,
+      config: { ...config, dayStartTime: '04:00' },
+      record: { c: 5, w: '08:15' },
+    });
+
+    expect(pace.status).toBe('Vas bien');
+  });
 });
 
 describe('modelo de Hoy', () => {
@@ -71,5 +83,25 @@ describe('modelo de Hoy', () => {
       },
       intoxication: { level: 45, remainingMinutes: 52 },
     });
+  });
+
+  it('usa la fecha lógica y el despertar guardado para ese día', () => {
+    const model = createTodayModel({
+      now: new Date(2026, 6, 27, 1, 0),
+      currentDate: new Date(2026, 6, 26, 1, 0),
+      config: { ...config, dayStartTime: '04:00' },
+      days: {
+        '2026-07-26': { c: 5, p: 1, w: '08:15', we: 1 },
+        '2026-07-27': { c: 0, p: 0 },
+      },
+      game: null,
+      stats: null,
+      intoxication: null,
+    });
+
+    expect(model.record.c).toBe(5);
+    expect(model.wakeTime).toBe('08:15');
+    expect(model.wakeEstimated).toBe(true);
+    expect(model.dateLabel).toContain('26/Jul');
   });
 });

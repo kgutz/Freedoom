@@ -3,19 +3,24 @@ import {
   scalePassiveAmount,
   scalePassiveUpgrade,
 } from './intoxication-rules.js';
+import {
+  DEFAULT_DAY_START_TIME,
+  logicalClockMinutes,
+  logicalTimeMinutes,
+} from './day-boundary-rules.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function timeOfDay(date) {
-  return date.getHours() * 60 + date.getMinutes();
+function timeOfDay(date, dayStartTime) {
+  return logicalTimeMinutes(date, dayStartTime);
 }
 
-function smokeTimeOfDay(timestamp) {
+function smokeTimeOfDay(timestamp, dayStartTime) {
   if (!timestamp) return null;
   const date = new Date(timestamp);
-  return Number.isNaN(date.getTime()) ? null : timeOfDay(date);
+  return Number.isNaN(date.getTime()) ? null : timeOfDay(date, dayStartTime);
 }
 
 export function evaluateSmoke({
@@ -33,13 +38,19 @@ export function evaluateSmoke({
   shieldCharges = 0,
   passiveMultiplier = 1,
   passiveRandomValue = Math.random(),
+  dayStartTime = DEFAULT_DAY_START_TIME,
 }) {
   const smoked = record.c || 0;
   const smokedAfter = smoked + 1;
-  const nowMinutes = timeOfDay(now);
-  const awakeMinutes = Math.max(60, sleepMinutes - wakeMinutes);
+  const nowMinutes = timeOfDay(now, dayStartTime);
+  const logicalWakeMinutes = logicalClockMinutes(wakeMinutes, dayStartTime);
+  const logicalSleepMinutes = logicalClockMinutes(sleepMinutes, dayStartTime);
+  const awakeMinutes = Math.max(
+    60,
+    logicalSleepMinutes - logicalWakeMinutes,
+  );
   const dayFraction = clamp(
-    (nowMinutes - wakeMinutes) / awakeMinutes,
+    (nowMinutes - logicalWakeMinutes) / awakeMinutes,
     0,
     1,
   );
@@ -47,9 +58,9 @@ export function evaluateSmoke({
   let damage;
   let perfect = false;
 
-  if (smoked === 0 && nowMinutes >= wakeMinutes) {
+  if (smoked === 0 && nowMinutes >= logicalWakeMinutes) {
     damage = 0;
-  } else if (smoked === 0 && nowMinutes < wakeMinutes) {
+  } else if (smoked === 0 && nowMinutes < logicalWakeMinutes) {
     damage = 15;
   } else if (limit <= 0 || smokedAfter > limit) {
     damage =
@@ -57,10 +68,10 @@ export function evaluateSmoke({
         ? scalePassiveUpgrade(25, 18, passiveMultiplier)
         : 25;
   } else {
-    const lastSmokeMinutes = smokeTimeOfDay(record.t);
+    const lastSmokeMinutes = smokeTimeOfDay(record.t, dayStartTime);
     if (lastSmokeMinutes !== null) {
       const cigarettesLeft = limit - smoked;
-      const remainingMinutes = sleepMinutes - lastSmokeMinutes;
+      const remainingMinutes = logicalSleepMinutes - lastSmokeMinutes;
       if (remainingMinutes > 0 && cigarettesLeft > 0) {
         const nextSmokeMinutes =
           lastSmokeMinutes +
