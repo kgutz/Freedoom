@@ -84,6 +84,7 @@
   #pillCard .pc-add{background:var(--pill);color:#0E1A24}
   #pillCard .pc-add:active{background:#6E8FA6}
   #beerCounter .pc-num{color:#C98A3C}
+  #beerCounter{margin-bottom:14px}
   .set-toggle{display:flex;gap:6px}
   .st-tg{padding:7px 16px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);
     color:var(--muted);font-family:'Sora',sans-serif;font-weight:600;font-size:13px;cursor:pointer}
@@ -91,7 +92,7 @@
   #beerCounter .pc-add{background:#C98A3C;color:#241703}
   #beerCounter .pc-add:active{background:#B87A2E}
   .beer-status{background:linear-gradient(135deg,#2A1D12,#18120D);border:1px solid #805A2E;
-    border-radius:14px;padding:12px 14px;margin:-2px 0 14px;color:#D9B06C}
+    border-radius:14px;padding:12px 14px;margin:0 0 14px;color:#D9B06C}
   .beer-status-top{display:flex;align-items:center;justify-content:space-between;
     font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
   .beer-status-top b{font-family:'IBM Plex Mono',monospace;font-size:17px;color:#E7B85C}
