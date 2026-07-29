@@ -207,6 +207,20 @@ export function renderHeroView({
       return `<div class="boss-log-row"><span>${hit.key.slice(8, 10)}/${hit.key.slice(5, 7)} · ${parts.join(' + ')}</span><b>−${hit.total} HP</b></div>`;
     })
     .join('');
+  const bossHistoryBody = document.getElementById('bossHistoryBody');
+  if (bossHistoryBody) {
+    bossHistoryBody.innerHTML = `
+      <p class="boss-history-intro">Aquí puedes consultar los golpes registrados contra ${bossState.name} durante esta semana.</p>
+      <div class="boss-damage-summary">
+        <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
+        <span>Daño hoy <b>${bossState.damageToday}</b></span>
+      </div>
+      ${
+        combatLog
+          ? `<div class="boss-log boss-log-sheet"><div class="boss-log-title">Últimos golpes</div>${combatLog}</div>`
+          : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'
+      }`;
+  }
 
   box.innerHTML = `
     <div class="card">
@@ -241,7 +255,10 @@ export function renderHeroView({
           <span class="boss-fallback" style="display:none">💀</span>
         </div>
         <div class="boss-id">
-          <div class="boss-head"><h2 style="margin:0">Jefe de la semana</h2></div>
+          <div class="boss-head">
+            <h2 style="margin:0">Jefe de la semana</h2>
+            <button class="sk-info-btn boss-info-btn" id="bossInfoBtn" aria-label="Ver historial de golpes">ⓘ</button>
+          </div>
           <div class="boss-name">${bossState.name}<small>máx ${bossState.lim}/día · seis días cumplidos garantizan la victoria</small></div>
           <div class="pips">${pips}</div>
         </div>
@@ -270,11 +287,6 @@ export function renderHeroView({
           : !bossState.won
           ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
-      }
-      ${
-        combatLog
-          ? `<div class="boss-log"><div class="boss-log-title">Últimos golpes</div>${combatLog}</div>`
-          : ''
       }
       <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>

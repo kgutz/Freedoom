@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='44';
+const APP_VERSION='45';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -921,6 +921,10 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('#skInfoBtn')){
     renderSkillsSheet();
     document.getElementById('sheetSkills').classList.add('show');
+    return;
+  }
+  if(e.target.closest('#bossInfoBtn')){
+    document.getElementById('sheetBossHistory').classList.add('show');
     return;
   }
   const card=e.target.closest('[data-cls]');

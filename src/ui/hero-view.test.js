@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createHeroModel, spriteImage } from './hero-view.js';
+import {
+  createHeroModel,
+  renderHeroView,
+  spriteImage,
+} from './hero-view.js';
 
 const base = (overrides = {}) => ({
   now: new Date(2026, 6, 26, 12),
@@ -75,5 +79,55 @@ describe('modelo de Héroe', () => {
     expect(spriteImage('paladin', 'worried')).toContain(
       'sprites/paladin_happy.png',
     );
+  });
+
+  it('mueve los últimos golpes al panel informativo del jefe', () => {
+    const heroContent = { innerHTML: '' };
+    const bossHistoryBody = { innerHTML: '' };
+    const document = {
+      getElementById(id) {
+        if (id === 'heroContent') return heroContent;
+        if (id === 'bossHistoryBody') return bossHistoryBody;
+        return null;
+      },
+    };
+
+    renderHeroView({
+      document,
+      ...base({
+        boss: {
+          ...base().boss,
+          name: 'Espectro',
+          lim: 20,
+          pips: [],
+          completedDays: 1,
+          requiredDays: 6,
+          damageThisWeek: 27,
+          damageToday: 27,
+          breakdownToday: {
+            completion: 25,
+            margin: 2,
+            perfect: 0,
+            zero: 0,
+          },
+          recentHits: [
+            {
+              key: '2026-07-26',
+              completion: 25,
+              margin: 2,
+              perfect: 0,
+              zero: 0,
+              total: 27,
+            },
+          ],
+        },
+      }),
+      intoxication: null,
+    });
+
+    expect(heroContent.innerHTML).toContain('id="bossInfoBtn"');
+    expect(heroContent.innerHTML).not.toContain('Últimos golpes');
+    expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
+    expect(bossHistoryBody.innerHTML).toContain('−27 HP');
   });
 });
