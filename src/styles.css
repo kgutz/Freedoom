@@ -320,11 +320,14 @@
   .view{display:none}
   .view.active{display:block}
   .loading{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    min-height:70vh;text-align:center;color:var(--muted);font-size:14px;gap:22px;
+    position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
+    min-height:100vh;min-height:100dvh;background:var(--bg);text-align:center;
   }
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
-    filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))}
+    filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 1.2s ease forwards;opacity:0}
+  .loading.replay .load-logo{animation:logoIn 1.2s ease forwards}
+  .loading.exit{pointer-events:none;animation:loadingOut .4s ease forwards}
+  @keyframes loadingOut{from{opacity:1}to{opacity:0}}
 
   /* ---------- onboarding ---------- */
   #onboard{position:fixed;inset:0;background:var(--bg);z-index:50;
@@ -662,4 +665,6 @@
 
   @media (prefers-reduced-motion: reduce){
     *{transition:none!important}
+    .load-logo,.loading.replay .load-logo{animation-duration:.01ms}
+    .loading.exit{animation-duration:.01ms}
   }

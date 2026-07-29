@@ -70,7 +70,10 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='72';
+const APP_VERSION='73';
+const RETURN_SPLASH_IDLE_MS=30*60*1000;
+const RETURN_SPLASH_LOGO_MS=1200;
+const RETURN_SPLASH_FADE_MS=400;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -87,9 +90,42 @@ let state={
 let calCursor=currentDayDate();
 let editingKey=null;
 let saveTimer=null;
+const initialSplashStartedAt=performance.now();
+let returnSplashTimer=null;
+let returnSplashPlaying=true;
+let backgroundedAt=null;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
+
+function finishReturnSplash(delay=RETURN_SPLASH_LOGO_MS){
+  clearTimeout(returnSplashTimer);
+  returnSplashTimer=setTimeout(()=>{
+    const loading=document.getElementById('loading');
+    loading.classList.add('exit');
+    returnSplashTimer=setTimeout(()=>{
+      loading.style.display='none';
+      loading.classList.remove('exit','replay');
+      returnSplashPlaying=false;
+    },RETURN_SPLASH_FADE_MS);
+  },Math.max(0,delay));
+}
+
+function finishInitialReturnSplash(){
+  const elapsed=performance.now()-initialSplashStartedAt;
+  finishReturnSplash(RETURN_SPLASH_LOGO_MS-elapsed);
+}
+
+function playReturnSplash(){
+  if(returnSplashPlaying||!state.onboarded||!(state.game&&state.game.cls)) return;
+  const loading=document.getElementById('loading');
+  loading.style.display='flex';
+  loading.classList.remove('exit','replay');
+  void loading.offsetWidth;
+  loading.classList.add('replay');
+  returnSplashPlaying=true;
+  finishReturnSplash();
+}
 
 /* ---------- utilidades de fecha ---------- */
 function currentDayDate(now=new Date()){
@@ -189,6 +225,7 @@ function scheduleSave(){
 }
 /* al ocultar/cerrar la app, volcado final por si había un guardado pendiente */
 window.addEventListener('pagehide',()=>{
+  backgroundedAt=Date.now();
   if(!store.usesExternalStorage){
     try{ store.set(STORAGE_KEY,serializeState(state)); }catch(e){}
   }
@@ -1052,8 +1089,20 @@ function resumeApp(){
   registerDailyWakeEstimate();
   checkDay();
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)resumeApp();});
-window.addEventListener('pageshow',resumeApp);
+function resumeAfterBackground(){
+  const awayMs=backgroundedAt===null?0:Date.now()-backgroundedAt;
+  backgroundedAt=null;
+  if(awayMs>=RETURN_SPLASH_IDLE_MS) playReturnSplash();
+  resumeApp();
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){
+    backgroundedAt=Date.now();
+    return;
+  }
+  resumeAfterBackground();
+});
+window.addEventListener('pageshow',resumeAfterBackground);
 window.addEventListener('focus',resumeApp);
 
 /* ---------- init ---------- */
@@ -1094,7 +1143,6 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 
 (async function(){
   await load();
-  document.getElementById('loading').style.display='none';
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
     startOnboarding();
@@ -1105,5 +1153,6 @@ document.getElementById('btnReset').addEventListener('click',()=>{
     renderAll();
     ensureHero();
     showPendingWeekResult();
+    finishInitialReturnSplash();
   }
 })();
