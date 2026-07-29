@@ -656,6 +656,10 @@
     font-weight:600;cursor:pointer;
   }
 
+  @media (max-width:600px){
+    .daily-wake{gap:3px}
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{transition:none!important}
   }
