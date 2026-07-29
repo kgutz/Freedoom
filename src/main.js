@@ -63,7 +63,7 @@ import {
   todayKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='49';
+const APP_VERSION='50';
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};

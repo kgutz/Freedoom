@@ -459,6 +459,8 @@
   .faq-item[open] .faq-icon::before{content:'−'}
   .faq-answer{padding:0 36px 18px 2px}
   .faq-answer .hint:first-child{margin-top:0}
+  .faq-lead,.faq-bullets{display:block}
+  .faq-bullets{margin-top:8px}
 
   /* ---------- héroe RPG ---------- */
   .hero-top{display:flex;gap:18px;align-items:center;margin-bottom:6px}
