@@ -7,6 +7,7 @@ import {
 } from './plan-rules.js';
 
 export const BOSS_MAX_HP = 150;
+export const BOSS_REQUIRED_DAYS = 6;
 export const BOSS_DAY_DAMAGE = 25;
 export const BOSS_MARGIN_DAMAGE = 2;
 export const BOSS_MARGIN_DAMAGE_CAP = 10;
@@ -180,7 +181,11 @@ export function calculateBossCombatStatus({
     days,
     spellHits: combat.spellHits,
   });
-  const hp = Math.max(0, combat.hpAtWeekStart - weekDamage.total);
+  const rawHp = Math.max(0, combat.hpAtWeekStart - weekDamage.total);
+  const hasRequiredDays = weekDamage.hits >= BOSS_REQUIRED_DAYS;
+  const won = rawHp <= 0 && hasRequiredDays;
+  const lockedByDays = rawHp <= 0 && !hasRequiredDays;
+  const hp = lockedByDays ? 1 : rawHp;
   const identity = bossIdentity(combat.bossIndex);
   const today = weekDamage.daily.find((day) => day.key === keyOf(now));
   const projectedToday = today
@@ -234,7 +239,10 @@ export function calculateBossCombatStatus({
     pips: weekDamage.pips,
     hits: weekDamage.hits,
     fails: weekDamage.fails,
-    won: hp <= 0,
+    won,
+    lockedByDays,
+    completedDays: weekDamage.hits,
+    requiredDays: BOSS_REQUIRED_DAYS,
     lost: false,
     w: combat.week,
     bossesDown:
@@ -279,8 +287,14 @@ export function reconcileBossCombat({
       spellHits: next.spellHits,
       settleAll: true,
     });
-    const remainingHp = Math.max(0, next.hpAtWeekStart - damage.total);
-    const won = remainingHp <= 0;
+    const rawRemainingHp = Math.max(
+      0,
+      next.hpAtWeekStart - damage.total,
+    );
+    const won =
+      rawRemainingHp <= 0 && damage.hits >= BOSS_REQUIRED_DAYS;
+    const remainingHp =
+      rawRemainingHp <= 0 && !won ? 1 : rawRemainingHp;
 
     if (won && !next.victoryRecorded) {
       next.defeated += 1;

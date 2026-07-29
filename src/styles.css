@@ -530,6 +530,9 @@
   .boss-hp-track{height:13px;margin-top:6px;border-radius:999px;overflow:hidden;background:#211713;border:1px solid #4B2920}
   .boss-hp-fill{height:100%;background:linear-gradient(90deg,#8F2F20,var(--warn));transition:width .35s ease}
   .boss-hp-fill.defeated{background:var(--ok)}
+  .boss-gate{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:10px;color:var(--muted);letter-spacing:.04em}
+  .boss-gate b{color:var(--kodak);font-family:'IBM Plex Mono',monospace;letter-spacing:0}
+  .boss-gate-warning{margin-top:10px;padding:8px 10px;border-radius:8px;background:#2A1C13;border:1px solid var(--kodak);font-size:11px;color:var(--kodak);line-height:1.4}
   .boss-damage-summary{display:flex;justify-content:space-between;gap:10px;margin-top:10px;font-size:11px;color:var(--muted)}
   .boss-damage-summary b{color:var(--text);font-family:'IBM Plex Mono',monospace}
   .boss-hit-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}

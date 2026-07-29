@@ -253,6 +253,10 @@ export function renderHeroView({
         <b>${bossState.hp} / ${bossState.maxHp} HP</b>
       </div>
       <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
+      <div class="boss-gate">
+        <span>SELLOS DE VICTORIA</span>
+        <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
+      </div>
       <div class="boss-damage-summary">
         <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
         <span>Daño hoy <b>${bossState.damageToday}</b></span>
@@ -263,7 +267,9 @@ export function renderHeroView({
           : ''
       }
       ${
-        !bossState.won
+        bossState.lockedByDays
+          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas cerrar ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más dentro del límite.</div>`
+          : !bossState.won
           ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }

@@ -90,10 +90,36 @@ describe('combate semanal', () => {
 
     expect(status.hp).toBe(0);
     expect(status.won).toBe(true);
+    expect(status.completedDays).toBe(6);
     expect(status.recentHits[0]).toMatchObject({
       key: '2026-07-22',
       total: 25,
     });
+  });
+
+  it('no permite matarlo antes del sexto día aunque reciba daño de sobra', () => {
+    const combat = createBossCombat({
+      currentWeek: 0,
+      legacyBossesDown: 0,
+    });
+    const status = calculateBossCombatStatus({
+      combat,
+      now: new Date(2026, 6, 22, 12),
+      config,
+      days: {
+        '2026-07-17': { c: 0, p: 3, s: 3 },
+        '2026-07-18': { c: 0, p: 3, s: 3 },
+        '2026-07-19': { c: 0, p: 3, s: 3 },
+        '2026-07-20': { c: 0, p: 3, s: 3 },
+        '2026-07-21': { c: 0, p: 3, s: 3 },
+      },
+    });
+
+    expect(status.damageThisWeek).toBeGreaterThan(150);
+    expect(status.completedDays).toBe(5);
+    expect(status.hp).toBe(1);
+    expect(status.won).toBe(false);
+    expect(status.lockedByDays).toBe(true);
   });
 
   it('recupera toda la vida si el jefe sobrevive', () => {
@@ -129,24 +155,34 @@ describe('combate semanal', () => {
       currentWeek: 0,
       legacyBossesDown: 1,
     });
-    combat.hpAtWeekStart = 2;
+    const winningDays = {
+      '2026-07-17': { c: 20 },
+      '2026-07-18': { c: 20 },
+      '2026-07-19': { c: 20 },
+      '2026-07-20': { c: 20 },
+      '2026-07-21': { c: 20 },
+      '2026-07-22': { c: 20 },
+    };
     const won = reconcileBossCombat({
       combat,
-      now: new Date(2026, 6, 17, 12),
+      now: new Date(2026, 6, 23, 12),
       config,
-      days: { '2026-07-17': { c: 1, p: 3, s: 2 } },
+      days: winningDays,
     });
     const stable = reconcileBossCombat({
       combat: won.combat,
-      now: new Date(2026, 6, 17, 12),
+      now: new Date(2026, 6, 23, 12),
       config,
-      days: { '2026-07-17': { c: 1, p: 3, s: 2 } },
+      days: winningDays,
     });
     const revoked = reconcileBossCombat({
       combat: stable.combat,
-      now: new Date(2026, 6, 17, 12),
+      now: new Date(2026, 6, 23, 12),
       config,
-      days: { '2026-07-17': { c: 1, p: 0, s: 0 } },
+      days: {
+        ...winningDays,
+        '2026-07-22': { c: 21 },
+      },
     });
 
     expect(won.newlyDefeated).toBe(true);
@@ -155,7 +191,7 @@ describe('combate semanal', () => {
     expect(stable.combat.defeated).toBe(1);
     expect(revoked.defeatRevoked).toBe(true);
     expect(revoked.combat.defeated).toBe(0);
-    expect(revoked.status.hp).toBe(2);
+    expect(revoked.status.hp).toBe(25);
   });
 
   it('migra proporcionalmente los combates creados con 100 HP', () => {
