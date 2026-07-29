@@ -449,6 +449,8 @@
   .faq-item summary::-webkit-details-marker{display:none}
   .faq-item summary::marker{content:''}
   .faq-item summary:focus-visible{outline:2px solid var(--kodak);outline-offset:4px;border-radius:4px}
+  .faq-title{display:grid;grid-template-columns:26px 1fr;align-items:center;column-gap:10px;min-width:0}
+  .faq-topic-icon{width:26px;text-align:center;font-size:16px;line-height:1}
   .faq-icon{
     width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
     color:var(--kodak);font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:400;line-height:1;
