@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { keyOf } from './date-utils.js';
 import {
+  bossCountForPlan,
   limitForDate,
   limitForWeek,
   weekIndexFor,
@@ -33,5 +34,11 @@ describe('plan semanal', () => {
         date: new Date(2026, 6, 25),
       }),
     ).toBe(19);
+  });
+
+  it('vincula exactamente los jefes con las semanas del plan', () => {
+    expect(bossCountForPlan(6)).toBe(6);
+    expect(bossCountForPlan(20)).toBe(20);
+    expect(bossCountForPlan(30)).toBe(21);
   });
 });

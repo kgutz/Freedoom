@@ -22,6 +22,7 @@
 <!-- ONBOARDING (primera vez) -->
 <div id="onboard" style="display:none">
   <div class="ob-step active" id="ob1">
+    <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
     <img src="logo.png" alt="Freedoom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
     <div id="obTitleFallback" class="ob-fallback" style="display:none">FREEDOOM</div>
     <button class="ob-start" id="obStart">Toca para empezar</button>
@@ -83,10 +84,13 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v73</div>
+  <div class="ob-version" id="obVersion">v78</div>
 </div>
 
-<div id="loading" class="loading"><img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'"></div>
+<div id="loading" class="loading">
+  <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
+  <img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'">
+</div>
 
 <div id="app" style="display:none">
   <header>
@@ -357,10 +361,10 @@
   </div>
 </div>
 
-<!-- HISTORIAL DE GOLPES DEL JEFE -->
+<!-- COLECCIÓN Y COMBATE DE JEFES -->
 <div class="sheet-bg" id="sheetBossHistory">
   <div class="sheet">
-    <div class="sheet-head sk-head-center"><h3>Historial de golpes</h3><button class="sheet-close" data-sheet="sheetBossHistory">✕</button></div>
+    <div class="sheet-head sk-head-center"><h3>Jefes de la campaña</h3><button class="sheet-close" data-sheet="sheetBossHistory">✕</button></div>
     <div class="card" id="bossHistoryBody"></div>
   </div>
 </div>

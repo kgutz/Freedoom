@@ -19,6 +19,13 @@ export function limitForWeek(startLimit, weekIndex) {
   return Math.max(0, startLimit - weekIndex);
 }
 
+export function bossCountForPlan(startLimit, availableBosses = 21) {
+  const weeks = Number.isFinite(Number(startLimit))
+    ? Math.max(1, Math.trunc(Number(startLimit)))
+    : 1;
+  return Math.min(weeks, Math.max(1, availableBosses));
+}
+
 export function limitForDate({ startDate, startLimit, date }) {
   const weekIndex = Math.max(0, weekIndexFor(startDate, date));
   return limitForWeek(startLimit, weekIndex);

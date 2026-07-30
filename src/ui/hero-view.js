@@ -1,9 +1,10 @@
-import { CLASSES } from '../data/game-data.js';
+import { BOSSES, BOSS_SLUGS, CLASSES } from '../data/game-data.js';
 import { keyOf, minutesOf } from '../domain/date-utils.js';
 import {
   logicalClockMinutes,
   logicalTimeMinutes,
 } from '../domain/day-boundary-rules.js';
+import { bossCountForPlan } from '../domain/plan-rules.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -205,8 +206,35 @@ export function renderHeroView({
         `<span class="boss-hit-chip">${label} <b>−${value}</b></span>`,
     )
     .join('');
-  const totalBosses = Math.min(config.startLimit + 1, 21);
-  const remainingBosses = Math.max(0, totalBosses - heroStats.bossesDown);
+  const totalBosses = bossCountForPlan(config.startLimit, BOSSES.length);
+  const defeatedBosses = Math.min(totalBosses, heroStats.bossesDown);
+  const currentBossIndex = Math.min(totalBosses - 1, bossState.bossNum - 1);
+  const remainingBosses = Math.max(0, totalBosses - defeatedBosses);
+  const bossMedals = Array.from({ length: totalBosses }, (_, index) => {
+    const defeated = index < defeatedBosses;
+    const fighting = !defeated && index === currentBossIndex;
+    if (!defeated && !fighting) {
+      return `<div class="boss-medal locked">
+        <div class="boss-medal-art"><img src="bosses/boss_medal_locked.png" alt="Jefe todavía desconocido"></div>
+        <div class="boss-medal-name">DESCONOCIDO</div>
+      </div>`;
+    }
+    const bossNumber = index + 1;
+    const bossName = BOSSES[index];
+    const bossSlug = BOSS_SLUGS[index];
+    const bossFile = `boss_${String(bossNumber).padStart(2, '0')}_${bossSlug}.png`;
+    if (fighting) {
+      return `<div class="boss-medal fighting">
+        <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+        <div class="boss-medal-name">${bossName}<strong>EN COMBATE</strong></div>
+      </div>`;
+    }
+    return `<div class="boss-medal won">
+      <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+      <div class="boss-medal-name">${bossName}</div>
+      <button class="boss-medal-share" type="button" data-share-boss="${index}" data-share-file="${bossFile}">Compartir</button>
+    </div>`;
+  }).join('');
   const combatLog = (bossState.recentHits || [])
     .map((hit) => {
       const parts = [
@@ -221,6 +249,15 @@ export function renderHeroView({
   const bossHistoryBody = document.getElementById('bossHistoryBody');
   if (bossHistoryBody) {
     bossHistoryBody.innerHTML = `
+      <section class="boss-medals">
+        <div class="boss-medals-head">
+          <h4>Medallones de victoria · ${defeatedBosses} / ${totalBosses}</h4>
+          <p>Cada jefe derrotado revela su medallón. Los rivales que todavía te esperan permanecen ocultos.</p>
+        </div>
+        <div class="boss-medals-grid">${bossMedals}</div>
+      </section>
+      <div class="boss-history-divider"></div>
+      <h4 class="boss-combat-head">Combate actual</h4>
       <p class="boss-history-intro">Aquí puedes consultar los golpes registrados contra ${bossState.name} durante esta semana.</p>
       <div class="boss-gate">
         <span>SELLOS DE VICTORIA</span>
@@ -295,7 +332,7 @@ export function renderHeroView({
         <b>${bossState.hp} / ${bossState.maxHp} HP</b>
       </div>
       <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
-      <div class="boss-count">Jefes derrotados: <b>${heroStats.bossesDown}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
+      <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>
 
     <div class="card">

@@ -1,6 +1,7 @@
 import { BOSSES, BOSS_SLUGS } from '../data/game-data.js';
 import { daysBetween, keyOf } from './date-utils.js';
 import {
+  bossCountForPlan,
   limitForWeek,
   weekIndexFor,
   weekRangeFor,
@@ -21,10 +22,10 @@ function recordOf(days, key) {
   return days[key] || EMPTY_DAY;
 }
 
-function bossIdentity(index) {
+function bossIdentity(index, bossCount = BOSSES.length) {
   const safeIndex = Math.min(
     Math.max(0, index || 0),
-    BOSSES.length - 1,
+    bossCount - 1,
   );
   return {
     bossIndex: safeIndex,
@@ -76,14 +77,15 @@ export function calculateDailyBossDamage({
 export function createBossCombat({
   currentWeek,
   legacyBossesDown = 0,
+  maxBosses = BOSSES.length,
 }) {
-  const safeLegacy = Math.max(0, legacyBossesDown || 0);
+  const safeLegacy = Math.min(maxBosses, Math.max(0, legacyBossesDown || 0));
   return {
     version: 2,
     startedWeek: currentWeek,
     legacyBossesDown: safeLegacy,
     defeated: 0,
-    bossIndex: Math.min(safeLegacy, BOSSES.length - 1),
+    bossIndex: Math.min(safeLegacy, maxBosses - 1),
     week: currentWeek,
     hpAtWeekStart: BOSS_MAX_HP,
     victoryRecorded: false,
@@ -170,6 +172,8 @@ export function calculateBossCombatStatus({
   config,
   days,
 }) {
+  const bossCount = bossCountForPlan(config.startLimit, BOSSES.length);
+  const campaignComplete = Boolean(combat.completed);
   const weekDamage = calculateWeekBossDamage({
     week: combat.week,
     now,
@@ -177,12 +181,16 @@ export function calculateBossCombatStatus({
     days,
     spellHits: combat.spellHits,
   });
-  const rawHp = Math.max(0, combat.hpAtWeekStart - weekDamage.total);
-  const hasRequiredDays = weekDamage.hits >= BOSS_REQUIRED_DAYS;
-  const won = rawHp <= 0 && hasRequiredDays;
-  const lockedByDays = rawHp <= 0 && !hasRequiredDays;
+  const rawHp = campaignComplete
+    ? 0
+    : Math.max(0, combat.hpAtWeekStart - weekDamage.total);
+  const hasRequiredDays =
+    campaignComplete || weekDamage.hits >= BOSS_REQUIRED_DAYS;
+  const won = campaignComplete || (rawHp <= 0 && hasRequiredDays);
+  const lockedByDays =
+    !campaignComplete && rawHp <= 0 && !hasRequiredDays;
   const hp = lockedByDays ? 1 : rawHp;
-  const identity = bossIdentity(combat.bossIndex);
+  const identity = bossIdentity(combat.bossIndex, bossCount);
   const today = weekDamage.daily.find((day) => day.key === keyOf(now));
   const projectedToday = today
     ? calculateDailyBossDamage({
@@ -237,12 +245,17 @@ export function calculateBossCombatStatus({
     fails: weekDamage.fails,
     won,
     lockedByDays,
-    completedDays: weekDamage.hits,
+    completedDays: campaignComplete
+      ? BOSS_REQUIRED_DAYS
+      : weekDamage.hits,
     requiredDays: BOSS_REQUIRED_DAYS,
     lost: false,
     w: combat.week,
-    bossesDown:
+    bossesDown: Math.min(
+      bossCount,
       combat.legacyBossesDown + combat.defeated,
+    ),
+    campaignComplete,
     history: combat.history || [],
     recentHits,
   };
@@ -259,13 +272,35 @@ export function reconcileBossCombat({
     0,
     weekIndexFor(config.startDate, now),
   );
+  const bossCount = bossCountForPlan(config.startLimit, BOSSES.length);
+  const finalBossIndex = bossCount - 1;
   const next = combat
     ? {
         ...combat,
         spellHits: [...(combat.spellHits || [])],
         history: [...(combat.history || [])],
       }
-    : createBossCombat({ currentWeek, legacyBossesDown });
+    : createBossCombat({
+        currentWeek,
+        legacyBossesDown,
+        maxBosses: bossCount,
+      });
+  next.legacyBossesDown = Math.min(
+    bossCount,
+    Math.max(0, next.legacyBossesDown || 0),
+  );
+  next.defeated = Math.min(
+    Math.max(0, bossCount - next.legacyBossesDown),
+    Math.max(0, next.defeated || 0),
+  );
+  next.bossIndex = Math.min(
+    finalBossIndex,
+    Math.max(0, next.bossIndex || 0),
+  );
+  if (next.legacyBossesDown + next.defeated >= bossCount) {
+    next.completed = true;
+    next.bossIndex = finalBossIndex;
+  }
   if ((next.version || 1) < 2) {
     next.hpAtWeekStart = Math.round(
       (Math.max(0, next.hpAtWeekStart || 100) / 100) * BOSS_MAX_HP,
@@ -274,7 +309,7 @@ export function reconcileBossCombat({
   }
   const weekResults = [];
 
-  while (next.week < currentWeek) {
+  while (next.week < currentWeek && !next.completed) {
     const damage = calculateWeekBossDamage({
       week: next.week,
       now,
@@ -293,7 +328,10 @@ export function reconcileBossCombat({
       rawRemainingHp <= 0 && !won ? 1 : rawRemainingHp;
 
     if (won && !next.victoryRecorded) {
-      next.defeated += 1;
+      next.defeated = Math.min(
+        bossCount - next.legacyBossesDown,
+        next.defeated + 1,
+      );
     }
     weekResults.push({
       won,
@@ -311,16 +349,18 @@ export function reconcileBossCombat({
     });
 
     if (won) {
-      next.bossIndex = Math.min(
-        next.bossIndex + 1,
-        BOSSES.length - 1,
-      );
-      next.hpAtWeekStart = BOSS_MAX_HP;
+      if (next.bossIndex >= finalBossIndex) {
+        next.completed = true;
+        next.hpAtWeekStart = 0;
+      } else {
+        next.bossIndex += 1;
+        next.hpAtWeekStart = BOSS_MAX_HP;
+      }
     } else {
       next.hpAtWeekStart = BOSS_MAX_HP;
     }
     next.week += 1;
-    next.victoryRecorded = false;
+    next.victoryRecorded = next.completed;
   }
 
   next.history = next.history.slice(-12);
@@ -338,7 +378,10 @@ export function reconcileBossCombat({
   let defeatRevoked = false;
 
   if (status.won && !next.victoryRecorded) {
-    next.defeated += 1;
+    next.defeated = Math.min(
+      bossCount - next.legacyBossesDown,
+      next.defeated + 1,
+    );
     next.victoryRecorded = true;
     newlyDefeated = true;
   } else if (!status.won && next.victoryRecorded) {

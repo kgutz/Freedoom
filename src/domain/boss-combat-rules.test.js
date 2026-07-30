@@ -212,4 +212,42 @@ describe('combate semanal', () => {
     expect(migrated.combat.version).toBe(2);
     expect(migrated.combat.hpAtWeekStart).toBe(90);
   });
+
+  it('termina la campaña al derrotar el último jefe del plan', () => {
+    const shortConfig = { ...config, startLimit: 6 };
+    const winningDays = {
+      '2026-07-17': { c: 6 },
+      '2026-07-18': { c: 6 },
+      '2026-07-19': { c: 6 },
+      '2026-07-20': { c: 6 },
+      '2026-07-21': { c: 6 },
+      '2026-07-22': { c: 6 },
+    };
+    const won = reconcileBossCombat({
+      combat: createBossCombat({
+        currentWeek: 0,
+        legacyBossesDown: 5,
+        maxBosses: 6,
+      }),
+      now: new Date(2026, 6, 23, 12),
+      config: shortConfig,
+      days: winningDays,
+    });
+    const finished = reconcileBossCombat({
+      combat: won.combat,
+      now: new Date(2026, 6, 24, 12),
+      config: shortConfig,
+      days: winningDays,
+    });
+
+    expect(won.status.bossNum).toBe(6);
+    expect(finished.combat.completed).toBe(true);
+    expect(finished.status).toMatchObject({
+      bossNum: 6,
+      bossesDown: 6,
+      won: true,
+      hp: 0,
+      campaignComplete: true,
+    });
+  });
 });

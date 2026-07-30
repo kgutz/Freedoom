@@ -129,5 +129,44 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');
+    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1 / 20');
+    expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');
+    expect(bossHistoryBody.innerHTML).not.toContain('data-share-boss="1"');
+    expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.png');
+    expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.png');
+    expect(bossHistoryBody.innerHTML).toContain('EN COMBATE');
+  });
+
+  it('muestra tantos medallones como semanas tenga el plan', () => {
+    const heroContent = { innerHTML: '' };
+    const bossHistoryBody = { innerHTML: '' };
+    const document = {
+      getElementById(id) {
+        if (id === 'heroContent') return heroContent;
+        if (id === 'bossHistoryBody') return bossHistoryBody;
+        return null;
+      },
+    };
+
+    renderHeroView({
+      document,
+      ...base({
+        config: { wakeTime: '07:00', startLimit: 6 },
+        boss: {
+          ...base().boss,
+          name: 'Espectro Gris',
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+      intoxication: null,
+    });
+
+    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1 / 6');
+    expect((bossHistoryBody.innerHTML.match(/class="boss-medal /g) || []).length).toBe(6);
   });
 });

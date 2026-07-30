@@ -5,6 +5,7 @@ import {
   reconcileBossCombat
 } from './domain/boss-combat-rules.js';
 import {
+  bossCountForPlan,
   limitForDate,
   limitForWeek,
   weekIndexFor,
@@ -70,7 +71,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='73';
+const APP_VERSION='78';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -349,16 +350,20 @@ function renderWeekResultModal(){
       ? Math.max(0,wr.bossIndex)
       : Math.max(0,gameStats().bossesDown-1);
     const beatenName=BOSSES[beatenIdx], beatenSlug=BOSS_SLUGS[beatenIdx];
-    const nextIdx=Math.min(beatenIdx+1,BOSSES.length-1);
+    const bossCount=bossCountForPlan(state.config.startLimit,BOSSES.length);
+    const hasNextBoss=beatenIdx+1<bossCount;
+    const nextIdx=Math.min(beatenIdx+1,bossCount-1);
     const nextName=BOSSES[nextIdx], nextSlug=BOSS_SLUGS[nextIdx];
     body.innerHTML=`
       <div style="font-size:12px;color:var(--ok);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">¡Semana superada!</div>
       <h3 style="margin-bottom:2px">Has vencido a ${beatenName}</h3>
       ${bossImg(beatenIdx+1,beatenSlug)}
       <p class="hint" style="margin:0 0 18px">De puta madre — le quitaste sus 150 puntos de vida. Esta semana entra un rival nuevo.</p>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Te espera:</div>
-      <h3 style="margin-bottom:2px">${nextName}</h3>
-      ${bossImg(nextIdx+1,nextSlug)}
+      ${hasNextBoss
+        ? `<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Te espera:</div>
+           <h3 style="margin-bottom:2px">${nextName}</h3>
+           ${bossImg(nextIdx+1,nextSlug)}`
+        : '<div class="boss-victory">✓ Has derrotado a todos los jefes de tu plan.</div>'}
       <button class="ob-next" id="weekResultClose" style="margin-top:6px">Seguir adelante</button>
     `;
     document.getElementById('weekResultClose').addEventListener('click',()=>{
@@ -1053,6 +1058,42 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     renderHero();
   }
 });
+
+document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
+  const button=e.target.closest('[data-share-boss]');
+  if(!button) return;
+  const bossIndex=parseInt(button.dataset.shareBoss,10);
+  const bossName=BOSSES[bossIndex];
+  const bossFile=button.dataset.shareFile;
+  if(!bossName||!bossFile) return;
+  const title=`Medallón de ${bossName}`;
+  const text=`¡He derrotado a ${bossName} en Freedoom y he conseguido su medallón de victoria!`;
+  try{
+    const response=await fetch(`bosses/${bossFile}`);
+    if(!response.ok) throw new Error('No se pudo cargar el medallón');
+    const blob=await response.blob();
+    const file=new File([blob],bossFile,{type:blob.type||'image/png'});
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({title,text,files:[file]});
+      return;
+    }
+    if(navigator.share){
+      await navigator.share({title,text,url:location.href});
+      return;
+    }
+    await navigator.clipboard.writeText(`${text} ${location.href}`);
+    showToast('Logro copiado para compartir','heal');
+  }catch(error){
+    if(error&&error.name==='AbortError') return;
+    try{
+      await navigator.clipboard.writeText(`${text} ${location.href}`);
+      showToast('Logro copiado para compartir','heal');
+    }catch{
+      showToast('No se pudo compartir el medallón','dmg');
+    }
+  }
+});
+
 document.getElementById('cfgResetCls').addEventListener('click',()=>{
   state.game.cls=null;
   scheduleSave();
