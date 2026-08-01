@@ -57,12 +57,12 @@ export const CLASSES={
       "...OO....OO....."
     ],
     pas:[
-      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Los disparos perfectos dan +4 XP (en vez de +2).'},
+      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Los disparos perfectos dan +3 XP (en vez de +2).'},
       {lvl:5,icon:'flecha',name:'Flecha Bendita',d:'Cada disparo perfecto además cura +3 de vida.'},
-      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'El bonus por margen sube a +6 XP por cigarro (en vez de +4).'}
+      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'El bonus por margen sube a +5 XP por cigarro (en vez de +4).'}
     ],
     act:[
-      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +8 XP.'},
+      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +5 XP.'},
       {lvl:8,id:'luz',icon:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
       {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy cierras cumpliendo, la XP del día ×2. 1 uso por semana.'}
     ]

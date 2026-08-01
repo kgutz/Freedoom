@@ -170,7 +170,7 @@ describe('recompensas de disparo perfecto', () => {
   it('aplica las bonificaciones de paladín y de los hechizos activos', () => {
     expect(
       perfectShotRewards({ perfect: true, classId: 'paladin' }),
-    ).toEqual({ xp: 4, mana: 10 });
+    ).toEqual({ xp: 3, mana: 10 });
     expect(
       perfectShotRewards({
         perfect: true,
@@ -178,7 +178,7 @@ describe('recompensas de disparo perfecto', () => {
         marksmanActive: true,
         ashCurseActive: true,
       }),
-    ).toEqual({ xp: 8, mana: 20 });
+    ).toEqual({ xp: 5, mana: 20 });
   });
 
   it('reduce Ojo del Halcón con la borrachera', () => {

@@ -27,7 +27,7 @@ function calculateXpPass({
   const classId = game?.cls;
   const marginXp =
     classId === 'paladin' && levelHint >= 12
-      ? 4 + Math.round(2 * passiveMultiplier)
+      ? 4 + Math.round(passiveMultiplier)
       : 4;
   const recordXp =
     classId === 'sorcerer' && levelHint >= 5

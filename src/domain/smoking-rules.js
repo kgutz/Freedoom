@@ -143,9 +143,9 @@ export function perfectShotRewards({
 
   return {
     xp: marksmanActive
-      ? 8
+      ? 5
       : classId === 'paladin'
-        ? scalePassiveUpgrade(2, 4, passiveMultiplier)
+        ? scalePassiveUpgrade(2, 3, passiveMultiplier)
         : 2,
     mana: ashCurseActive ? 20 : 10,
   };
