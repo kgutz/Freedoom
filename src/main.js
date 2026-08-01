@@ -78,7 +78,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='93';
+const APP_VERSION='95';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1054,6 +1054,9 @@ let editingHabitId=null;
 let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
+let habitEditorCloseTimer=null;
+let habitEditorViewportHeight=null;
+let habitEditorResizeHandler=null;
 
 function activeHabitById(id){
   return normalizeHabitState(state.habits).items.find(habit=>habit.id===id&&habit.active!==false);
@@ -1071,8 +1074,39 @@ function updateHabitEditor(){
     frequency:habitDraftFrequency
   })+' XP';
 }
+function finishHabitEditorClose(){
+  const modal=document.getElementById('habitModalBg');
+  clearTimeout(habitEditorCloseTimer);
+  habitEditorCloseTimer=null;
+  if(habitEditorResizeHandler&&window.visualViewport){
+    window.visualViewport.removeEventListener('resize',habitEditorResizeHandler);
+  }
+  habitEditorResizeHandler=null;
+  habitEditorViewportHeight=null;
+  modal.classList.remove('show');
+  document.body.classList.remove('habit-editor-open');
+}
 function closeHabitEditor(){
-  document.getElementById('habitModalBg').classList.remove('show');
+  const modal=document.getElementById('habitModalBg');
+  if(habitEditorCloseTimer||habitEditorResizeHandler) return;
+  const active=document.activeElement;
+  const viewport=window.visualViewport;
+  const keyboardOpen=Boolean(
+    viewport&&habitEditorViewportHeight&&
+    viewport.height<habitEditorViewportHeight-80
+  );
+  if(!keyboardOpen){
+    if(active&&modal.contains(active)&&typeof active.blur==='function') active.blur();
+    finishHabitEditorClose();
+    return;
+  }
+  habitEditorResizeHandler=()=>{
+    if(viewport.height>=habitEditorViewportHeight-40) finishHabitEditorClose();
+  };
+  viewport.addEventListener('resize',habitEditorResizeHandler);
+  habitEditorCloseTimer=setTimeout(finishHabitEditorClose,800);
+  if(active&&modal.contains(active)&&typeof active.blur==='function') active.blur();
+  habitEditorResizeHandler();
 }
 function openHabitEditor(id=null){
   const habit=id?activeHabitById(id):null;
@@ -1085,8 +1119,10 @@ function openHabitEditor(id=null){
   document.getElementById('habitNotes').value=habit?.notes||'';
   document.getElementById('habitDelete').style.display=habit?'block':'none';
   updateHabitEditor();
+  if(habitEditorCloseTimer||habitEditorResizeHandler) finishHabitEditorClose();
+  habitEditorViewportHeight=window.visualViewport?.height||window.innerHeight;
+  document.body.classList.add('habit-editor-open');
   document.getElementById('habitModalBg').classList.add('show');
-  setTimeout(()=>document.getElementById('habitTitle').focus(),80);
 }
 function saveHabitEditor(){
   const input=normalizeHabitInput({

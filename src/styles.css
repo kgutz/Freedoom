@@ -216,6 +216,8 @@
     padding-bottom:env(safe-area-inset-bottom);
   }
   nav.show{display:flex}
+  body.habit-editor-open{overflow:hidden}
+  body.habit-editor-open #mainNav{visibility:hidden;opacity:0;pointer-events:none}
   nav button{
     flex:1;padding:11px 0 10px;background:none;border:none;color:var(--muted);
     font-family:'Sora',sans-serif;font-size:11px;font-weight:600;cursor:pointer;
