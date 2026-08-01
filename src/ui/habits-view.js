@@ -87,6 +87,7 @@ export function renderHabitsView({
       <button class="habit-create" type="button" data-add-habit aria-label="Crear hábito">+</button>
     </div>
     <div class="habit-hero-card">
+      <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
       <div class="habit-hero-sprite"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></div>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
