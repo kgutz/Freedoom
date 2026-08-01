@@ -45,6 +45,7 @@ describe('vista de hábitos', () => {
     });
 
     expect(html).toContain('Beber agua');
+    expect(html).toContain('data-open-settings');
     expect(html).toContain('Media · Diario · +6 XP');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).toContain('completed');

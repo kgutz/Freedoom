@@ -237,6 +237,13 @@ export function renderTodayView({
   }
 
   if (model.hero) {
+    const heroBackground = document.getElementById('hoyHeroBg');
+    heroBackground.style.display = '';
+    heroBackground.onerror = () => {
+      heroBackground.style.display = 'none';
+    };
+    heroBackground.src =
+      `hero_background/${model.hero.classId}_today_bg.png`;
     document.getElementById('hoyHeroName').textContent = model.hero.name;
     document.getElementById('hoyHeroCls').textContent = model.hero.className;
     document.getElementById('hoyFace').innerHTML =

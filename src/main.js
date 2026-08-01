@@ -78,7 +78,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='87';
+const APP_VERSION='93';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1125,6 +1125,10 @@ function saveHabitEditor(){
 }
 
 document.getElementById('view-habits').addEventListener('click',event=>{
+  if(event.target.closest('[data-open-settings]')){
+    openAjustes();
+    return;
+  }
   if(event.target.closest('[data-add-habit]')){
     openHabitEditor();
     return;

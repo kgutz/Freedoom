@@ -53,11 +53,14 @@
   .counter-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
 
   /* ---------- pantalla Hoy rediseñada ---------- */
-  .hoy-hero{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px}
+  .hoy-hero{position:relative;isolation:isolate;background:var(--panel);border:1px solid #59451F;border-radius:14px;padding:14px 16px;margin-bottom:14px;overflow:hidden}
+  .hoy-hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(14,11,9,.86) 0%,rgba(14,11,9,.6) 50%,rgba(14,11,9,.78) 100%);pointer-events:none}
+  .hoy-hero-bg{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center 50%;image-rendering:pixelated;pointer-events:none}
+  .hoy-hero-top,.hoy-hp{position:relative;z-index:2;text-shadow:0 1px 2px #000,0 0 5px rgba(0,0,0,.72)}
   .hoy-hero-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px}
   .hoy-hero-id{display:flex;align-items:center;gap:11px;min-width:0}
   .hoy-face{width:56px;height:56px;flex-shrink:0;border-radius:50%;overflow:hidden;
-    background:#0E0B09;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer}
+    background:#0E0B09;border:1px solid rgba(232,180,74,.7);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5)}
   .hoy-face img{width:100%;height:100%;object-fit:cover;object-position:center center;image-rendering:pixelated}
   .hoy-face img.face-full{width:150%;height:150%;object-position:center top}
   .hoy-hero-txt{min-width:0}
@@ -305,10 +308,10 @@
   .seg{display:flex;gap:6px;margin-bottom:16px}
   .seg button{
     flex:1;padding:9px 0;border-radius:8px;border:1px solid var(--line);
-    background:var(--panel2);color:var(--muted);
+    background:transparent;color:var(--muted);
     font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer;letter-spacing:.04em;
   }
-  .seg button.active{background:var(--kodak);color:#241C0E;border-color:var(--kodak)}
+  .seg button.active{background:transparent;color:var(--kodak);border-color:var(--kodak)}
   .graf-svg{width:100%;height:auto;display:block;margin-top:4px}
   .graf-sum{
     display:flex;justify-content:space-around;gap:8px;margin-top:16px;
@@ -328,7 +331,7 @@
   .habit-hero-card{position:relative;isolation:isolate;display:flex;align-items:center;gap:13px;min-height:84px;background:var(--panel);border:1px solid #59451F;border-radius:14px;padding:12px;margin-bottom:16px;overflow:hidden}
   .habit-hero-card::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(14,11,9,.9) 0%,rgba(14,11,9,.72) 48%,rgba(14,11,9,.5) 100%);pointer-events:none}
   .habit-hero-bg{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center 52%;image-rendering:pixelated;pointer-events:none}
-  .habit-hero-sprite{position:relative;z-index:2;width:58px;height:58px;border-radius:50%;background:#0E0B09;border:1px solid rgba(232,180,74,.7);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  .habit-hero-sprite{position:relative;z-index:2;width:58px;height:58px;padding:0;border-radius:50%;background:#0E0B09;border:1px solid rgba(232,180,74,.7);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.5);cursor:pointer}
   .habit-hero-sprite img{width:100%;height:100%;object-fit:cover;object-position:center center;image-rendering:pixelated}
   .habit-hero-sprite img.face-full{width:150%;height:150%;object-position:center top}
   .habit-hero-info{position:relative;z-index:2;flex:1;min-width:0;text-shadow:0 1px 2px #000,0 0 5px rgba(0,0,0,.72)}
@@ -569,7 +572,7 @@
   .hero-top{display:flex;gap:18px;align-items:center;margin-bottom:6px}
   .sprite-box{
     width:120px;height:120px;flex-shrink:0;position:relative;overflow:hidden;
-    display:flex;align-items:flex-end;justify-content:center;
+    display:flex;align-items:center;justify-content:center;
     background:#0E0B09;border:1px solid var(--line);border-radius:12px;
     image-rendering:pixelated;cursor:pointer;
   }
@@ -683,6 +686,7 @@
     width:min(82px,100%);aspect-ratio:1;margin:0 auto 7px;border-radius:50%;overflow:hidden;
     background:#0E0B09;border:2px solid #5F4727;box-shadow:0 3px 10px rgba(0,0,0,.35);
   }
+  .sprite-box .sprite-svg{margin-bottom:0;top:1px}
   .boss-medal.won .boss-medal-art{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.14),0 4px 12px rgba(0,0,0,.4)}
   .boss-medal.fighting .boss-medal-art{border-color:var(--kodak);opacity:.48;filter:grayscale(.35)}
   .boss-medal-art img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
