@@ -1,6 +1,7 @@
 import { BOSSES, BOSS_SLUGS } from '../data/game-data.js';
 import { daysBetween, keyOf, parseKey } from './date-utils.js';
 import { classMaxes, levelFromXp } from './progression.js';
+import { habitXpTotal } from './habit-rules.js';
 import {
   limitForDate,
   limitForWeek,
@@ -19,6 +20,7 @@ function calculateXpPass({
   config,
   days,
   game,
+  habits,
   levelHint,
   passiveMultiplier,
 }) {
@@ -35,7 +37,7 @@ function calculateXpPass({
       : 25;
   const pardons = game?.pardons || [];
   const judgmentDays = game?.judgmentDays || [];
-  let xp = game?.bonusXp || 0;
+  let xp = (game?.bonusXp || 0) + habitXpTotal(habits);
   let streak = 0;
   let minimumCigarettes = null;
 
@@ -114,6 +116,7 @@ export function calculateGameStats({
   config,
   days,
   game,
+  habits,
   passiveMultiplier = 1,
 }) {
   const firstPass = calculateXpPass({
@@ -121,6 +124,7 @@ export function calculateGameStats({
     config,
     days,
     game,
+    habits,
     levelHint: 1,
     passiveMultiplier,
   });
@@ -130,6 +134,7 @@ export function calculateGameStats({
     config,
     days,
     game,
+    habits,
     levelHint: firstLevel,
     passiveMultiplier,
   });

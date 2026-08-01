@@ -19,6 +19,7 @@ const defaultState = () => ({
     tracksBeer: true,
   },
   days: {},
+  habits: { items: [], entries: {} },
   seeded: false,
   seededV: 0,
   game: { cls: null },
@@ -56,7 +57,10 @@ describe('compatibilidad del estado', () => {
   it('carga una partida v34 conservando datos y nuevos valores por defecto', () => {
     const loaded = mergeState(defaultState(), v34State);
 
-    expect(loaded).toEqual(v34State);
+    expect(loaded).toEqual({
+      ...v34State,
+      habits: { items: [], entries: {} },
+    });
     expect(loaded.config.wakeTime).toBe('07:00');
     expect(loaded.days['2026-07-20'].sx).toBe(8);
     expect(loaded.game.cls).toBe('paladin');
@@ -71,6 +75,21 @@ describe('compatibilidad del estado', () => {
     expect(loaded.config.startLimit).toBe(15);
     expect(loaded.config.wakeTime).toBe('09:00');
     expect(loaded.game).toEqual({ cls: null });
+    expect(loaded.habits).toEqual({ items: [], entries: {} });
+  });
+
+  it('carga los hábitos y sus recompensas guardadas', () => {
+    const loaded = mergeState(defaultState(), {
+      habits: {
+        items: [{ id: 'walk', title: 'Caminar' }],
+        entries: {
+          'walk|d:2026-08-01': { count: 1, xpAwarded: 3 },
+        },
+      },
+    });
+
+    expect(loaded.habits.items[0].title).toBe('Caminar');
+    expect(loaded.habits.entries['walk|d:2026-08-01'].xpAwarded).toBe(3);
   });
 });
 
@@ -79,7 +98,10 @@ describe('copias de seguridad', () => {
     const backup = exportBackup(v34State);
     const restored = importBackup(defaultState(), backup);
 
-    expect(restored).toEqual(v34State);
+    expect(restored).toEqual({
+      ...v34State,
+      habits: { items: [], entries: {} },
+    });
   });
 
   it('conserva los efectos de borrachera de la v36', () => {
@@ -104,9 +126,10 @@ describe('copias de seguridad', () => {
       },
     };
 
-    expect(importBackup(defaultState(), exportBackup(v36State))).toEqual(
-      v36State,
-    );
+    expect(importBackup(defaultState(), exportBackup(v36State))).toEqual({
+      ...v36State,
+      habits: { items: [], entries: {} },
+    });
   });
 
   it('conserva la vida y el historial del jefe de la v39', () => {
@@ -137,9 +160,10 @@ describe('copias de seguridad', () => {
       },
     };
 
-    expect(importBackup(defaultState(), exportBackup(v39State))).toEqual(
-      v39State,
-    );
+    expect(importBackup(defaultState(), exportBackup(v39State))).toEqual({
+      ...v39State,
+      habits: { items: [], entries: {} },
+    });
   });
 
   it('rechaza texto y objetos que no son copias de Freedoom', () => {

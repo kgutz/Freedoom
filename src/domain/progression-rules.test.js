@@ -79,6 +79,29 @@ describe('progreso completo', () => {
     expect(withPills.xp).toBe(withoutPills.xp + 10);
   });
 
+  it('suma al héroe la XP concedida por hábitos', () => {
+    const stats = calculateGameStats({
+      now: new Date(2026, 6, 17, 12),
+      config,
+      days: {},
+      game: { cls: 'paladin' },
+      habits: {
+        items: [],
+        entries: {
+          'walk|d:2026-07-17': {
+            habitId: 'walk',
+            periodKey: 'd:2026-07-17',
+            frequency: 'daily',
+            count: 1,
+            xpAwarded: 6,
+          },
+        },
+      },
+    });
+
+    expect(stats.xp).toBe(6);
+  });
+
   it('usa las victorias congeladas del nuevo combate sin recalcularlas', () => {
     const stats = calculateGameStats({
       now: new Date(2026, 6, 24, 12),

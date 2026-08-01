@@ -1,16 +1,16 @@
 export const VIEW_BY_NAVIGATION = {
   navHoy: 'view-hoy',
+  navHabits: 'view-habits',
   navHero: 'view-hero',
   navCal: 'view-cal',
-  navGraf: 'view-graf',
 };
 
 export function bindNavigation({
   document,
   window,
   onOpenSettings,
+  onHabits,
   onCalendar,
-  onChart,
 }) {
   const switchView = (viewId, buttonId) => {
     document
@@ -28,8 +28,8 @@ export function bindNavigation({
   Object.entries(VIEW_BY_NAVIGATION).forEach(([buttonId, viewId]) => {
     document.getElementById(buttonId).addEventListener('click', () => {
       switchView(viewId, buttonId);
+      if (buttonId === 'navHabits') onHabits();
       if (buttonId === 'navCal') onCalendar();
-      if (buttonId === 'navGraf') onChart();
     });
   });
 

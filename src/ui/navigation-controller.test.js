@@ -5,9 +5,9 @@ describe('mapa de navegación', () => {
   it('mantiene cada botón asociado a su pantalla', () => {
     expect(VIEW_BY_NAVIGATION).toEqual({
       navHoy: 'view-hoy',
+      navHabits: 'view-habits',
       navHero: 'view-hero',
       navCal: 'view-cal',
-      navGraf: 'view-graf',
     });
   });
 });

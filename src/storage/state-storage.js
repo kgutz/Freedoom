@@ -22,6 +22,7 @@ export function mergeState(currentState, savedState) {
     config: { ...currentState.config },
     days: currentState.days,
     game: currentState.game,
+    habits: currentState.habits,
   };
 
   if (isObject(savedState.config)) {
@@ -31,6 +32,16 @@ export function mergeState(currentState, savedState) {
   if (savedState.seeded === true) nextState.seeded = true;
   if (savedState.seededV) nextState.seededV = savedState.seededV;
   if (isObject(savedState.game)) nextState.game = savedState.game;
+  if (isObject(savedState.habits)) {
+    nextState.habits = {
+      items: Array.isArray(savedState.habits.items)
+        ? savedState.habits.items
+        : [],
+      entries: isObject(savedState.habits.entries)
+        ? savedState.habits.entries
+        : {},
+    };
+  }
   if (savedState.onboarded === true) nextState.onboarded = true;
 
   return nextState;

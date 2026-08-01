@@ -25,6 +25,12 @@ import {
 } from './domain/smoking-rules.js';
 import { castSpellEffect } from './domain/spell-rules.js';
 import {
+  adjustHabitProgress,
+  habitReward,
+  normalizeHabitInput,
+  normalizeHabitState
+} from './domain/habit-rules.js';
+import {
   addBeerIntoxication,
   beerUndoEffects,
   intoxicationStatus,
@@ -50,6 +56,7 @@ import {
   spriteImage
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
+import { renderHabitsView } from './ui/habits-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
@@ -71,7 +78,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='80';
+const APP_VERSION='83';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -83,6 +90,7 @@ const SEED_V=3;
 let state={
   config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
   days:{},
+  habits:{items:[],entries:{}},
   seeded:false,
   seededV:0,
   game:{cls:null},
@@ -244,7 +252,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){renderHoy();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
+function renderAll(){renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
 
 function renderHoy(){
   let stats=null;
@@ -274,6 +282,18 @@ function renderCal(){
     config:state.config,
     days:state.days,
     onDayClick:openModal
+  });
+}
+
+function renderHabits(){
+  const stats=state.game&&state.game.cls?gameStats():null;
+  renderHabitsView({
+    document,
+    habitState:state.habits,
+    date:currentDayDate(),
+    planStartDate:state.config.startDate,
+    game:state.game,
+    stats
   });
 }
 
@@ -325,6 +345,7 @@ function gameStats(){
     config:state.config,
     days:state.days,
     game:state.game,
+    habits:state.habits,
     passiveMultiplier:intoxication.passiveMultiplier
   });
 }
@@ -978,15 +999,11 @@ const navigation=bindNavigation({
   document,
   window,
   onOpenSettings:openAjustes,
+  onHabits:renderHabits,
   onCalendar:()=>{
     calCursor=currentDayDate();
     renderCal();
     renderWeeks();
-  },
-  onChart:()=>{
-    grafWeek=Math.max(0,weekIndexOf(currentDayDate()));
-    grafMonth=currentDayDate();
-    renderGraf();
   }
 });
 function switchView(viewId,buttonId){
@@ -994,6 +1011,23 @@ function switchView(viewId,buttonId){
 }
 
 /* controles de la gráfica */
+function showHistoryPanel(panel){
+  const calendar=panel==='calendar';
+  document.getElementById('calendarPanel').style.display=calendar?'block':'none';
+  document.getElementById('chartPanel').style.display=calendar?'none':'block';
+  document.getElementById('historyCalTab').classList.toggle('active',calendar);
+  document.getElementById('historyGrafTab').classList.toggle('active',!calendar);
+  document.getElementById('historyCalTab').setAttribute('aria-selected',String(calendar));
+  document.getElementById('historyGrafTab').setAttribute('aria-selected',String(!calendar));
+  if(!calendar){
+    grafWeek=Math.max(0,weekIndexOf(currentDayDate()));
+    grafMonth=currentDayDate();
+    renderGraf();
+  }
+}
+document.getElementById('historyCalTab').addEventListener('click',()=>showHistoryPanel('calendar'));
+document.getElementById('historyGrafTab').addEventListener('click',()=>showHistoryPanel('chart'));
+
 document.getElementById('segSem').addEventListener('click',()=>{
   grafMode='semana';
   document.getElementById('segSem').classList.add('active');
@@ -1013,6 +1047,147 @@ document.getElementById('grafPrev').addEventListener('click',()=>{
 document.getElementById('grafNext').addEventListener('click',()=>{
   if(grafMode==='semana'){grafWeek++;renderGraf();}
   else{grafMonth.setMonth(grafMonth.getMonth()+1);renderGraf();}
+});
+
+/* ---------- hábitos ---------- */
+let editingHabitId=null;
+let habitDraftDifficulty='easy';
+let habitDraftFrequency='daily';
+let habitDraftTarget=1;
+
+function activeHabitById(id){
+  return normalizeHabitState(state.habits).items.find(habit=>habit.id===id&&habit.active!==false);
+}
+function updateHabitEditor(){
+  document.querySelectorAll('[data-habit-difficulty]').forEach(button=>{
+    button.classList.toggle('active',button.dataset.habitDifficulty===habitDraftDifficulty);
+  });
+  document.querySelectorAll('[data-habit-frequency]').forEach(button=>{
+    button.classList.toggle('active',button.dataset.habitFrequency===habitDraftFrequency);
+  });
+  document.getElementById('habitTargetValue').textContent=habitDraftTarget;
+  document.getElementById('habitRewardPreview').textContent='+'+habitReward({
+    difficulty:habitDraftDifficulty,
+    frequency:habitDraftFrequency
+  })+' XP';
+}
+function closeHabitEditor(){
+  document.getElementById('habitModalBg').classList.remove('show');
+}
+function openHabitEditor(id=null){
+  const habit=id?activeHabitById(id):null;
+  editingHabitId=habit?habit.id:null;
+  habitDraftDifficulty=habit?.difficulty||'easy';
+  habitDraftFrequency=habit?.frequency||'daily';
+  habitDraftTarget=habit?.target||1;
+  document.getElementById('habitModalTitle').textContent=habit?'Editar hábito':'Nuevo hábito';
+  document.getElementById('habitTitle').value=habit?.title||'';
+  document.getElementById('habitNotes').value=habit?.notes||'';
+  document.getElementById('habitDelete').style.display=habit?'block':'none';
+  updateHabitEditor();
+  document.getElementById('habitModalBg').classList.add('show');
+  setTimeout(()=>document.getElementById('habitTitle').focus(),80);
+}
+function saveHabitEditor(){
+  const input=normalizeHabitInput({
+    title:document.getElementById('habitTitle').value,
+    notes:document.getElementById('habitNotes').value,
+    difficulty:habitDraftDifficulty,
+    frequency:habitDraftFrequency,
+    target:habitDraftTarget
+  });
+  if(!input.title){
+    showToast('Escribe un nombre para el hábito','dmg');
+    return;
+  }
+  const normalized=normalizeHabitState(state.habits);
+  if(editingHabitId){
+    normalized.items=normalized.items.map(habit=>habit.id===editingHabitId
+      ? {...habit,...input,updatedAt:Date.now()}
+      : habit);
+  }else{
+    const id=globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'
+      ? globalThis.crypto.randomUUID()
+      : 'habit-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+    normalized.items.push({
+      id,
+      ...input,
+      active:true,
+      createdAt:Date.now(),
+      updatedAt:Date.now()
+    });
+  }
+  state.habits=normalized;
+  scheduleSave();
+  closeHabitEditor();
+  renderAll();
+  showToast(editingHabitId?'Hábito actualizado':'Hábito creado','heal');
+}
+
+document.getElementById('view-habits').addEventListener('click',event=>{
+  if(event.target.closest('[data-add-habit]')){
+    openHabitEditor();
+    return;
+  }
+  const adjust=event.target.closest('[data-habit-delta]');
+  if(adjust&&!adjust.disabled){
+    const row=adjust.closest('[data-habit-id]');
+    const habit=activeHabitById(row?.dataset.habitId);
+    if(!habit) return;
+    const result=adjustHabitProgress({
+      habitState:state.habits,
+      habit,
+      delta:parseInt(adjust.dataset.habitDelta,10),
+      date:currentDayDate(),
+      planStartDate:state.config.startDate
+    });
+    state.habits=result.habitState;
+    scheduleSave();
+    renderAll();
+    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP','heal');
+    else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
+    else if(result.completed) showToast('Límite de XP alcanzado','heal');
+    return;
+  }
+  const edit=event.target.closest('[data-edit-habit]');
+  if(edit) openHabitEditor(edit.dataset.editHabit);
+});
+document.getElementById('habitCancel').addEventListener('click',closeHabitEditor);
+document.getElementById('habitSave').addEventListener('click',saveHabitEditor);
+document.getElementById('habitModalBg').addEventListener('click',event=>{
+  if(event.target.id==='habitModalBg') closeHabitEditor();
+});
+document.getElementById('habitDifficulty').addEventListener('click',event=>{
+  const button=event.target.closest('[data-habit-difficulty]');
+  if(!button) return;
+  habitDraftDifficulty=button.dataset.habitDifficulty;
+  updateHabitEditor();
+});
+document.getElementById('habitFrequency').addEventListener('click',event=>{
+  const button=event.target.closest('[data-habit-frequency]');
+  if(!button) return;
+  habitDraftFrequency=button.dataset.habitFrequency;
+  updateHabitEditor();
+});
+document.getElementById('habitTargetSub').addEventListener('click',()=>{
+  habitDraftTarget=Math.max(1,habitDraftTarget-1);
+  updateHabitEditor();
+});
+document.getElementById('habitTargetAdd').addEventListener('click',()=>{
+  habitDraftTarget=Math.min(20,habitDraftTarget+1);
+  updateHabitEditor();
+});
+document.getElementById('habitDelete').addEventListener('click',()=>{
+  if(!editingHabitId||!confirm('¿Eliminar este hábito? La XP que ya ganaste se conservará.')) return;
+  const normalized=normalizeHabitState(state.habits);
+  normalized.items=normalized.items.map(habit=>habit.id===editingHabitId
+    ? {...habit,active:false,deletedAt:Date.now()}
+    : habit);
+  state.habits=normalized;
+  scheduleSave();
+  closeHabitEditor();
+  renderAll();
+  showToast('Hábito eliminado','dmg');
 });
 
 /* elegir clase de héroe y lanzar hechizos */
@@ -1175,7 +1350,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
   if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
   state={
     config:{startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
-    days:{}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
+    days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
   };
   scheduleSave();
   document.getElementById('sheetSet').classList.remove('show');
