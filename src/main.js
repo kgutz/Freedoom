@@ -78,7 +78,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='95';
+const APP_VERSION='96';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1076,6 +1076,7 @@ function updateHabitEditor(){
 }
 function finishHabitEditorClose(){
   const modal=document.getElementById('habitModalBg');
+  const mainNav=document.getElementById('mainNav');
   clearTimeout(habitEditorCloseTimer);
   habitEditorCloseTimer=null;
   if(habitEditorResizeHandler&&window.visualViewport){
@@ -1083,6 +1084,8 @@ function finishHabitEditorClose(){
   }
   habitEditorResizeHandler=null;
   habitEditorViewportHeight=null;
+  mainNav.style.bottom='0px';
+  void mainNav.offsetHeight;
   modal.classList.remove('show');
   document.body.classList.remove('habit-editor-open');
 }

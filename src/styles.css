@@ -9,6 +9,7 @@
     --ok:#8FAE6B;
     --warn:#C4553E;
     --pill:#7FA0B8;
+    --safe-bottom:clamp(0px,env(safe-area-inset-bottom,0px),34px);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html{background:var(--bg);overscroll-behavior:none}
@@ -23,9 +24,9 @@
     overscroll-behavior:none;
   }
   .scroll{
-    padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + env(safe-area-inset-bottom));
+    padding:calc(10px + env(safe-area-inset-top)) 18px calc(96px + var(--safe-bottom));
     min-height:100vh;
-    min-height:100dvh;
+    min-height:100lvh;
   }
   body::after{ /* grano sutil */
     content:"";position:fixed;inset:0;pointer-events:none;opacity:.05;
@@ -209,14 +210,13 @@
 
   /* ---------- navegación ---------- */
   nav{
-    position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+    position:fixed;bottom:0;left:0;right:0;margin:0 auto;transform:none;
     width:100%;max-width:440px;display:none;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
-    padding-bottom:env(safe-area-inset-bottom);
+    padding-bottom:var(--safe-bottom);
   }
   nav.show{display:flex}
-  body.habit-editor-open{overflow:hidden}
   body.habit-editor-open #mainNav{visibility:hidden;opacity:0;pointer-events:none}
   nav button{
     flex:1;padding:11px 0 10px;background:none;border:none;color:var(--muted);
@@ -366,7 +366,7 @@
   .habit-empty p{font-size:11px;line-height:1.5;margin-bottom:16px}
   .habit-empty button{border:0;border-radius:10px;background:var(--kodak);color:#241C0E;padding:11px 15px;font-family:'Sora',sans-serif;font-size:12px;font-weight:700;cursor:pointer}
 
-  .habit-editor{max-height:92dvh;overflow-y:auto;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  .habit-editor{max-height:92dvh;overflow-y:auto;padding-bottom:calc(28px + var(--safe-bottom))}
   .habit-editor-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:20px}
   .habit-editor-head h3{font-size:16px;text-align:center;margin:0;text-transform:none}
   .habit-editor-head button{border:0;background:transparent;color:var(--muted);font-family:'Sora',sans-serif;font-size:12px;cursor:pointer;padding:8px 0}
