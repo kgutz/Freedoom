@@ -36,6 +36,23 @@ function habitRow(habit, entry) {
   </article>`;
 }
 
+function habitGroup({ habits, frequency, title, normalized, date, planStartDate }) {
+  const group = habits.filter((habit) => habit.frequency === frequency);
+  if (!group.length) return '';
+  const rows = group
+    .map((habit) =>
+      habitRow(
+        habit,
+        habitEntryFor(normalized, habit, date, planStartDate),
+      ),
+    )
+    .join('');
+  return `<section class="habit-group" data-habit-group="${frequency}">
+    <h2 class="habit-group-head"><span>${title}</span><b>${group.length}</b></h2>
+    <div class="habit-group-list">${rows}</div>
+  </section>`;
+}
+
 export function renderHabitsView({
   document,
   habitState,
@@ -43,6 +60,7 @@ export function renderHabitsView({
   planStartDate,
   game,
   stats,
+  filter = 'all',
 }) {
   const root = document.getElementById('habitsContent');
   if (!root) return;
@@ -61,21 +79,39 @@ export function renderHabitsView({
   const xp = stats?.xp || 0;
   const nextXp = stats?.nextTh || 35;
   const progress = Math.max(0, Math.min(100, Math.round((stats?.prog || 0) * 100)));
-
-  const list = habits.length
+  const selectedFilter = ['daily', 'weekly'].includes(filter) ? filter : 'all';
+  const visibleHabits = selectedFilter === 'all'
     ? habits
-        .map((habit) =>
-          habitRow(
-            habit,
-            habitEntryFor(normalized, habit, date, planStartDate),
-          ),
-        )
-        .join('')
+    : habits.filter((habit) => habit.frequency === selectedFilter);
+
+  const list = visibleHabits.length
+    ? [
+        selectedFilter !== 'weekly'
+          ? habitGroup({
+              habits: visibleHabits,
+              frequency: 'daily',
+              title: 'Diarios',
+              normalized,
+              date,
+              planStartDate,
+            })
+          : '',
+        selectedFilter !== 'daily'
+          ? habitGroup({
+              habits: visibleHabits,
+              frequency: 'weekly',
+              title: 'Semanales',
+              normalized,
+              date,
+              planStartDate,
+            })
+          : '',
+      ].join('')
     : `<div class="habit-empty">
         <div class="habit-empty-icon">✦</div>
-        <h3>Empieza con un hábito pequeño</h3>
-        <p>Completar hábitos positivos dará experiencia a tu héroe.</p>
-        <button type="button" data-add-habit>Crear mi primer hábito</button>
+        <h3>${habits.length ? 'No hay hábitos en este filtro' : 'Empieza con un hábito pequeño'}</h3>
+        <p>${habits.length ? 'Prueba otro filtro o crea un hábito nuevo.' : 'Completar hábitos positivos dará experiencia a tu héroe.'}</p>
+        <button type="button" data-add-habit>${habits.length ? 'Crear hábito' : 'Crear mi primer hábito'}</button>
       </div>`;
 
   root.innerHTML = `
@@ -94,6 +130,11 @@ export function renderHabitsView({
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
         <div class="habit-xp-label"><span>${xp} / ${nextXp} XP</span><span>Topes ${HABIT_DAILY_XP_CAP}/día · ${HABIT_WEEKLY_XP_CAP}/sem.</span></div>
       </div>
+    </div>
+    <div class="habit-filter" role="group" aria-label="Filtrar hábitos">
+      <button type="button" data-habit-filter="all" class="${selectedFilter === 'all' ? 'active' : ''}" aria-pressed="${selectedFilter === 'all'}">Todos</button>
+      <button type="button" data-habit-filter="daily" class="${selectedFilter === 'daily' ? 'active' : ''}" aria-pressed="${selectedFilter === 'daily'}">Diarios</button>
+      <button type="button" data-habit-filter="weekly" class="${selectedFilter === 'weekly' ? 'active' : ''}" aria-pressed="${selectedFilter === 'weekly'}">Semanales</button>
     </div>
     <div class="habit-list">${list}</div>`;
 }

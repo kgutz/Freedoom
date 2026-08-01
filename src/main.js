@@ -78,7 +78,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='96';
+const APP_VERSION='97';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -293,7 +293,8 @@ function renderHabits(){
     date:currentDayDate(),
     planStartDate:state.config.startDate,
     game:state.game,
-    stats
+    stats,
+    filter:habitViewFilter
   });
 }
 
@@ -1051,6 +1052,7 @@ document.getElementById('grafNext').addEventListener('click',()=>{
 
 /* ---------- hábitos ---------- */
 let editingHabitId=null;
+let habitViewFilter='all';
 let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
@@ -1164,6 +1166,12 @@ function saveHabitEditor(){
 }
 
 document.getElementById('view-habits').addEventListener('click',event=>{
+  const filter=event.target.closest('[data-habit-filter]');
+  if(filter){
+    habitViewFilter=filter.dataset.habitFilter;
+    renderHabits();
+    return;
+  }
   if(event.target.closest('[data-open-settings]')){
     openAjustes();
     return;

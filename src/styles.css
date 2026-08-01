@@ -344,7 +344,13 @@
   .habit-xp-track{height:8px;border-radius:99px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}
   .habit-xp-track i{display:block;height:100%;background:var(--kodak);border-radius:99px}
   .habit-xp-label{font-size:9px;color:#C8BAA5;font-family:'IBM Plex Mono',monospace;font-weight:500;margin-top:5px}
-  .habit-list{display:flex;flex-direction:column;gap:8px}
+  .habit-filter{display:flex;gap:6px;margin:0 0 16px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
+  .habit-filter button{flex:1;border:1px solid transparent;border-radius:999px;padding:7px 5px;background:transparent;color:var(--muted);font-family:'Sora',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
+  .habit-filter button.active{border-color:var(--kodak);color:var(--kodak);background:rgba(232,180,74,.08)}
+  .habit-list{display:flex;flex-direction:column;gap:18px}
+  .habit-group-head{display:flex;align-items:center;justify-content:space-between;margin:0 5px 8px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+  .habit-group-head b{display:flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0}
+  .habit-group-list{display:flex;flex-direction:column;gap:8px}
   .habit-row{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;min-height:62px;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
   .habit-row.completed{border-color:rgba(143,174,107,.55)}
   .habit-adjust{width:34px;height:34px;align-self:center;justify-self:center;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--muted);font-size:20px;line-height:1;cursor:pointer}

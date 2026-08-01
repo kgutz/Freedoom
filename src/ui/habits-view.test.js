@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderHabitsView } from './habits-view.js';
 
-function render(habitState) {
+function render(habitState, filter = 'all') {
   const root = { innerHTML: '' };
   renderHabitsView({
     document: { getElementById: () => root },
@@ -10,6 +10,7 @@ function render(habitState) {
     planStartDate: '2026-07-17',
     game: { cls: 'paladin', name: 'Kike' },
     stats: { lvl: 4, xp: 120, nextTh: 560, prog: 0.2 },
+    filter,
   });
   return root.innerHTML;
 }
@@ -49,5 +50,32 @@ describe('vista de hábitos', () => {
     expect(html).toContain('Media · Diario · +6 XP');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).toContain('completed');
+  });
+
+  it('agrupa diarios antes que semanales aunque se crearan después', () => {
+    const html = render({
+      items: [
+        { id: 'gym', title: 'Gimnasio', difficulty: 'hard', frequency: 'weekly', target: 3, active: true, createdAt: 1 },
+        { id: 'water', title: 'Beber agua', difficulty: 'easy', frequency: 'daily', target: 1, active: true, createdAt: 2 },
+      ],
+      entries: {},
+    });
+
+    expect(html.indexOf('Diarios')).toBeLessThan(html.indexOf('Semanales'));
+    expect(html.indexOf('Beber agua')).toBeLessThan(html.indexOf('Gimnasio'));
+  });
+
+  it('permite mostrar solo una frecuencia', () => {
+    const html = render({
+      items: [
+        { id: 'water', title: 'Beber agua', difficulty: 'easy', frequency: 'daily', target: 1, active: true },
+        { id: 'gym', title: 'Gimnasio', difficulty: 'hard', frequency: 'weekly', target: 3, active: true },
+      ],
+      entries: {},
+    }, 'weekly');
+
+    expect(html).not.toContain('Beber agua');
+    expect(html).toContain('Gimnasio');
+    expect(html).toContain('data-habit-filter="weekly" class="active"');
   });
 });
