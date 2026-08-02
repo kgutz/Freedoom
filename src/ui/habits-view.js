@@ -7,6 +7,7 @@ import {
   habitReward,
   habitXpForCurrentPeriods,
   normalizeHabitState,
+  sortHabits,
 } from '../domain/habit-rules.js';
 
 function escapeHtml(value) {
@@ -32,6 +33,7 @@ function habitRow(habit, entry) {
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${completed ? ` · +${entry.xpAwarded} XP` : ''}</span>
     </button>
+    <button class="habit-grip" type="button" data-habit-drag aria-label="Mover ${escapeHtml(habit.title)}" title="Arrastrar para ordenar">⠿</button>
     <button class="habit-adjust habit-plus" type="button" data-habit-delta="1" aria-label="Sumar progreso"${completed ? ' disabled' : ''}>+</button>
   </article>`;
 }
@@ -65,9 +67,9 @@ export function renderHabitsView({
   const root = document.getElementById('habitsContent');
   if (!root) return;
   const normalized = normalizeHabitState(habitState);
-  const habits = normalized.items
-    .filter((habit) => habit.active !== false)
-    .sort((left, right) => (left.createdAt || 0) - (right.createdAt || 0));
+  const habits = sortHabits(
+    normalized.items.filter((habit) => habit.active !== false),
+  );
   const earnedNow = habitXpForCurrentPeriods(
     normalized,
     date,
@@ -136,5 +138,6 @@ export function renderHabitsView({
       <button type="button" data-habit-filter="daily" class="${selectedFilter === 'daily' ? 'active' : ''}" aria-pressed="${selectedFilter === 'daily'}">Diarios</button>
       <button type="button" data-habit-filter="weekly" class="${selectedFilter === 'weekly' ? 'active' : ''}" aria-pressed="${selectedFilter === 'weekly'}">Semanales</button>
     </div>
+    ${visibleHabits.length > 1 ? '<p class="habit-order-hint">Arrastra <span aria-hidden="true">⠿</span> para ordenar tus hábitos.</p>' : ''}
     <div class="habit-list">${list}</div>`;
 }

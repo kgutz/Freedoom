@@ -45,6 +45,55 @@ export function normalizeHabitInput(input = {}) {
   };
 }
 
+function habitOrderValue(habit){
+  return Number.isFinite(Number(habit?.order))
+    ? Number(habit.order)
+    : Number(habit?.createdAt)||0;
+}
+
+export function sortHabits(habits=[]){
+  return [...habits].sort((left,right)=>{
+    const orderDifference=habitOrderValue(left)-habitOrderValue(right);
+    if(orderDifference!==0) return orderDifference;
+    return (Number(left?.createdAt)||0)-(Number(right?.createdAt)||0);
+  });
+}
+
+export function nextHabitOrder(habitState,frequency){
+  const normalized=normalizeHabitState(habitState);
+  const orders=normalized.items
+    .filter(habit=>habit.active!==false&&habit.frequency===frequency)
+    .map(habit=>habitOrderValue(habit));
+  return orders.length?Math.max(...orders)+1:0;
+}
+
+export function reorderHabits(habitState,frequency,orderedIds=[]){
+  const normalized=normalizeHabitState(habitState);
+  const targetIds=normalized.items
+    .filter(habit=>habit.active!==false&&habit.frequency===frequency)
+    .map(habit=>habit.id);
+  const targetSet=new Set(targetIds);
+  const seen=new Set();
+  const safeOrder=[];
+  orderedIds.forEach(id=>{
+    if(targetSet.has(id)&&!seen.has(id)){
+      safeOrder.push(id);
+      seen.add(id);
+    }
+  });
+  sortHabits(normalized.items.filter(habit=>targetSet.has(habit.id)))
+    .forEach(habit=>{
+      if(!seen.has(habit.id)) safeOrder.push(habit.id);
+    });
+  const position=new Map(safeOrder.map((id,index)=>[id,index]));
+  return {
+    ...normalized,
+    items:normalized.items.map(habit=>position.has(habit.id)
+      ? {...habit,order:position.get(habit.id),updatedAt:Date.now()}
+      : habit),
+  };
+}
+
 export function habitReward(habit) {
   const difficulty = HABIT_DIFFICULTIES[habit?.difficulty]
     ? habit.difficulty

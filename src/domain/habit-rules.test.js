@@ -5,7 +5,10 @@ import {
   habitPeriodKey,
   habitReward,
   habitXpTotal,
+  nextHabitOrder,
   normalizeHabitInput,
+  reorderHabits,
+  sortHabits,
 } from './habit-rules.js';
 
 const date = new Date(2026, 7, 1, 12);
@@ -19,6 +22,40 @@ const habit = {
 };
 
 describe('hábitos', () => {
+  it('conserva el orden antiguo por fecha y respeta el orden personalizado', () => {
+    const ordered = sortHabits([
+      { id: 'third', createdAt: 30 },
+      { id: 'first', createdAt: 10 },
+      { id: 'second', createdAt: 20 },
+    ]);
+    expect(ordered.map((item) => item.id)).toEqual(['first', 'second', 'third']);
+
+    const custom = sortHabits([
+      { id: 'first', order: 2, createdAt: 10 },
+      { id: 'second', order: 0, createdAt: 20 },
+      { id: 'third', order: 1, createdAt: 30 },
+    ]);
+    expect(custom.map((item) => item.id)).toEqual(['second', 'third', 'first']);
+  });
+
+  it('reordena solo el grupo indicado y calcula la posición del siguiente hábito', () => {
+    const state = {
+      items: [
+        { id: 'water', frequency: 'daily', active: true, createdAt: 1 },
+        { id: 'walk', frequency: 'daily', active: true, createdAt: 2 },
+        { id: 'gym', frequency: 'weekly', active: true, order: 4, createdAt: 3 },
+      ],
+      entries: {},
+    };
+    const reordered = reorderHabits(state, 'daily', ['walk', 'unknown', 'walk', 'water']);
+    expect(
+      sortHabits(reordered.items.filter((item) => item.frequency === 'daily')).map((item) => item.id),
+    ).toEqual(['walk', 'water']);
+    expect(reordered.items.find((item) => item.id === 'gym').order).toBe(4);
+    expect(nextHabitOrder(reordered, 'daily')).toBe(2);
+    expect(nextHabitOrder(reordered, 'weekly')).toBe(5);
+  });
+
   it('normaliza los campos editables y sus límites', () => {
     expect(
       normalizeHabitInput({

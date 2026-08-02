@@ -40,8 +40,10 @@ import { castSpellEffect } from './domain/spell-rules.js';
 import {
   adjustHabitProgress,
   habitReward,
+  nextHabitOrder,
   normalizeHabitInput,
-  normalizeHabitState
+  normalizeHabitState,
+  reorderHabits
 } from './domain/habit-rules.js';
 import {
   addBeerIntoxication,
@@ -91,7 +93,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='105';
+const APP_VERSION='107';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1492,8 +1494,11 @@ function saveHabitEditor(){
   const wasEditing=Boolean(editingHabitId);
   let savedHabitId=editingHabitId;
   if(editingHabitId){
+    const existing=normalized.items.find(habit=>habit.id===editingHabitId);
+    const changedFrequency=Boolean(existing&&existing.frequency!==input.frequency);
+    const nextOrder=changedFrequency?nextHabitOrder(normalized,input.frequency):existing?.order;
     normalized.items=normalized.items.map(habit=>habit.id===editingHabitId
-      ? {...habit,...input,updatedAt:Date.now()}
+      ? {...habit,...input,...(changedFrequency?{order:nextOrder}:{}),updatedAt:Date.now()}
       : habit);
   }else{
     const id=globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'
@@ -1504,6 +1509,7 @@ function saveHabitEditor(){
       id,
       ...input,
       active:true,
+      order:nextHabitOrder(normalized,input.frequency),
       createdAt:Date.now(),
       updatedAt:Date.now()
     });
@@ -1572,6 +1578,93 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   }
   const edit=event.target.closest('[data-edit-habit]');
   if(edit) openHabitEditor(edit.dataset.editHabit);
+});
+
+const habitsView=document.getElementById('view-habits');
+const habitsScrollArea=document.getElementById('scrollArea');
+let habitDrag=null;
+
+function orderedHabitIds(group){
+  return [...group.querySelectorAll('.habit-row')].map(row=>row.dataset.habitId);
+}
+
+function saveHabitOrder(group){
+  const frequency=group?.dataset.habitGroup;
+  if(!frequency) return;
+  const ids=orderedHabitIds(group);
+  state.habits=reorderHabits(state.habits,frequency,ids);
+  scheduleSave({type:'habit:reorder',frequency,ids});
+}
+
+function finishHabitDrag(event,cancelled=false){
+  if(!habitDrag||event.pointerId!==habitDrag.pointerId) return;
+  const {row,group,list,handle}=habitDrag;
+  try{handle.releasePointerCapture(event.pointerId);}catch{}
+  row.classList.remove('dragging');
+  list.classList.remove('drag-active');
+  document.body.classList.remove('habit-dragging');
+  habitDrag=null;
+  if(cancelled){
+    renderHabits();
+    return;
+  }
+  saveHabitOrder(group);
+  renderHabits();
+  showToast('Orden de hábitos guardado','heal');
+}
+
+habitsView.addEventListener('pointerdown',event=>{
+  const handle=event.target.closest('[data-habit-drag]');
+  if(!handle||(event.pointerType==='mouse'&&event.button!==0)) return;
+  const row=handle.closest('.habit-row');
+  const group=row?.closest('[data-habit-group]');
+  const list=group?.querySelector('.habit-group-list');
+  if(!row||!group||!list) return;
+  event.preventDefault();
+  habitDrag={pointerId:event.pointerId,row,group,list,handle};
+  try{handle.setPointerCapture(event.pointerId);}catch{}
+  row.classList.add('dragging');
+  list.classList.add('drag-active');
+  document.body.classList.add('habit-dragging');
+  if(navigator.vibrate) navigator.vibrate(18);
+});
+
+window.addEventListener('pointermove',event=>{
+  if(!habitDrag||event.pointerId!==habitDrag.pointerId) return;
+  event.preventDefault();
+  const {row,group,list}=habitDrag;
+  const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.habit-row');
+  if(target&&target!==row&&target.closest('[data-habit-group]')===group){
+    const bounds=target.getBoundingClientRect();
+    list.insertBefore(row,event.clientY<bounds.top+bounds.height/2?target:target.nextSibling);
+  }
+  if(habitsScrollArea){
+    const bounds=habitsScrollArea.getBoundingClientRect();
+    if(event.clientY<bounds.top+70) habitsScrollArea.scrollBy(0,-8);
+    else if(event.clientY>bounds.bottom-90) habitsScrollArea.scrollBy(0,8);
+  }
+},{passive:false});
+
+window.addEventListener('pointerup',event=>finishHabitDrag(event));
+window.addEventListener('pointercancel',event=>finishHabitDrag(event,true));
+
+habitsView.addEventListener('keydown',event=>{
+  const handle=event.target.closest('[data-habit-drag]');
+  if(!handle||!['ArrowUp','ArrowDown'].includes(event.key)) return;
+  const row=handle.closest('.habit-row');
+  const group=row?.closest('[data-habit-group]');
+  const list=group?.querySelector('.habit-group-list');
+  if(!row||!group||!list) return;
+  const sibling=event.key==='ArrowUp'?row.previousElementSibling:row.nextElementSibling;
+  if(!sibling) return;
+  event.preventDefault();
+  if(event.key==='ArrowUp') list.insertBefore(row,sibling);
+  else list.insertBefore(sibling,row);
+  saveHabitOrder(group);
+  renderHabits();
+  const moved=[...habitsView.querySelectorAll('[data-habit-drag]')]
+    .find(button=>button.closest('.habit-row')?.dataset.habitId===row.dataset.habitId);
+  moved?.focus();
 });
 document.getElementById('habitCancel').addEventListener('click',closeHabitEditor);
 document.getElementById('habitSave').addEventListener('click',saveHabitEditor);

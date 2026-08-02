@@ -50,6 +50,7 @@ describe('vista de hábitos', () => {
     expect(html).toContain('Media · Diario · +6 XP');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).toContain('completed');
+    expect(html).toContain('data-habit-drag');
   });
 
   it('agrupa diarios antes que semanales aunque se crearan después', () => {
@@ -77,5 +78,20 @@ describe('vista de hábitos', () => {
     expect(html).not.toContain('Beber agua');
     expect(html).toContain('Gimnasio');
     expect(html).toContain('data-habit-filter="weekly" class="active"');
+  });
+
+  it('renderiza los hábitos según su orden guardado', () => {
+    const html = render({
+      items: [
+        { id: 'water', title: 'Beber agua', difficulty: 'easy', frequency: 'daily', target: 1, active: true, order: 2 },
+        { id: 'walk', title: 'Caminar', difficulty: 'easy', frequency: 'daily', target: 1, active: true, order: 0 },
+        { id: 'read', title: 'Leer', difficulty: 'easy', frequency: 'daily', target: 1, active: true, order: 1 },
+      ],
+      entries: {},
+    });
+
+    expect(html.indexOf('Caminar')).toBeLessThan(html.indexOf('Leer'));
+    expect(html.indexOf('Leer')).toBeLessThan(html.indexOf('Beber agua'));
+    expect(html).toContain('Arrastra');
   });
 });

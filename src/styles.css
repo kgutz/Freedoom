@@ -383,17 +383,25 @@
   .habit-filter{display:flex;gap:6px;margin:0 0 16px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--panel)}
   .habit-filter button{flex:1;border:1px solid transparent;border-radius:999px;padding:7px 5px;background:transparent;color:var(--muted);font-family:'Sora',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
   .habit-filter button.active{border-color:var(--kodak);color:var(--kodak);background:rgba(232,180,74,.08)}
+  .habit-order-hint{margin:-8px 6px 12px;color:var(--muted);font-size:8.5px;text-align:right}
+  .habit-order-hint span{color:var(--kodak);font-size:12px;vertical-align:-1px}
   .habit-list{display:flex;flex-direction:column;gap:18px}
   .habit-group-head{display:flex;align-items:center;justify-content:space-between;margin:0 5px 8px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
   .habit-group-head b{display:flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0}
   .habit-group-list{display:flex;flex-direction:column;gap:8px}
-  .habit-row{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;min-height:62px;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden}
+  .habit-row{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;min-height:62px;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden;transition:border-color .16s,box-shadow .16s,opacity .16s,transform .16s}
   .habit-row.completed{border-color:rgba(143,174,107,.55)}
   .habit-adjust{width:34px;height:34px;align-self:center;justify-self:center;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
   .habit-plus{background:linear-gradient(145deg,#D19A3A,var(--kodak));color:#241C0E}
   .habit-row.completed .habit-plus{background:var(--ok);color:#17200F}
   .habit-adjust:disabled{opacity:.35;cursor:default}
-  .habit-main{min-width:0;border:0;background:transparent;color:var(--text);text-align:left;padding:7px 4px;cursor:pointer}
+  .habit-main{min-width:0;border:0;background:transparent;color:var(--text);text-align:left;padding:7px 27px 7px 4px;cursor:pointer}
+  .habit-grip{position:absolute;z-index:2;top:6px;right:45px;width:25px;height:24px;padding:0;border:0;background:transparent;color:var(--muted);font-size:16px;line-height:24px;cursor:grab;touch-action:none}
+  .habit-grip:focus-visible{outline:1px solid var(--kodak);outline-offset:-2px;border-radius:6px;color:var(--kodak)}
+  .habit-grip:active{cursor:grabbing}
+  .habit-row.dragging{z-index:3;opacity:.58;transform:scale(.985);border-color:var(--kodak);box-shadow:0 4px 18px rgba(0,0,0,.45);pointer-events:none}
+  .habit-group-list.drag-active{cursor:grabbing}
+  body.habit-dragging{user-select:none}
   .habit-title{display:block;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .habit-notes{display:none}
   .habit-meta{display:block;margin-top:2px;color:var(--muted);font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -485,12 +493,7 @@
     position:relative;z-index:2;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 1.2s ease forwards;opacity:0;display:inline-block}
   @keyframes logoIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
   .ob-fallback{position:relative;z-index:2;font-family:'Sora',sans-serif;font-weight:700;font-size:44px;letter-spacing:.04em;color:var(--kodak);animation:logoIn 1.2s ease forwards;opacity:0}
-  .ob-start{margin-top:34px;background:none;border:none;color:var(--muted);
-    position:relative;z-index:2;
-    font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.12em;cursor:pointer;
-    animation:startIn .5s ease forwards, blink 2.4s ease-in-out infinite;animation-delay:.5s,1s;opacity:0}
-  @keyframes startIn{from{opacity:0}to{opacity:.7}}
-  @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+  #ob1.exit{pointer-events:none;animation:loadingOut .4s ease forwards}
   .ob-h{font-size:26px;font-weight:700;margin-bottom:6px;text-align:center}
   .ob-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;text-align:center}
   .ob-mode-grid{display:grid;gap:12px;margin-top:22px}

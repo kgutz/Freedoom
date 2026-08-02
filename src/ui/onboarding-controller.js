@@ -53,13 +53,35 @@ export function createOnboardingController({
   let beerYes = true;
   let chosenClass = null;
   let chosenJourneyMode = null;
+  let introTimer = null;
+
+  const clearIntroTimer=()=>{
+    clearTimeout(introTimer);
+    introTimer=null;
+  };
+
+  const playIntro=()=>{
+    clearIntroTimer();
+    const intro=document.getElementById('ob1');
+    intro.classList.remove('exit');
+    introTimer=setTimeout(()=>{
+      if(!intro.classList.contains('active')) return;
+      intro.classList.add('exit');
+      introTimer=setTimeout(()=>{
+        if(intro.classList.contains('active')) showStep(2);
+      },400);
+    },1200);
+  };
 
   const showStep = (step) => {
+    clearIntroTimer();
+    document.getElementById('ob1').classList.remove('exit');
     document
       .querySelectorAll('.ob-step')
       .forEach((element) => element.classList.remove('active'));
     document.getElementById(`ob${step}`).classList.add('active');
     document.getElementById('onboard').scrollTop = 0;
+    if(step===1) playIntro();
   };
 
   const renderHeroes = () => {
@@ -111,11 +133,6 @@ export function createOnboardingController({
     showStep(1);
   };
 
-  document.getElementById('onboard').addEventListener('click', () => {
-    if (document.getElementById('ob1').classList.contains('active')) {
-      showStep(2);
-    }
-  });
   document.querySelectorAll('[data-ob-back]').forEach((button) => {
     button.addEventListener('click', (event) => {
       event.stopPropagation();
