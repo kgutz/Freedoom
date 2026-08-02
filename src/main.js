@@ -93,7 +93,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='107';
+const APP_VERSION='109';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;

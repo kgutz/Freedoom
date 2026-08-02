@@ -384,7 +384,7 @@
   .habit-filter button{flex:1;border:1px solid transparent;border-radius:999px;padding:7px 5px;background:transparent;color:var(--muted);font-family:'Sora',sans-serif;font-size:10px;font-weight:600;cursor:pointer}
   .habit-filter button.active{border-color:var(--kodak);color:var(--kodak);background:rgba(232,180,74,.08)}
   .habit-order-hint{margin:-8px 6px 12px;color:var(--muted);font-size:8.5px;text-align:right}
-  .habit-order-hint span{color:var(--kodak);font-size:12px;vertical-align:-1px}
+  .habit-order-hint span{display:inline-block;margin:0 2px;color:var(--kodak);font-size:12px;vertical-align:-1px}
   .habit-list{display:flex;flex-direction:column;gap:18px}
   .habit-group-head{display:flex;align-items:center;justify-content:space-between;margin:0 5px 8px;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
   .habit-group-head b{display:flex;align-items:center;justify-content:center;min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:0}
