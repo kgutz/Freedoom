@@ -1,11 +1,17 @@
 import { BOSSES, BOSS_SLUGS } from '../data/game-data.js';
 import { daysBetween, keyOf } from './date-utils.js';
 import {
-  bossCountForPlan,
   limitForWeek,
   weekIndexFor,
   weekRangeFor,
 } from './plan-rules.js';
+import {
+  SMOKE_FREE_STATUS_SMOKED,
+  SMOKE_FREE_STATUS_SUCCESS,
+  bossCountForJourney,
+  isSmokeFreeMode,
+  smokeFreeStatusOf,
+} from './journey-mode-rules.js';
 
 export const BOSS_MAX_HP = 150;
 export const BOSS_REQUIRED_DAYS = 6;
@@ -39,9 +45,24 @@ export function calculateDailyBossDamage({
   record = EMPTY_DAY,
   limit,
   settled,
+  journeyMode,
   takesPills = true,
   pillsGoal = 3,
 }) {
+  if (journeyMode === 'smoke_free') {
+    const status = smokeFreeStatusOf(record);
+    const completed = status === SMOKE_FREE_STATUS_SUCCESS;
+    const completion = settled && completed ? BOSS_DAY_DAMAGE : 0;
+    return {
+      completed,
+      completion,
+      margin: 0,
+      pills: 0,
+      perfect: 0,
+      zero: 0,
+      total: completion,
+    };
+  }
   const cigarettes = Math.max(0, record.c || 0);
   const completed = cigarettes <= limit;
   const perfect = Math.min(
@@ -102,6 +123,7 @@ export function calculateWeekBossDamage({
   spellHits = [],
   settleAll = false,
 }) {
+  const smokeFreeMode = isSmokeFreeMode(config);
   const limit = limitForWeek(config.startLimit, week);
   const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
   const today = keyOf(now);
@@ -116,20 +138,28 @@ export function calculateWeekBossDamage({
     date.setDate(date.getDate() + 1)
   ) {
     const dayKey = keyOf(date);
+    const explicitSmokeFreeResult =
+      smokeFreeMode &&
+      (smokeFreeStatusOf(recordOf(days, dayKey)) ===
+        SMOKE_FREE_STATUS_SUCCESS ||
+        smokeFreeStatusOf(recordOf(days, dayKey)) ===
+          SMOKE_FREE_STATUS_SMOKED);
     const past = settleAll || daysBetween(now, date) < 0;
+    const settled = past || explicitSmokeFreeResult;
     const isToday = dayKey === today && !settleAll;
     const future = !settleAll && dayKey > today;
     const record = recordOf(days, dayKey);
     const damage = calculateDailyBossDamage({
       record,
       limit,
-      settled: past,
+      settled,
+      journeyMode: config.journeyMode,
       takesPills: config.takesPills,
       pillsGoal: config.pillsGoal || 3,
     });
 
     let status = 'pend';
-    if (past) status = damage.completed ? 'hit' : 'fail';
+    if (settled) status = damage.completed ? 'hit' : 'fail';
     else if (isToday) {
       status = (record.c || 0) > limit ? 'fail' : 'today';
     }
@@ -144,7 +174,7 @@ export function calculateWeekBossDamage({
           total: 0,
         }
       : damage;
-    daily.push({ key: dayKey, settled: past, status, ...actual });
+    daily.push({ key: dayKey, settled, status, ...actual });
     pips.push(status);
   }
 
@@ -172,7 +202,7 @@ export function calculateBossCombatStatus({
   config,
   days,
 }) {
-  const bossCount = bossCountForPlan(config.startLimit, BOSSES.length);
+  const bossCount = bossCountForJourney(config, BOSSES.length);
   const campaignComplete = Boolean(combat.completed);
   const weekDamage = calculateWeekBossDamage({
     week: combat.week,
@@ -194,15 +224,22 @@ export function calculateBossCombatStatus({
   const today = weekDamage.daily.find((day) => day.key === keyOf(now));
   const projectedToday = today
     ? calculateDailyBossDamage({
-        record: recordOf(days, today.key),
+        record: isSmokeFreeMode(config)
+          ? { ...recordOf(days, today.key), sf: SMOKE_FREE_STATUS_SUCCESS }
+          : recordOf(days, today.key),
         limit: weekDamage.limit,
         settled: true,
+        journeyMode: config.journeyMode,
         takesPills: config.takesPills,
         pillsGoal: config.pillsGoal || 3,
       })
     : calculateDailyBossDamage({
+        record: isSmokeFreeMode(config)
+          ? { sf: SMOKE_FREE_STATUS_SUCCESS }
+          : EMPTY_DAY,
         limit: weekDamage.limit,
-        settled: false,
+        settled: isSmokeFreeMode(config),
+        journeyMode: config.journeyMode,
       });
   const hpPercent = Math.max(
     0,
@@ -230,6 +267,7 @@ export function calculateBossCombatStatus({
     damage: BOSS_MAX_HP - hp,
     damageThisWeek: weekDamage.total,
     damageToday: today?.total || 0,
+    todayStatus: today?.status || 'pend',
     projectedToday: projectedToday.total,
     breakdownToday: today || {
       completion: 0,
@@ -272,7 +310,7 @@ export function reconcileBossCombat({
     0,
     weekIndexFor(config.startDate, now),
   );
-  const bossCount = bossCountForPlan(config.startLimit, BOSSES.length);
+  const bossCount = bossCountForJourney(config, BOSSES.length);
   const finalBossIndex = bossCount - 1;
   const next = combat
     ? {

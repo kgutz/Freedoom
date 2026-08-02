@@ -59,6 +59,22 @@ describe('barra de ritmo', () => {
 });
 
 describe('modelo de Hoy', () => {
+  it('expone el registro explícito del camino sin fumar', () => {
+    const model = createTodayModel({
+      now: new Date(2026, 7, 3, 21),
+      config: { ...config, journeyMode: 'smoke_free', startDate: '2026-08-01' },
+      days: { '2026-08-03': { sf: 'success' } },
+      game: null,
+      stats: null,
+      intoxication: null,
+    });
+
+    expect(model).toMatchObject({
+      smokeFreeMode: true,
+      smokeFreeStatus: 'success',
+      journeyDay: 3,
+    });
+  });
   it('combina contadores, semana y estado del héroe', () => {
     const model = createTodayModel({
       now: new Date(2026, 6, 26, 12),

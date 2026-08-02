@@ -6,6 +6,12 @@ import {
   parseKey,
 } from '../domain/date-utils.js';
 import { limitForDate, weekRangeFor } from '../domain/plan-rules.js';
+import {
+  SMOKE_FREE_STATUS_SMOKED,
+  SMOKE_FREE_STATUS_SUCCESS,
+  isSmokeFreeMode,
+  smokeFreeStatusOf,
+} from '../domain/journey-mode-rules.js';
 
 const EMPTY_DAY = { c: 0 };
 
@@ -18,6 +24,7 @@ export function createChartModel({
   records,
 }) {
   const dates = [];
+  const smokeFreeMode = isSmokeFreeMode(config);
   let title = '';
   if (mode === 'semana') {
     const [firstDay, lastDay] = weekRangeFor(config.startDate, weekIndex);
@@ -50,6 +57,7 @@ export function createChartModel({
       past,
       tracked,
       cigarettes: (records[keyOf(date)] || EMPTY_DAY).c || 0,
+      smokeFreeStatus: smokeFreeStatusOf(records[keyOf(date)] || EMPTY_DAY),
       limit: limitForDate({
         startDate: config.startDate,
         startLimit: config.startLimit,
@@ -73,6 +81,13 @@ export function createChartModel({
     if (!peak || point.cigarettes > peak.cigarettes) peak = point;
     if (!minimum || point.cigarettes < minimum.cigarettes) minimum = point;
   });
+  const smokeFreeDays = trackedPoints.filter(
+    (point) => point.smokeFreeStatus === SMOKE_FREE_STATUS_SUCCESS,
+  ).length;
+  const smokedDays = trackedPoints.filter(
+    (point) => point.smokeFreeStatus === SMOKE_FREE_STATUS_SMOKED,
+  ).length;
+  const decidedDays = smokeFreeDays + smokedDays;
 
   return {
     mode,
@@ -82,6 +97,11 @@ export function createChartModel({
     peak,
     minimum,
     average: trackedPoints.length ? total / trackedPoints.length : null,
+    smokeFreeMode,
+    smokeFreeDays,
+    smokedDays,
+    pendingDays: Math.max(0, trackedPoints.length - decidedDays),
+    successRate: decidedDays ? (smokeFreeDays / decidedDays) * 100 : null,
   };
 }
 
@@ -117,6 +137,43 @@ export function renderChartView({
   const slotWidth = plotWidth / slots;
   const barWidth = Math.max(4, Math.min(30, slotWidth * 0.62));
   const yOf = (value) => bottom - (value / model.yMax) * plotHeight;
+
+  if (model.smokeFreeMode) {
+    let content = `<line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" stroke="#3A3229" stroke-width="0.8"/>`;
+    model.points.forEach((point, index) => {
+      const centerX = left + index * slotWidth + slotWidth / 2;
+      if (point.tracked) {
+        if (point.smokeFreeStatus === SMOKE_FREE_STATUS_SUCCESS) {
+          content += `<rect x="${centerX - barWidth / 2}" y="${top + 18}" width="${barWidth}" height="${plotHeight - 18}" rx="3" fill="var(--ok)" opacity=".9"/>`;
+          content += `<text x="${centerX}" y="${top + 12}" font-size="11" fill="var(--ok)" text-anchor="middle">✓</text>`;
+        } else if (point.smokeFreeStatus === SMOKE_FREE_STATUS_SMOKED) {
+          content += `<rect x="${centerX - barWidth / 2}" y="${bottom - 45}" width="${barWidth}" height="45" rx="3" fill="var(--warn)" opacity=".9"/>`;
+          content += `<text x="${centerX}" y="${bottom - 51}" font-size="11" fill="var(--warn)" text-anchor="middle">×</text>`;
+        } else {
+          content += `<circle cx="${centerX}" cy="${bottom - 4}" r="2.5" fill="var(--muted)" opacity=".7"/>`;
+        }
+      }
+      const showLabel =
+        mode === 'semana' ||
+        point.date.getDate() === 1 ||
+        point.date.getDate() % 5 === 0;
+      if (showLabel) {
+        const label =
+          mode === 'semana'
+            ? `${DAY_NAMES[point.date.getDay()].slice(0, 2).toUpperCase()} ${point.date.getDate()}`
+            : point.date.getDate();
+        content += `<text x="${centerX}" y="${xLabels - 12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Sora">${label}</text>`;
+      }
+    });
+    svg.innerHTML = content;
+    document.getElementById('sumPico').textContent = model.smokeFreeDays;
+    document.getElementById('sumPicoDia').textContent = 'confirmados';
+    document.getElementById('sumMin').textContent = model.smokedDays;
+    document.getElementById('sumMinDia').textContent = 'fumados';
+    document.getElementById('sumMedia').textContent =
+      model.successRate === null ? '–' : `${Math.round(model.successRate)}%`;
+    return;
+  }
 
   let content = '';
   const stepY = model.yMax > 12 ? 5 : model.yMax > 6 ? 2 : 1;

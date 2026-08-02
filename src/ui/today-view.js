@@ -2,6 +2,7 @@ import { CLASSES } from '../data/game-data.js';
 import {
   DAY_NAMES,
   MONTH_NAMES,
+  daysBetween,
   keyOf,
   minutesOf,
 } from '../domain/date-utils.js';
@@ -11,6 +12,11 @@ import {
   logicalClockMinutes,
   logicalTimeMinutes,
 } from '../domain/day-boundary-rules.js';
+import {
+  isSmokeFreeMode,
+  smokeFreeStatusOf,
+} from '../domain/journey-mode-rules.js';
+import { parseKey } from '../domain/date-utils.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -141,6 +147,7 @@ export function createTodayModel({
 }) {
   const today = keyOf(currentDate);
   const record = days[today] || EMPTY_DAY;
+  const smokeFreeMode = isSmokeFreeMode(config);
   const weekIndex = Math.max(0, weekIndexFor(config.startDate, currentDate));
   const limit = limitForWeek(config.startLimit, weekIndex);
   const abbreviatedDay = DAY_NAMES[currentDate.getDay()].slice(0, 3);
@@ -170,6 +177,12 @@ export function createTodayModel({
 
   return {
     dateLabel,
+    smokeFreeMode,
+    smokeFreeStatus: smokeFreeStatusOf(record),
+    journeyDay: Math.max(
+      1,
+      daysBetween(parseKey(config.startDate), currentDate) + 1,
+    ),
     weekNumber: weekIndex + 1,
     limit,
     record,
@@ -217,7 +230,39 @@ export function renderTodayView({
 
   document.getElementById('fechaHoy').textContent = model.dateLabel;
   document.getElementById('semanaNum').textContent = model.weekNumber;
+  const maxLine = document.querySelector('.semana-tag .max-line');
+  if (maxLine) maxLine.style.display = model.smokeFreeMode ? 'none' : '';
   document.getElementById('limiteDia').textContent = model.limit;
+  const cigaretteCounter = document.getElementById('cigCounter');
+  const reductionProgress = document.getElementById('reductionProgress');
+  const smokeFreeCounter = document.getElementById('smokeFreeCounter');
+  if (cigaretteCounter) {
+    cigaretteCounter.style.display = model.smokeFreeMode ? 'none' : '';
+  }
+  if (reductionProgress) {
+    reductionProgress.style.display = model.smokeFreeMode ? 'none' : '';
+  }
+  if (smokeFreeCounter) {
+    smokeFreeCounter.style.display = model.smokeFreeMode ? '' : 'none';
+    document.getElementById('smokeFreeJourneyDay').textContent =
+      `Día ${model.journeyDay} de tu camino`;
+    const statusCopy = {
+      pending: ['Día en curso', 'Cuando termine tu día, registra cómo ha ido.'],
+      success: ['Te mantuviste sin fumar', '✓ Este día ya golpea al jefe.'],
+      smoked: ['Hoy fumaste', 'Puedes corregirlo antes del cambio de día.'],
+    }[model.smokeFreeStatus];
+    document.getElementById('smokeFreeStatusTitle').textContent = statusCopy[0];
+    document.getElementById('smokeFreeStatusNote').textContent = statusCopy[1];
+    smokeFreeCounter.dataset.status = model.smokeFreeStatus;
+    smokeFreeCounter.querySelectorAll('[data-smoke-free-status]').forEach(
+      (button) => {
+        button.classList.toggle(
+          'active',
+          button.dataset.smokeFreeStatus === model.smokeFreeStatus,
+        );
+      },
+    );
+  }
   document.getElementById('cigHoy').textContent = model.record.c;
   document.getElementById('pillHoy').textContent = model.record.p;
   document.getElementById('beerHoy').textContent = model.record.b || 0;

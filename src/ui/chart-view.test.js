@@ -7,6 +7,27 @@ const config = {
 };
 
 describe('modelo de gráficas', () => {
+  it('resume confirmados, fumados y pendientes sin usar cigarros', () => {
+    const model = createChartModel({
+      mode: 'semana',
+      weekIndex: 0,
+      month: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 19, 12),
+      config: { ...config, journeyMode: 'smoke_free' },
+      records: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'smoked' },
+      },
+    });
+
+    expect(model).toMatchObject({
+      smokeFreeMode: true,
+      smokeFreeDays: 1,
+      smokedDays: 1,
+      pendingDays: 1,
+      successRate: 50,
+    });
+  });
   it('resume una semana usando solo días vividos dentro del plan', () => {
     const model = createChartModel({
       mode: 'semana',

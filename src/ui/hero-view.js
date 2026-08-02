@@ -4,7 +4,10 @@ import {
   logicalClockMinutes,
   logicalTimeMinutes,
 } from '../domain/day-boundary-rules.js';
-import { bossCountForPlan } from '../domain/plan-rules.js';
+import {
+  bossCountForJourney,
+  isSmokeFreeMode,
+} from '../domain/journey-mode-rules.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -206,7 +209,8 @@ export function renderHeroView({
         `<span class="boss-hit-chip">${label} <b>−${value}</b></span>`,
     )
     .join('');
-  const totalBosses = bossCountForPlan(config.startLimit, BOSSES.length);
+  const smokeFreeMode = isSmokeFreeMode(config);
+  const totalBosses = bossCountForJourney(config, BOSSES.length);
   const defeatedBosses = Math.min(totalBosses, heroStats.bossesDown);
   const currentBossIndex = Math.min(totalBosses - 1, bossState.bossNum - 1);
   const remainingBosses = Math.max(0, totalBosses - defeatedBosses);
@@ -274,9 +278,13 @@ export function renderHeroView({
       }
       ${
         bossState.lockedByDays
-          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas cerrar ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más dentro del límite.</div>`
+          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas ${smokeFreeMode ? 'confirmar sin fumar' : 'cerrar dentro del límite'} ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más.</div>`
+          : smokeFreeMode && bossState.todayStatus === 'hit' && !bossState.won
+          ? '<div class="boss-projection">✓ El golpe de hoy ya está registrado.</div>'
+          : smokeFreeMode && bossState.todayStatus === 'fail' && !bossState.won
+          ? '<div class="boss-projection">Hoy no causa daño al jefe.</div>'
           : !bossState.won
-          ? `<div class="boss-projection">Si cerraras el día así: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
+          ? `<div class="boss-projection">${smokeFreeMode ? 'Si confirmas el día sin fumar' : 'Si cerraras el día así'}: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${
@@ -294,7 +302,7 @@ export function renderHeroView({
           <div class="rango">${classData.tiers[heroStats.tier]}</div>
           <div class="nombre">${classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
-          <div class="racha">Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'} · Jefes: <b>${heroStats.bossesDown}</b> · Armadura: <b>−${model.armor}</b><br>Disparos perfectos hoy: <b>${model.perfectToday}</b></div>
+          <div class="racha">Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'} · Jefes: <b>${heroStats.bossesDown}</b> · Armadura: <b>−${model.armor}</b>${smokeFreeMode ? '' : `<br>Disparos perfectos hoy: <b>${model.perfectToday}</b>`}</div>
         </div>
       </div>
       ${chipsHtml}

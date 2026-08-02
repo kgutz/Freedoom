@@ -10,6 +10,22 @@ const config = {
 };
 
 describe('modelo del calendario', () => {
+  it('representa los tres estados del camino sin fumar', () => {
+    const model = createCalendarModel({
+      cursor: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 19, 12),
+      config: { ...config, journeyMode: 'smoke_free' },
+      days: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'smoked' },
+      },
+    });
+
+    expect(model.smokeFreeMode).toBe(true);
+    expect(model.entries.find((entry) => entry.day === 17).smokeFreeStatus).toBe('success');
+    expect(model.entries.find((entry) => entry.day === 18).smokeFreeStatus).toBe('smoked');
+    expect(model.entries.find((entry) => entry.day === 19).smokeFreeStatus).toBe('pending');
+  });
   it('coloca correctamente un mes y marca hoy, futuro y exceso', () => {
     const model = createCalendarModel({
       cursor: new Date(2026, 6, 1),

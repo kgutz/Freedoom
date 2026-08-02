@@ -15,6 +15,24 @@ const config = {
 };
 
 describe('daño diario al jefe', () => {
+  it('en el camino sin fumar solo daña al confirmar el día', () => {
+    expect(
+      calculateDailyBossDamage({
+        record: { sf: 'success', c: 99, s: 9 },
+        limit: 0,
+        settled: true,
+        journeyMode: 'smoke_free',
+      }),
+    ).toMatchObject({ completion: 25, margin: 0, perfect: 0, total: 25 });
+    expect(
+      calculateDailyBossDamage({
+        record: { sf: 'smoked' },
+        limit: 0,
+        settled: true,
+        journeyMode: 'smoke_free',
+      }),
+    ).toMatchObject({ completed: false, total: 0 });
+  });
   it('hace 25 por cumplir y hasta 10 por margen', () => {
     expect(
       calculateDailyBossDamage({
@@ -69,6 +87,24 @@ describe('daño diario al jefe', () => {
 });
 
 describe('combate semanal', () => {
+  it('derrota al jefe con seis confirmaciones explícitas sin fumar', () => {
+    const smokeFreeConfig = { ...config, journeyMode: 'smoke_free' };
+    const status = calculateBossCombatStatus({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 6, 22, 12),
+      config: smokeFreeConfig,
+      days: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'success' },
+        '2026-07-19': { sf: 'success' },
+        '2026-07-20': { sf: 'success' },
+        '2026-07-21': { sf: 'success' },
+        '2026-07-22': { sf: 'success' },
+      },
+    });
+
+    expect(status).toMatchObject({ hp: 0, won: true, completedDays: 6 });
+  });
   it('necesita seis días exactos para derrotar un jefe de 150 HP', () => {
     const combat = createBossCombat({
       currentWeek: 0,

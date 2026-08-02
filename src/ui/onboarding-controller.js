@@ -1,4 +1,9 @@
 import { CLASSES } from '../data/game-data.js';
+import {
+  JOURNEY_MODE_REDUCTION,
+  JOURNEY_MODE_SMOKE_FREE,
+  normalizeJourneyMode,
+} from '../domain/journey-mode-rules.js';
 
 export function createOnboardingResult({
   startDate,
@@ -11,12 +16,18 @@ export function createOnboardingResult({
   tracksBeer,
   classId,
   heroName,
+  journeyMode,
 }) {
   const selectedClass = CLASSES[classId] ? classId : 'knight';
+  const selectedMode = normalizeJourneyMode(journeyMode);
   return {
     config: {
+      journeyMode: selectedMode,
       startDate,
-      startLimit: Number.parseInt(startLimit, 10) || 20,
+      startLimit:
+        selectedMode === JOURNEY_MODE_SMOKE_FREE
+          ? 21
+          : Number.parseInt(startLimit, 10) || 20,
       wakeTime: wakeTime || '09:00',
       sleepTime: sleepTime || '23:00',
       dayStartTime: dayStartTime || '04:00',
@@ -41,6 +52,7 @@ export function createOnboardingController({
   let pillsYes = true;
   let beerYes = true;
   let chosenClass = null;
+  let chosenJourneyMode = null;
 
   const showStep = (step) => {
     document
@@ -67,6 +79,7 @@ export function createOnboardingController({
     pillsYes = true;
     beerYes = true;
     chosenClass = null;
+    chosenJourneyMode = null;
     document.querySelectorAll('[data-pills]').forEach((button) => {
       button.classList.toggle('active', button.dataset.pills === 'yes');
     });
@@ -77,6 +90,9 @@ export function createOnboardingController({
     });
     document.getElementById('obPillsQty').style.display = 'block';
     document.getElementById('obName').value = '';
+    document.querySelectorAll('[data-journey-mode]').forEach((button) => {
+      button.classList.remove('active');
+    });
   };
 
   const start = () => {
@@ -119,9 +135,27 @@ export function createOnboardingController({
       }
     });
   });
+  document.querySelectorAll('[data-journey-mode]').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      chosenJourneyMode = normalizeJourneyMode(button.dataset.journeyMode);
+      document.querySelectorAll('[data-journey-mode]').forEach((option) => {
+        option.classList.toggle('active', option === button);
+      });
+      const smokeFree = chosenJourneyMode === JOURNEY_MODE_SMOKE_FREE;
+      document.getElementById('obLimitField').style.display = smokeFree
+        ? 'none'
+        : '';
+      document.getElementById('obStartNote').textContent = smokeFree
+        ? 'Este día comienza tu camino y marca el inicio de cada jefe semanal.'
+        : 'Este día marca tu semana: cada 7 días, ese mismo día, tu objetivo baja un cigarro.';
+      showStep(3);
+    });
+  });
   document.getElementById('obToHero').addEventListener('click', (event) => {
     event.stopPropagation();
-    showStep(3);
+    if (!chosenJourneyMode) chosenJourneyMode = JOURNEY_MODE_REDUCTION;
+    showStep(4);
   });
   document.getElementById('obClsGrid').addEventListener('click', (event) => {
     const card = event.target.closest('[data-obcls]');
@@ -134,7 +168,7 @@ export function createOnboardingController({
     );
     document.getElementById('obName').value = '';
     document.getElementById('obName').placeholder = `${classData.es}…`;
-    showStep(4);
+    showStep(5);
   });
   document.getElementById('obFinish').addEventListener('click', (event) => {
     event.stopPropagation();
@@ -150,6 +184,7 @@ export function createOnboardingController({
         tracksBeer: beerYes,
         classId: chosenClass || 'knight',
         heroName: document.getElementById('obName').value,
+        journeyMode: chosenJourneyMode || JOURNEY_MODE_REDUCTION,
       }),
     );
   });

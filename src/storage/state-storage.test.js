@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  ACTION_LOG_LIMIT,
+  RECOVERY_SLOT_COUNT,
   STORAGE_KEY,
+  checksumOf,
   createBrowserStore,
   exportBackup,
   importBackup,
@@ -8,8 +11,21 @@ import {
   parseState,
 } from './state-storage.js';
 
+function memoryLocalStorage({ fail } = {}) {
+  const values = new Map();
+  return {
+    values,
+    getItem: vi.fn((key) => values.get(key) ?? null),
+    setItem: vi.fn((key, value) => {
+      if (fail?.(key, value)) throw new Error('fallo simulado');
+      values.set(key, value);
+    }),
+  };
+}
+
 const defaultState = () => ({
   config: {
+    journeyMode: 'reduction',
     startDate: '2026-07-17',
     startLimit: 20,
     wakeTime: '09:00',
@@ -59,6 +75,7 @@ describe('compatibilidad del estado', () => {
 
     expect(loaded).toEqual({
       ...v34State,
+      config: { journeyMode: 'reduction', ...v34State.config },
       habits: { items: [], entries: {} },
     });
     expect(loaded.config.wakeTime).toBe('07:00');
@@ -74,6 +91,7 @@ describe('compatibilidad del estado', () => {
 
     expect(loaded.config.startLimit).toBe(15);
     expect(loaded.config.wakeTime).toBe('09:00');
+    expect(loaded.config.journeyMode).toBe('reduction');
     expect(loaded.game).toEqual({ cls: null });
     expect(loaded.habits).toEqual({ items: [], entries: {} });
   });
@@ -100,6 +118,7 @@ describe('copias de seguridad', () => {
 
     expect(restored).toEqual({
       ...v34State,
+      config: { journeyMode: 'reduction', ...v34State.config },
       habits: { items: [], entries: {} },
     });
   });
@@ -128,6 +147,7 @@ describe('copias de seguridad', () => {
 
     expect(importBackup(defaultState(), exportBackup(v36State))).toEqual({
       ...v36State,
+      config: { journeyMode: 'reduction', ...v36State.config },
       habits: { items: [], entries: {} },
     });
   });
@@ -162,6 +182,7 @@ describe('copias de seguridad', () => {
 
     expect(importBackup(defaultState(), exportBackup(v39State))).toEqual({
       ...v39State,
+      config: { journeyMode: 'reduction', ...v39State.config },
       habits: { items: [], entries: {} },
     });
   });
@@ -180,24 +201,100 @@ describe('copias de seguridad', () => {
 
 describe('adaptador del navegador', () => {
   it('usa localStorage inmediatamente en la aplicación web', async () => {
-    const values = new Map();
-    const localStorage = {
-      getItem: vi.fn((key) => values.get(key) ?? null),
-      setItem: vi.fn((key, value) => values.set(key, value)),
-    };
+    const localStorage = memoryLocalStorage();
     const store = createBrowserStore({ localStorage });
 
-    store.set(STORAGE_KEY, '{"ok":true}');
+    const saved=store.set(STORAGE_KEY, '{"ok":true}');
 
     expect(store.usesExternalStorage).toBe(false);
+    expect(saved).toMatchObject({revision:1,verified:true,recoverySaved:true,degraded:false});
     expect(localStorage.setItem).toHaveBeenCalledWith(
       STORAGE_KEY,
       '{"ok":true}',
     );
-    await expect(store.get(STORAGE_KEY)).resolves.toEqual({
+    await expect(store.get(STORAGE_KEY)).resolves.toMatchObject({
       key: STORAGE_KEY,
       value: '{"ok":true}',
+      revision:1,
+      recovered:false,
+      source:'main',
     });
+  });
+
+  it('recupera la versión más reciente si la copia principal se corrompe', async () => {
+    const localStorage=memoryLocalStorage();
+    const store=createBrowserStore({localStorage});
+    store.set(STORAGE_KEY,'{"step":1}');
+    store.set(STORAGE_KEY,'{"step":2}');
+    localStorage.values.set(STORAGE_KEY,'{"step":');
+
+    const reloaded=createBrowserStore({localStorage});
+    await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
+      value:'{"step":2}',revision:2,recovered:true,source:'recovery-2'
+    });
+  });
+
+  it('ignora una recuperación dañada y vuelve a la anterior', async () => {
+    const localStorage=memoryLocalStorage();
+    const store=createBrowserStore({localStorage});
+    store.set(STORAGE_KEY,'{"step":1}');
+    store.set(STORAGE_KEY,'{"step":2}');
+    localStorage.values.set(STORAGE_KEY,'dañado');
+    localStorage.values.set(`${STORAGE_KEY}:recovery:2`,'dañado');
+
+    const reloaded=createBrowserStore({localStorage});
+    await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
+      value:'{"step":1}',revision:1,recovered:true,source:'recovery-1'
+    });
+  });
+
+  it('mantiene una copia recuperable cuando falla solo el guardado principal', async () => {
+    const localStorage=memoryLocalStorage({fail:(key)=>key===STORAGE_KEY});
+    const store=createBrowserStore({localStorage});
+
+    expect(store.set(STORAGE_KEY,'{"safe":true}')).toMatchObject({
+      verified:false,recoverySaved:true,degraded:true
+    });
+    await expect(store.get(STORAGE_KEY)).resolves.toMatchObject({
+      value:'{"safe":true}',revision:1,recovered:true
+    });
+  });
+
+  it('avisa mediante una excepción si no puede escribir ninguna copia', () => {
+    const localStorage=memoryLocalStorage({fail:()=>true});
+    const store=createBrowserStore({localStorage});
+    expect(()=>store.set(STORAGE_KEY,'{"safe":false}')).toThrow('fallo simulado');
+  });
+
+  it('carga partidas antiguas sin metadatos como revisión cero', async () => {
+    const localStorage=memoryLocalStorage();
+    localStorage.values.set(STORAGE_KEY,'{"legacy":true}');
+    const store=createBrowserStore({localStorage});
+    await expect(store.get(STORAGE_KEY)).resolves.toMatchObject({
+      value:'{"legacy":true}',revision:0,recovered:false,source:'main'
+    });
+  });
+
+  it('conserva solo las últimas copias y limita el registro de acciones', async () => {
+    const localStorage=memoryLocalStorage();
+    const store=createBrowserStore({localStorage});
+    for(let revision=1;revision<=RECOVERY_SLOT_COUNT+2;revision+=1){
+      store.set(STORAGE_KEY,JSON.stringify({revision}));
+    }
+    for(let index=0;index<ACTION_LOG_LIMIT+8;index+=1){
+      store.recordAction({type:'test',index});
+    }
+
+    const recoveries=await store.listRecoveries();
+    expect(recoveries).toHaveLength(RECOVERY_SLOT_COUNT);
+    expect(recoveries.map(item=>item.revision)).toEqual([5,4,3]);
+    expect(store.actionLog()).toHaveLength(ACTION_LOG_LIMIT);
+    expect(store.actionLog()[0].index).toBe(8);
+  });
+
+  it('genera checksums estables y sensibles al contenido',()=>{
+    expect(checksumOf('{"a":1}')).toBe(checksumOf('{"a":1}'));
+    expect(checksumOf('{"a":1}')).not.toBe(checksumOf('{"a":2}'));
   });
 
   it('mantiene compatibilidad con window.storage', async () => {

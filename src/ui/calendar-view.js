@@ -10,10 +10,17 @@ import {
   weekIndexFor,
   weekRangeFor,
 } from '../domain/plan-rules.js';
+import {
+  SMOKE_FREE_STATUS_SMOKED,
+  SMOKE_FREE_STATUS_SUCCESS,
+  isSmokeFreeMode,
+  smokeFreeStatusOf,
+} from '../domain/journey-mode-rules.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
 export function createCalendarModel({ cursor, now, config, days }) {
+  const smokeFreeMode = isSmokeFreeMode(config);
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
   const firstDay = new Date(year, month, 1);
@@ -34,6 +41,7 @@ export function createCalendarModel({ cursor, now, config, days }) {
       cigarettes: record.c || 0,
       pills: record.p || 0,
       beers: record.b || 0,
+      smokeFreeStatus: smokeFreeStatusOf(record),
       overLimit:
         (record.c || 0) >
         limitForDate({
@@ -49,10 +57,12 @@ export function createCalendarModel({ cursor, now, config, days }) {
     weekdays: WEEKDAY_INITIALS,
     offset,
     entries,
+    smokeFreeMode,
   };
 }
 
 export function createWeeksModel({ now, config, days }) {
+  const smokeFreeMode = isSmokeFreeMode(config);
   const currentWeek = Math.max(0, weekIndexFor(config.startDate, now));
   const weeks = [];
 
@@ -61,6 +71,9 @@ export function createWeeksModel({ now, config, days }) {
     const limit = limitForWeek(config.startLimit, week);
     let total = 0;
     let daysOverLimit = 0;
+    let smokeFreeDays = 0;
+    let smokedDays = 0;
+    let pendingDays = 0;
 
     for (
       let date = new Date(firstDay);
@@ -68,9 +81,16 @@ export function createWeeksModel({ now, config, days }) {
       date.setDate(date.getDate() + 1)
     ) {
       if (daysBetween(now, date) > 0) break;
-      const cigarettes = (days[keyOf(date)] || EMPTY_DAY).c || 0;
+      const record = days[keyOf(date)] || EMPTY_DAY;
+      const cigarettes = record.c || 0;
       total += cigarettes;
       if (cigarettes > limit) daysOverLimit += 1;
+      if (smokeFreeMode) {
+        const smokeFreeStatus = smokeFreeStatusOf(record);
+        if (smokeFreeStatus === SMOKE_FREE_STATUS_SUCCESS) smokeFreeDays += 1;
+        else if (smokeFreeStatus === SMOKE_FREE_STATUS_SMOKED) smokedDays += 1;
+        else pendingDays += 1;
+      }
     }
 
     let status;
@@ -78,6 +98,12 @@ export function createWeeksModel({ now, config, days }) {
     if (week === currentWeek) {
       status = 'en curso';
       statusClass = 'curr';
+    } else if (smokeFreeMode && smokeFreeDays >= 6) {
+      status = '✓ jefe vencido';
+      statusClass = 'ok';
+    } else if (smokeFreeMode) {
+      status = `✗ ${smokeFreeDays} de 6 días`;
+      statusClass = 'bad';
     } else if (daysOverLimit === 0) {
       status = '✓ cumplida';
       statusClass = 'ok';
@@ -96,6 +122,9 @@ export function createWeeksModel({ now, config, days }) {
       daysOverLimit,
       status,
       statusClass,
+      smokeFreeDays,
+      smokedDays,
+      pendingDays,
     });
   }
 
@@ -103,6 +132,7 @@ export function createWeeksModel({ now, config, days }) {
     currentWeek,
     completedPlan: limitForWeek(config.startLimit, currentWeek) <= 0,
     weeks,
+    smokeFreeMode,
   };
 }
 
@@ -140,11 +170,18 @@ export function renderCalendarView({
     const extras = [];
     if (entry.pills > 0) extras.push(`💊${entry.pills}`);
     if (entry.beers > 0) extras.push(`🍺${entry.beers}`);
+    const smokeFreeMark = {
+      success: '<span class="sf success" aria-label="Día sin fumar">✓</span>',
+      smoked: '<span class="sf smoked" aria-label="Día fumado">×</span>',
+      pending: '<span class="sf pending" aria-label="Día pendiente">·</span>',
+    }[entry.smokeFreeStatus];
     cell.innerHTML =
       `<span class="n">${entry.day}</span>` +
-      (entry.cigarettes > 0
-        ? `<span class="c${entry.overLimit ? ' over' : ''}">${entry.cigarettes}</span>`
-        : '') +
+      (model.smokeFreeMode
+        ? smokeFreeMark
+        : entry.cigarettes > 0
+          ? `<span class="c${entry.overLimit ? ' over' : ''}">${entry.cigarettes}</span>`
+          : '') +
       (extras.length ? `<span class="p">${extras.join(' ')}</span>` : '');
     if (!entry.isFuture) {
       cell.addEventListener('click', () => onDayClick(entry.key));
@@ -163,12 +200,15 @@ export function renderWeeksView({ document, now, config, days }) {
   model.weeks.forEach((week) => {
     const row = document.createElement('div');
     row.className = 'wk-row';
-    row.innerHTML = `<div>Semana ${week.number} · máx ${week.limit}/día<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
-      <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.total} en total</span></div>`;
+    row.innerHTML = model.smokeFreeMode
+      ? `<div>Semana ${week.number}<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
+        <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.smokeFreeDays} sin fumar · ${week.smokedDays} fumado · ${week.pendingDays} pendiente</span></div>`
+      : `<div>Semana ${week.number} · máx ${week.limit}/día<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
+        <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.total} en total</span></div>`;
     list.appendChild(row);
   });
 
-  if (model.completedPlan) {
+  if (model.completedPlan && !model.smokeFreeMode) {
     const done = document.createElement('p');
     done.className = 'hint';
     done.textContent =

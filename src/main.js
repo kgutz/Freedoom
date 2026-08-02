@@ -5,12 +5,20 @@ import {
   reconcileBossCombat
 } from './domain/boss-combat-rules.js';
 import {
-  bossCountForPlan,
   limitForDate,
   limitForWeek,
   weekIndexFor,
   weekRangeFor
 } from './domain/plan-rules.js';
+import {
+  JOURNEY_MODE_REDUCTION,
+  SMOKE_FREE_STATUS_PENDING,
+  SMOKE_FREE_STATUS_SUCCESS,
+  bossCountForJourney,
+  isSmokeFreeMode,
+  journeyEvolutionUnlocked,
+  smokeFreeStatusOf
+} from './domain/journey-mode-rules.js';
 import {
   BEER_DAMAGE,
   dailyRecovery,
@@ -78,7 +86,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='97';
+const APP_VERSION='101';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -88,7 +96,7 @@ const SEED={};
 const SEED_V=3;
 
 let state={
-  config:{startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
+  config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
   days:{},
   habits:{items:[],entries:{}},
   seeded:false,
@@ -161,7 +169,7 @@ function limitOfDate(d){
   });
 }
 function getDay(k){return state.days[k]||{c:0,p:0};}
-function setDay(k,c,p,t,b,s){
+function setDay(k,c,p,t,b,s,action){
   c=Math.max(0,c); p=Math.max(0,p);
   const prev=state.days[k];
   const last=(t!==undefined)? t : (prev? prev.t : undefined);
@@ -172,7 +180,8 @@ function setDay(k,c,p,t,b,s){
   const pillMana=prev? prev.pm : undefined;
   const dailyWake=prev? prev.w : undefined;
   const wakeEstimated=prev? prev.we : undefined;
-  if(c===0&&p===0&&beers===0&&dailyWake===undefined){delete state.days[k];}
+  const smokeFreeStatus=prev? prev.sf : undefined;
+  if(c===0&&p===0&&beers===0&&dailyWake===undefined&&smokeFreeStatus===undefined){delete state.days[k];}
   else{
     state.days[k]={c,p};
     if(last!==undefined) state.days[k].t=last;
@@ -183,13 +192,73 @@ function setDay(k,c,p,t,b,s){
     if(pillMana!==undefined) state.days[k].pm=pillMana;
     if(dailyWake!==undefined) state.days[k].w=dailyWake;
     if(wakeEstimated) state.days[k].we=1;
+    if(smokeFreeStatus!==undefined) state.days[k].sf=smokeFreeStatus;
   }
-  scheduleSave(); renderAll();
+  scheduleSave(action); renderAll();
 }
 
 /* ---------- almacenamiento ---------- */
 /* Adaptador: dentro de Claude usa window.storage; en GitHub Pages / PWA usa localStorage del navegador */
 const store=createBrowserStore(window);
+let storageHealth={state:'idle',revision:0,savedAt:0,title:'Comprobando guardado…',detail:'',warning:''};
+
+function savedAtLabel(timestamp){
+  if(!timestamp) return '';
+  return new Intl.DateTimeFormat('es-ES',{
+    day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'
+  }).format(new Date(timestamp));
+}
+function renderStorageHealth(){
+  const box=document.getElementById('storageHealth');
+  const title=document.getElementById('storageHealthTitle');
+  const detail=document.getElementById('storageHealthDetail');
+  const warning=document.getElementById('storageWarning');
+  if(box){
+    box.dataset.state=storageHealth.state;
+    if(title) title.textContent=storageHealth.title;
+    if(detail) detail.textContent=storageHealth.detail;
+  }
+  if(warning){
+    warning.textContent=storageHealth.warning||'';
+    warning.style.display=storageHealth.warning?'block':'none';
+  }
+}
+function setStorageHealth(next){
+  storageHealth={...storageHealth,...next};
+  renderStorageHealth();
+}
+function handleSaveResult(result){
+  if(!result||!Number.isFinite(result.revision)){
+    setStorageHealth({
+      state:'saved',title:'Guardado ✓',detail:'Partida guardada',warning:''
+    });
+    return;
+  }
+  const degraded=Boolean(result.degraded);
+  setStorageHealth({
+    state:degraded?'error':'saved',
+    revision:result.revision,
+    savedAt:result.savedAt,
+    title:degraded?'Guardado con protección reducida':'Guardado ✓',
+    detail:`Copia ${result.revision} · ${savedAtLabel(result.savedAt)}`,
+    warning:degraded
+      ? 'Tus datos se han guardado, pero una de las copias de seguridad falló. Exporta una copia desde Ajustes.'
+      : ''
+  });
+  Promise.resolve(result.mirrorPromise).catch(error=>{
+    console.warn('No se pudo actualizar la copia IndexedDB',error);
+  });
+}
+
+async function requestPersistentStorage(){
+  try{
+    if(navigator.storage&&typeof navigator.storage.persist==='function'){
+      await navigator.storage.persist();
+    }
+  }catch(error){
+    console.warn('El navegador no concedió almacenamiento persistente',error);
+  }
+}
 
 async function load(){
   try{
@@ -198,6 +267,16 @@ async function load(){
       const saved=parseState(r.value);
       const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
       state=mergeState(state,saved);
+      setStorageHealth({
+        state:'saved',
+        revision:r.revision||0,
+        savedAt:r.savedAt||0,
+        title:r.recovered?'Partida recuperada automáticamente':'Guardado ✓',
+        detail:r.savedAt?`Copia ${r.revision} · ${savedAtLabel(r.savedAt)}`:'Partida compatible cargada',
+        warning:r.recovered
+          ? 'La copia principal no era la más reciente o estaba dañada. Freedoom recuperó la última copia válida.'
+          : ''
+      });
       if(legacyDayBoundary&&state.onboarded){
         const key=todayKey();
         const record=state.days[key]||{c:0,p:0};
@@ -207,7 +286,13 @@ async function load(){
         scheduleSave();
       }
     }
-  }catch(e){ /* primera vez: la clave no existe todavía */ }
+  }catch(e){
+    console.error('Error cargando la partida',e);
+    setStorageHealth({
+      state:'error',title:'No se pudo cargar la partida',detail:e.message||'Error desconocido',
+      warning:'Freedoom no pudo leer el guardado. No reinicies la app: revisa Copias de recuperación en Ajustes.'
+    });
+  }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
      semilla se apliquen aunque la instalación ya hubiera sembrado antes.
      Solo rellena días que no existan: nunca pisa datos reales. */
@@ -220,24 +305,41 @@ async function load(){
     scheduleSave();
   }
 }
-function scheduleSave(){
+function scheduleSave(action){
+  if(action){
+    try{ store.recordAction(action); }
+    catch(error){ console.warn('No se pudo registrar la acción',error); }
+  }
+  setStorageHealth({state:'saving',title:'Guardando…',detail:'Verificando la partida',warning:''});
   /* en el móvil (localStorage) guarda al instante: si cierras la app justo después de un +, no se pierde */
   if(!store.usesExternalStorage){
-    try{ store.set(STORAGE_KEY,serializeState(state)); }catch(e){ console.error('Error guardando',e); }
+    try{
+      const result=store.set(STORAGE_KEY,serializeState(state));
+      handleSaveResult(result);
+    }catch(e){
+      console.error('Error guardando',e);
+      setStorageHealth({
+        state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
+        warning:'El último cambio NO se ha guardado. No cierres la app; exporta una copia desde Ajustes y libera espacio en el dispositivo.'
+      });
+    }
     return;
   }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    try{ await store.set(STORAGE_KEY,serializeState(state)); }
-    catch(e){ console.error('Error guardando',e); }
+    try{ handleSaveResult(await store.set(STORAGE_KEY,serializeState(state))); }
+    catch(e){
+      console.error('Error guardando',e);
+      setStorageHealth({
+        state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
+        warning:'El último cambio NO se ha guardado. No cierres la app y exporta una copia desde Ajustes.'
+      });
+    }
   },400);
 }
-/* al ocultar/cerrar la app, volcado final por si había un guardado pendiente */
+/* La PWA guarda cada acción al instante; aquí solo anotamos cuándo se ocultó. */
 window.addEventListener('pagehide',()=>{
   backgroundedAt=Date.now();
-  if(!store.usesExternalStorage){
-    try{ store.set(STORAGE_KEY,serializeState(state)); }catch(e){}
-  }
 });
 
 function currentIntoxication(nowTimestamp=Date.now()){
@@ -252,7 +354,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();}
+function renderAll(){renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
 
 function renderHoy(){
   let stats=null;
@@ -283,6 +385,9 @@ function renderCal(){
     days:state.days,
     onDayClick:openModal
   });
+  document.getElementById('calendarHint').textContent=isSmokeFreeMode(state.config)
+    ? 'Toca un día para corregirlo. ✓ significa que te mantuviste sin fumar, × que fumaste y · que sigue pendiente.'
+    : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.';
 }
 
 function renderHabits(){
@@ -325,6 +430,9 @@ function renderGraf(){
     config:state.config,
     records:state.days
   });
+  document.getElementById('chartHint').textContent=isSmokeFreeMode(state.config)
+    ? 'Verde: días confirmados sin fumar. Rojo: días en los que fumaste. Los puntos permanecen pendientes.'
+    : 'La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.';
 }
 
 function renderSettings(){
@@ -372,7 +480,7 @@ function renderWeekResultModal(){
       ? Math.max(0,wr.bossIndex)
       : Math.max(0,gameStats().bossesDown-1);
     const beatenName=BOSSES[beatenIdx], beatenSlug=BOSS_SLUGS[beatenIdx];
-    const bossCount=bossCountForPlan(state.config.startLimit,BOSSES.length);
+    const bossCount=bossCountForJourney(state.config,BOSSES.length);
     const hasNextBoss=beatenIdx+1<bossCount;
     const nextIdx=Math.min(beatenIdx+1,bossCount-1);
     const nextName=BOSSES[nextIdx], nextSlug=BOSS_SLUGS[nextIdx];
@@ -398,12 +506,8 @@ function renderWeekResultModal(){
     const name=BOSSES[idx], slug=BOSS_SLUGS[idx];
     const lastLim=limitOfWeek(wr.weekIdx);
     const newWeekIdx=wr.weekIdx+1;
-    body.innerHTML=`
-      <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
-      <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
-      ${bossImg(idx+1,slug)}
-      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>150 HP</b>.</p>
-      <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
+    const smokeFreeMode=isSmokeFreeMode(state.config);
+    const limitAdjustment=smokeFreeMode?'':`
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>
         <div class="ob-toggle">
@@ -414,21 +518,30 @@ function renderWeekResultModal(){
       <div class="ob-field" id="wrLimitField" style="display:none;text-align:left">
         <label style="display:block;margin-bottom:8px">Cigarros al día esta semana</label>
         <input type="number" id="wrLimitInput" min="0" max="99" value="${lastLim}">
-      </div>
+      </div>`;
+    body.innerHTML=`
+      <div style="font-size:12px;color:var(--warn);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">Semana difícil</div>
+      <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
+      ${bossImg(idx+1,slug)}
+      <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>150 HP</b>.</p>
+      <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
+      ${limitAdjustment}
       <button class="ob-next" id="weekResultClose" style="margin-top:6px">Continuar</button>
     `;
-    document.getElementById('wrYes').addEventListener('click',()=>{
-      document.getElementById('wrYes').classList.add('active');
-      document.getElementById('wrNo').classList.remove('active');
-      document.getElementById('wrLimitField').style.display='block';
-    });
-    document.getElementById('wrNo').addEventListener('click',()=>{
-      document.getElementById('wrNo').classList.add('active');
-      document.getElementById('wrYes').classList.remove('active');
-      document.getElementById('wrLimitField').style.display='none';
-    });
+    if(!smokeFreeMode){
+      document.getElementById('wrYes').addEventListener('click',()=>{
+        document.getElementById('wrYes').classList.add('active');
+        document.getElementById('wrNo').classList.remove('active');
+        document.getElementById('wrLimitField').style.display='block';
+      });
+      document.getElementById('wrNo').addEventListener('click',()=>{
+        document.getElementById('wrNo').classList.add('active');
+        document.getElementById('wrYes').classList.remove('active');
+        document.getElementById('wrLimitField').style.display='none';
+      });
+    }
     document.getElementById('weekResultClose').addEventListener('click',()=>{
-      const wantsAdjust=document.getElementById('wrYes').classList.contains('active');
+      const wantsAdjust=!smokeFreeMode&&document.getElementById('wrYes').classList.contains('active');
       if(wantsAdjust){
         const v=parseInt(document.getElementById('wrLimitInput').value,10);
         if(!isNaN(v)&&v>=0){
@@ -476,6 +589,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     }).bossesDown;
   }
   const previous=JSON.stringify(g.bossCombat||null);
+  const previousEvolution=Boolean(g.evolutionUnlocked);
   const result=reconcileBossCombat({
     combat:g.bossCombat,
     now:nowDate,
@@ -484,6 +598,13 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     legacyBossesDown
   });
   g.bossCombat=result.combat;
+  const totalBossesDown=
+    Math.max(0,g.bossCombat.legacyBossesDown||0)+
+    Math.max(0,g.bossCombat.defeated||0);
+  g.evolutionUnlocked=journeyEvolutionUnlocked({
+    config:state.config,
+    bossesDown:totalBossesDown
+  });
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
       const mx=heroMaxes();
@@ -498,7 +619,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     g.weekResult=weekResult;
     g.weekModalPending=true;
   }
-  if(previous!==JSON.stringify(g.bossCombat)||result.weekResults.length){
+  if(previous!==JSON.stringify(g.bossCombat)||result.weekResults.length||previousEvolution!==g.evolutionUnlocked){
     scheduleSave();
   }
   return result.status;
@@ -523,11 +644,14 @@ function ensureHero(){
   /* descanso nocturno */
   if(g.day!==todayKey()){
     const lim=limitOfDate(parseKey(g.day));
-    const c=getDay(g.day).c;
+    const previousDay=getDay(g.day);
+    const c=previousDay.c;
     const lvl=gameStats().lvl;
     const mx=heroMaxes();
     const recovered=dailyRecovery({
-      completedDay:c<=lim,
+      completedDay:isSmokeFreeMode(state.config)
+        ? smokeFreeStatusOf(previousDay)===SMOKE_FREE_STATUS_SUCCESS
+        : c<=lim,
       currentMana:g.mp,
       maxHp:mx.maxHp,
       maxMp:mx.maxMp,
@@ -748,13 +872,31 @@ function openModal(k){
   document.getElementById('mCigVal').textContent=rec.c;
   document.getElementById('mPillVal').textContent=rec.p;
   document.getElementById('mCerVal').textContent=rec.b||0;
+  const smokeFreeMode=isSmokeFreeMode(state.config);
+  document.getElementById('mCigRow').style.display=smokeFreeMode?'none':'';
+  const statusEditor=document.getElementById('mSmokeFreeStatus');
+  statusEditor.parentElement.style.display=smokeFreeMode?'':'none';
+  const status=smokeFreeStatusOf(rec);
+  statusEditor.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
+    button.classList.toggle('active',button.dataset.modalSmokeFree===status);
+  });
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){
   const c=+document.getElementById('mCigVal').textContent;
   const p=+document.getElementById('mPillVal').textContent;
   const b=+document.getElementById('mCerVal').textContent;
-  setDay(editingKey,c,p,undefined,b);
+  if(isSmokeFreeMode(state.config)){
+    const selected=document.querySelector('[data-modal-smoke-free].active');
+    const record=state.days[editingKey]||{c:0,p:0};
+    if(selected&&selected.dataset.modalSmokeFree!==SMOKE_FREE_STATUS_PENDING){
+      state.days[editingKey]={...record,sf:selected.dataset.modalSmokeFree};
+    }else if(record.sf!==undefined){
+      delete record.sf;
+      state.days[editingKey]=record;
+    }
+  }
+  setDay(editingKey,c,p,undefined,b,undefined,{type:'day:update',day:editingKey,cigarettes:c,pills:p,beers:b});
   document.getElementById('modalBg').classList.remove('show');
 }
 
@@ -764,6 +906,7 @@ function bump(id,delta,min=0){
   el.textContent=Math.max(min,+el.textContent+delta);
 }
 document.getElementById('addCig').addEventListener('click',()=>{
+  if(isSmokeFreeMode(state.config)) return;
   registerDailyWakeEstimate();
   const k=todayKey(),d=getDay(k);
   const r=smokeDamage();
@@ -784,7 +927,9 @@ document.getElementById('addCig').addEventListener('click',()=>{
     r:r.consumesRoots,
     sh:r.consumesShield
   });
-  setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0));
+  setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0),{
+    type:'cigarette:add',day:k,count:d.c+1
+  });
   if(rewards.xp>0&&state.days[k]){
     state.days[k].sx=(state.days[k].sx||0)+rewards.xp;
     scheduleSave(); renderHero();
@@ -795,6 +940,7 @@ document.getElementById('addCig').addEventListener('click',()=>{
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
+  if(isSmokeFreeMode(state.config)) return;
   const k=todayKey(),d=getDay(k);
   if(d.c<=0) return;
   ensureHero();
@@ -819,7 +965,9 @@ document.getElementById('subCig').addEventListener('click',()=>{
     }
     scheduleSave();
   }
-  setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0));
+  setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0),{
+    type:'cigarette:remove',day:k,count:d.c-1
+  });
   if(exX>0&&state.days[k]){
     state.days[k].sx=Math.max(0,(state.days[k].sx||0)-exX);
     scheduleSave(); renderHero();
@@ -845,7 +993,7 @@ document.getElementById('addPill').addEventListener('click',()=>{
     scheduleSave();
     showToast('Pastillas completas · +'+d.ph+' ♥ · +'+d.pm+' 💧','heal');
   }
-  setDay(k,d.c,d.p+1);
+  setDay(k,d.c,d.p+1,undefined,undefined,undefined,{type:'pill:add',day:k,count:d.p+1});
 });
 document.getElementById('subPill').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
@@ -862,7 +1010,7 @@ document.getElementById('subPill').addEventListener('click',()=>{
     scheduleSave();
     showToast('Poción retirada −'+appliedHealing+' ♥ · −'+appliedMana+' 💧','dmg');
   }
-  setDay(k,d.c,d.p-1);
+  setDay(k,d.c,d.p-1,undefined,undefined,undefined,{type:'pill:remove',day:k,count:d.p-1});
 });
 document.getElementById('addBeer').addEventListener('click',()=>{
   const k=todayKey(),d=getDay(k);
@@ -874,7 +1022,9 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
   (g.beerDmg=g.beerDmg||[]).push({d:bd,i:added.effect.id});
   scheduleSave();
-  setDay(k,d.c,d.p,undefined,(d.b||0)+1);
+  setDay(k,d.c,d.p,undefined,(d.b||0)+1,undefined,{
+    type:'beer:add',day:k,count:(d.b||0)+1
+  });
   showToast(
     '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
     'dmg'
@@ -899,7 +1049,9 @@ document.getElementById('subBeer').addEventListener('click',()=>{
     showToast('Corregido · +'+undo.damage+' de vida ♥','heal');
   }
   scheduleSave();
-  setDay(k,d.c,d.p,undefined,(d.b||0)-1);
+  setDay(k,d.c,d.p,undefined,(d.b||0)-1,undefined,{
+    type:'beer:remove',day:k,count:(d.b||0)-1
+  });
 });
 
 document.getElementById('mCigAdd').addEventListener('click',()=>bump('mCigVal',1));
@@ -908,6 +1060,39 @@ document.getElementById('mPillAdd').addEventListener('click',()=>bump('mPillVal'
 document.getElementById('mPillSub').addEventListener('click',()=>bump('mPillVal',-1));
 document.getElementById('mCerAdd').addEventListener('click',()=>bump('mCerVal',1));
 document.getElementById('mCerSub').addEventListener('click',()=>bump('mCerVal',-1));
+document.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    document.querySelectorAll('[data-modal-smoke-free]').forEach(option=>option.classList.remove('active'));
+    button.classList.add('active');
+  });
+});
+document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
+  const button=event.target.closest('[data-smoke-free-status]');
+  if(!button||!isSmokeFreeMode(state.config)) return;
+  const key=todayKey();
+  const record=state.days[key]||{c:0,p:0};
+  const status=button.dataset.smokeFreeStatus;
+  if(status===SMOKE_FREE_STATUS_PENDING){
+    const next={...record};
+    delete next.sf;
+    state.days[key]=next;
+    showToast('El día vuelve a estar pendiente','heal');
+  }else{
+    state.days[key]={...record,sf:status};
+    if(status!==SMOKE_FREE_STATUS_SUCCESS&&state.game){
+      ensureHero();
+      state.game.hpT=Date.now();
+    }
+    showToast(
+      status===SMOKE_FREE_STATUS_SUCCESS
+        ? '✓ Día sin fumar · −25 HP al jefe · +50 XP'
+        : 'Día registrado. Mañana continúa tu camino.',
+      status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
+    );
+  }
+  scheduleSave({type:'smoke-free:status',day:key,status});
+  renderAll();
+});
 document.getElementById('modalClose').addEventListener('click',closeModal);
 document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 
@@ -931,7 +1116,7 @@ document.getElementById('timeModalSave').addEventListener('click',()=>{
       time:v,
       dayStartTime:state.config.dayStartTime||DEFAULT_DAY_START_TIME
     });
-    setDay(k,rec.c,rec.p,timestamp);
+    setDay(k,rec.c,rec.p,timestamp,undefined,undefined,{type:'cigarette:time',day:k,time:timestamp});
   }
   document.getElementById('timeModalBg').classList.remove('show');
 });
@@ -1050,6 +1235,76 @@ document.getElementById('grafNext').addEventListener('click',()=>{
   else{grafMonth.setMonth(grafMonth.getMonth()+1);renderGraf();}
 });
 
+/* ---------- recuperación del guardado ---------- */
+function recoverySourceLabel(source){
+  if(source==='main') return 'Partida principal';
+  if(source==='indexeddb') return 'Copia interna';
+  return 'Copia automática';
+}
+async function openRecoveryModal(){
+  const modal=document.getElementById('recoveryBg');
+  const list=document.getElementById('recoveryList');
+  list.textContent='Buscando copias…';
+  modal.classList.add('show');
+  try{
+    const recoveries=await store.listRecoveries(STORAGE_KEY);
+    list.replaceChildren();
+    if(!recoveries.length){
+      const empty=document.createElement('p');
+      empty.className='recovery-empty';
+      empty.textContent='Todavía no hay copias automáticas disponibles.';
+      list.append(empty);
+      return;
+    }
+    recoveries.forEach((recovery,index)=>{
+      const row=document.createElement('div');
+      row.className='recovery-row';
+      const info=document.createElement('div');
+      const name=document.createElement('b');
+      name.textContent=`Copia ${recovery.revision}${index===0?' · más reciente':''}`;
+      const meta=document.createElement('small');
+      meta.textContent=`${savedAtLabel(recovery.savedAt)} · ${recoverySourceLabel(recovery.source)}`;
+      info.append(name,meta);
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='mini-btn';
+      button.dataset.recoveryRevision=String(recovery.revision);
+      button.textContent='Restaurar';
+      row.append(info,button);
+      list.append(row);
+    });
+  }catch(error){
+    list.textContent='No se pudieron leer las copias: '+(error.message||'error desconocido');
+  }
+}
+function closeRecoveryModal(){
+  document.getElementById('recoveryBg').classList.remove('show');
+}
+document.getElementById('btnRecoveries').addEventListener('click',openRecoveryModal);
+document.getElementById('recoveryClose').addEventListener('click',closeRecoveryModal);
+document.getElementById('recoveryBg').addEventListener('click',event=>{
+  if(event.target.id==='recoveryBg') closeRecoveryModal();
+});
+document.getElementById('recoveryList').addEventListener('click',async event=>{
+  const button=event.target.closest('[data-recovery-revision]');
+  if(!button) return;
+  const revision=Number(button.dataset.recoveryRevision);
+  if(!confirm(`¿Restaurar la copia ${revision}? La partida actual se conservará como otra copia.`)) return;
+  button.disabled=true;
+  try{
+    const recovered=await store.recoveryState(revision,STORAGE_KEY);
+    if(!recovered) throw new Error('La copia ya no está disponible');
+    state=mergeState(state,recovered);
+    scheduleSave({type:'recovery:restore',revision});
+    closeRecoveryModal();
+    renderAll();
+    showToast('Partida recuperada desde la copia '+revision,'heal');
+  }catch(error){
+    button.disabled=false;
+    showToast('No se pudo recuperar: '+(error.message||'error desconocido'),'dmg');
+  }
+});
+
 /* ---------- hábitos ---------- */
 let editingHabitId=null;
 let habitViewFilter='all';
@@ -1142,6 +1397,8 @@ function saveHabitEditor(){
     return;
   }
   const normalized=normalizeHabitState(state.habits);
+  const wasEditing=Boolean(editingHabitId);
+  let savedHabitId=editingHabitId;
   if(editingHabitId){
     normalized.items=normalized.items.map(habit=>habit.id===editingHabitId
       ? {...habit,...input,updatedAt:Date.now()}
@@ -1150,6 +1407,7 @@ function saveHabitEditor(){
     const id=globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'
       ? globalThis.crypto.randomUUID()
       : 'habit-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+    savedHabitId=id;
     normalized.items.push({
       id,
       ...input,
@@ -1159,10 +1417,14 @@ function saveHabitEditor(){
     });
   }
   state.habits=normalized;
-  scheduleSave();
+  scheduleSave({
+    type:wasEditing?'habit:update':'habit:create',
+    id:savedHabitId,
+    title:input.title
+  });
   closeHabitEditor();
   renderAll();
-  showToast(editingHabitId?'Hábito actualizado':'Hábito creado','heal');
+  showToast(wasEditing?'Hábito actualizado':'Hábito creado','heal');
 }
 
 document.getElementById('view-habits').addEventListener('click',event=>{
@@ -1193,7 +1455,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       planStartDate:state.config.startDate
     });
     state.habits=result.habitState;
-    scheduleSave();
+    scheduleSave({
+      type:'habit:progress',id:habit.id,count:result.entry.count,
+      period:result.entry.periodKey||''
+    });
     renderAll();
     if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP','heal');
     else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
@@ -1230,12 +1495,13 @@ document.getElementById('habitTargetAdd').addEventListener('click',()=>{
 });
 document.getElementById('habitDelete').addEventListener('click',()=>{
   if(!editingHabitId||!confirm('¿Eliminar este hábito? La XP que ya ganaste se conservará.')) return;
+  const deletedHabitId=editingHabitId;
   const normalized=normalizeHabitState(state.habits);
   normalized.items=normalized.items.map(habit=>habit.id===editingHabitId
     ? {...habit,active:false,deletedAt:Date.now()}
     : habit);
   state.habits=normalized;
-  scheduleSave();
+  scheduleSave({type:'habit:delete',id:deletedHabitId});
   closeHabitEditor();
   renderAll();
   showToast('Hábito eliminado','dmg');
@@ -1400,7 +1666,7 @@ function startOnboarding(){
 document.getElementById('btnReset').addEventListener('click',()=>{
   if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
   state={
-    config:{startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
+    config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
     days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
   };
   scheduleSave();
@@ -1410,6 +1676,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 
 (async function(){
   await load();
+  void requestPersistentStorage();
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
     startOnboarding();

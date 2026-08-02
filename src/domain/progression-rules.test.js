@@ -12,6 +12,23 @@ const config = {
 };
 
 describe('progreso completo', () => {
+  it('en modo sin fumar solo recompensa confirmaciones explícitas', () => {
+    const smokeFreeConfig = { ...config, journeyMode: 'smoke_free' };
+    const stats = calculateGameStats({
+      now: new Date(2026, 6, 20, 12),
+      config: smokeFreeConfig,
+      days: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'smoked' },
+        '2026-07-19': {},
+        '2026-07-20': { sf: 'success' },
+      },
+      game: { cls: 'knight' },
+    });
+
+    expect(stats.xp).toBe(100);
+    expect(stats.streak).toBe(1);
+  });
   it('calcula XP, racha y nivel desde los días guardados', () => {
     const stats = calculateGameStats({
       now: new Date(2026, 6, 19, 12),

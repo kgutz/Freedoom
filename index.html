@@ -29,13 +29,28 @@
   </div>
   <div class="ob-step" id="ob2">
     <button type="button" class="ob-back" data-ob-back="1" aria-label="Volver a la bienvenida">←</button>
+    <h2 class="ob-h">¿Cómo empiezas tu aventura?</h2>
+    <p class="ob-sub">Elige el camino que representa tu situación actual.</p>
+    <div class="ob-mode-grid">
+      <button type="button" class="ob-mode-card" data-journey-mode="reduction">
+        <b>Estoy dejando de fumar</b>
+        <span>Reduciré mis cigarros poco a poco hasta llegar a cero.</span>
+      </button>
+      <button type="button" class="ob-mode-card" data-journey-mode="smoke_free">
+        <b>Ya he dejado de fumar</b>
+        <span>Registraré cada día si conseguí mantenerme sin fumar.</span>
+      </button>
+    </div>
+  </div>
+  <div class="ob-step" id="ob3">
+    <button type="button" class="ob-back" data-ob-back="2" aria-label="Volver a elegir el camino">←</button>
     <h2 class="ob-h">Tu plan</h2>
     <div class="ob-field">
       <label>¿Qué día empiezas?</label>
       <input type="date" id="obStart2">
-      <p class="ob-note">Este día marca tu semana: cada 7 días, ese mismo día, tu objetivo baja un cigarro.</p>
+      <p class="ob-note" id="obStartNote">Este día marca tu semana: cada 7 días, ese mismo día, tu objetivo baja un cigarro.</p>
     </div>
-    <div class="ob-field">
+    <div class="ob-field" id="obLimitField">
       <label>Cigarros al día · primera semana</label>
       <input type="number" id="obLimit" min="1" max="99" value="20">
     </div>
@@ -68,14 +83,14 @@
     </div>
     <button class="ob-next" id="obToHero">Continuar</button>
   </div>
-  <div class="ob-step" id="ob3">
-    <button type="button" class="ob-back" data-ob-back="2" aria-label="Volver a los datos del plan">←</button>
+  <div class="ob-step" id="ob4">
+    <button type="button" class="ob-back" data-ob-back="3" aria-label="Volver a los datos del plan">←</button>
     <h2 class="ob-h">Elige tu héroe</h2>
     <p class="ob-sub">Tu personaje vive de tus datos: gana XP cada día que cumples y su salud refleja cómo llevas el día. El camino son varias semanas — elige con cabeza.</p>
     <div class="cls-grid" id="obClsGrid"></div>
   </div>
-  <div class="ob-step" id="ob4">
-    <button type="button" class="ob-back" data-ob-back="3" aria-label="Volver a la selección de héroe">←</button>
+  <div class="ob-step" id="ob5">
+    <button type="button" class="ob-back" data-ob-back="4" aria-label="Volver a la selección de héroe">←</button>
     <h2 class="ob-h">Ponle nombre</h2>
     <div class="ob-hero-preview" id="obHeroPreview"></div>
     <p class="ob-sub">Dale un nombre a tu héroe. Es quien te acompañará todo el camino.</p>
@@ -84,7 +99,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v97</div>
+  <div class="ob-version" id="obVersion">v101</div>
 </div>
 
 <div id="loading" class="loading">
@@ -93,6 +108,7 @@
 </div>
 
 <div id="app" style="display:none">
+  <div class="storage-warning" id="storageWarning" role="alert" style="display:none"></div>
   <header>
     <button id="navMenu" class="gear-btn" aria-label="Menú">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
@@ -137,7 +153,18 @@
       <button class="pc-add" id="addCig" aria-label="Sumar un cigarro">+</button>
     </div>
 
-    <div class="card">
+    <div class="smoke-free-counter" id="smokeFreeCounter" style="display:none">
+      <div class="smoke-free-kicker" id="smokeFreeJourneyDay">Día 1 de tu camino</div>
+      <h3 id="smokeFreeStatusTitle">Día en curso</h3>
+      <p id="smokeFreeStatusNote">Cuando termine tu día, registra cómo ha ido.</p>
+      <div class="smoke-free-actions">
+        <button type="button" class="success" data-smoke-free-status="success">✓ Me mantuve sin fumar</button>
+        <button type="button" class="smoked" data-smoke-free-status="smoked">Hoy fumé</button>
+      </div>
+      <button type="button" class="smoke-free-pending" data-smoke-free-status="pending">Dejar el día pendiente</button>
+    </div>
+
+    <div class="card" id="reductionProgress">
       <div class="filmstrip-wrap">
         <div class="filmstrip-label">
           <span>Límite de hoy</span>
@@ -205,7 +232,7 @@
           <button id="calNext" aria-label="Mes siguiente">›</button>
         </div>
         <div class="cal-grid" id="calGrid"></div>
-        <p class="hint">Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.</p>
+        <p class="hint" id="calendarHint">Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.</p>
       </div>
       <div class="week-summary">
         <h4>Resumen por semanas</h4>
@@ -229,7 +256,7 @@
           <div class="mn"><b id="sumMin">–</b>Mínimo<span id="sumMinDia" style="display:block"></span></div>
           <div class="md"><b id="sumMedia">–</b>Media/día</div>
         </div>
-        <p class="hint">La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.</p>
+        <p class="hint" id="chartHint">La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.</p>
       </div>
     </div>
   </section>
@@ -246,7 +273,7 @@
         <label for="cfgStart">Inicio del plan</label>
         <input type="date" id="cfgStart">
       </div>
-      <div class="set-row">
+      <div class="set-row" id="settingsLimitRow">
         <label for="cfgLimit">Límite diario semana 1</label>
         <input type="number" id="cfgLimit" min="1" max="99" style="width:80px">
       </div>
@@ -257,6 +284,10 @@
       <div class="set-row">
         <label for="cfgSleep">Me acuesto a las</label>
         <input type="time" id="cfgSleep">
+      </div>
+      <div class="set-row">
+        <label>Camino actual</label>
+        <span class="set-static" id="settingsJourneyMode">Reducción progresiva</span>
       </div>
       <div class="set-row">
         <label for="cfgDayStart">El día cambia a las</label>
@@ -288,8 +319,13 @@
           <button class="mini-btn" id="btnImport">Importar</button>
         </div>
       </div>
+      <div class="storage-health" id="storageHealth" data-state="idle">
+        <span class="storage-health-dot" aria-hidden="true"></span>
+        <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
+      </div>
+      <button class="mini-btn recovery-open" id="btnRecoveries" type="button">Copias de recuperación</button>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v97</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v101</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -301,22 +337,43 @@
     <div class="sheet-head"><h3>Instrucciones</h3><button class="sheet-close" data-sheet="sheetInstr">✕</button></div>
     <div class="faq-list">
       <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">↟</span><span>Tu camino</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint">Freedoom tiene dos puntos de partida. Si estás dejando de fumar, reducirás progresivamente tu límite hasta llegar a cero. Si ya lo dejaste, cada día registrarás explícitamente si lograste mantenerte sin fumar.</p>
+          <p class="hint">El héroe del camino de reducción evoluciona al completar todo su plan y dejar de fumar. Quien empieza ya sin fumar conserva la progresión inicial y evoluciona al derrotar al tercer jefe. Los hábitos y la XP no adelantan esta evolución.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⏱</span><span>El ritmo del día · reducción</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint">La barra de Hoy reparte tu límite diario entre tus horas despierto. La zona clara marca hasta dónde "tocaría" ir a esta hora; el color es lo que llevas: verde al principio, amarillo, naranja y rojo al acercarte al límite. Debajo, la app te aproxima la hora del siguiente repartiendo lo que te queda entre el tiempo que queda. La hora del "Último" es tocable por si apuntaste tarde.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🗓</span><span>El plan</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio. En reducción, el límite diario baja un cigarro cada semana hasta llegar a cero. En el camino sin fumar, cada semana es un combate nuevo basado en tus confirmaciones diarias. Las pastillas y las cervezas son opcionales y todos los datos se guardan en este dispositivo.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🌅</span><span>Cambio de día y despertar</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint">Por defecto, el día de Freedoom cambia a las <b style="color:var(--kodak)">04:00</b>, no a medianoche. Todo lo que registres antes de esa hora cuenta para el día anterior: tanto un cigarro como la confirmación de haberte mantenido sin fumar. Calendario, semana y jefe cambian conjuntamente al llegar la hora configurada.</p>
+          <p class="hint">Puedes modificar la hora de cambio durante el onboarding o desde Ajustes. En la primera apertura posterior, Freedoom estima automáticamente tu hora de despertar para ese día. La verás en Hoy como <b style="color:var(--text)">“Despertar de hoy”</b>; si abriste la app más tarde de lo que te levantaste, puedes corregirla allí mismo sin modificar los días anteriores.</p>
+          <p class="hint">Tu hora habitual de Ajustes se conserva como respaldo cuando todavía no existe una hora específica para ese día.</p>
+        </div>
+      </details>
+      <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚔</span><span>Daño</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint"><span class="faq-lead">Tu héroe pierde vida cuando fumas <b style="color:var(--text)">por delante del ritmo del día</b> (la zona clara de la barra en Hoy):</span><span class="faq-bullets">· Un poco adelantado → <b style="color:var(--warn)">−8</b><br>· Muy adelantado → <b style="color:var(--warn)">−15</b><br>· Por encima del límite del día → <b style="color:var(--warn)">−25</b><br>· Cada cerveza (si las registras) → <b style="color:var(--warn)">−5</b></span></p>
-          <p class="hint">Si fumas en ritmo o por detrás, no hay daño. Y si esperas hasta la hora del "siguiente aprox.", es un <b style="color:var(--kodak)">disparo perfecto</b>: daño cero garantizado.</p>
+          <p class="hint"><span class="faq-lead">En el camino de reducción, tu héroe pierde vida cuando fumas <b style="color:var(--text)">por delante del ritmo del día</b> (la zona clara de la barra en Hoy):</span><span class="faq-bullets">· Un poco adelantado → <b style="color:var(--warn)">−8</b><br>· Muy adelantado → <b style="color:var(--warn)">−15</b><br>· Por encima del límite del día → <b style="color:var(--warn)">−25</b><br>· Cada cerveza (en ambos caminos, si las registras) → <b style="color:var(--warn)">−5</b></span></p>
+          <p class="hint">En reducción, fumar en ritmo o por detrás no causa daño, y esperar hasta la hora del "siguiente aprox." consigue un <b style="color:var(--kodak)">disparo perfecto</b>. En el camino sin fumar no existe contador: registrar “Hoy fumé” marca ese día como fallado.</p>
         </div>
       </details>
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">♥</span><span>Curación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">· <b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.<br>· Completar todas las pastillas del día (las que te pautaron, ajustable en Ajustes) es tu poción: <b style="color:var(--ok)">+15</b> al tomar la última.<br>· Descanso nocturno: día cumplido → amaneces a tu vida y maná <b style="color:var(--ok)">máximos</b>; día pasado → tu vida amanece al 75% de tu máximo (85% si eres Caballero nivel 12+), y tu maná no se toca.<br>· La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⏱</span><span>El ritmo del día</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">La barra de Hoy reparte tu límite diario entre tus horas despierto. La zona clara marca hasta dónde "tocaría" ir a esta hora; el color es lo que llevas: verde al principio, amarillo, naranja y rojo al acercarte al límite. Debajo, la app te aproxima la hora del siguiente repartiendo lo que te queda entre el tiempo que queda. La hora del "Último" es tocable por si apuntaste tarde.</p>
         </div>
       </details>
       <details class="faq-item">
@@ -334,13 +391,19 @@
         </div>
       </details>
       <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💀</span><span>Jefes y experiencia</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">✦</span><span>Cómo ganar experiencia</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint"><span class="faq-lead">Formas de ganar XP:</span><span class="faq-bullets">· Día cumplido → <b style="color:var(--kodak)">50 XP</b> + 4 por cada cigarro de margen bajo el límite<br>· Disparo perfecto (esperar al "siguiente aprox.") → <b style="color:var(--kodak)">+2 XP</b> cada uno, al momento<br>· Pastillas del día completas → <b style="color:var(--kodak)">+10 XP</b><br>· Día con la mitad o menos del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Hábitos positivos completados → según dificultad y frecuencia<br>· Hitos de racha: 7 días <b style="color:var(--kodak)">+75</b>, 14 días <b style="color:var(--kodak)">+150</b>, 30 días <b style="color:var(--kodak)">+300</b><br>· Batir tu mínimo histórico de cigarros → <b style="color:var(--kodak)">+25 XP</b><br>· Vaciar los 150 HP de un jefe → <b style="color:var(--kodak)">+200 XP</b></span></p>
-          <p class="hint">Los bonus del día (pastillas, día ligero y margen) se abonan al completarse el día. Los días pasados de límite dan 0 XP, pero nunca restan. Subes de nivel con la XP y a los niveles 5, 10 y 15 tu héroe evoluciona de rango. Al subir de nivel también crecen tu vida y maná máximos, según tu clase: el caballero gana sobre todo vida, los magos sobre todo maná, y el arquero de forma equilibrada. Las habilidades se desbloquean por nivel. Puedes cambiar de clase en Ajustes sin perder XP.</p>
-          <p class="hint"><span class="faq-lead">Cada jefe tiene <b style="color:var(--warn)">150 HP</b>. Puedes dañarlo así:</span><span class="faq-bullets">· Cerrar un día dentro del límite → <b style="color:var(--kodak)">−25 HP</b> y rompes un sello.<br>· Quedar por debajo del límite → <b style="color:var(--kodak)">−2 HP</b> por cada cigarro de margen, máximo −10 al día.<br>· Disparo perfecto → <b style="color:var(--kodak)">−1 HP</b>, solo los 3 primeros del día.<br>· Cerrar el día con cero cigarros → <b style="color:var(--kodak)">−15 HP</b> adicionales.</span></p>
+          <p class="hint"><span class="faq-lead">Recompensas compartidas por ambos caminos:</span><span class="faq-bullets">· Cumplir el día o confirmarlo sin fumar → <b style="color:var(--kodak)">50 XP</b><br>· Completar las pastillas en un día cumplido → <b style="color:var(--kodak)">+10 XP</b><br>· Completar hábitos → según su dificultad y frecuencia<br>· Rachas de 7, 14 y 30 días → <b style="color:var(--kodak)">+75, +150 y +300 XP</b><br>· Derrotar un jefe → <b style="color:var(--kodak)">+200 XP</b></span></p>
+          <p class="hint"><span class="faq-lead">Recompensas exclusivas del camino de reducción:</span><span class="faq-bullets">· Margen bajo el límite → <b style="color:var(--kodak)">+4 XP</b> por cada cigarro no consumido<br>· Terminar usando como máximo la mitad del límite → <b style="color:var(--kodak)">+10 XP</b><br>· Conseguir un nuevo mínimo personal → <b style="color:var(--kodak)">+25 XP</b><br>· Disparo perfecto → <b style="color:var(--kodak)">+2 XP</b> al momento</span></p>
+          <p class="hint">Algunas habilidades pueden mejorar o multiplicar estas recompensas. La XP aumenta el nivel, la vida y el maná, y desbloquea nuevas habilidades; no adelanta por sí sola la evolución visual del héroe.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💀</span><span>Jefes</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint"><span class="faq-lead">Cada jefe tiene <b style="color:var(--warn)">150 HP</b>:</span><span class="faq-bullets">· En reducción, cerrar dentro del límite causa <b style="color:var(--kodak)">−25 HP</b>; el margen, los perfectos y cerrar con cero pueden añadir daño.<br>· En el camino sin fumar, cada día confirmado causa exactamente <b style="color:var(--kodak)">−25 HP</b>. Un día fumado o pendiente no causa daño.</span></p>
           <p class="hint">Las pastillas curan y restauran maná, pero no dañan al jefe. Las cervezas y las habilidades tampoco causan daño directo al jefe.</p>
-          <p class="hint">Para derrotarlo necesitas cumplir <b style="color:var(--kodak)">las dos condiciones</b>: dejarlo sin vida y cerrar 6 de los 7 días dentro del límite. Si su vida llega a cero antes, resistirá con 1 HP hasta romper el sexto sello. Los daños adicionales ayudan, pero nunca sustituyen los seis días.</p>
+          <p class="hint">Para derrotarlo necesitas seis días cumplidos de siete: dentro del límite en reducción o confirmados sin fumar en el segundo camino. Si no lo derrotas esa semana, recupera toda su vida y volverás a enfrentarte al mismo jefe.</p>
           <p class="hint">Si termina la semana con vida, continúas contra el mismo jefe, pero recupera sus <b style="color:var(--warn)">150 HP completos</b>. Además recibes el golpe semanal: pierdes un <b style="color:var(--warn)">30%</b> de tu vida máxima y tu maná baja al <b style="color:var(--warn)">20%</b> del suyo.</p>
         </div>
       </details>
@@ -353,17 +416,11 @@
         </div>
       </details>
       <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🌅</span><span>Cambio de día y despertar</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💾</span><span>Guardado y recuperación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Por defecto, el día de Freedoom cambia a las <b style="color:var(--kodak)">04:00</b>, no a medianoche. Todo lo que registres antes de esa hora cuenta para el día anterior: por ejemplo, un cigarro del martes a la 01:00 se suma al lunes. Contadores, límite, calendario, semana y jefe cambian conjuntamente al llegar la hora configurada.</p>
-          <p class="hint">Puedes modificar la hora de cambio durante el onboarding o desde Ajustes. En la primera apertura posterior, Freedoom estima automáticamente tu hora de despertar para ese día. La verás en Hoy como <b style="color:var(--text)">“Despertar de hoy”</b>; si abriste la app más tarde de lo que te levantaste, puedes corregirla allí mismo sin modificar los días anteriores.</p>
-          <p class="hint">Tu hora habitual de Ajustes se conserva como respaldo cuando todavía no existe una hora específica para ese día.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🗓</span><span>El plan</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio (el que elegiste al empezar), y cada semana, ese mismo día, el límite diario baja 1 automáticamente hasta llegar a 0. Las pastillas y las cervezas son opcionales: puedes activarlas o desactivarlas en Ajustes según tu caso. Todos los datos se guardan en este dispositivo.</p>
+          <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de la partida principal, mantiene automáticamente varias copias recientes de recuperación.</p>
+          <p class="hint">Si la partida principal estuviera incompleta o dañada, la app intentará recuperar la copia válida más reciente. En Ajustes puedes ver el estado del guardado y abrir <b style="color:var(--text)">Copias de recuperación</b> para restaurar una versión anterior manualmente.</p>
+          <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y usa <b style="color:var(--text)">Exportar</b> para conservar una copia externa. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
         </div>
       </details>
     </div>
@@ -443,6 +500,14 @@
   <div class="modal">
     <h3 id="modalTitle"></h3>
     <div class="edit-row">
+      <span class="lbl">Resultado</span>
+      <div class="day-status-editor" id="mSmokeFreeStatus">
+        <button type="button" data-modal-smoke-free="success">✓ Sin fumar</button>
+        <button type="button" data-modal-smoke-free="smoked">Fumé</button>
+        <button type="button" data-modal-smoke-free="pending">Pendiente</button>
+      </div>
+    </div>
+    <div class="edit-row" id="mCigRow">
       <span class="lbl">Cigarros</span>
       <div class="stepper">
         <button id="mCigSub">−</button>
@@ -479,6 +544,16 @@
       <input type="time" id="lastTimeInput" style="background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:18px;color-scheme:dark">
     </div>
     <button class="close" id="timeModalSave">Guardar</button>
+  </div>
+</div>
+
+<!-- COPIAS AUTOMÁTICAS DE RECUPERACIÓN -->
+<div class="modal-bg center" id="recoveryBg" style="z-index:32">
+  <div class="modal recovery-modal">
+    <h3>Copias de recuperación</h3>
+    <p class="hint" style="margin-top:-8px">Freedoom conserva automáticamente las últimas versiones verificadas de tu partida.</p>
+    <div id="recoveryList" class="recovery-list"></div>
+    <button class="close" id="recoveryClose" type="button">Cerrar</button>
   </div>
 </div>
 

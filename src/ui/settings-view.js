@@ -1,3 +1,5 @@
+import { isSmokeFreeMode } from '../domain/journey-mode-rules.js';
+
 export function createSettingsModel({ config, game }) {
   return {
     startDate: config.startDate,
@@ -8,6 +10,7 @@ export function createSettingsModel({ config, game }) {
     pillsGoal: config.pillsGoal || 3,
     heroName: game?.name || '',
     tracksBeer: config.tracksBeer !== false,
+    smokeFreeMode: isSmokeFreeMode(config),
   };
 }
 
@@ -15,6 +18,14 @@ export function renderSettingsView({ document, config, game }) {
   const model = createSettingsModel({ config, game });
   document.getElementById('cfgStart').value = model.startDate;
   document.getElementById('cfgLimit').value = model.startLimit;
+  const limitRow = document.getElementById('settingsLimitRow');
+  if (limitRow) limitRow.style.display = model.smokeFreeMode ? 'none' : '';
+  const journeyMode = document.getElementById('settingsJourneyMode');
+  if (journeyMode) {
+    journeyMode.textContent = model.smokeFreeMode
+      ? 'Mantenerme sin fumar'
+      : 'Reducción progresiva';
+  }
   document.getElementById('cfgWake').value = model.wakeTime;
   document.getElementById('cfgSleep').value = model.sleepTime;
   document.getElementById('cfgDayStart').value = model.dayStartTime;

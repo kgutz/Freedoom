@@ -8,6 +8,12 @@ import {
   weekIndexFor,
   weekRangeFor,
 } from './plan-rules.js';
+import {
+  SMOKE_FREE_STATUS_SUCCESS,
+  isSmokeFreeMode,
+  journeyEvolutionUnlocked,
+  smokeFreeStatusOf,
+} from './journey-mode-rules.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -40,6 +46,7 @@ function calculateXpPass({
   let xp = (game?.bonusXp || 0) + habitXpTotal(habits);
   let streak = 0;
   let minimumCigarettes = null;
+  const smokeFreeMode = isSmokeFreeMode(config);
 
   for (
     let date = new Date(start);
@@ -54,6 +61,24 @@ function calculateXpPass({
       date,
     });
     const cigarettes = record.c;
+
+    if (smokeFreeMode) {
+      if (smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS) {
+        let dayXp = 50;
+        if (record.p >= goal && config.takesPills !== false) dayXp += 10;
+        if (judgmentDays.includes(key)) dayXp *= 2;
+        xp += dayXp;
+        streak += 1;
+        if (streak === 7) xp += 75;
+        else if (streak === 14) xp += 150;
+        else if (streak === 30) xp += 300;
+      } else if (pardons.includes(key)) {
+        streak += 1;
+      } else {
+        streak = 0;
+      }
+      continue;
+    }
 
     xp += record.sx !== undefined ? record.sx : 2 * (record.s || 0);
     if (cigarettes <= limit) {
@@ -80,7 +105,17 @@ function calculateXpPass({
   }
 
   const today = dayRecord(days, keyOf(now));
-  xp += today.sx !== undefined ? today.sx : 2 * (today.s || 0);
+  if (smokeFreeMode) {
+    if (smokeFreeStatusOf(today) === SMOKE_FREE_STATUS_SUCCESS) {
+      let todayXp = 50;
+      if (today.p >= goal && config.takesPills !== false) todayXp += 10;
+      if (judgmentDays.includes(keyOf(now))) todayXp *= 2;
+      xp += todayXp;
+      streak += 1;
+    }
+  } else {
+    xp += today.sx !== undefined ? today.sx : 2 * (today.s || 0);
+  }
 
   const currentWeek = Math.max(0, weekIndexFor(config.startDate, now));
   let bossesDown = 0;
@@ -99,9 +134,16 @@ function calculateXpPass({
         date <= lastDay;
         date.setDate(date.getDate() + 1)
       ) {
-        if (dayRecord(days, keyOf(date)).c <= limit) hits += 1;
+        const record = dayRecord(days, keyOf(date));
+        if (
+          smokeFreeMode
+            ? smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS
+            : record.c <= limit
+        ) {
+          hits += 1;
+        }
       }
-      if (hits >= 4) {
+      if (hits >= (smokeFreeMode ? 6 : 4)) {
         xp += 200;
         bossesDown += 1;
       }
@@ -148,6 +190,10 @@ export function calculateGameStats({
   );
   const tier = level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
   const { maxHp, maxMp } = classMaxes(game?.cls, level);
+  const evolutionUnlocked = journeyEvolutionUnlocked({
+    config,
+    bossesDown: result.bossesDown,
+  });
 
   return {
     xp: result.xp,
@@ -158,6 +204,7 @@ export function calculateGameStats({
     bossesDown: result.bossesDown,
     currW: result.currentWeek,
     tier,
+    evolutionUnlocked,
     maxHp,
     maxMp,
   };

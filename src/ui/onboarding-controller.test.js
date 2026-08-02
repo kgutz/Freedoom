@@ -18,6 +18,7 @@ describe('resultado del onboarding', () => {
       }),
     ).toEqual({
       config: {
+        journeyMode: 'reduction',
         startDate: '2026-07-26',
         startLimit: 18,
         wakeTime: '07:00',
@@ -29,6 +30,24 @@ describe('resultado del onboarding', () => {
       },
       game: { cls: 'paladin', name: 'Kike' },
       onboarded: true,
+    });
+  });
+
+  it('crea una campaña sin fumar sin depender del contador inicial', () => {
+    const result = createOnboardingResult({
+      startDate: '2026-08-01',
+      startLimit: '7',
+      takesPills: false,
+      tracksBeer: true,
+      classId: 'druid',
+      heroName: 'Broto',
+      journeyMode: 'smoke_free',
+    });
+
+    expect(result.config).toMatchObject({
+      journeyMode: 'smoke_free',
+      startDate: '2026-08-01',
+      startLimit: 21,
     });
   });
 

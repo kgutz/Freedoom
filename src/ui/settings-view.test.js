@@ -25,6 +25,7 @@ describe('modelo de ajustes', () => {
       pillsGoal: 2,
       heroName: 'Kike',
       tracksBeer: false,
+      smokeFreeMode: false,
     });
   });
 });
