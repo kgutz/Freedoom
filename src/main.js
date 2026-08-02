@@ -1,4 +1,9 @@
-import { BOSSES, BOSS_SLUGS, CLASSES } from './data/game-data.js';
+import {
+  BOSSES,
+  BOSS_SLUGS,
+  CLASSES,
+  classDataForJourney
+} from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
 import {
   calculateBossCombatStatus,
@@ -86,7 +91,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='101';
+const APP_VERSION='105';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -111,6 +116,7 @@ const initialSplashStartedAt=performance.now();
 let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
+let classChangeReturn=null;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -507,6 +513,9 @@ function renderWeekResultModal(){
     const lastLim=limitOfWeek(wr.weekIdx);
     const newWeekIdx=wr.weekIdx+1;
     const smokeFreeMode=isSmokeFreeMode(state.config);
+    const penaltyText=wr.penalty?.shielded
+      ? 'Muro de Escudos bloqueó el golpe a tu vida; tu maná bajó al 20%.'
+      : `Por el golpe recibido, tu vida bajó un ${Math.round((wr.penalty?.hpRate??0.3)*100)}% y tu maná al 20% — se recupera con el tiempo.`;
     const limitAdjustment=smokeFreeMode?'':`
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>
@@ -524,7 +533,7 @@ function renderWeekResultModal(){
       <h3 style="margin-bottom:2px">${name} sigue en pie</h3>
       ${bossImg(idx+1,slug)}
       <p class="hint" style="margin:0 0 10px">No pasa nada — esta semana lo consigues. El jefe es el mismo, pero ha recuperado sus <b>150 HP</b>.</p>
-      <p class="hint" style="margin:0 0 18px">Por el golpe recibido, tu vida bajó un 30% y tu maná al 20% — se recupera con el tiempo.</p>
+      <p class="hint" style="margin:0 0 18px">${penaltyText}</p>
       ${limitAdjustment}
       <button class="ob-next" id="weekResultClose" style="margin-top:6px">Continuar</button>
     `;
@@ -608,13 +617,26 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
       const mx=heroMaxes();
-      const penalty=weeklyBossPenalty({
-        hp:g.hp,
-        maxHp:mx.maxHp,
-        maxMp:mx.maxMp
-      });
-      g.hp=penalty.hp;
-      g.mp=penalty.mp;
+      const smokeFreeMode=isSmokeFreeMode(state.config);
+      if(smokeFreeMode&&(g.buffs?.shield||0)>0){
+        g.buffs.shield--;
+        g.mp=Math.round(mx.maxMp*0.2);
+        weekResult.penalty={shielded:true,hpRate:0,mpRate:0.2};
+      }else{
+        const lvl=gameStats().lvl;
+        const knightReduction=smokeFreeMode&&g.cls==='knight'&&lvl>=5
+          ? 0.1*currentIntoxication(actualTimestamp).passiveMultiplier
+          : 0;
+        const penalty=weeklyBossPenalty({
+          hp:g.hp,
+          maxHp:mx.maxHp,
+          maxMp:mx.maxMp,
+          damageRate:0.3-knightReduction
+        });
+        g.hp=penalty.hp;
+        g.mp=penalty.mp;
+        weekResult.penalty={shielded:false,hpRate:0.3-knightReduction,mpRate:0.2};
+      }
     }
     g.weekResult=weekResult;
     g.weekModalPending=true;
@@ -648,10 +670,11 @@ function ensureHero(){
     const c=previousDay.c;
     const lvl=gameStats().lvl;
     const mx=heroMaxes();
-    const recovered=dailyRecovery({
-      completedDay:isSmokeFreeMode(state.config)
+    const completedDay=isSmokeFreeMode(state.config)
         ? smokeFreeStatusOf(previousDay)===SMOKE_FREE_STATUS_SUCCESS
-        : c<=lim,
+        : c<=lim;
+    const recovered=dailyRecovery({
+      completedDay,
       currentMana:g.mp,
       maxHp:mx.maxHp,
       maxMp:mx.maxMp,
@@ -662,7 +685,7 @@ function ensureHero(){
     });
     g.hp=recovered.hp;
     g.mp=recovered.mp;
-    if(c>lim){
+    if(!completedDay){
       if(g.buffs.bastion){                      /* Último Bastión (Knight) */
         (g.pardons=g.pardons||[]).push(g.day);
         g.buffs.bastion=false;
@@ -682,7 +705,8 @@ function ensureHero(){
     maxHp:heroMaxes().maxHp,
     classId:g.cls,
     regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now),
-    passiveMultiplier:intoxication.passiveMultiplier
+    passiveMultiplier:intoxication.passiveMultiplier,
+    druidFastRegeneration:!isSmokeFreeMode(state.config)
   });
   if(regenerated.ticks>0){
     g.hp=regenerated.hp;
@@ -753,7 +777,7 @@ function castSpell(id){
   ensureHero();
   const g=state.game;
   const st=gameStats();
-  const C=CLASSES[g.cls]; if(!C) return;
+  const C=classDataForJourney(g.cls,{smokeFree:isSmokeFreeMode(state.config)}); if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
@@ -767,7 +791,8 @@ function castSpell(id){
     nowTimestamp:now,
     maxHp:st.maxHp,
     activeFailureChance:intoxication.activeFailureChance,
-    passiveMultiplier:intoxication.passiveMultiplier
+    passiveMultiplier:intoxication.passiveMultiplier,
+    smokeFreeMode:isSmokeFreeMode(state.config)
   });
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
@@ -857,7 +882,8 @@ function renderSkillsSheet(){
     document,
     classId:cls,
     level:gameStats().lvl,
-    intoxication:currentIntoxication()
+    intoxication:currentIntoxication(),
+    config:state.config
   });
 }
 
@@ -1018,16 +1044,19 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   const g=state.game;
   const added=addBeerIntoxication(g.intoxication||[],Date.now());
   g.intoxication=added.effects;
-  const bd=BEER_DAMAGE;                                      /* daño fijo; los poderes ya no dependen de la cerveza */
+  const shielded=isSmokeFreeMode(state.config)&&(g.buffs?.shield||0)>0;
+  if(shielded) g.buffs.shield--;
+  const bd=shielded?0:BEER_DAMAGE;
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
-  (g.beerDmg=g.beerDmg||[]).push({d:bd,i:added.effect.id});
+  (g.beerDmg=g.beerDmg||[]).push({d:bd,i:added.effect.id,sh:shielded});
   scheduleSave();
   setDay(k,d.c,d.p,undefined,(d.b||0)+1,undefined,{
     type:'beer:add',day:k,count:(d.b||0)+1
   });
-  showToast(
-    '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
-    'dmg'
+  showToast(shielded
+    ? '🛡 Muro de Escudos bloqueó el daño · Borrachera '+added.status.level+'%'
+    : '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
+    shielded?'heal':'dmg'
   );
 });
 document.getElementById('subBeer').addEventListener('click',()=>{
@@ -1036,9 +1065,12 @@ document.getElementById('subBeer').addEventListener('click',()=>{
   ensureHero();
   const g=state.game;
   const arr=g.beerDmg;
-  const undo=beerUndoEffects(
-    (arr&&arr.length)?arr.pop():BEER_DAMAGE
-  );
+  const beerEntry=(arr&&arr.length)?arr.pop():BEER_DAMAGE;
+  const undo=beerUndoEffects(beerEntry);
+  if(beerEntry&&typeof beerEntry==='object'&&beerEntry.sh){
+    g.buffs=g.buffs||{};
+    g.buffs.shield=(g.buffs.shield||0)+1;
+  }
   g.intoxication=removeBeerIntoxication(
     g.intoxication||[],
     undo.intoxicationEffectId,
@@ -1066,6 +1098,26 @@ document.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
     button.classList.add('active');
   });
 });
+function applySmokeFreeDayRewards(key,status){
+  if(status!==SMOKE_FREE_STATUS_SUCCESS||!state.game?.cls) return '';
+  ensureHero();
+  const g=state.game;
+  const rewards=g.smokeFreeRewards=g.smokeFreeRewards||{};
+  rewards.healedDays=rewards.healedDays||[];
+  if(rewards.healedDays.includes(key)) return '';
+  const lvl=gameStats().lvl;
+  const passive=currentIntoxication().passiveMultiplier;
+  let healing=0;
+  if(g.cls==='paladin'&&lvl>=5) healing=Math.max(0,Math.round(5*passive));
+  else if(g.cls==='druid'&&lvl>=1) healing=Math.max(0,Math.round(8*passive));
+  if(healing>0){
+    const before=g.hp;
+    g.hp=capHp(g.hp+healing);
+    healing=g.hp-before;
+  }
+  rewards.healedDays.push(key);
+  return healing>0?' · +'+healing+' ♥':'';
+}
 document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
   const button=event.target.closest('[data-smoke-free-status]');
   if(!button||!isSmokeFreeMode(state.config)) return;
@@ -1079,13 +1131,14 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
     showToast('El día vuelve a estar pendiente','heal');
   }else{
     state.days[key]={...record,sf:status};
+    const rewardNotice=applySmokeFreeDayRewards(key,status);
     if(status!==SMOKE_FREE_STATUS_SUCCESS&&state.game){
       ensureHero();
       state.game.hpT=Date.now();
     }
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
-        ? '✓ Día sin fumar · −25 HP al jefe · +50 XP'
+        ? '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice
         : 'Día registrado. Mañana continúa tu camino.',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
     );
@@ -1315,6 +1368,45 @@ let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
 
+function applySmokeFreeHabitRewards({result}){
+  const g=state.game;
+  if(!g||!g.cls||result.xpDelta<=0) return '';
+  const key=todayKey();
+  const lvl=gameStats().lvl;
+  const passive=currentIntoxication().passiveMultiplier;
+  const rewards=g.smokeFreeRewards=g.smokeFreeRewards||{};
+  const notices=[];
+  if(g.cls==='sorcerer'&&lvl>=1){
+    rewards.sorcererHabitDays=rewards.sorcererHabitDays||[];
+    if(!rewards.sorcererHabitDays.includes(key)){
+      const mana=Math.max(0,Math.round(5*passive));
+      g.mp=capMp((g.mp||0)+mana);
+      rewards.sorcererHabitDays.push(key);
+      if(mana>0) notices.push('+'+mana+' 💧');
+    }
+  }
+  if(g.cls==='druid'&&lvl>=12){
+    rewards.druidHabitDays=rewards.druidHabitDays||[];
+    if(!rewards.druidHabitDays.includes(key)){
+      const amount=Math.max(0,Math.round(5*passive));
+      g.hp=capHp((g.hp||0)+amount);
+      g.mp=capMp((g.mp||0)+amount);
+      rewards.druidHabitDays.push(key);
+      if(amount>0) notices.push('+'+amount+' ♥/💧');
+    }
+  }
+  if(g.cls==='sorcerer'&&g.buffs?.cenizaUntil>Date.now()){
+    const entryKey=`${result.entry.habitId}|${result.entry.periodKey}`;
+    rewards.cenizaHabitEntries=rewards.cenizaHabitEntries||[];
+    if(!rewards.cenizaHabitEntries.includes(entryKey)){
+      g.mp=capMp((g.mp||0)+10);
+      rewards.cenizaHabitEntries.push(entryKey);
+      notices.push('+10 💧 Ceniza');
+    }
+  }
+  return notices.length?' · '+notices.join(' · '):'';
+}
+
 function activeHabitById(id){
   return normalizeHabitState(state.habits).items.find(habit=>habit.id===id&&habit.active!==false);
 }
@@ -1447,20 +1539,33 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const row=adjust.closest('[data-habit-id]');
     const habit=activeHabitById(row?.dataset.habitId);
     if(!habit) return;
+    ensureHero();
+    const smokeFreeMode=isSmokeFreeMode(state.config);
+    const buffs=state.game.buffs||{};
+    const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const result=adjustHabitProgress({
       habitState:state.habits,
       habit,
       delta:parseInt(adjust.dataset.habitDelta,10),
       date:currentDayDate(),
-      planStartDate:state.config.startDate
+      planStartDate:state.config.startDate,
+      rewardMultiplier:focusActive?1.5:1
     });
     state.habits=result.habitState;
+    let extraMessage='';
+    if(result.xpDelta>0&&focusActive){
+      buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
+      extraMessage=' · Ojo Certero';
+    }
+    const habitRewardNotice=result.xpDelta>0&&smokeFreeMode
+      ? applySmokeFreeHabitRewards({result})
+      : '';
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
       period:result.entry.periodKey||''
     });
     renderAll();
-    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP','heal');
+    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP'+extraMessage+habitRewardNotice,'heal');
     else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
     return;
@@ -1546,8 +1651,10 @@ document.getElementById('view-hero').addEventListener('click',e=>{
       state.game.mp=capMp(state.game.mp);
     }
     scheduleSave();
-    renderHoy();
-    renderHero();
+    const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
+    classChangeReturn=null;
+    switchView(destination.viewId,destination.buttonId);
+    renderAll();
   }
 });
 
@@ -1587,6 +1694,10 @@ document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
 });
 
 document.getElementById('cfgResetCls').addEventListener('click',()=>{
+  classChangeReturn={
+    viewId:document.querySelector('.view.active')?.id||'view-hoy',
+    buttonId:document.querySelector('#mainNav button.active')?.id||'navHoy'
+  };
   state.game.cls=null;
   scheduleSave();
   document.getElementById('sheetSet').classList.remove('show');

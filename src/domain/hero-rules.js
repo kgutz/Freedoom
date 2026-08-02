@@ -27,9 +27,9 @@ export function dailyRecovery({
   return { hp, mp: currentMana };
 }
 
-export function weeklyBossPenalty({ hp, maxHp, maxMp }) {
+export function weeklyBossPenalty({ hp, maxHp, maxMp, damageRate=0.3 }) {
   return {
-    hp: clamp(hp - Math.round(maxHp * 0.3), 0, maxHp),
+    hp: clamp(hp - Math.round(maxHp * damageRate), 0, maxHp),
     mp: Math.round(maxMp * 0.2),
   };
 }
@@ -38,9 +38,10 @@ export function regenerationIntervalMinutes({
   classId,
   regenerationActive = false,
   passiveMultiplier = 1,
+  druidFastRegeneration = true,
 }) {
   const baseInterval =
-    classId === 'druid' ? 10 - 3 * passiveMultiplier : 10;
+    classId === 'druid'&&druidFastRegeneration ? 10 - 3 * passiveMultiplier : 10;
   return regenerationActive ? baseInterval / 2 : baseInterval;
 }
 
@@ -52,12 +53,14 @@ export function regenerateHealth({
   classId,
   regenerationActive = false,
   passiveMultiplier = 1,
+  druidFastRegeneration = true,
 }) {
   const intervalMs =
     regenerationIntervalMinutes({
       classId,
       regenerationActive,
       passiveMultiplier,
+      druidFastRegeneration,
     }) * 60_000;
   const elapsed = Math.max(0, nowTimestamp - hpTimestamp);
   const ticks = Math.floor(elapsed / intervalMs);

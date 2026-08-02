@@ -84,6 +84,12 @@ describe('regeneración', () => {
         regenerationActive: true,
       }),
     ).toBe(3.5);
+    expect(
+      regenerationIntervalMinutes({
+        classId:'druid',
+        druidFastRegeneration:false,
+      }),
+    ).toBe(10);
   });
 
   it('debilita Savia Viva mientras dura la borrachera', () => {
@@ -126,6 +132,9 @@ describe('otras reglas de salud', () => {
       hp: 0,
       mp: 24,
     });
+    expect(
+      weeklyBossPenalty({hp:80,maxHp:100,maxMp:120,damageRate:0.2}),
+    ).toEqual({hp:60,mp:24});
   });
 
   it('mejora la poción del druida desde nivel 5', () => {

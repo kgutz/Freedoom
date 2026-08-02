@@ -12,6 +12,7 @@ export function castSpellEffect({
   maxHp,
   activeFailureChance = 0,
   passiveMultiplier = 1,
+  smokeFreeMode = false,
   randomValue = Math.random(),
 }) {
   if (!spell) return { ok: false, reason: 'unknown-spell' };
@@ -94,7 +95,11 @@ export function castSpellEffect({
       nextGame.ultiW = currentWeek;
       break;
     case 'certero':
-      nextGame.buffs.certeroUntil = nowTimestamp + 3_600_000;
+      if(smokeFreeMode){
+        nextGame.buffs.habitFocusCharges=(nextGame.buffs.habitFocusCharges||0)+2;
+      }else{
+        nextGame.buffs.certeroUntil = nowTimestamp + 3_600_000;
+      }
       break;
     case 'luz':
     case 'balsamo': {
@@ -111,7 +116,12 @@ export function castSpellEffect({
       nextGame.ultiW = currentWeek;
       break;
     case 'peste':
-      nextGame.buffs.pesteDay = today;
+      if(smokeFreeMode){
+        nextGame.pestXpDays=[...(nextGame.pestXpDays||[])];
+        if(!nextGame.pestXpDays.includes(today)) nextGame.pestXpDays.push(today);
+      }else{
+        nextGame.buffs.pesteDay = today;
+      }
       break;
     case 'regen':
       nextGame.buffs.regenUntil = nowTimestamp + 2 * 3_600_000;

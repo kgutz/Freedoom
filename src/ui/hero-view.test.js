@@ -64,6 +64,22 @@ describe('modelo de Héroe', () => {
     expect(model.chips).toEqual(['🛡×2', '🎯 2m', '🍺 25% · 41m']);
   });
 
+  it('muestra el pack de habilidades sin fumar y sus efectos activos',()=>{
+    const model=createHeroModel(base({
+      config:{wakeTime:'07:00',startLimit:21,journeyMode:'smoke_free'},
+      game:{
+        cls:'paladin',hp:75,mp:40,
+        buffs:{habitFocusCharges:2},
+        pestXpDays:['2026-07-26'],
+      },
+    }));
+
+    expect(model.classData.pas[0].d).toContain('55 XP');
+    expect(model.classData.pas[0].d).not.toContain('disparos perfectos');
+    expect(model.chips).toContain('🎯×2 hábitos');
+    expect(model.chips).toContain('☠ +20 XP hoy');
+  });
+
   it('mantiene dormido al héroe antes de levantarse', () => {
     const model = createHeroModel(
       base({

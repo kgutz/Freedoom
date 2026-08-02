@@ -1,4 +1,4 @@
-import { CLASSES } from '../data/game-data.js';
+import { CLASSES, classDataForJourney } from '../data/game-data.js';
 import {
   JOURNEY_MODE_REDUCTION,
   JOURNEY_MODE_SMOKE_FREE,
@@ -63,14 +63,19 @@ export function createOnboardingController({
   };
 
   const renderHeroes = () => {
-    document.getElementById('obClsGrid').innerHTML = Object.entries(CLASSES)
+    document.getElementById('obClsGrid').innerHTML = Object.keys(CLASSES)
       .map(
-        ([classId, classData]) => `<div class="cls-card" data-obcls="${classId}">
+        (classId) => {
+          const classData=classDataForJourney(classId,{
+            smokeFree:chosenJourneyMode===JOURNEY_MODE_SMOKE_FREE,
+          });
+          return `<div class="cls-card" data-obcls="${classId}">
       ${spriteImage(classId, 'happy')}
       <div class="cn">${classData.name}</div>
       <div class="ce">${classData.es}</div>
       <div class="cd">${classData.desc}</div>
-    </div>`,
+    </div>`;
+        },
       )
       .join('');
   };
@@ -155,13 +160,16 @@ export function createOnboardingController({
   document.getElementById('obToHero').addEventListener('click', (event) => {
     event.stopPropagation();
     if (!chosenJourneyMode) chosenJourneyMode = JOURNEY_MODE_REDUCTION;
+    renderHeroes();
     showStep(4);
   });
   document.getElementById('obClsGrid').addEventListener('click', (event) => {
     const card = event.target.closest('[data-obcls]');
     if (!card) return;
     chosenClass = card.dataset.obcls;
-    const classData = CLASSES[chosenClass];
+    const classData = classDataForJourney(chosenClass,{
+      smokeFree:chosenJourneyMode===JOURNEY_MODE_SMOKE_FREE,
+    });
     document.getElementById('obHeroPreview').innerHTML = spriteImage(
       chosenClass,
       'happy',

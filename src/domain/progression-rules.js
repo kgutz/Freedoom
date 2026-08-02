@@ -43,10 +43,31 @@ function calculateXpPass({
       : 25;
   const pardons = game?.pardons || [];
   const judgmentDays = game?.judgmentDays || [];
+  const pestXpDays = game?.pestXpDays || [];
   let xp = (game?.bonusXp || 0) + habitXpTotal(habits);
   let streak = 0;
   let minimumCigarettes = null;
   const smokeFreeMode = isSmokeFreeMode(config);
+  const smokeFreeDayXp=(record,key)=>{
+    let value=50;
+    if(classId==='paladin'&&levelHint>=1){
+      value+=Math.max(0,Math.round(5*passiveMultiplier));
+    }
+    if(record.p>=goal&&config.takesPills!==false) value+=10;
+    if(pestXpDays.includes(key)) value+=20;
+    if(judgmentDays.includes(key)) value*=2;
+    return value;
+  };
+  const smokeFreeStreakXp=(nextStreak)=>{
+    if(nextStreak<=0||nextStreak%3!==0) return 0;
+    if(classId==='paladin'&&levelHint>=12){
+      return Math.max(0,Math.round(15*passiveMultiplier));
+    }
+    if(classId==='sorcerer'&&levelHint>=5){
+      return Math.max(0,Math.round(15*passiveMultiplier));
+    }
+    return 0;
+  };
 
   for (
     let date = new Date(start);
@@ -64,11 +85,9 @@ function calculateXpPass({
 
     if (smokeFreeMode) {
       if (smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS) {
-        let dayXp = 50;
-        if (record.p >= goal && config.takesPills !== false) dayXp += 10;
-        if (judgmentDays.includes(key)) dayXp *= 2;
-        xp += dayXp;
+        xp += smokeFreeDayXp(record,key);
         streak += 1;
+        xp += smokeFreeStreakXp(streak);
         if (streak === 7) xp += 75;
         else if (streak === 14) xp += 150;
         else if (streak === 30) xp += 300;
@@ -107,11 +126,9 @@ function calculateXpPass({
   const today = dayRecord(days, keyOf(now));
   if (smokeFreeMode) {
     if (smokeFreeStatusOf(today) === SMOKE_FREE_STATUS_SUCCESS) {
-      let todayXp = 50;
-      if (today.p >= goal && config.takesPills !== false) todayXp += 10;
-      if (judgmentDays.includes(keyOf(now))) todayXp *= 2;
-      xp += todayXp;
+      xp += smokeFreeDayXp(today,keyOf(now));
       streak += 1;
+      xp += smokeFreeStreakXp(streak);
     }
   } else {
     xp += today.sx !== undefined ? today.sx : 2 * (today.s || 0);

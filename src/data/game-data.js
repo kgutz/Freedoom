@@ -137,6 +137,71 @@ export const CLASSES={
   }
 };
 
+/* Repertorio inicial para quien entra en Freedoom manteniéndose sin fumar.
+   Conserva las identidades y el pixel art de cada clase, pero elimina efectos
+   que dependen de cigarros, límites, margen o disparos perfectos. */
+export const SMOKE_FREE_SKILLS={
+  knight:{
+    desc:'Fuerza y voluntad. Protege tu racha y resiste los golpes del camino.',
+    pas:[
+      {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
+      {lvl:5,icon:'yelmo',name:'Yelmo Templado',d:'Si pierdes el combate semanal, el golpe baja al 20% de tu vida máxima (en vez del 30%).'},
+      {lvl:12,icon:'voluntad',name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
+    ],
+    act:[
+      {lvl:2,id:'muro',icon:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 golpes a tu vida quedan bloqueados, incluidos cerveza o castigo semanal.'},
+      {lvl:8,id:'grito',icon:'grito',name:'Grito de Guerra',cost:50,d:'+20 de vida al instante.'},
+      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:90,ulti:true,d:'Tu racha sobrevive al próximo día fallido. 1 uso por semana.'}
+    ]
+  },
+  paladin:{
+    desc:'Precisión sagrada. Convierte cada día firme y cada buen hábito en progreso.',
+    pas:[
+      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Cada día confirmado da 55 XP (en vez de 50).'},
+      {lvl:5,icon:'flecha',name:'Flecha Bendita',d:'Confirmar un día sin fumar recupera +5 de vida.'},
+      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'Cada tercer día consecutivo confirmado concede +15 XP.'}
+    ],
+    act:[
+      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Los próximos 2 hábitos completados obtienen un 50% más de XP, respetando los topes.'},
+      {lvl:8,id:'luz',icon:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
+      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy confirmas que no fumaste, la XP del día ×2. 1 uso por semana.'}
+    ]
+  },
+  sorcerer:{
+    desc:'Drena la fuerza del antojo y alimenta su magia con disciplina y constancia.',
+    pas:[
+      {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'El primer hábito completado cada día recupera +5 de maná.'},
+      {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'Cada 3 días consecutivos sin fumar obtienes +15 XP.'},
+      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
+    ],
+    act:[
+      {lvl:2,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada hábito completado recupera +10 de maná.'},
+      {lvl:8,id:'peste',icon:'peste',name:'Peste al Antojo',cost:35,d:'Si hoy confirmas que no fumaste, obtienes +20 XP.'},
+      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
+    ]
+  },
+  druid:{
+    desc:'Sana el cuerpo y hace crecer una rutina nueva donde antes estaba el humo.',
+    pas:[
+      {lvl:1,icon:'savia',name:'Savia Viva',d:'Confirmar un día sin fumar recupera +8 de vida.'},
+      {lvl:5,icon:'pocion',name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
+      {lvl:12,icon:'raices',name:'Raíces Profundas',d:'El primer hábito completado cada día recupera +5 de vida y +5 de maná.'}
+    ],
+    act:[
+      {lvl:2,id:'regen',icon:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
+      {lvl:8,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
+      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
+    ]
+  }
+};
+
+export function classDataForJourney(classId,{smokeFree=false}={}){
+  const base=CLASSES[classId];
+  if(!base) return null;
+  const pack=smokeFree?SMOKE_FREE_SKILLS[classId]:null;
+  return pack?{...base,...pack}:base;
+}
+
 export const BOSSES=[
   'El Gólem de Humo','Espectro Gris','Araña de Alquitrán','Caballero Ceniza',
   'Bruja del Antojo','Gusano de Nicotina','Sabueso del Mono','Gárgola Amarilla',

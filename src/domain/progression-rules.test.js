@@ -29,6 +29,46 @@ describe('progreso completo', () => {
     expect(stats.xp).toBe(100);
     expect(stats.streak).toBe(1);
   });
+
+  it('aplica las pasivas de XP del Paladín a confirmaciones y cada tercer día',()=>{
+    const smokeFreeConfig={...config,journeyMode:'smoke_free'};
+    const days={
+      '2026-07-17':{sf:'success'},
+      '2026-07-18':{sf:'success'},
+      '2026-07-19':{sf:'success'},
+    };
+    const common={
+      now:new Date(2026,6,19,12),config:smokeFreeConfig,days,
+    };
+    const paladin=calculateGameStats({
+      ...common,game:{cls:'paladin',bonusXp:5000},
+    });
+    const knight=calculateGameStats({
+      ...common,game:{cls:'knight',bonusXp:5000},
+    });
+
+    expect(paladin.xp-knight.xp).toBe(30);
+  });
+
+  it('aplica Cosecha Oscura y Peste sin modificar los sellos del jefe',()=>{
+    const smokeFreeConfig={...config,journeyMode:'smoke_free'};
+    const days={
+      '2026-07-17':{sf:'success'},
+      '2026-07-18':{sf:'success'},
+      '2026-07-19':{sf:'success'},
+    };
+    const base=calculateGameStats({
+      now:new Date(2026,6,19,12),config:smokeFreeConfig,days,
+      game:{cls:'knight',bonusXp:1000},
+    });
+    const sorcerer=calculateGameStats({
+      now:new Date(2026,6,19,12),config:smokeFreeConfig,days,
+      game:{cls:'sorcerer',bonusXp:1000,pestXpDays:['2026-07-19']},
+    });
+
+    expect(sorcerer.xp-base.xp).toBe(35);
+    expect(sorcerer.bossesDown).toBe(base.bossesDown);
+  });
   it('calcula XP, racha y nivel desde los días guardados', () => {
     const stats = calculateGameStats({
       now: new Date(2026, 6, 19, 12),

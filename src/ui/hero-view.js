@@ -1,4 +1,9 @@
-import { BOSSES, BOSS_SLUGS, CLASSES } from '../data/game-data.js';
+import {
+  BOSSES,
+  BOSS_SLUGS,
+  CLASSES,
+  classDataForJourney,
+} from '../data/game-data.js';
 import { keyOf, minutesOf } from '../domain/date-utils.js';
 import {
   logicalClockMinutes,
@@ -43,7 +48,9 @@ export function createHeroModel({
     return { selection: true };
   }
 
-  const classData = CLASSES[classId];
+  const classData = classDataForJourney(classId,{
+    smokeFree:isSmokeFreeMode(config),
+  });
   const hp = Math.max(0, Math.round(game.hp ?? 100));
   const mana = Math.max(0, Math.round(game.mp ?? 0));
   const hpPercent = clamp((hp / stats.maxHp) * 100, 0, 100);
@@ -75,6 +82,9 @@ export function createHeroModel({
   if (buffs.certeroUntil > nowTimestamp) {
     chips.push(`🎯 ${Math.ceil((buffs.certeroUntil - nowTimestamp) / 60_000)}m`);
   }
+  if (buffs.habitFocusCharges > 0) {
+    chips.push(`🎯×${buffs.habitFocusCharges} hábitos`);
+  }
   if (buffs.cenizaUntil > nowTimestamp) {
     chips.push(`☠ ${Math.ceil((buffs.cenizaUntil - nowTimestamp) / 60_000)}m`);
   }
@@ -82,6 +92,7 @@ export function createHeroModel({
     chips.push(`🌿 ${Math.ceil((buffs.regenUntil - nowTimestamp) / 60_000)}m`);
   }
   if (buffs.pesteDay === today) chips.push('☠🍺 hoy');
+  if ((game.pestXpDays || []).includes(today)) chips.push('☠ +20 XP hoy');
   if (buffs.bastion) chips.push('🏰 armado');
   if (buffs.renacer) chips.push('🌅 esta noche');
   if ((game.judgmentDays || []).includes(today)) chips.push('⚖️ hoy');
@@ -155,14 +166,19 @@ export function renderHeroView({
   });
 
   if (model.selection) {
-    const cards = Object.entries(CLASSES)
+    const cards = Object.keys(CLASSES)
       .map(
-        ([classId, classData]) => `<div class="cls-card" data-cls="${classId}">
+        (classId) => {
+          const classData=classDataForJourney(classId,{
+            smokeFree:isSmokeFreeMode(config),
+          });
+          return `<div class="cls-card" data-cls="${classId}">
         ${spriteImage(classId, 'happy')}
         <div class="cn">${classData.name}</div>
         <div class="ce">${classData.es}</div>
         <div class="cd">${classData.desc}</div>
-      </div>`,
+      </div>`;
+        },
       )
       .join('');
     box.innerHTML = `<div class="card">
@@ -367,9 +383,12 @@ export function renderSkillsView({
   classId,
   level,
   intoxication,
+  config,
 }) {
   if (!classId || !CLASSES[classId]) return;
-  const classData = CLASSES[classId];
+  const classData = classDataForJourney(classId,{
+    smokeFree:isSmokeFreeMode(config),
+  });
   const passiveHtml = classData.pas
     .map((ability) => {
       const active = level >= ability.lvl;

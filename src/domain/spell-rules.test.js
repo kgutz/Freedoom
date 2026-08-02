@@ -93,6 +93,24 @@ describe('efectos temporales y defensivos', () => {
 
     expect(result.durationHours).toBe(2.55);
   });
+
+  it('adapta Ojo Certero y Peste al Antojo al camino sin fumar',()=>{
+    const focus=cast(spell('certero'),{smokeFreeMode:true});
+    const plague=cast(spell('peste'),{smokeFreeMode:true});
+
+    expect(focus.game.buffs.habitFocusCharges).toBe(2);
+    expect(focus.game.buffs.certeroUntil).toBeUndefined();
+    expect(plague.game.pestXpDays).toEqual(['2026-07-26']);
+    expect(plague.game.buffs.pesteDay).toBeUndefined();
+  });
+
+  it('no duplica el bonus diario de Peste al Antojo',()=>{
+    const result=cast(spell('peste'),{
+      smokeFreeMode:true,
+      game:{hp:70,mp:100,buffs:{},pestXpDays:['2026-07-26']},
+    });
+    expect(result.game.pestXpDays).toEqual(['2026-07-26']);
+  });
 });
 
 describe('curación y habilidades definitivas', () => {

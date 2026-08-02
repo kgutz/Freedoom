@@ -95,6 +95,32 @@ describe('hábitos', () => {
     expect(habitXpTotal(habitState)).toBe(25);
   });
 
+  it('aplica Ojo Certero sin superar el tope de XP del periodo',()=>{
+    const focused=adjustHabitProgress({
+      habitState:null,
+      habit:{...habit,target:1},
+      delta:1,
+      date,
+      planStartDate:startDate,
+      rewardMultiplier:1.5,
+    });
+    expect(focused.entry.xpAwarded).toBe(9);
+
+    let habitState=focused.habitState;
+    for(let index=0;index<3;index+=1){
+      const result=adjustHabitProgress({
+        habitState,
+        habit:{...habit,id:`focused-${index}`,difficulty:'hard',target:1},
+        delta:1,
+        date,
+        planStartDate:startDate,
+        rewardMultiplier:1.5,
+      });
+      habitState=result.habitState;
+    }
+    expect(habitXpTotal(habitState)).toBe(25);
+  });
+
   it('reinicia el progreso diario y alinea el semanal con el plan', () => {
     const nextDay = new Date(2026, 7, 2, 12);
     const weekly = { ...habit, frequency: 'weekly' };
