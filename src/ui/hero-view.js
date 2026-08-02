@@ -315,10 +315,19 @@ export function renderHeroView({
       <div class="hero-top">
         <div class="sprite-box"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt=""><div class="sprite-aura ${auraClass}"></div>${spriteImage(classId, model.mood)}${sleeping}</div>
         <div class="hero-id">
-          <div class="rango">${classData.tiers[heroStats.tier]}</div>
+          <div class="hero-rank-row">
+            <div class="rango">${classData.tiers[heroStats.tier]}</div>
+            <button class="hero-skills-jump" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
+            </button>
+          </div>
           <div class="nombre">${classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
-          <div class="racha">Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'} · Jefes: <b>${heroStats.bossesDown}</b> · Armadura: <b>−${model.armor}</b>${smokeFreeMode ? '' : `<br>Disparos perfectos hoy: <b>${model.perfectToday}</b>`}</div>
+          <div class="hero-summary">
+            <span>Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'}</span>
+            <span>Armadura: <b>−${model.armor}</b></span>
+            ${smokeFreeMode ? '' : `<span>Disparos perfectos hoy: <b>${model.perfectToday}</b></span>`}
+          </div>
         </div>
       </div>
       ${chipsHtml}
@@ -359,9 +368,9 @@ export function renderHeroView({
       <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
     </div>
 
-    <div class="card">
+    <div class="card hero-skills-card" id="heroSkillsCard">
       <div class="skills-head">
-        <h2 style="margin:0">Habilidades</h2>
+        <h2 id="heroSkillsTitle" tabindex="-1" style="margin:0">Habilidades</h2>
         <button class="sk-info-btn" id="skInfoBtn" aria-label="Ver libro de habilidades">ⓘ</button>
       </div>
       <div class="sk-row-label">Pasivas</div>

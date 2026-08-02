@@ -93,7 +93,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='109';
+const APP_VERSION='113';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1707,6 +1707,18 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
 
 /* elegir clase de héroe y lanzar hechizos */
 document.getElementById('view-hero').addEventListener('click',e=>{
+  if(e.target.closest('[data-scroll-skills]')){
+    const skillsCard=document.getElementById('heroSkillsCard');
+    const skillsTitle=document.getElementById('heroSkillsTitle');
+    if(!skillsCard) return;
+    skillsCard.classList.remove('skills-jump-highlight');
+    void skillsCard.offsetWidth;
+    skillsCard.classList.add('skills-jump-highlight');
+    skillsCard.scrollIntoView({behavior:'smooth',block:'start'});
+    window.setTimeout(()=>skillsTitle?.focus({preventScroll:true}),350);
+    window.setTimeout(()=>skillsCard.classList.remove('skills-jump-highlight'),1200);
+    return;
+  }
   if(e.target.closest('.sprite-box')){
     openAjustes();
     return;

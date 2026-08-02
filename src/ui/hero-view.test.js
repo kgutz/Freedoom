@@ -142,6 +142,12 @@ describe('modelo de Héroe', () => {
     });
 
     expect(heroContent.innerHTML).toContain('id="bossInfoBtn"');
+    expect(heroContent.innerHTML).toContain('data-scroll-skills');
+    expect(heroContent.innerHTML).toContain('id="heroSkillsCard"');
+    expect(heroContent.innerHTML).toContain('aria-label="Ir a habilidades"');
+    expect(heroContent.innerHTML).toContain('class="hero-summary"');
+    expect(heroContent.innerHTML).not.toContain('Jefes:');
+    expect(heroContent.innerHTML).toContain('Disparos perfectos hoy:');
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');

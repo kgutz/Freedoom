@@ -618,8 +618,11 @@
   .faq-item[open] .faq-icon::before{content:'−'}
   .faq-answer{padding:0 36px 18px 2px}
   .faq-answer .hint:first-child{margin-top:0}
-  .faq-lead,.faq-bullets{display:block}
-  .faq-bullets{margin-top:8px}
+  .faq-lead{display:block}
+  .faq-bullets{display:flex;flex-direction:column;gap:5px;margin:8px 0 0;padding:0;list-style:none}
+  .faq-bullets li{position:relative;padding-left:10px}
+  .faq-bullets li::before{content:'•';position:absolute;left:0;color:var(--kodak)}
+  .faq-answer>.faq-bullets:first-child{margin-top:0}
 
   /* ---------- héroe RPG ---------- */
   .hero-top{display:flex;gap:18px;align-items:center;margin-bottom:6px}
@@ -649,11 +652,18 @@
   .sprite-svg.hurt{filter:saturate(.55) drop-shadow(0 0 7px rgba(196,85,62,.6));animation:none}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
   .hero-id{flex:1;min-width:0}
+  .hero-rank-row{min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:10px}
   .hero-id .rango{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .hero-skills-jump{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--kodak);cursor:pointer}
+  .hero-skills-jump svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .hero-skills-jump:active{background:rgba(232,180,74,.15);transform:scale(.96)}
+  .hero-skills-jump:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-id .nombre{font-size:19px;font-weight:600;margin:2px 0 4px}
   .hero-id .nivel{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--kodak)}
-  .hero-id .racha{font-size:12px;color:var(--muted);margin-top:5px}
-  .hero-id .racha b{color:var(--text);font-family:'IBM Plex Mono',monospace}
+  .hero-summary{display:flex;flex-direction:column;gap:3px;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.3}
+  .hero-summary span{position:relative;padding-left:10px}
+  .hero-summary span::before{content:'•';position:absolute;left:0;color:var(--kodak)}
+  .hero-summary b{color:var(--text);font-family:'IBM Plex Mono',monospace}
 
   .stat-bar{margin-top:12px}
   .stat-bar .lbl{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
@@ -768,6 +778,9 @@
   .abil.off{opacity:.4}
 
   /* ---------- bloque compacto de habilidades ---------- */
+  .hero-skills-card{scroll-margin-top:14px}
+  .hero-skills-card.skills-jump-highlight{animation:skillsJumpGlow 1.15s ease-out}
+  @keyframes skillsJumpGlow{0%{border-color:var(--line);box-shadow:none}30%{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.2),0 0 24px rgba(232,180,74,.16)}100%{border-color:var(--line);box-shadow:none}}
   .skills-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   .skills-head h2{font-size:15px}
   .sk-row-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 9px 1px}
@@ -779,6 +792,7 @@
   .sk-info-btn:active{background:rgba(232,180,74,.15)}
   .skill-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
   .skill-row:last-child{margin-bottom:0}
+  @media (prefers-reduced-motion:reduce){.hero-skills-card.skills-jump-highlight{animation:none;border-color:var(--kodak)}}
   .skill-box{
     position:relative;aspect-ratio:1;width:85%;margin:0 auto;border-radius:12px;overflow:hidden;cursor:pointer;
     border:1px solid var(--line);
