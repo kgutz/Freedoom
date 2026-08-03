@@ -111,6 +111,7 @@ describe('modelo de Héroe', () => {
     renderHeroView({
       document,
       ...base({
+        game: { ...base().game, name: 'Farenheil' },
         boss: {
           ...base().boss,
           name: 'Espectro',
@@ -145,6 +146,7 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('data-scroll-skills');
     expect(heroContent.innerHTML).toContain('id="heroSkillsCard"');
     expect(heroContent.innerHTML).toContain('aria-label="Ir a habilidades"');
+    expect(heroContent.innerHTML).toContain('<div class="nombre">Farenheil</div>');
     expect(heroContent.innerHTML).toContain('class="hero-summary"');
     expect(heroContent.innerHTML).not.toContain('Jefes:');
     expect(heroContent.innerHTML).toContain('Disparos perfectos hoy:');

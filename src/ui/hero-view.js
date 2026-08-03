@@ -321,7 +321,7 @@ export function renderHeroView({
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
             </button>
           </div>
-          <div class="nombre">${classData.name}</div>
+          <div class="nombre">${game?.name || classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
           <div class="hero-summary">
             <span>Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'}</span>
