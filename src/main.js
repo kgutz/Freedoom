@@ -93,7 +93,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='114';
+const APP_VERSION='115';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -1582,6 +1582,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
 
 const habitsView=document.getElementById('view-habits');
 const habitsScrollArea=document.getElementById('scrollArea');
+const HABIT_DRAG_HOLD_MS=450;
+const HABIT_DRAG_MOVE_TOLERANCE=8;
 let habitDrag=null;
 
 function orderedHabitIds(group){
@@ -1598,8 +1600,14 @@ function saveHabitOrder(group){
 
 function finishHabitDrag(event,cancelled=false){
   if(!habitDrag||event.pointerId!==habitDrag.pointerId) return;
-  const {row,group,list,handle}=habitDrag;
+  const {row,group,list,handle,holdTimer,active,moved}=habitDrag;
+  window.clearTimeout(holdTimer);
   try{handle.releasePointerCapture(event.pointerId);}catch{}
+  handle.classList.remove('hold-pending');
+  if(!active){
+    habitDrag=null;
+    return;
+  }
   row.classList.remove('dragging');
   list.classList.remove('drag-active');
   document.body.classList.remove('habit-dragging');
@@ -1608,6 +1616,7 @@ function finishHabitDrag(event,cancelled=false){
     renderHabits();
     return;
   }
+  if(!moved) return;
   saveHabitOrder(group);
   renderHabits();
   showToast('Orden de hábitos guardado','heal');
@@ -1621,22 +1630,48 @@ habitsView.addEventListener('pointerdown',event=>{
   const list=group?.querySelector('.habit-group-list');
   if(!row||!group||!list) return;
   event.preventDefault();
-  habitDrag={pointerId:event.pointerId,row,group,list,handle};
+  if(habitDrag) return;
+  habitDrag={
+    pointerId:event.pointerId,row,group,list,handle,
+    startX:event.clientX,startY:event.clientY,
+    active:false,moved:false,holdTimer:null
+  };
   try{handle.setPointerCapture(event.pointerId);}catch{}
-  row.classList.add('dragging');
-  list.classList.add('drag-active');
-  document.body.classList.add('habit-dragging');
-  if(navigator.vibrate) navigator.vibrate(18);
+  handle.classList.add('hold-pending');
+  habitDrag.holdTimer=window.setTimeout(()=>{
+    if(!habitDrag||habitDrag.pointerId!==event.pointerId) return;
+    habitDrag.active=true;
+    handle.classList.remove('hold-pending');
+    row.classList.add('dragging');
+    list.classList.add('drag-active');
+    document.body.classList.add('habit-dragging');
+    if(navigator.vibrate) navigator.vibrate(18);
+  },HABIT_DRAG_HOLD_MS);
 });
 
 window.addEventListener('pointermove',event=>{
   if(!habitDrag||event.pointerId!==habitDrag.pointerId) return;
+  if(!habitDrag.active){
+    const movedEarly=Math.hypot(
+      event.clientX-habitDrag.startX,
+      event.clientY-habitDrag.startY
+    )>HABIT_DRAG_MOVE_TOLERANCE;
+    if(movedEarly){
+      window.clearTimeout(habitDrag.holdTimer);
+      habitDrag.handle.classList.remove('hold-pending');
+      try{habitDrag.handle.releasePointerCapture(event.pointerId);}catch{}
+      habitDrag=null;
+    }
+    return;
+  }
   event.preventDefault();
   const {row,group,list}=habitDrag;
   const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.habit-row');
   if(target&&target!==row&&target.closest('[data-habit-group]')===group){
+    const previousIndex=[...list.children].indexOf(row);
     const bounds=target.getBoundingClientRect();
     list.insertBefore(row,event.clientY<bounds.top+bounds.height/2?target:target.nextSibling);
+    if([...list.children].indexOf(row)!==previousIndex) habitDrag.moved=true;
   }
   if(habitsScrollArea){
     const bounds=habitsScrollArea.getBoundingClientRect();

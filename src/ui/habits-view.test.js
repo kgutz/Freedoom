@@ -51,6 +51,7 @@ describe('vista de hábitos', () => {
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).toContain('completed');
     expect(html).toContain('data-habit-drag');
+    expect(html).toContain('Mantener pulsado para mover Beber agua');
   });
 
   it('agrupa diarios antes que semanales aunque se crearan después', () => {
@@ -92,6 +93,6 @@ describe('vista de hábitos', () => {
 
     expect(html.indexOf('Caminar')).toBeLessThan(html.indexOf('Leer'));
     expect(html.indexOf('Leer')).toBeLessThan(html.indexOf('Beber agua'));
-    expect(html).toContain('Arrastra');
+    expect(html).toContain('Mantén pulsado');
   });
 });
