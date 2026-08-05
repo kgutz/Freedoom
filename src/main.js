@@ -1,5 +1,6 @@
 import {
   BOSSES,
+  BOSS_LORE,
   BOSS_SLUGS,
   CLASSES,
   classDataForJourney
@@ -20,9 +21,16 @@ import {
   SMOKE_FREE_STATUS_PENDING,
   SMOKE_FREE_STATUS_SUCCESS,
   bossCountForJourney,
+  controlledWeeklyLimitOf,
+  isControlledMode,
+  isControlledSmokingDay,
   isSmokeFreeMode,
+  journeyConfigForDate,
+  applyDueJourneyTransition,
+  scheduleControlledJourneyTransition,
   journeyEvolutionUnlocked,
-  smokeFreeStatusOf
+  smokeFreeStatusOf,
+  usesSmokeFreeSkills
 } from './domain/journey-mode-rules.js';
 import {
   BEER_DAMAGE,
@@ -93,7 +101,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='115';
+const APP_VERSION='120';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -177,6 +185,31 @@ function limitOfDate(d){
   });
 }
 function getDay(k){return state.days[k]||{c:0,p:0};}
+function controlledWeekUsage(date=currentDayDate()){
+  const week=Math.max(0,weekIndexOf(date));
+  const [first,last]=weekRange(week);
+  let used=0;
+  for(let cursor=new Date(first);cursor<=last;cursor.setDate(cursor.getDate()+1)){
+    used+=Math.max(0,getDay(keyOf(cursor)).c||0);
+  }
+  return used;
+}
+function controlledDayCompleted(key){
+  const date=parseKey(key);
+  const dateConfig=journeyConfigForDate(state.config,date);
+  if(!isControlledMode(dateConfig)) return false;
+  if(!isControlledSmokingDay(dateConfig,date)){
+    return smokeFreeStatusOf(getDay(key))===SMOKE_FREE_STATUS_SUCCESS;
+  }
+  return controlledWeekUsage(date)<=controlledWeeklyLimitOf(dateConfig);
+}
+function applyPendingJourneyTransition(date=currentDayDate()){
+  const result=applyDueJourneyTransition(state.config,date);
+  if(!result.applied) return false;
+  state.config=result.config;
+  scheduleSave({type:'journey:transition-applied',day:keyOf(date)});
+  return true;
+}
 function setDay(k,c,p,t,b,s,action){
   c=Math.max(0,c); p=Math.max(0,p);
   const prev=state.days[k];
@@ -362,7 +395,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
+function renderAll(){applyPendingJourneyTransition();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
 
 function renderHoy(){
   let stats=null;
@@ -393,9 +426,11 @@ function renderCal(){
     days:state.days,
     onDayClick:openModal
   });
-  document.getElementById('calendarHint').textContent=isSmokeFreeMode(state.config)
-    ? 'Toca un día para corregirlo. ✓ significa que te mantuviste sin fumar, × que fumaste y · que sigue pendiente.'
-    : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.';
+  document.getElementById('calendarHint').textContent=isControlledMode(state.config)
+    ? 'En días permitidos verás cuántos porros registraste. En los demás, ✓ significa que no fumaste, × que fumaste y · que sigue pendiente.'
+    : isSmokeFreeMode(state.config)
+      ? 'Toca un día para corregirlo. ✓ significa que te mantuviste sin fumar, × que fumaste y · que sigue pendiente.'
+      : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.';
 }
 
 function renderHabits(){
@@ -438,9 +473,11 @@ function renderGraf(){
     config:state.config,
     records:state.days
   });
-  document.getElementById('chartHint').textContent=isSmokeFreeMode(state.config)
-    ? 'Verde: días confirmados sin fumar. Rojo: días en los que fumaste. Los puntos permanecen pendientes.'
-    : 'La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.';
+  document.getElementById('chartHint').textContent=isControlledMode(state.config)
+    ? 'Cada barra muestra el consumo de ese día. Rojo indica que esa semana superó el máximo compartido.'
+    : isSmokeFreeMode(state.config)
+      ? 'Verde: días confirmados sin fumar. Rojo: días en los que fumaste. Los puntos permanecen pendientes.'
+      : 'La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.';
 }
 
 function renderSettings(){
@@ -514,7 +551,7 @@ function renderWeekResultModal(){
     const name=BOSSES[idx], slug=BOSS_SLUGS[idx];
     const lastLim=limitOfWeek(wr.weekIdx);
     const newWeekIdx=wr.weekIdx+1;
-    const smokeFreeMode=isSmokeFreeMode(state.config);
+    const smokeFreeMode=usesSmokeFreeSkills(state.config);
     const penaltyText=wr.penalty?.shielded
       ? 'Muro de Escudos bloqueó el golpe a tu vida; tu maná bajó al 20%.'
       : `Por el golpe recibido, tu vida bajó un ${Math.round((wr.penalty?.hpRate??0.3)*100)}% y tu maná al 20% — se recupera con el tiempo.`;
@@ -619,7 +656,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
       const mx=heroMaxes();
-      const smokeFreeMode=isSmokeFreeMode(state.config);
+      const smokeFreeMode=usesSmokeFreeSkills(state.config);
       if(smokeFreeMode&&(g.buffs?.shield||0)>0){
         g.buffs.shield--;
         g.mp=Math.round(mx.maxMp*0.2);
@@ -672,9 +709,12 @@ function ensureHero(){
     const c=previousDay.c;
     const lvl=gameStats().lvl;
     const mx=heroMaxes();
-    const completedDay=isSmokeFreeMode(state.config)
+    const previousConfig=journeyConfigForDate(state.config,g.day);
+    const completedDay=isSmokeFreeMode(previousConfig)
         ? smokeFreeStatusOf(previousDay)===SMOKE_FREE_STATUS_SUCCESS
-        : c<=lim;
+        : isControlledMode(previousConfig)
+          ? controlledDayCompleted(g.day)
+          : c<=lim;
     const recovered=dailyRecovery({
       completedDay,
       currentMana:g.mp,
@@ -708,7 +748,7 @@ function ensureHero(){
     classId:g.cls,
     regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now),
     passiveMultiplier:intoxication.passiveMultiplier,
-    druidFastRegeneration:!isSmokeFreeMode(state.config)
+    druidFastRegeneration:!usesSmokeFreeSkills(state.config)
   });
   if(regenerated.ticks>0){
     g.hp=regenerated.hp;
@@ -779,7 +819,7 @@ function castSpell(id){
   ensureHero();
   const g=state.game;
   const st=gameStats();
-  const C=classDataForJourney(g.cls,{smokeFree:isSmokeFreeMode(state.config)}); if(!C) return;
+  const C=classDataForJourney(g.cls,{smokeFree:usesSmokeFreeSkills(state.config)}); if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
@@ -794,7 +834,7 @@ function castSpell(id){
     maxHp:st.maxHp,
     activeFailureChance:intoxication.activeFailureChance,
     passiveMultiplier:intoxication.passiveMultiplier,
-    smokeFreeMode:isSmokeFreeMode(state.config)
+    smokeFreeMode:usesSmokeFreeSkills(state.config)
   });
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
@@ -900,10 +940,15 @@ function openModal(k){
   document.getElementById('mCigVal').textContent=rec.c;
   document.getElementById('mPillVal').textContent=rec.p;
   document.getElementById('mCerVal').textContent=rec.b||0;
-  const smokeFreeMode=isSmokeFreeMode(state.config);
-  document.getElementById('mCigRow').style.display=smokeFreeMode?'none':'';
+  const dayConfig=journeyConfigForDate(state.config,d);
+  const smokeFreeMode=isSmokeFreeMode(dayConfig);
+  const controlledMode=isControlledMode(dayConfig);
+  const controlledAllowed=controlledMode&&isControlledSmokingDay(dayConfig,d);
+  document.getElementById('mCigRow').style.display=
+    smokeFreeMode||(controlledMode&&!controlledAllowed)?'none':'';
   const statusEditor=document.getElementById('mSmokeFreeStatus');
-  statusEditor.parentElement.style.display=smokeFreeMode?'':'none';
+  statusEditor.parentElement.style.display=
+    smokeFreeMode||(controlledMode&&!controlledAllowed)?'':'none';
   const status=smokeFreeStatusOf(rec);
   statusEditor.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
     button.classList.toggle('active',button.dataset.modalSmokeFree===status);
@@ -914,7 +959,13 @@ function closeModal(){
   const c=+document.getElementById('mCigVal').textContent;
   const p=+document.getElementById('mPillVal').textContent;
   const b=+document.getElementById('mCerVal').textContent;
-  if(isSmokeFreeMode(state.config)){
+  const editingDate=parseKey(editingKey);
+  const editingConfig=journeyConfigForDate(state.config,editingDate);
+  const editsConfirmation=isSmokeFreeMode(editingConfig)||(
+    isControlledMode(editingConfig)&&
+    !isControlledSmokingDay(editingConfig,editingDate)
+  );
+  if(editsConfirmation){
     const selected=document.querySelector('[data-modal-smoke-free].active');
     const record=state.days[editingKey]||{c:0,p:0};
     if(selected&&selected.dataset.modalSmokeFree!==SMOKE_FREE_STATUS_PENDING){
@@ -937,6 +988,22 @@ document.getElementById('addCig').addEventListener('click',()=>{
   if(isSmokeFreeMode(state.config)) return;
   registerDailyWakeEstimate();
   const k=todayKey(),d=getDay(k);
+  if(isControlledMode(state.config)){
+    const logicalToday=currentDayDate();
+    if(!isControlledSmokingDay(state.config,logicalToday)) return;
+    setDay(k,d.c+1,d.p,Date.now(),undefined,undefined,{
+      type:'controlled:add',day:k,count:d.c+1
+    });
+    const used=controlledWeekUsage(logicalToday);
+    const max=controlledWeeklyLimitOf(state.config);
+    showToast(
+      used<=max
+        ? `Consumo semanal · ${used} de ${max}`
+        : `Límite semanal superado · ${used} de ${max}`,
+      used<=max?'heal':'dmg'
+    );
+    return;
+  }
   const r=smokeDamage();
   const rewards=perfectShotRewards({
     perfect:r.perfect,
@@ -971,6 +1038,17 @@ document.getElementById('subCig').addEventListener('click',()=>{
   if(isSmokeFreeMode(state.config)) return;
   const k=todayKey(),d=getDay(k);
   if(d.c<=0) return;
+  if(isControlledMode(state.config)){
+    if(!isControlledSmokingDay(state.config,currentDayDate())) return;
+    setDay(k,d.c-1,d.p,undefined,undefined,undefined,{
+      type:'controlled:remove',day:k,count:d.c-1
+    });
+    showToast(
+      `Consumo corregido · ${controlledWeekUsage()} de ${controlledWeeklyLimitOf(state.config)}`,
+      'heal'
+    );
+    return;
+  }
   ensureHero();
   const arr=state.game.cigDmg;
   let wasPerfect=false, exX=0;
@@ -1046,7 +1124,7 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   const g=state.game;
   const added=addBeerIntoxication(g.intoxication||[],Date.now());
   g.intoxication=added.effects;
-  const shielded=isSmokeFreeMode(state.config)&&(g.buffs?.shield||0)>0;
+  const shielded=usesSmokeFreeSkills(state.config)&&(g.buffs?.shield||0)>0;
   if(shielded) g.buffs.shield--;
   const bd=shielded?0:BEER_DAMAGE;
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
@@ -1122,7 +1200,12 @@ function applySmokeFreeDayRewards(key,status){
 }
 document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
   const button=event.target.closest('[data-smoke-free-status]');
-  if(!button||!isSmokeFreeMode(state.config)) return;
+  const logicalToday=currentDayDate();
+  const canConfirm=isSmokeFreeMode(state.config)||(
+    isControlledMode(state.config)&&
+    !isControlledSmokingDay(state.config,logicalToday)
+  );
+  if(!button||!canConfirm) return;
   const key=todayKey();
   const record=state.days[key]||{c:0,p:0};
   const status=button.dataset.smokeFreeStatus;
@@ -1140,7 +1223,9 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
     }
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
-        ? '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice
+        ? (isControlledMode(state.config)
+            ? '✓ Día fuera de consumo cumplido · −25 HP al jefe · XP del día'
+            : '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice)
         : 'Día registrado. Mañana continúa tu camino.',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
     );
@@ -1194,6 +1279,64 @@ document.getElementById('cfgWake').addEventListener('change',e=>{
 });
 document.getElementById('cfgSleep').addEventListener('change',e=>{
   if(e.target.value){state.config.sleepTime=e.target.value;scheduleSave();renderAll();}
+});
+document.getElementById('cfgControlledWeeklyLimit').addEventListener('change',e=>{
+  const v=parseInt(e.target.value,10);
+  if(v>0){state.config.controlledWeeklyLimit=v;scheduleSave();renderAll();}
+});
+document.getElementById('journeyChangeOpen').addEventListener('click',()=>{
+  document.querySelectorAll('[data-transition-controlled-day]').forEach(button=>{
+    button.classList.toggle('active',[5,6,0].includes(Number(button.dataset.transitionControlledDay)));
+  });
+  document.getElementById('journeyTransitionLimit').value=3;
+  document.getElementById('journeyChangeOpen').style.display='none';
+  document.getElementById('journeyChangeForm').style.display='block';
+});
+document.getElementById('journeyChangeCancel').addEventListener('click',()=>{
+  document.getElementById('journeyChangeForm').style.display='none';
+  document.getElementById('journeyChangeOpen').style.display='';
+});
+document.querySelectorAll('[data-transition-controlled-day]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    const active=document.querySelectorAll('[data-transition-controlled-day].active');
+    if(button.classList.contains('active')&&active.length===1) return;
+    button.classList.toggle('active');
+  });
+});
+document.getElementById('journeyChangeConfirm').addEventListener('click',()=>{
+  if(!isSmokeFreeMode(state.config)) return;
+  const days=Array.from(
+    document.querySelectorAll('[data-transition-controlled-day].active'),
+    button=>Number(button.dataset.transitionControlledDay)
+  );
+  const limit=Math.max(1,parseInt(document.getElementById('journeyTransitionLimit').value,10)||3);
+  const nextWeek=Math.max(0,weekIndexOf(currentDayDate()))+1;
+  const [effectiveDate]=weekRange(nextWeek);
+  state.config=scheduleControlledJourneyTransition({
+    config:state.config,
+    effectiveDate:keyOf(effectiveDate),
+    controlledDays:days,
+    controlledWeeklyLimit:limit
+  });
+  scheduleSave({type:'journey:transition-scheduled',effectiveDate:keyOf(effectiveDate)});
+  renderAll();
+  showToast('Cambio programado para tu próxima semana','heal');
+});
+document.getElementById('journeyChangeUndo').addEventListener('click',()=>{
+  delete state.config.pendingJourneyTransition;
+  scheduleSave({type:'journey:transition-cancelled'});
+  renderAll();
+  showToast('Cambio de camino cancelado','heal');
+});
+document.querySelectorAll('[data-settings-controlled-day]').forEach(button=>{
+  button.addEventListener('click',()=>{
+    const day=Number(button.dataset.settingsControlledDay);
+    const selected=new Set(state.config.controlledDays||[5,6,0]);
+    if(selected.has(day)&&selected.size>1) selected.delete(day);
+    else selected.add(day);
+    state.config.controlledDays=[...selected];
+    scheduleSave();renderAll();
+  });
 });
 document.getElementById('cfgDayStart').addEventListener('change',e=>{
   if(e.target.value){
@@ -1546,7 +1689,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const habit=activeHabitById(row?.dataset.habitId);
     if(!habit) return;
     ensureHero();
-    const smokeFreeMode=isSmokeFreeMode(state.config);
+    const smokeFreeMode=usesSmokeFreeSkills(state.config);
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const result=adjustHabitProgress({
@@ -1798,19 +1941,22 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
 });
 
-document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
-  const button=e.target.closest('[data-share-boss]');
-  if(!button) return;
-  const bossIndex=parseInt(button.dataset.shareBoss,10);
+let selectedBossMedal=null;
+
+async function fetchBossMedalFile(bossFile){
+  let response=await fetch(`bosses/share/${bossFile}`);
+  if(!response.ok) response=await fetch(`bosses/${bossFile}`);
+  if(!response.ok) throw new Error('No se pudo cargar el medallón');
+  return response.blob();
+}
+
+async function shareBossMedal(bossIndex,bossFile){
   const bossName=BOSSES[bossIndex];
-  const bossFile=button.dataset.shareFile;
   if(!bossName||!bossFile) return;
   const title=`Medallón de ${bossName}`;
   const text=`¡He derrotado a ${bossName} en Freedoom y he conseguido su medallón de victoria!`;
   try{
-    const response=await fetch(`bosses/${bossFile}`);
-    if(!response.ok) throw new Error('No se pudo cargar el medallón');
-    const blob=await response.blob();
+    const blob=await fetchBossMedalFile(bossFile);
     const file=new File([blob],bossFile,{type:blob.type||'image/png'});
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
       await navigator.share({title,text,files:[file]});
@@ -1830,6 +1976,68 @@ document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
     }catch{
       showToast('No se pudo compartir el medallón','dmg');
     }
+  }
+}
+
+function openBossMedalDetail(bossIndex,bossFile){
+  const bossName=BOSSES[bossIndex];
+  if(!bossName||!bossFile) return;
+  const defeated=bossIndex<gameStats().bossesDown;
+  selectedBossMedal={bossIndex,bossFile,defeated};
+  const detail=document.getElementById('bossMedalDetail');
+  const image=document.getElementById('bossMedalDetailImage');
+  image.alt=bossName;
+  image.dataset.fallback='';
+  image.onerror=()=>{
+    if(image.dataset.fallback) return;
+    image.dataset.fallback='true';
+    image.src=`bosses/${bossFile}`;
+  };
+  image.src=`bosses/share/${bossFile}`;
+  document.getElementById('bossMedalDetailState').textContent=defeated?'MEDALLÓN CONSEGUIDO':'EN COMBATE';
+  document.getElementById('bossMedalDetailName').textContent=bossName;
+  document.getElementById('bossMedalDetailLore').textContent=BOSS_LORE[bossIndex]||'Un enemigo nacido del humo y de las viejas costumbres espera en el camino.';
+  document.getElementById('bossMedalDetailLock').textContent=defeated?'':'Derrota a este jefe para conseguir, descargar y compartir su medallón.';
+  document.getElementById('bossMedalDetailActions').hidden=!defeated;
+  detail.classList.toggle('in-combat',!defeated);
+  document.getElementById('sheetBossMedal').classList.add('show');
+}
+
+document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
+  const medal=e.target.closest('[data-open-boss-medal]');
+  if(medal){
+    openBossMedalDetail(parseInt(medal.dataset.openBossMedal,10),medal.dataset.bossFile);
+    return;
+  }
+  const button=e.target.closest('[data-share-boss]');
+  if(!button) return;
+  await shareBossMedal(parseInt(button.dataset.shareBoss,10),button.dataset.shareFile);
+});
+
+document.getElementById('bossMedalShare').addEventListener('click',async()=>{
+  if(!selectedBossMedal?.defeated) return;
+  await shareBossMedal(selectedBossMedal.bossIndex,selectedBossMedal.bossFile);
+});
+
+document.getElementById('bossMedalDownload').addEventListener('click',async()=>{
+  if(!selectedBossMedal?.defeated) return;
+  const button=document.getElementById('bossMedalDownload');
+  button.disabled=true;
+  try{
+    const blob=await fetchBossMedalFile(selectedBossMedal.bossFile);
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;
+    link.download=`medallon_${BOSS_SLUGS[selectedBossMedal.bossIndex]}.png`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),1000);
+    showToast('Medallón descargado','heal');
+  }catch{
+    showToast('No se pudo descargar el medallón','dmg');
+  }finally{
+    button.disabled=false;
   }
 });
 

@@ -11,7 +11,9 @@ import {
 } from '../domain/day-boundary-rules.js';
 import {
   bossCountForJourney,
+  isControlledMode,
   isSmokeFreeMode,
+  usesSmokeFreeSkills,
 } from '../domain/journey-mode-rules.js';
 
 function clamp(value, min, max) {
@@ -49,7 +51,7 @@ export function createHeroModel({
   }
 
   const classData = classDataForJourney(classId,{
-    smokeFree:isSmokeFreeMode(config),
+    smokeFree:usesSmokeFreeSkills(config),
   });
   const hp = Math.max(0, Math.round(game.hp ?? 100));
   const mana = Math.max(0, Math.round(game.mp ?? 0));
@@ -170,7 +172,7 @@ export function renderHeroView({
       .map(
         (classId) => {
           const classData=classDataForJourney(classId,{
-            smokeFree:isSmokeFreeMode(config),
+            smokeFree:usesSmokeFreeSkills(config),
           });
           return `<div class="cls-card" data-cls="${classId}">
         ${spriteImage(classId, 'happy')}
@@ -226,6 +228,7 @@ export function renderHeroView({
     )
     .join('');
   const smokeFreeMode = isSmokeFreeMode(config);
+  const controlledMode = isControlledMode(config);
   const totalBosses = bossCountForJourney(config, BOSSES.length);
   const defeatedBosses = Math.min(totalBosses, heroStats.bossesDown);
   const currentBossIndex = Math.min(totalBosses - 1, bossState.bossNum - 1);
@@ -245,13 +248,17 @@ export function renderHeroView({
     const bossFile = `boss_${String(bossNumber).padStart(2, '0')}_${bossSlug}.png`;
     if (fighting) {
       return `<div class="boss-medal fighting">
-        <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
-        <div class="boss-medal-name">${bossName}<strong>EN COMBATE</strong></div>
+        <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
+          <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+          <div class="boss-medal-name">${bossName}<strong>EN COMBATE</strong></div>
+        </button>
       </div>`;
     }
     return `<div class="boss-medal won">
-      <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
-      <div class="boss-medal-name">${bossName}</div>
+      <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
+        <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+        <div class="boss-medal-name">${bossName}</div>
+      </button>
       <button class="boss-medal-share" type="button" data-share-boss="${index}" data-share-file="${bossFile}">Compartir</button>
     </div>`;
   }).join('');
@@ -293,14 +300,16 @@ export function renderHeroView({
           : ''
       }
       ${
-        bossState.lockedByDays
-          ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas ${smokeFreeMode ? 'confirmar sin fumar' : 'cerrar dentro del límite'} ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más.</div>`
-          : smokeFreeMode && bossState.todayStatus === 'hit' && !bossState.won
+        bossState.controlledBudgetExceeded
+          ? `<div class="boss-gate-warning">🔒 Has superado el máximo semanal (${bossState.controlledWeekUsed}/${bossState.controlledWeeklyLimit}). Los días permitidos de esta semana no rompen sellos.</div>`
+          : bossState.lockedByDays
+            ? `<div class="boss-gate-warning">🔒 El jefe resiste con 1 HP. Necesitas ${smokeFreeMode ? 'confirmar sin fumar' : controlledMode ? 'cumplir' : 'cerrar dentro del límite'} ${bossState.requiredDays - bossState.completedDays} día${bossState.requiredDays - bossState.completedDays === 1 ? '' : 's'} más.</div>`
+          : (smokeFreeMode || controlledMode) && bossState.todayStatus === 'hit' && !bossState.won
           ? '<div class="boss-projection">✓ El golpe de hoy ya está registrado.</div>'
-          : smokeFreeMode && bossState.todayStatus === 'fail' && !bossState.won
+          : (smokeFreeMode || controlledMode) && bossState.todayStatus === 'fail' && !bossState.won
           ? '<div class="boss-projection">Hoy no causa daño al jefe.</div>'
           : !bossState.won
-          ? `<div class="boss-projection">${smokeFreeMode ? 'Si confirmas el día sin fumar' : 'Si cerraras el día así'}: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
+          ? `<div class="boss-projection">${smokeFreeMode ? 'Si confirmas el día sin fumar' : controlledMode ? 'Si cumples el objetivo de hoy' : 'Si cerraras el día así'}: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${
@@ -396,7 +405,7 @@ export function renderSkillsView({
 }) {
   if (!classId || !CLASSES[classId]) return;
   const classData = classDataForJourney(classId,{
-    smokeFree:isSmokeFreeMode(config),
+    smokeFree:usesSmokeFreeSkills(config),
   });
   const passiveHtml = classData.pas
     .map((ability) => {

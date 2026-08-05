@@ -87,6 +87,99 @@ describe('daño diario al jefe', () => {
 });
 
 describe('combate semanal', () => {
+  it('resuelve la semana anterior con su camino original tras una transición', () => {
+    const transitionedConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-07-24',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 3,
+        },
+      ],
+    };
+    const result = reconcileBossCombat({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 6, 24, 12),
+      config: transitionedConfig,
+      days: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'success' },
+        '2026-07-19': { sf: 'success' },
+        '2026-07-20': { sf: 'success' },
+        '2026-07-21': { sf: 'success' },
+        '2026-07-22': { sf: 'success' },
+      },
+    });
+
+    expect(result.weekResults[0].won).toBe(true);
+    expect(result.combat.defeated).toBe(1);
+    expect(result.combat.week).toBe(1);
+  });
+
+  it('combina confirmaciones y días permitidos en consumo controlado', () => {
+    const controlledConfig = {
+      ...config,
+      startDate: '2026-08-03',
+      journeyMode: 'controlled',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+    };
+    const days = {
+      '2026-08-03': { sf: 'success' },
+      '2026-08-04': { sf: 'success' },
+      '2026-08-05': { sf: 'success' },
+      '2026-08-06': { sf: 'success' },
+      '2026-08-07': { c: 1 },
+      '2026-08-08': { c: 1 },
+    };
+    const status = calculateBossCombatStatus({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 7, 9, 12),
+      config: controlledConfig,
+      days,
+    });
+
+    expect(status).toMatchObject({
+      won: true,
+      completedDays: 6,
+      controlledWeekUsed: 2,
+      controlledBudgetExceeded: false,
+    });
+  });
+
+  it('bloquea los días permitidos cuando se supera la bolsa semanal', () => {
+    const controlledConfig = {
+      ...config,
+      startDate: '2026-08-03',
+      journeyMode: 'controlled',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+    };
+    const status = calculateBossCombatStatus({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 7, 9, 12),
+      config: controlledConfig,
+      days: {
+        '2026-08-03': { sf: 'success' },
+        '2026-08-04': { sf: 'success' },
+        '2026-08-05': { sf: 'success' },
+        '2026-08-06': { sf: 'success' },
+        '2026-08-07': { c: 2 },
+        '2026-08-08': { c: 2 },
+      },
+    });
+
+    expect(status.controlledBudgetExceeded).toBe(true);
+    expect(status.completedDays).toBe(4);
+    expect(status.won).toBe(false);
+  });
+
   it('derrota al jefe con seis confirmaciones explícitas sin fumar', () => {
     const smokeFreeConfig = { ...config, journeyMode: 'smoke_free' };
     const status = calculateBossCombatStatus({

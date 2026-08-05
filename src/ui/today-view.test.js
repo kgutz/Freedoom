@@ -101,6 +101,33 @@ describe('modelo de Hoy', () => {
     });
   });
 
+  it('calcula el consumo semanal y distingue un día permitido', () => {
+    const model = createTodayModel({
+      now: new Date(2026, 7, 7, 20),
+      config: {
+        ...config,
+        startDate: '2026-08-03',
+        journeyMode: 'controlled',
+        controlledDays: [5, 6, 0],
+        controlledWeeklyLimit: 3,
+      },
+      days: {
+        '2026-08-07': { c: 1 },
+        '2026-08-08': { c: 1 },
+      },
+      game: null,
+      stats: null,
+      intoxication: null,
+    });
+
+    expect(model).toMatchObject({
+      controlledMode: true,
+      controlledAllowedToday: true,
+      controlledWeekUsed: 2,
+      controlledWeeklyLimit: 3,
+    });
+  });
+
   it('usa la fecha lógica y el despertar guardado para ese día', () => {
     const model = createTodayModel({
       now: new Date(2026, 6, 27, 1, 0),

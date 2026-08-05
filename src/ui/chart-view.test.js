@@ -7,6 +7,40 @@ const config = {
 };
 
 describe('modelo de gráficas', () => {
+  it('abre gráficas semanales con el camino histórico correcto', () => {
+    const transitionedConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-07-24',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 3,
+        },
+      ],
+    };
+    const oldWeek = createChartModel({
+      mode: 'semana',
+      weekIndex: 0,
+      month: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 25, 12),
+      config: transitionedConfig,
+      records: {},
+    });
+    const newWeek = createChartModel({
+      mode: 'semana',
+      weekIndex: 1,
+      month: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 25, 12),
+      config: transitionedConfig,
+      records: {},
+    });
+    expect(oldWeek.smokeFreeMode).toBe(true);
+    expect(newWeek.controlledMode).toBe(true);
+  });
+
   it('resume confirmados, fumados y pendientes sin usar cigarros', () => {
     const model = createChartModel({
       mode: 'semana',

@@ -6,7 +6,7 @@ import {
   keyOf,
   minutesOf,
 } from '../domain/date-utils.js';
-import { limitForWeek, weekIndexFor } from '../domain/plan-rules.js';
+import { limitForWeek, weekIndexFor, weekRangeFor } from '../domain/plan-rules.js';
 import {
   DEFAULT_DAY_START_TIME,
   logicalClockMinutes,
@@ -14,6 +14,10 @@ import {
 } from '../domain/day-boundary-rules.js';
 import {
   isSmokeFreeMode,
+  isControlledMode,
+  isControlledSmokingDay,
+  controlledDaysOf,
+  controlledWeeklyLimitOf,
   smokeFreeStatusOf,
 } from '../domain/journey-mode-rules.js';
 import { parseKey } from '../domain/date-utils.js';
@@ -148,7 +152,17 @@ export function createTodayModel({
   const today = keyOf(currentDate);
   const record = days[today] || EMPTY_DAY;
   const smokeFreeMode = isSmokeFreeMode(config);
+  const controlledMode = isControlledMode(config);
   const weekIndex = Math.max(0, weekIndexFor(config.startDate, currentDate));
+  const [weekStart, weekEnd] = weekRangeFor(config.startDate, weekIndex);
+  let controlledWeekUsed = 0;
+  for (
+    let date = new Date(weekStart);
+    date <= weekEnd;
+    date.setDate(date.getDate() + 1)
+  ) {
+    controlledWeekUsed += Math.max(0, days[keyOf(date)]?.c || 0);
+  }
   const limit = limitForWeek(config.startLimit, weekIndex);
   const abbreviatedDay = DAY_NAMES[currentDate.getDay()].slice(0, 3);
   const abbreviatedMonth = MONTH_NAMES[currentDate.getMonth()].slice(0, 3);
@@ -178,6 +192,11 @@ export function createTodayModel({
   return {
     dateLabel,
     smokeFreeMode,
+    controlledMode,
+    controlledAllowedToday: isControlledSmokingDay(config, currentDate),
+    controlledWeekUsed,
+    controlledWeeklyLimit: controlledWeeklyLimitOf(config),
+    controlledDays: controlledDaysOf(config),
     smokeFreeStatus: smokeFreeStatusOf(record),
     journeyDay: Math.max(
       1,
@@ -231,21 +250,39 @@ export function renderTodayView({
   document.getElementById('fechaHoy').textContent = model.dateLabel;
   document.getElementById('semanaNum').textContent = model.weekNumber;
   const maxLine = document.querySelector('.semana-tag .max-line');
-  if (maxLine) maxLine.style.display = model.smokeFreeMode ? 'none' : '';
-  document.getElementById('limiteDia').textContent = model.limit;
+  if (maxLine) {
+    maxLine.style.display = model.smokeFreeMode ? 'none' : '';
+    maxLine.innerHTML = model.controlledMode
+      ? `máx <b>${model.controlledWeeklyLimit}</b>/semana`
+      : `máx <b id="limiteDia">${model.limit}</b>/día`;
+  }
+  const limitElement = document.getElementById('limiteDia');
+  if (limitElement) limitElement.textContent = model.limit;
   const cigaretteCounter = document.getElementById('cigCounter');
   const reductionProgress = document.getElementById('reductionProgress');
   const smokeFreeCounter = document.getElementById('smokeFreeCounter');
+  const showDailyConfirmation =
+    model.smokeFreeMode ||
+    (model.controlledMode && !model.controlledAllowedToday);
   if (cigaretteCounter) {
-    cigaretteCounter.style.display = model.smokeFreeMode ? 'none' : '';
+    cigaretteCounter.style.display =
+      model.smokeFreeMode ||
+      (model.controlledMode && !model.controlledAllowedToday)
+        ? 'none'
+        : '';
+    const label = cigaretteCounter.querySelector('.pc-label');
+    if (label) label.textContent = model.controlledMode ? 'Porros hoy' : 'Cigarros hoy';
   }
   if (reductionProgress) {
-    reductionProgress.style.display = model.smokeFreeMode ? 'none' : '';
+    reductionProgress.style.display =
+      model.smokeFreeMode || model.controlledMode ? 'none' : '';
   }
   if (smokeFreeCounter) {
-    smokeFreeCounter.style.display = model.smokeFreeMode ? '' : 'none';
+    smokeFreeCounter.style.display = showDailyConfirmation ? '' : 'none';
     document.getElementById('smokeFreeJourneyDay').textContent =
-      `Día ${model.journeyDay} de tu camino`;
+      model.controlledMode
+        ? 'Hoy no es un día permitido'
+        : `Día ${model.journeyDay} de tu camino`;
     const statusCopy = {
       pending: ['Día en curso', 'Cuando termine tu día, registra cómo ha ido.'],
       success: ['Te mantuviste sin fumar', '✓ Este día ya golpea al jefe.'],
@@ -253,6 +290,14 @@ export function renderTodayView({
     }[model.smokeFreeStatus];
     document.getElementById('smokeFreeStatusTitle').textContent = statusCopy[0];
     document.getElementById('smokeFreeStatusNote').textContent = statusCopy[1];
+    const successButton = smokeFreeCounter.querySelector(
+      '[data-smoke-free-status="success"]',
+    );
+    if (successButton) {
+      successButton.textContent = model.controlledMode
+        ? '✓ Hoy no fumé'
+        : '✓ Me mantuve sin fumar';
+    }
     smokeFreeCounter.dataset.status = model.smokeFreeStatus;
     smokeFreeCounter.querySelectorAll('[data-smoke-free-status]').forEach(
       (button) => {
@@ -261,6 +306,23 @@ export function renderTodayView({
           button.dataset.smokeFreeStatus === model.smokeFreeStatus,
         );
       },
+    );
+  }
+  const controlledSummary = document.getElementById('controlledSummary');
+  if (controlledSummary) {
+    controlledSummary.style.display = model.controlledMode ? '' : 'none';
+    document.getElementById('controlledWeekUsed').textContent =
+      model.controlledWeekUsed;
+    document.getElementById('controlledWeekLimit').textContent =
+      model.controlledWeeklyLimit;
+    const dayNames = model.controlledDays
+      .map((day) => DAY_NAMES[day].toLowerCase())
+      .join(', ');
+    document.getElementById('controlledDaysLabel').textContent =
+      `Días permitidos: ${dayNames}`;
+    controlledSummary.classList.toggle(
+      'over',
+      model.controlledWeekUsed > model.controlledWeeklyLimit,
     );
   }
   document.getElementById('cigHoy').textContent = model.record.c;

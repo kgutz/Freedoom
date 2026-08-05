@@ -4,6 +4,7 @@ import {
   renderHeroView,
   spriteImage,
 } from './hero-view.js';
+import { BOSSES, BOSS_LORE } from '../data/game-data.js';
 
 const base = (overrides = {}) => ({
   now: new Date(2026, 6, 26, 12),
@@ -32,6 +33,11 @@ const base = (overrides = {}) => ({
 });
 
 describe('modelo de Héroe', () => {
+  it('incluye una sinopsis para cada jefe de la campaña', () => {
+    expect(BOSS_LORE).toHaveLength(BOSSES.length);
+    expect(BOSS_LORE.every((synopsis) => synopsis.length > 60)).toBe(true);
+  });
+
   it('muestra selección mientras no hay clase', () => {
     expect(createHeroModel(base({ game: { cls: null } }))).toEqual({
       selection: true,
@@ -156,6 +162,9 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1 / 20');
     expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');
     expect(bossHistoryBody.innerHTML).not.toContain('data-share-boss="1"');
+    expect(bossHistoryBody.innerHTML).toContain('data-open-boss-medal="0"');
+    expect(bossHistoryBody.innerHTML).toContain('data-open-boss-medal="1"');
+    expect(bossHistoryBody.innerHTML).not.toContain('data-open-boss-medal="2"');
     expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.png');
     expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.png');
     expect(bossHistoryBody.innerHTML).toContain('EN COMBATE');

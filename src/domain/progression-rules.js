@@ -10,7 +10,11 @@ import {
 } from './plan-rules.js';
 import {
   SMOKE_FREE_STATUS_SUCCESS,
+  controlledWeeklyLimitOf,
+  isControlledMode,
+  isControlledSmokingDay,
   isSmokeFreeMode,
+  journeyConfigForDate,
   journeyEvolutionUnlocked,
   smokeFreeStatusOf,
 } from './journey-mode-rules.js';
@@ -47,7 +51,21 @@ function calculateXpPass({
   let xp = (game?.bonusXp || 0) + habitXpTotal(habits);
   let streak = 0;
   let minimumCigarettes = null;
-  const smokeFreeMode = isSmokeFreeMode(config);
+  const controlledWeekWithinLimit=(date,dateConfig)=>{
+    const week=Math.max(0,weekIndexFor(config.startDate,date));
+    const [first,last]=weekRangeFor(config.startDate,week);
+    let used=0;
+    for(let cursor=new Date(first);cursor<=last;cursor.setDate(cursor.getDate()+1)){
+      if(isControlledSmokingDay(dateConfig,cursor)){
+        used+=Math.max(0,dayRecord(days,keyOf(cursor)).c||0);
+      }
+    }
+    return used<=controlledWeeklyLimitOf(dateConfig);
+  };
+  const controlledDaySuccess=(date,record,dateConfig)=>
+    isControlledSmokingDay(dateConfig,date)
+      ? controlledWeekWithinLimit(date,dateConfig)
+      : smokeFreeStatusOf(record)===SMOKE_FREE_STATUS_SUCCESS;
   const smokeFreeDayXp=(record,key)=>{
     let value=50;
     if(classId==='paladin'&&levelHint>=1){
@@ -82,9 +100,16 @@ function calculateXpPass({
       date,
     });
     const cigarettes = record.c;
+    const dateConfig=journeyConfigForDate(config,date);
+    const smokeFreeMode=isSmokeFreeMode(dateConfig);
+    const controlledMode=isControlledMode(dateConfig);
+    const disciplineMode=smokeFreeMode||controlledMode;
 
-    if (smokeFreeMode) {
-      if (smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS) {
+    if (disciplineMode) {
+      const completed=smokeFreeMode
+        ? smokeFreeStatusOf(record)===SMOKE_FREE_STATUS_SUCCESS
+        : controlledDaySuccess(date,record,dateConfig);
+      if (completed) {
         xp += smokeFreeDayXp(record,key);
         streak += 1;
         xp += smokeFreeStreakXp(streak);
@@ -124,8 +149,16 @@ function calculateXpPass({
   }
 
   const today = dayRecord(days, keyOf(now));
-  if (smokeFreeMode) {
-    if (smokeFreeStatusOf(today) === SMOKE_FREE_STATUS_SUCCESS) {
+  const todayConfig=journeyConfigForDate(config,now);
+  const smokeFreeMode=isSmokeFreeMode(todayConfig);
+  const controlledMode=isControlledMode(todayConfig);
+  const disciplineMode=smokeFreeMode||controlledMode;
+  if (disciplineMode) {
+    const todayCompleted=smokeFreeMode
+      ? smokeFreeStatusOf(today)===SMOKE_FREE_STATUS_SUCCESS
+      : !isControlledSmokingDay(todayConfig,now)&&
+        smokeFreeStatusOf(today)===SMOKE_FREE_STATUS_SUCCESS;
+    if (todayCompleted) {
       xp += smokeFreeDayXp(today,keyOf(now));
       streak += 1;
       xp += smokeFreeStreakXp(streak);
@@ -145,6 +178,10 @@ function calculateXpPass({
     for (let week = 0; week < currentWeek; week += 1) {
       const limit = limitForWeek(config.startLimit, week);
       const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
+      const weekConfig=journeyConfigForDate(config,firstDay);
+      const weekSmokeFree=isSmokeFreeMode(weekConfig);
+      const weekControlled=isControlledMode(weekConfig);
+      const weekDiscipline=weekSmokeFree||weekControlled;
       let hits = 0;
       for (
         let date = new Date(firstDay);
@@ -153,14 +190,16 @@ function calculateXpPass({
       ) {
         const record = dayRecord(days, keyOf(date));
         if (
-          smokeFreeMode
-            ? smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS
+          weekDiscipline
+            ? weekSmokeFree
+              ? smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS
+              : controlledDaySuccess(date,record,weekConfig)
             : record.c <= limit
         ) {
           hits += 1;
         }
       }
-      if (hits >= (smokeFreeMode ? 6 : 4)) {
+      if (hits >= (disciplineMode ? 6 : 4)) {
         xp += 200;
         bossesDown += 1;
       }

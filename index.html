@@ -39,6 +39,10 @@
         <b>Ya he dejado de fumar</b>
         <span>Registraré cada día si conseguí mantenerme sin fumar.</span>
       </button>
+      <button type="button" class="ob-mode-card" data-journey-mode="controlled">
+        <b>Quiero mantener un consumo controlado</b>
+        <span>Elegiré qué días puedo fumar y una cantidad máxima para toda la semana.</span>
+      </button>
     </div>
   </div>
   <div class="ob-step" id="ob3">
@@ -52,6 +56,25 @@
     <div class="ob-field" id="obLimitField">
       <label>Cigarros al día · primera semana</label>
       <input type="number" id="obLimit" min="1" max="99" value="20">
+    </div>
+    <div id="obControlledFields" style="display:none">
+      <div class="ob-field">
+        <label>¿Qué días puedes fumar?</label>
+        <div class="ob-weekdays" aria-label="Días permitidos para fumar">
+          <button type="button" data-controlled-day="1">L</button>
+          <button type="button" data-controlled-day="2">M</button>
+          <button type="button" data-controlled-day="3">X</button>
+          <button type="button" data-controlled-day="4">J</button>
+          <button type="button" data-controlled-day="5">V</button>
+          <button type="button" data-controlled-day="6">S</button>
+          <button type="button" data-controlled-day="0">D</button>
+        </div>
+      </div>
+      <div class="ob-field">
+        <label>¿Cuántos porros como máximo por semana?</label>
+        <input type="number" id="obControlledWeeklyLimit" min="1" max="99" value="3">
+        <p class="ob-note">Esta cantidad se comparte entre todos los días permitidos.</p>
+      </div>
     </div>
     <div class="ob-field">
       <label>¿Tomas pastillas?</label>
@@ -98,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v115</div>
+  <div class="ob-version" id="obVersion">v120</div>
 </div>
 
 <div id="loading" class="loading">
@@ -161,6 +184,14 @@
         <button type="button" class="smoked" data-smoke-free-status="smoked">Hoy fumé</button>
       </div>
       <button type="button" class="smoke-free-pending" data-smoke-free-status="pending">Dejar el día pendiente</button>
+    </div>
+
+    <div class="controlled-summary" id="controlledSummary" style="display:none">
+      <div>
+        <span>Consumo semanal</span>
+        <b><span id="controlledWeekUsed">0</span> / <span id="controlledWeekLimit">3</span></b>
+      </div>
+      <p id="controlledDaysLabel">Días permitidos: viernes, sábado y domingo</p>
     </div>
 
     <div class="card" id="reductionProgress">
@@ -288,6 +319,51 @@
         <label>Camino actual</label>
         <span class="set-static" id="settingsJourneyMode">Reducción progresiva</span>
       </div>
+      <div class="journey-change" id="journeyChangeBox" style="display:none">
+        <button type="button" class="journey-change-open" id="journeyChangeOpen">Cambiar a consumo controlado</button>
+        <div class="journey-change-form" id="journeyChangeForm" style="display:none">
+          <p>El cambio comenzará con tu próxima semana. Tu progreso anterior conservará sus reglas actuales.</p>
+          <label>Días en los que podrás fumar</label>
+          <div class="ob-weekdays settings-weekdays">
+            <button type="button" data-transition-controlled-day="1">L</button>
+            <button type="button" data-transition-controlled-day="2">M</button>
+            <button type="button" data-transition-controlled-day="3">X</button>
+            <button type="button" data-transition-controlled-day="4">J</button>
+            <button type="button" data-transition-controlled-day="5">V</button>
+            <button type="button" data-transition-controlled-day="6">S</button>
+            <button type="button" data-transition-controlled-day="0">D</button>
+          </div>
+          <label for="journeyTransitionLimit">Máximo compartido por semana</label>
+          <input type="number" id="journeyTransitionLimit" min="1" max="99" value="3">
+          <div class="journey-change-actions">
+            <button type="button" id="journeyChangeCancel">Cancelar</button>
+            <button type="button" class="primary" id="journeyChangeConfirm">Programar cambio</button>
+          </div>
+        </div>
+        <div class="journey-change-pending" id="journeyChangePending" style="display:none">
+          <b>Cambio programado</b>
+          <span id="journeyChangePendingText"></span>
+          <button type="button" id="journeyChangeUndo">Cancelar cambio</button>
+        </div>
+      </div>
+      <div id="settingsControlledFields" style="display:none">
+        <div class="set-row set-row-stack">
+          <label>Días permitidos</label>
+          <div class="ob-weekdays settings-weekdays">
+            <button type="button" data-settings-controlled-day="1">L</button>
+            <button type="button" data-settings-controlled-day="2">M</button>
+            <button type="button" data-settings-controlled-day="3">X</button>
+            <button type="button" data-settings-controlled-day="4">J</button>
+            <button type="button" data-settings-controlled-day="5">V</button>
+            <button type="button" data-settings-controlled-day="6">S</button>
+            <button type="button" data-settings-controlled-day="0">D</button>
+          </div>
+        </div>
+        <div class="set-row">
+          <label for="cfgControlledWeeklyLimit">Máximo semanal</label>
+          <input type="number" id="cfgControlledWeeklyLimit" min="1" max="99" style="width:80px">
+        </div>
+      </div>
       <div class="set-row">
         <label for="cfgDayStart">El día cambia a las</label>
         <input type="time" id="cfgDayStart">
@@ -324,7 +400,7 @@
       </div>
       <button class="mini-btn recovery-open" id="btnRecoveries" type="button">Copias de recuperación</button>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v115</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v120</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -338,9 +414,11 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">↟</span><span>Tu camino</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Freedoom tiene dos puntos de partida. Si estás dejando de fumar, reducirás progresivamente tu límite hasta llegar a cero. Si ya lo dejaste, cada día registrarás explícitamente si lograste mantenerte sin fumar.</p>
-          <p class="hint">Las cuatro clases adaptan sus habilidades al camino elegido. En reducción interactúan con el ritmo y los cigarros; en el camino sin fumar actúan sobre confirmaciones, rachas, hábitos, vida, maná y defensa semanal.</p>
-          <p class="hint">El héroe del camino de reducción evoluciona al completar todo su plan y dejar de fumar. Quien empieza ya sin fumar conserva la progresión inicial y evoluciona al derrotar al tercer jefe. Los hábitos y la XP no adelantan esta evolución.</p>
+          <p class="hint">Freedoom tiene tres puntos de partida. Puedes reducir progresivamente hasta llegar a cero, mantenerte completamente sin fumar o establecer un consumo controlado con días permitidos y un máximo semanal compartido.</p>
+          <p class="hint">En consumo controlado, los días permitidos muestran un contador de porros. En los demás debes confirmar si no fumaste. Superar el máximo semanal hace que los días permitidos de esa semana no cuenten como cumplidos.</p>
+          <p class="hint">Si comenzaste en el camino sin fumar y decides pasar a consumo controlado, puedes programarlo desde Ajustes. El cambio comienza con tu siguiente semana para no alterar el jefe actual, y los días anteriores conservan sus reglas originales.</p>
+          <p class="hint">Las cuatro clases adaptan sus habilidades al camino elegido. En reducción interactúan con el ritmo y los cigarros; los caminos sin fumar y controlado usan poderes centrados en confirmaciones, rachas, hábitos, vida, maná y defensa semanal.</p>
+          <p class="hint">El héroe del camino de reducción evoluciona al completar todo su plan y dejar de fumar. Quien empieza sin fumar o con consumo controlado evoluciona al derrotar al tercer jefe. Los hábitos y la XP no adelantan esta evolución.</p>
         </div>
       </details>
       <details class="faq-item">
@@ -352,7 +430,7 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🗓</span><span>El plan</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio. En reducción, el límite diario baja un cigarro cada semana hasta llegar a cero. En el camino sin fumar, cada semana es un combate nuevo basado en tus confirmaciones diarias. Las pastillas y las cervezas son opcionales y todos los datos se guardan en este dispositivo.</p>
+          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio. En reducción, el límite diario baja un cigarro cada semana. En el camino sin fumar, el combate depende de tus confirmaciones. En consumo controlado, se comprueba que respetes los días elegidos y el máximo semanal. Las pastillas y las cervezas son opcionales y los datos se guardan en este dispositivo.</p>
         </div>
       </details>
       <details class="faq-item">
@@ -393,7 +471,7 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">✦</span><span>Cómo ganar experiencia</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <div class="hint"><span class="faq-lead">Recompensas compartidas por ambos caminos:</span><ul class="faq-bullets"><li>Cumplir el día o confirmarlo sin fumar → <b style="color:var(--kodak)">50 XP</b></li><li>Completar las pastillas en un día cumplido → <b style="color:var(--kodak)">+10 XP</b></li><li>Completar hábitos → según su dificultad y frecuencia</li><li>Rachas de 7, 14 y 30 días → <b style="color:var(--kodak)">+75, +150 y +300 XP</b></li><li>Derrotar un jefe → <b style="color:var(--kodak)">+200 XP</b></li></ul></div>
+          <div class="hint"><span class="faq-lead">Recompensas compartidas por los tres caminos:</span><ul class="faq-bullets"><li>Cumplir el día, confirmarlo sin fumar o respetar el control establecido → <b style="color:var(--kodak)">50 XP</b></li><li>Completar las pastillas en un día cumplido → <b style="color:var(--kodak)">+10 XP</b></li><li>Completar hábitos → según su dificultad y frecuencia</li><li>Rachas de 7, 14 y 30 días → <b style="color:var(--kodak)">+75, +150 y +300 XP</b></li><li>Derrotar un jefe → <b style="color:var(--kodak)">+200 XP</b></li></ul></div>
           <div class="hint"><span class="faq-lead">Recompensas exclusivas del camino de reducción:</span><ul class="faq-bullets"><li>Margen bajo el límite → <b style="color:var(--kodak)">+4 XP</b> por cada cigarro no consumido</li><li>Terminar usando como máximo la mitad del límite → <b style="color:var(--kodak)">+10 XP</b></li><li>Conseguir un nuevo mínimo personal → <b style="color:var(--kodak)">+25 XP</b></li><li>Disparo perfecto → <b style="color:var(--kodak)">+2 XP</b> al momento</li></ul></div>
           <p class="hint">Algunas habilidades pueden mejorar o multiplicar estas recompensas. La XP aumenta el nivel, la vida y el maná, y desbloquea nuevas habilidades; no adelanta por sí sola la evolución visual del héroe.</p>
         </div>
@@ -401,9 +479,9 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💀</span><span>Jefes</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <div class="hint"><span class="faq-lead">Cada jefe tiene <b style="color:var(--warn)">150 HP</b>:</span><ul class="faq-bullets"><li>En reducción, cerrar dentro del límite causa <b style="color:var(--kodak)">−25 HP</b>; el margen, los perfectos y cerrar con cero pueden añadir daño.</li><li>En el camino sin fumar, cada día confirmado causa exactamente <b style="color:var(--kodak)">−25 HP</b>. Un día fumado o pendiente no causa daño.</li></ul></div>
+          <div class="hint"><span class="faq-lead">Cada jefe tiene <b style="color:var(--warn)">150 HP</b>:</span><ul class="faq-bullets"><li>En reducción, cerrar dentro del límite causa <b style="color:var(--kodak)">−25 HP</b>; el margen, los perfectos y cerrar con cero pueden añadir daño.</li><li>En el camino sin fumar, cada día confirmado causa exactamente <b style="color:var(--kodak)">−25 HP</b>.</li><li>En consumo controlado, confirmar un día no permitido o cerrar un día permitido sin superar el máximo semanal causa <b style="color:var(--kodak)">−25 HP</b>.</li></ul></div>
           <p class="hint">Las pastillas curan y restauran maná, pero no dañan al jefe. Las cervezas y las habilidades tampoco causan daño directo al jefe.</p>
-          <p class="hint">Para derrotarlo necesitas seis días cumplidos de siete: dentro del límite en reducción o confirmados sin fumar en el segundo camino. Si no lo derrotas esa semana, recupera toda su vida y volverás a enfrentarte al mismo jefe.</p>
+          <p class="hint">Para derrotarlo necesitas seis días cumplidos de siete: dentro del límite en reducción, confirmados sin fumar o respetando el consumo controlado. Si superas el máximo semanal, los días permitidos no rompen sellos. Si no derrotas al jefe, recupera toda su vida la semana siguiente.</p>
           <p class="hint">Si termina la semana con vida, continúas contra el mismo jefe, pero recupera sus <b style="color:var(--warn)">150 HP completos</b>. Además recibes el golpe semanal: pierdes un <b style="color:var(--warn)">30%</b> de tu vida máxima y tu maná baja al <b style="color:var(--warn)">20%</b> del suyo.</p>
         </div>
       </details>
@@ -441,6 +519,24 @@
   <div class="sheet">
     <div class="sheet-head sk-head-center"><h3>Jefes de la campaña</h3><button class="sheet-close" data-sheet="sheetBossHistory">✕</button></div>
     <div class="card" id="bossHistoryBody"></div>
+  </div>
+</div>
+
+<!-- FICHA AMPLIADA DEL MEDALLÓN -->
+<div class="sheet-bg" id="sheetBossMedal" style="z-index:29">
+  <div class="sheet boss-medal-detail-sheet">
+    <div class="sheet-head sk-head-center"><h3>Medallón de jefe</h3><button class="sheet-close" data-sheet="sheetBossMedal">✕</button></div>
+    <div class="boss-medal-detail" id="bossMedalDetail">
+      <div class="boss-medal-detail-art"><img id="bossMedalDetailImage" src="" alt=""></div>
+      <div class="boss-medal-detail-state" id="bossMedalDetailState"></div>
+      <h2 id="bossMedalDetailName"></h2>
+      <p id="bossMedalDetailLore"></p>
+      <p class="boss-medal-detail-lock" id="bossMedalDetailLock"></p>
+      <div class="boss-medal-detail-actions" id="bossMedalDetailActions">
+        <button type="button" id="bossMedalDownload">Descargar imagen</button>
+        <button type="button" id="bossMedalShare">Compartir</button>
+      </div>
+    </div>
   </div>
 </div>
 

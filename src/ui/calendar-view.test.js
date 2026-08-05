@@ -10,6 +10,41 @@ const config = {
 };
 
 describe('modelo del calendario', () => {
+  it('muestra cada fecha con el camino que tenía al registrarse', () => {
+    const transitionedConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-07-24',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 3,
+        },
+      ],
+    };
+    const model = createCalendarModel({
+      cursor: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 25, 12),
+      config: transitionedConfig,
+      days: {
+        '2026-07-23': { sf: 'success' },
+        '2026-07-24': { c: 1 },
+      },
+    });
+
+    expect(model.entries.find((entry) => entry.day === 23)).toMatchObject({
+      smokeFreeMode: true,
+      controlledMode: false,
+    });
+    expect(model.entries.find((entry) => entry.day === 24)).toMatchObject({
+      smokeFreeMode: false,
+      controlledMode: true,
+      controlledAllowed: true,
+    });
+  });
+
   it('representa los tres estados del camino sin fumar', () => {
     const model = createCalendarModel({
       cursor: new Date(2026, 6, 1),
@@ -54,6 +89,35 @@ describe('modelo del calendario', () => {
 });
 
 describe('modelo de semanas', () => {
+  it('conserva el tipo de cada semana después de cambiar de camino', () => {
+    const transitionedConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-07-24',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 3,
+        },
+      ],
+    };
+    const model = createWeeksModel({
+      now: new Date(2026, 6, 25, 12),
+      config: transitionedConfig,
+      days: {},
+    });
+    expect(model.weeks[0]).toMatchObject({
+      smokeFreeMode: true,
+      controlledMode: false,
+    });
+    expect(model.weeks[1]).toMatchObject({
+      smokeFreeMode: false,
+      controlledMode: true,
+    });
+  });
+
   it('resume totales y días superados sin contar fechas futuras', () => {
     const model = createWeeksModel({
       now: new Date(2026, 6, 26, 12),

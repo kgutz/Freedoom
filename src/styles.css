@@ -122,6 +122,13 @@
   .smoke-free-actions .smoked.active{background:var(--warn);border-color:var(--warn);color:#21100C}
   .smoke-free-pending{display:block;margin:10px auto 0;padding:6px 12px;background:none;border:0;color:var(--muted);font-weight:400}
   .smoke-free-counter[data-status="pending"] .smoke-free-pending{color:var(--kodak)}
+  .controlled-summary{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:13px 16px;margin:-4px 0 14px}
+  .controlled-summary>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .controlled-summary span{font-size:12px;color:var(--muted)}
+  .controlled-summary b{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--kodak)}
+  .controlled-summary p{font-size:10px;line-height:1.45;color:var(--muted);margin-top:5px}
+  .controlled-summary.over{border-color:rgba(196,85,62,.7)}
+  .controlled-summary.over b{color:var(--warn)}
   .beer-status{background:linear-gradient(135deg,#2A1D12,#18120D);border:1px solid #805A2E;
     border-radius:14px;padding:12px 14px;margin:0 0 14px;color:#D9B06C}
   .beer-status-top{display:flex;align-items:center;justify-content:space-between;
@@ -503,6 +510,21 @@
   .ob-mode-card b{display:block;font-size:16px;margin-bottom:6px;color:var(--kodak)}
   .ob-mode-card span{display:block;font-size:12px;line-height:1.55;color:var(--muted)}
   .ob-mode-card.active,.ob-mode-card:active{border-color:var(--kodak);background:#2A2218}
+  .ob-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;width:100%}
+  .ob-weekdays button{aspect-ratio:1;border-radius:50%;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font:600 12px 'IBM Plex Mono',monospace;cursor:pointer}
+  .ob-weekdays button.active{background:var(--kodak);border-color:var(--kodak);color:#1A140D;box-shadow:0 0 0 2px rgba(232,180,74,.12)}
+  .settings-weekdays{max-width:260px;margin-top:8px}
+  .journey-change{padding:4px 0 14px}
+  .journey-change-open,.journey-change-pending button{width:100%;border:1px solid var(--kodak);border-radius:999px;background:transparent;color:var(--kodak);padding:11px 14px;font:600 12px 'Sora',sans-serif;cursor:pointer}
+  .journey-change-form,.journey-change-pending{border:1px solid var(--line);border-radius:16px;background:var(--panel2);padding:14px}
+  .journey-change-form>p{font-size:11px;line-height:1.55;color:var(--muted);margin-bottom:14px}
+  .journey-change-form>label{display:block;font-size:11px;color:var(--muted);margin:13px 0 7px}
+  .journey-change-form>input{width:100%;box-sizing:border-box}
+  .journey-change-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;margin-top:15px}
+  .journey-change-actions button{border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);padding:10px 8px;font:600 11px 'Sora',sans-serif;cursor:pointer}
+  .journey-change-actions .primary{background:var(--kodak);border-color:var(--kodak);color:#1A140D}
+  .journey-change-pending b{display:block;font-size:12px;color:var(--kodak);margin-bottom:4px}
+  .journey-change-pending span{display:block;font-size:11px;line-height:1.5;color:var(--muted);margin-bottom:12px}
   .ob-field{width:100%;min-width:0;margin-bottom:20px}
   .ob-field>label{display:block;font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:600}
   .ob-field input{display:block;width:100%!important;max-width:100%!important;min-width:0!important;min-inline-size:0;overflow:hidden;background:var(--panel2);border:1px solid var(--line);color:var(--text);
@@ -747,9 +769,12 @@
   .boss-medals-head p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
   .boss-medals-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 9px}
   .boss-medal{text-align:center;min-width:0}
+  .boss-medal-open{display:block;width:100%;padding:0;border:0;background:transparent;color:inherit;font-family:inherit;cursor:pointer}
+  .boss-medal-open:focus-visible{outline:2px solid var(--kodak);outline-offset:3px;border-radius:10px}
+  .boss-medal-open:active .boss-medal-art{transform:scale(.96);border-color:var(--kodak)}
   .boss-medal-art{
     width:min(82px,100%);aspect-ratio:1;margin:0 auto 7px;border-radius:50%;overflow:hidden;
-    background:#0E0B09;border:2px solid #5F4727;box-shadow:0 3px 10px rgba(0,0,0,.35);
+    background:#0E0B09;border:2px solid #5F4727;box-shadow:0 3px 10px rgba(0,0,0,.35);transition:transform .16s,border-color .16s;
   }
   .sprite-box .sprite-svg{margin-bottom:0;top:1px}
   .boss-medal.won .boss-medal-art{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.14),0 4px 12px rgba(0,0,0,.4)}
@@ -764,6 +789,20 @@
     background:var(--panel2);color:var(--kodak);font:600 9px 'Sora',sans-serif;cursor:pointer;
   }
   .boss-medal-share:active{border-color:var(--kodak);background:rgba(232,180,74,.1)}
+  .boss-medal-detail-sheet{padding-bottom:calc(24px + var(--safe-bottom))}
+  .boss-medal-detail{text-align:center}
+  .boss-medal-detail-art{width:min(320px,100%);aspect-ratio:1;margin:0 auto 15px;border-radius:18px;overflow:hidden;background:#0E0B09;border:1px solid #5F4727;box-shadow:0 8px 28px rgba(0,0,0,.48)}
+  .boss-medal-detail-art img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+  .boss-medal-detail.in-combat .boss-medal-detail-art{opacity:.72;filter:saturate(.78)}
+  .boss-medal-detail-state{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.14em;color:var(--kodak);text-transform:uppercase}
+  .boss-medal-detail h2{margin:6px 0 9px;font-size:19px;color:var(--text)}
+  .boss-medal-detail>p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;text-align:left}
+  .boss-medal-detail-lock{margin-top:12px!important;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--kodak)!important;text-align:center!important}
+  .boss-medal-detail-lock:empty{display:none}
+  .boss-medal-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
+  .boss-medal-detail-actions button{min-height:42px;border-radius:10px;border:1px solid var(--kodak);background:var(--kodak);color:#241C0E;font:700 11px 'Sora',sans-serif;cursor:pointer}
+  .boss-medal-detail-actions button:last-child{background:transparent;color:var(--kodak)}
+  .boss-medal-detail-actions[hidden]{display:none}
   .boss-history-divider{height:1px;background:var(--line);margin:20px 0 16px}
   .boss-combat-head{margin-bottom:8px}
 

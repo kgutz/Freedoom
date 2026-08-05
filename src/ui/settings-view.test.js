@@ -26,6 +26,28 @@ describe('modelo de ajustes', () => {
       heroName: 'Kike',
       tracksBeer: false,
       smokeFreeMode: false,
+      controlledMode: false,
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+      pendingJourneyTransition: null,
+    });
+  });
+
+  it('expone los días y el máximo del consumo controlado', () => {
+    expect(
+      createSettingsModel({
+        config: {
+          journeyMode: 'controlled',
+          controlledDays: [5, 6],
+          controlledWeeklyLimit: 4,
+        },
+        game: {},
+      }),
+    ).toMatchObject({
+      controlledMode: true,
+      smokeFreeMode: false,
+      controlledDays: [5, 6],
+      controlledWeeklyLimit: 4,
     });
   });
 });

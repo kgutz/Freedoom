@@ -9,7 +9,11 @@ import {
   SMOKE_FREE_STATUS_SMOKED,
   SMOKE_FREE_STATUS_SUCCESS,
   bossCountForJourney,
+  controlledWeeklyLimitOf,
+  isControlledMode,
+  isControlledSmokingDay,
   isSmokeFreeMode,
+  journeyConfigForDate,
   smokeFreeStatusOf,
 } from './journey-mode-rules.js';
 
@@ -48,10 +52,27 @@ export function calculateDailyBossDamage({
   journeyMode,
   takesPills = true,
   pillsGoal = 3,
+  controlledAllowedDay = false,
+  controlledBudgetExceeded = false,
 }) {
   if (journeyMode === 'smoke_free') {
     const status = smokeFreeStatusOf(record);
     const completed = status === SMOKE_FREE_STATUS_SUCCESS;
+    const completion = settled && completed ? BOSS_DAY_DAMAGE : 0;
+    return {
+      completed,
+      completion,
+      margin: 0,
+      pills: 0,
+      perfect: 0,
+      zero: 0,
+      total: completion,
+    };
+  }
+  if (journeyMode === 'controlled') {
+    const completed = controlledAllowedDay
+      ? !controlledBudgetExceeded
+      : smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS;
     const completion = settled && completed ? BOSS_DAY_DAMAGE : 0;
     return {
       completed,
@@ -123,14 +144,31 @@ export function calculateWeekBossDamage({
   spellHits = [],
   settleAll = false,
 }) {
-  const smokeFreeMode = isSmokeFreeMode(config);
   const limit = limitForWeek(config.startLimit, week);
   const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
+  const weekConfig = journeyConfigForDate(config, firstDay);
+  const smokeFreeMode = isSmokeFreeMode(weekConfig);
+  const controlledMode = isControlledMode(weekConfig);
   const today = keyOf(now);
   const daily = [];
   const pips = [];
   let hits = 0;
   let fails = 0;
+  let controlledWeekUsed = 0;
+  if (controlledMode) {
+    for (
+      let date = new Date(firstDay);
+      date <= lastDay;
+      date.setDate(date.getDate() + 1)
+    ) {
+      if (isControlledSmokingDay(weekConfig, date)) {
+        controlledWeekUsed += Math.max(0, recordOf(days, keyOf(date)).c || 0);
+      }
+    }
+  }
+  const controlledWeeklyLimit = controlledWeeklyLimitOf(weekConfig);
+  const controlledBudgetExceeded =
+    controlledMode && controlledWeekUsed > controlledWeeklyLimit;
 
   for (
     let date = new Date(firstDay);
@@ -139,7 +177,8 @@ export function calculateWeekBossDamage({
   ) {
     const dayKey = keyOf(date);
     const explicitSmokeFreeResult =
-      smokeFreeMode &&
+      (smokeFreeMode ||
+        (controlledMode && !isControlledSmokingDay(weekConfig, date))) &&
       (smokeFreeStatusOf(recordOf(days, dayKey)) ===
         SMOKE_FREE_STATUS_SUCCESS ||
         smokeFreeStatusOf(recordOf(days, dayKey)) ===
@@ -153,15 +192,21 @@ export function calculateWeekBossDamage({
       record,
       limit,
       settled,
-      journeyMode: config.journeyMode,
+      journeyMode: weekConfig.journeyMode,
       takesPills: config.takesPills,
       pillsGoal: config.pillsGoal || 3,
+      controlledAllowedDay: isControlledSmokingDay(weekConfig, date),
+      controlledBudgetExceeded,
     });
 
     let status = 'pend';
     if (settled) status = damage.completed ? 'hit' : 'fail';
     else if (isToday) {
-      status = (record.c || 0) > limit ? 'fail' : 'today';
+      status = controlledBudgetExceeded
+        ? 'fail'
+        : (record.c || 0) > limit
+          ? 'fail'
+          : 'today';
     }
     if (status === 'hit') hits += 1;
     else if (status === 'fail') fails += 1;
@@ -193,6 +238,10 @@ export function calculateWeekBossDamage({
     dayDamage,
     spellDamage,
     total: dayDamage + spellDamage,
+    controlledMode,
+    controlledWeekUsed,
+    controlledWeeklyLimit,
+    controlledBudgetExceeded,
   };
 }
 
@@ -215,16 +264,20 @@ export function calculateBossCombatStatus({
     ? 0
     : Math.max(0, combat.hpAtWeekStart - weekDamage.total);
   const hasRequiredDays =
-    campaignComplete || weekDamage.hits >= BOSS_REQUIRED_DAYS;
+    campaignComplete ||
+    (weekDamage.hits >= BOSS_REQUIRED_DAYS &&
+      !weekDamage.controlledBudgetExceeded);
   const won = campaignComplete || (rawHp <= 0 && hasRequiredDays);
   const lockedByDays =
     !campaignComplete && rawHp <= 0 && !hasRequiredDays;
   const hp = lockedByDays ? 1 : rawHp;
   const identity = bossIdentity(combat.bossIndex, bossCount);
   const today = weekDamage.daily.find((day) => day.key === keyOf(now));
+  const controlledTodayAllowed = isControlledSmokingDay(config, now);
   const projectedToday = today
     ? calculateDailyBossDamage({
-        record: isSmokeFreeMode(config)
+        record: isSmokeFreeMode(config) ||
+          (isControlledMode(config) && !controlledTodayAllowed)
           ? { ...recordOf(days, today.key), sf: SMOKE_FREE_STATUS_SUCCESS }
           : recordOf(days, today.key),
         limit: weekDamage.limit,
@@ -232,6 +285,8 @@ export function calculateBossCombatStatus({
         journeyMode: config.journeyMode,
         takesPills: config.takesPills,
         pillsGoal: config.pillsGoal || 3,
+        controlledAllowedDay: controlledTodayAllowed,
+        controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
       })
     : calculateDailyBossDamage({
         record: isSmokeFreeMode(config)
@@ -240,6 +295,8 @@ export function calculateBossCombatStatus({
         limit: weekDamage.limit,
         settled: isSmokeFreeMode(config),
         journeyMode: config.journeyMode,
+        controlledAllowedDay: controlledTodayAllowed,
+        controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
       });
   const hpPercent = Math.max(
     0,
@@ -296,6 +353,9 @@ export function calculateBossCombatStatus({
     campaignComplete,
     history: combat.history || [],
     recentHits,
+    controlledWeekUsed: weekDamage.controlledWeekUsed,
+    controlledWeeklyLimit: weekDamage.controlledWeeklyLimit,
+    controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
   };
 }
 
@@ -361,7 +421,9 @@ export function reconcileBossCombat({
       next.hpAtWeekStart - damage.total,
     );
     const won =
-      rawRemainingHp <= 0 && damage.hits >= BOSS_REQUIRED_DAYS;
+      rawRemainingHp <= 0 &&
+      damage.hits >= BOSS_REQUIRED_DAYS &&
+      !damage.controlledBudgetExceeded;
     const remainingHp =
       rawRemainingHp <= 0 && !won ? 1 : rawRemainingHp;
 

@@ -51,6 +51,27 @@ describe('resultado del onboarding', () => {
     });
   });
 
+  it('crea un camino de consumo controlado con bolsa semanal', () => {
+    const result = createOnboardingResult({
+      startDate: '2026-08-03',
+      startLimit: '20',
+      takesPills: false,
+      tracksBeer: false,
+      classId: 'knight',
+      heroName: 'Bran',
+      journeyMode: 'controlled',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: '3',
+    });
+
+    expect(result.config).toMatchObject({
+      journeyMode: 'controlled',
+      startLimit: 21,
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+    });
+  });
+
   it('desactiva la meta de pastillas y usa nombres predeterminados seguros', () => {
     const result = createOnboardingResult({
       startDate: '2026-07-26',

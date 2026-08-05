@@ -12,6 +12,37 @@ const config = {
 };
 
 describe('progreso completo', () => {
+  it('mantiene la XP anterior al cambiar de sin fumar a controlado', () => {
+    const transitionedConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-07-24',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 3,
+        },
+      ],
+    };
+    const stats = calculateGameStats({
+      now: new Date(2026, 6, 25, 12),
+      config: transitionedConfig,
+      days: {
+        '2026-07-17': { sf: 'success' },
+        '2026-07-18': { sf: 'success' },
+        '2026-07-24': { c: 1 },
+      },
+      game: { cls: 'knight' },
+    });
+
+    expect(stats.xp).toBe(150);
+    expect(stats.streak).toBe(1);
+  });
+
   it('en modo sin fumar solo recompensa confirmaciones explícitas', () => {
     const smokeFreeConfig = { ...config, journeyMode: 'smoke_free' };
     const stats = calculateGameStats({
