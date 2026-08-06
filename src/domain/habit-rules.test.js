@@ -132,6 +132,41 @@ describe('hábitos', () => {
     expect(habitXpTotal(habitState)).toBe(25);
   });
 
+  it('permite hasta 35 XP semanales para todas las clases', () => {
+    const weeklyHard = {
+      ...habit,
+      id: 'weekly-hard',
+      difficulty: 'hard',
+      frequency: 'weekly',
+      target: 1,
+    };
+    const weeklyMedium = {
+      ...habit,
+      id: 'weekly-medium',
+      difficulty: 'medium',
+      frequency: 'weekly',
+      target: 1,
+    };
+    const first = adjustHabitProgress({
+      habitState: null,
+      habit: weeklyHard,
+      delta: 1,
+      date,
+      planStartDate: startDate,
+    });
+    const second = adjustHabitProgress({
+      habitState: first.habitState,
+      habit: weeklyMedium,
+      delta: 1,
+      date,
+      planStartDate: startDate,
+    });
+
+    expect(first.xpDelta).toBe(30);
+    expect(second.xpDelta).toBe(5);
+    expect(habitXpTotal(second.habitState)).toBe(35);
+  });
+
   it('aplica Ojo Certero sin superar el tope de XP del periodo',()=>{
     const focused=adjustHabitProgress({
       habitState:null,

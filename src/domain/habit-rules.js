@@ -2,7 +2,7 @@ import { keyOf } from './date-utils.js';
 import { weekIndexFor, weekRangeFor } from './plan-rules.js';
 
 export const HABIT_DAILY_XP_CAP = 25;
-export const HABIT_WEEKLY_XP_CAP = 30;
+export const HABIT_WEEKLY_XP_CAP = 35;
 
 export const HABIT_DIFFICULTIES = {
   easy: { label: 'Fácil', dailyXp: 3, weeklyXp: 9 },
