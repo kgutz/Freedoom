@@ -11,6 +11,7 @@ import {
   controlledDaysOf,
   controlledWeeklyLimitOf,
   isControlledSmokingDay,
+  journeyDayDate,
   journeyConfigForDate,
   journeyModeForDate,
   applyDueJourneyTransition,
@@ -39,6 +40,22 @@ describe('modos del viaje', () => {
     expect(controlledWeeklyLimitOf(config)).toBe(4);
     expect(isControlledSmokingDay(config, new Date(2026, 7, 7))).toBe(true);
     expect(isControlledSmokingDay(config, new Date(2026, 7, 6))).toBe(false);
+  });
+
+  it('cambia los días controlados a medianoche aunque el corte general sea a las 04:00', () => {
+    const controlled = {
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      controlledDays: [5, 6, 0],
+      dayStartTime: '04:00',
+    };
+    const reduction = {
+      journeyMode: JOURNEY_MODE_REDUCTION,
+      dayStartTime: '04:00',
+    };
+
+    const fridayAtOne = new Date(2026, 7, 7, 1, 0);
+    expect(journeyDayDate(controlled, fridayAtOne).getDay()).toBe(5);
+    expect(journeyDayDate(reduction, fridayAtOne).getDay()).toBe(4);
   });
 
   it('conserva el camino histórico antes de una transición', () => {

@@ -26,6 +26,7 @@ import {
   isControlledSmokingDay,
   isSmokeFreeMode,
   journeyConfigForDate,
+  journeyDayDate,
   applyDueJourneyTransition,
   scheduleControlledJourneyTransition,
   journeyEvolutionUnlocked,
@@ -87,8 +88,6 @@ import { showToast as renderToast } from './ui/toast.js';
 import {
   DEFAULT_DAY_START_TIME,
   dayStartMinutes,
-  logicalDayDate,
-  logicalDayKey,
   timeLabel,
   timestampForLogicalDayTime
 } from './domain/day-boundary-rules.js';
@@ -101,7 +100,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='121';
+const APP_VERSION='122';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -162,10 +161,10 @@ function playReturnSplash(){
 
 /* ---------- utilidades de fecha ---------- */
 function currentDayDate(now=new Date()){
-  return logicalDayDate(now,state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+  return journeyDayDate(state.config,now);
 }
 function todayKey(now=new Date()){
-  return logicalDayKey(now,state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+  return keyOf(currentDayDate(now));
 }
 function wakeTimeForDay(key=todayKey()){
   return (state.days[key]&&state.days[key].w)||state.config.wakeTime||'09:00';
@@ -2067,8 +2066,8 @@ bindBackupControls({
   showToast
 });
 
-/* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo
-   y resetea todo al alcanzar la hora configurable de cambio de día */
+/* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo y
+   cambia de día a medianoche en controlado o a la hora configurada en los demás caminos */
 let lastDay=todayKey();
 function checkDay(){
   if(todayKey()!==lastDay){lastDay=todayKey();renderAll();showPendingWeekResult();}

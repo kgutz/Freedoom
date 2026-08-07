@@ -1,5 +1,9 @@
 import { bossCountForPlan } from './plan-rules.js';
 import { keyOf } from './date-utils.js';
+import {
+  DEFAULT_DAY_START_TIME,
+  logicalDayDate,
+} from './day-boundary-rules.js';
 
 export const JOURNEY_MODE_REDUCTION = 'reduction';
 export const JOURNEY_MODE_SMOKE_FREE = 'smoke_free';
@@ -50,6 +54,28 @@ export function controlledWeeklyLimitOf(config) {
 
 export function isControlledSmokingDay(config, date) {
   return isControlledMode(config) && controlledDaysOf(config).includes(date.getDay());
+}
+
+export function journeyDayDate(config, now = new Date()) {
+  const calendarDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+  const pending = config?.pendingJourneyTransition;
+  const pendingControlled =
+    normalizeJourneyMode(pending?.journeyMode) === JOURNEY_MODE_CONTROLLED &&
+    pending?.effectiveDate &&
+    pending.effectiveDate <= keyOf(calendarDate);
+  const controlled =
+    pendingControlled ||
+    journeyModeForDate(config, calendarDate) === JOURNEY_MODE_CONTROLLED;
+
+  if (controlled) return calendarDate;
+  return logicalDayDate(
+    now,
+    config?.dayStartTime || DEFAULT_DAY_START_TIME,
+  );
 }
 
 export function journeyModeForDate(config, date) {
