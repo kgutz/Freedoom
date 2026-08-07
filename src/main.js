@@ -100,7 +100,7 @@ import {
   parseKey
 } from './domain/date-utils.js';
 
-const APP_VERSION='122';
+const APP_VERSION='124';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const RETURN_SPLASH_LOGO_MS=1200;
 const RETURN_SPLASH_FADE_MS=400;
@@ -189,7 +189,10 @@ function controlledWeekUsage(date=currentDayDate()){
   const [first,last]=weekRange(week);
   let used=0;
   for(let cursor=new Date(first);cursor<=last;cursor.setDate(cursor.getDate()+1)){
-    used+=Math.max(0,getDay(keyOf(cursor)).c||0);
+    const cursorConfig=journeyConfigForDate(state.config,cursor);
+    if(isControlledSmokingDay(cursorConfig,cursor)){
+      used+=Math.max(0,getDay(keyOf(cursor)).c||0);
+    }
   }
   return used;
 }
@@ -202,7 +205,7 @@ function controlledDayCompleted(key){
   }
   return controlledWeekUsage(date)<=controlledWeeklyLimitOf(dateConfig);
 }
-function applyPendingJourneyTransition(date=currentDayDate()){
+function applyPendingJourneyTransition(date=new Date()){
   const result=applyDueJourneyTransition(state.config,date);
   if(!result.applied) return false;
   state.config=result.config;
@@ -450,7 +453,8 @@ function renderWeeks(){
     document,
     now:currentDayDate(),
     config:state.config,
-    days:state.days
+    days:state.days,
+    onWeekClick:openWeekChart
   });
 }
 
@@ -1309,17 +1313,16 @@ document.getElementById('journeyChangeConfirm').addEventListener('click',()=>{
     button=>Number(button.dataset.transitionControlledDay)
   );
   const limit=Math.max(1,parseInt(document.getElementById('journeyTransitionLimit').value,10)||3);
-  const nextWeek=Math.max(0,weekIndexOf(currentDayDate()))+1;
-  const [effectiveDate]=weekRange(nextWeek);
+  const effectiveDate=keyOf(new Date());
   state.config=scheduleControlledJourneyTransition({
     config:state.config,
-    effectiveDate:keyOf(effectiveDate),
+    effectiveDate,
     controlledDays:days,
     controlledWeeklyLimit:limit
   });
-  scheduleSave({type:'journey:transition-scheduled',effectiveDate:keyOf(effectiveDate)});
+  scheduleSave({type:'journey:transition-scheduled',effectiveDate});
   renderAll();
-  showToast('Cambio programado para tu próxima semana','heal');
+  showToast('Consumo controlado activado desde hoy','heal');
 });
 document.getElementById('journeyChangeUndo').addEventListener('click',()=>{
   delete state.config.pendingJourneyTransition;
@@ -1394,7 +1397,7 @@ function switchView(viewId,buttonId){
 }
 
 /* controles de la gráfica */
-function showHistoryPanel(panel){
+function showHistoryPanel(panel,weekIndex=null){
   const calendar=panel==='calendar';
   document.getElementById('calendarPanel').style.display=calendar?'block':'none';
   document.getElementById('chartPanel').style.display=calendar?'none':'block';
@@ -1403,10 +1406,19 @@ function showHistoryPanel(panel){
   document.getElementById('historyCalTab').setAttribute('aria-selected',String(calendar));
   document.getElementById('historyGrafTab').setAttribute('aria-selected',String(!calendar));
   if(!calendar){
-    grafWeek=Math.max(0,weekIndexOf(currentDayDate()));
+    grafWeek=Number.isInteger(weekIndex)
+      ? Math.max(0,weekIndex)
+      : Math.max(0,weekIndexOf(currentDayDate()));
     grafMonth=currentDayDate();
     renderGraf();
   }
+}
+function openWeekChart(weekIndex){
+  grafMode='semana';
+  document.getElementById('segSem').classList.add('active');
+  document.getElementById('segMes').classList.remove('active');
+  showHistoryPanel('chart',weekIndex);
+  document.querySelector('.history-tabs')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 document.getElementById('historyCalTab').addEventListener('click',()=>showHistoryPanel('calendar'));
 document.getElementById('historyGrafTab').addEventListener('click',()=>showHistoryPanel('chart'));

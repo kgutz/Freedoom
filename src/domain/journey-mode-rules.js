@@ -160,9 +160,14 @@ export function scheduleControlledJourneyTransition({
 export function applyDueJourneyTransition(config, date) {
   const pending = config?.pendingJourneyTransition;
   const dateKey = typeof date === 'string' ? date : keyOf(date);
-  if (!pending || pending.effectiveDate > dateKey) {
+  if (!pending) {
     return { config, applied: false };
   }
+  const effectiveDate =
+    normalizeJourneyMode(pending.journeyMode) === JOURNEY_MODE_CONTROLLED
+      ? [pending.effectiveDate, dateKey].filter(Boolean).sort()[0]
+      : pending.effectiveDate;
+  if (effectiveDate > dateKey) return { config, applied: false };
   const nextConfig = {
     ...config,
     journeyOriginMode:
@@ -171,7 +176,7 @@ export function applyDueJourneyTransition(config, date) {
     journeyTransitions: [
       ...(config.journeyTransitions || []),
       {
-        effectiveDate: pending.effectiveDate,
+        effectiveDate,
         journeyMode: pending.journeyMode,
         controlledDays: [...pending.controlledDays],
         controlledWeeklyLimit: pending.controlledWeeklyLimit,

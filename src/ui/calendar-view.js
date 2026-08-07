@@ -32,7 +32,8 @@ function controlledWeekUsage(config, days, date) {
     cursor <= lastDay;
     cursor.setDate(cursor.getDate() + 1)
   ) {
-    if (isControlledSmokingDay(config, cursor)) {
+    const cursorConfig = journeyConfigForDate(config, cursor);
+    if (isControlledSmokingDay(cursorConfig, cursor)) {
       used += Math.max(0, days[keyOf(cursor)]?.c || 0);
     }
   }
@@ -59,7 +60,7 @@ export function createCalendarModel({ cursor, now, config, days }) {
     const entryControlledMode = isControlledMode(dateConfig);
     const controlledAllowed = isControlledSmokingDay(dateConfig, date);
     const controlledWeekUsed = entryControlledMode
-      ? controlledWeekUsage(dateConfig, days, date)
+      ? controlledWeekUsage(config, days, date)
       : 0;
     const controlledBudgetExceeded =
       controlledWeekUsed > controlledWeeklyLimitOf(dateConfig);
@@ -104,9 +105,9 @@ export function createWeeksModel({ now, config, days }) {
 
   for (let week = 0; week <= currentWeek; week += 1) {
     const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
-    const weekConfig = journeyConfigForDate(config, firstDay);
-    const weekSmokeFreeMode = isSmokeFreeMode(weekConfig);
-    const weekControlledMode = isControlledMode(weekConfig);
+    let weekSmokeFreeMode = false;
+    let weekControlledMode = false;
+    let controlledWeekConfig = config;
     const limit = limitForWeek(config.startLimit, week);
     let total = 0;
     let daysOverLimit = 0;
@@ -115,6 +116,7 @@ export function createWeeksModel({ now, config, days }) {
     let pendingDays = 0;
     let controlledAllowedDays = 0;
     let controlledConfirmedDays = 0;
+    let controlledWeekUsed = 0;
 
     for (
       let date = new Date(firstDay);
@@ -123,17 +125,28 @@ export function createWeeksModel({ now, config, days }) {
     ) {
       if (daysBetween(now, date) > 0) break;
       const record = days[keyOf(date)] || EMPTY_DAY;
+      const dateConfig = journeyConfigForDate(config, date);
+      const daySmokeFreeMode = isSmokeFreeMode(dateConfig);
+      const dayControlledMode = isControlledMode(dateConfig);
+      if (daySmokeFreeMode) weekSmokeFreeMode = true;
+      if (dayControlledMode) {
+        weekControlledMode = true;
+        controlledWeekConfig = dateConfig;
+      }
       const cigarettes = record.c || 0;
       total += cigarettes;
       if (cigarettes > limit) daysOverLimit += 1;
-      if (weekSmokeFreeMode) {
+      if (daySmokeFreeMode) {
         const smokeFreeStatus = smokeFreeStatusOf(record);
         if (smokeFreeStatus === SMOKE_FREE_STATUS_SUCCESS) smokeFreeDays += 1;
         else if (smokeFreeStatus === SMOKE_FREE_STATUS_SMOKED) smokedDays += 1;
         else pendingDays += 1;
       }
-      if (weekControlledMode) {
-        if (isControlledSmokingDay(weekConfig, date)) controlledAllowedDays += 1;
+      if (dayControlledMode) {
+        if (isControlledSmokingDay(dateConfig, date)) {
+          controlledAllowedDays += 1;
+          controlledWeekUsed += cigarettes;
+        }
         else {
           const status = smokeFreeStatusOf(record);
           if (status === SMOKE_FREE_STATUS_SUCCESS) controlledConfirmedDays += 1;
@@ -143,11 +156,11 @@ export function createWeeksModel({ now, config, days }) {
       }
     }
 
-    const controlledWeeklyLimit = controlledWeeklyLimitOf(weekConfig);
+    const controlledWeeklyLimit = controlledWeeklyLimitOf(controlledWeekConfig);
     const controlledBudgetExceeded =
-      weekControlledMode && total > controlledWeeklyLimit;
+      weekControlledMode && controlledWeekUsed > controlledWeeklyLimit;
     const controlledCompliantDays = weekControlledMode
-      ? controlledConfirmedDays +
+      ? smokeFreeDays + controlledConfirmedDays +
         (controlledBudgetExceeded ? 0 : controlledAllowedDays)
       : 0;
 
@@ -180,6 +193,7 @@ export function createWeeksModel({ now, config, days }) {
     }
 
     weeks.push({
+      index: week,
       number: week + 1,
       limit,
       firstDay,
@@ -192,9 +206,10 @@ export function createWeeksModel({ now, config, days }) {
       smokedDays,
       pendingDays,
       controlledCompliantDays,
+      controlledWeekUsed,
       controlledWeeklyLimit,
       controlledBudgetExceeded,
-      smokeFreeMode: weekSmokeFreeMode,
+      smokeFreeMode: weekSmokeFreeMode && !weekControlledMode,
       controlledMode: weekControlledMode,
     });
   }
@@ -270,7 +285,7 @@ export function renderCalendarView({
   });
 }
 
-export function renderWeeksView({ document, now, config, days }) {
+export function renderWeeksView({ document, now, config, days, onWeekClick }) {
   const model = createWeeksModel({ now, config, days });
   const list = document.getElementById('weekList');
   list.innerHTML = '';
@@ -278,16 +293,23 @@ export function renderWeeksView({ document, now, config, days }) {
     `${date.getDate()} ${MONTH_NAMES[date.getMonth()].slice(0, 3)}`;
 
   model.weeks.forEach((week) => {
-    const row = document.createElement('div');
+    const row = document.createElement('button');
+    row.type = 'button';
     row.className = 'wk-row';
+    row.dataset.weekIndex = String(week.index);
+    row.setAttribute(
+      'aria-label',
+      `Abrir la gráfica de la semana ${week.number}`,
+    );
     row.innerHTML = week.controlledMode
       ? `<div>Semana ${week.number} · máx ${week.controlledWeeklyLimit}/semana<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
-        <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.total} consumidos · ${week.controlledCompliantDays} días cumplidos</span></div>`
+        <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.controlledWeekUsed} consumidos · ${week.controlledCompliantDays} días cumplidos</span></div>`
       : week.smokeFreeMode
       ? `<div>Semana ${week.number}<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
         <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.smokeFreeDays} sin fumar · ${week.smokedDays} fumado · ${week.pendingDays} pendiente</span></div>`
       : `<div>Semana ${week.number} · máx ${week.limit}/día<span class="rng">${formatDate(week.firstDay)} – ${formatDate(week.lastDay)}</span></div>
         <div class="stat ${week.statusClass}">${week.status}<span class="sub">${week.total} en total</span></div>`;
+    row.addEventListener('click', () => onWeekClick?.(week.index));
     list.appendChild(row);
   });
 

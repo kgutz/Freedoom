@@ -84,15 +84,14 @@ describe('modos del viaje', () => {
     });
   });
 
-  it('programa y aplica el cambio solo al llegar la fecha efectiva', () => {
+  it('activa inmediatamente el consumo controlado aunque estuviera programado para otra semana', () => {
     const scheduled = scheduleControlledJourneyTransition({
       config: { journeyMode: JOURNEY_MODE_SMOKE_FREE },
       effectiveDate: '2026-08-10',
       controlledDays: [5, 6, 0],
       controlledWeeklyLimit: 3,
     });
-    expect(applyDueJourneyTransition(scheduled, '2026-08-09').applied).toBe(false);
-    const applied = applyDueJourneyTransition(scheduled, '2026-08-10');
+    const applied = applyDueJourneyTransition(scheduled, '2026-08-09');
     expect(applied.applied).toBe(true);
     expect(applied.config).toMatchObject({
       journeyMode: JOURNEY_MODE_CONTROLLED,
@@ -100,9 +99,10 @@ describe('modos del viaje', () => {
       controlledDays: [5, 6, 0],
       controlledWeeklyLimit: 3,
     });
+    expect(applied.config.journeyTransitions[0].effectiveDate).toBe('2026-08-09');
     expect(applied.config.pendingJourneyTransition).toBeUndefined();
     expect(journeyModeForDate(applied.config, '2026-08-09')).toBe(
-      JOURNEY_MODE_SMOKE_FREE,
+      JOURNEY_MODE_CONTROLLED,
     );
   });
 

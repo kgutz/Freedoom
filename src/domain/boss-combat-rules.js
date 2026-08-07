@@ -146,27 +146,30 @@ export function calculateWeekBossDamage({
 }) {
   const limit = limitForWeek(config.startLimit, week);
   const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
-  const weekConfig = journeyConfigForDate(config, firstDay);
-  const smokeFreeMode = isSmokeFreeMode(weekConfig);
-  const controlledMode = isControlledMode(weekConfig);
   const today = keyOf(now);
   const daily = [];
   const pips = [];
   let hits = 0;
   let fails = 0;
   let controlledWeekUsed = 0;
-  if (controlledMode) {
-    for (
-      let date = new Date(firstDay);
-      date <= lastDay;
-      date.setDate(date.getDate() + 1)
-    ) {
-      if (isControlledSmokingDay(weekConfig, date)) {
+  let controlledMode = false;
+  let smokeFreeMode = false;
+  let controlledWeeklyLimit = controlledWeeklyLimitOf(config);
+  for (
+    let date = new Date(firstDay);
+    date <= lastDay;
+    date.setDate(date.getDate() + 1)
+  ) {
+    const dateConfig = journeyConfigForDate(config, date);
+    if (isSmokeFreeMode(dateConfig)) smokeFreeMode = true;
+    if (isControlledMode(dateConfig)) {
+      controlledMode = true;
+      controlledWeeklyLimit = controlledWeeklyLimitOf(dateConfig);
+      if (isControlledSmokingDay(dateConfig, date)) {
         controlledWeekUsed += Math.max(0, recordOf(days, keyOf(date)).c || 0);
       }
     }
   }
-  const controlledWeeklyLimit = controlledWeeklyLimitOf(weekConfig);
   const controlledBudgetExceeded =
     controlledMode && controlledWeekUsed > controlledWeeklyLimit;
 
@@ -176,9 +179,13 @@ export function calculateWeekBossDamage({
     date.setDate(date.getDate() + 1)
   ) {
     const dayKey = keyOf(date);
+    const dateConfig = journeyConfigForDate(config, date);
+    const daySmokeFreeMode = isSmokeFreeMode(dateConfig);
+    const dayControlledMode = isControlledMode(dateConfig);
+    const controlledAllowedDay =
+      dayControlledMode && isControlledSmokingDay(dateConfig, date);
     const explicitSmokeFreeResult =
-      (smokeFreeMode ||
-        (controlledMode && !isControlledSmokingDay(weekConfig, date))) &&
+      (daySmokeFreeMode || (dayControlledMode && !controlledAllowedDay)) &&
       (smokeFreeStatusOf(recordOf(days, dayKey)) ===
         SMOKE_FREE_STATUS_SUCCESS ||
         smokeFreeStatusOf(recordOf(days, dayKey)) ===
@@ -192,17 +199,17 @@ export function calculateWeekBossDamage({
       record,
       limit,
       settled,
-      journeyMode: weekConfig.journeyMode,
+      journeyMode: dateConfig.journeyMode,
       takesPills: config.takesPills,
       pillsGoal: config.pillsGoal || 3,
-      controlledAllowedDay: isControlledSmokingDay(weekConfig, date),
+      controlledAllowedDay,
       controlledBudgetExceeded,
     });
 
     let status = 'pend';
     if (settled) status = damage.completed ? 'hit' : 'fail';
     else if (isToday) {
-      status = controlledBudgetExceeded
+      status = dayControlledMode && controlledBudgetExceeded
         ? 'fail'
         : (record.c || 0) > limit
           ? 'fail'
@@ -239,6 +246,7 @@ export function calculateWeekBossDamage({
     spellDamage,
     total: dayDamage + spellDamage,
     controlledMode,
+    smokeFreeMode,
     controlledWeekUsed,
     controlledWeeklyLimit,
     controlledBudgetExceeded,
@@ -273,28 +281,29 @@ export function calculateBossCombatStatus({
   const hp = lockedByDays ? 1 : rawHp;
   const identity = bossIdentity(combat.bossIndex, bossCount);
   const today = weekDamage.daily.find((day) => day.key === keyOf(now));
-  const controlledTodayAllowed = isControlledSmokingDay(config, now);
+  const todayConfig = journeyConfigForDate(config, now);
+  const controlledTodayAllowed = isControlledSmokingDay(todayConfig, now);
   const projectedToday = today
     ? calculateDailyBossDamage({
-        record: isSmokeFreeMode(config) ||
-          (isControlledMode(config) && !controlledTodayAllowed)
+        record: isSmokeFreeMode(todayConfig) ||
+          (isControlledMode(todayConfig) && !controlledTodayAllowed)
           ? { ...recordOf(days, today.key), sf: SMOKE_FREE_STATUS_SUCCESS }
           : recordOf(days, today.key),
         limit: weekDamage.limit,
         settled: true,
-        journeyMode: config.journeyMode,
+        journeyMode: todayConfig.journeyMode,
         takesPills: config.takesPills,
         pillsGoal: config.pillsGoal || 3,
         controlledAllowedDay: controlledTodayAllowed,
         controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
       })
     : calculateDailyBossDamage({
-        record: isSmokeFreeMode(config)
+        record: isSmokeFreeMode(todayConfig)
           ? { sf: SMOKE_FREE_STATUS_SUCCESS }
           : EMPTY_DAY,
         limit: weekDamage.limit,
-        settled: isSmokeFreeMode(config),
-        journeyMode: config.journeyMode,
+        settled: isSmokeFreeMode(todayConfig),
+        journeyMode: todayConfig.journeyMode,
         controlledAllowedDay: controlledTodayAllowed,
         controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
       });

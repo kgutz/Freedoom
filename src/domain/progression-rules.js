@@ -178,10 +178,7 @@ function calculateXpPass({
     for (let week = 0; week < currentWeek; week += 1) {
       const limit = limitForWeek(config.startLimit, week);
       const [firstDay, lastDay] = weekRangeFor(config.startDate, week);
-      const weekConfig=journeyConfigForDate(config,firstDay);
-      const weekSmokeFree=isSmokeFreeMode(weekConfig);
-      const weekControlled=isControlledMode(weekConfig);
-      const weekDiscipline=weekSmokeFree||weekControlled;
+      let weekDiscipline=false;
       let hits = 0;
       for (
         let date = new Date(firstDay);
@@ -189,17 +186,21 @@ function calculateXpPass({
         date.setDate(date.getDate() + 1)
       ) {
         const record = dayRecord(days, keyOf(date));
+        const dateConfig=journeyConfigForDate(config,date);
+        const weekSmokeFree=isSmokeFreeMode(dateConfig);
+        const weekControlled=isControlledMode(dateConfig);
+        if(weekSmokeFree||weekControlled) weekDiscipline=true;
         if (
-          weekDiscipline
+          weekSmokeFree||weekControlled
             ? weekSmokeFree
               ? smokeFreeStatusOf(record) === SMOKE_FREE_STATUS_SUCCESS
-              : controlledDaySuccess(date,record,weekConfig)
+              : controlledDaySuccess(date,record,dateConfig)
             : record.c <= limit
         ) {
           hits += 1;
         }
       }
-      if (hits >= (disciplineMode ? 6 : 4)) {
+      if (hits >= (weekDiscipline ? 6 : 4)) {
         xp += 200;
         bossesDown += 1;
       }

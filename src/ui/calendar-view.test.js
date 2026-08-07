@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createCalendarModel,
   createWeeksModel,
+  renderWeeksView,
 } from './calendar-view.js';
 
 const config = {
@@ -118,6 +119,45 @@ describe('modelo de semanas', () => {
     });
   });
 
+  it('combina correctamente una semana cuyo camino cambia hoy', () => {
+    const mixedConfig = {
+      ...config,
+      startDate: '2026-08-02',
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 5,
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-08-08',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 5,
+        },
+      ],
+    };
+    const model = createWeeksModel({
+      now: new Date(2026, 7, 8, 20),
+      config: mixedConfig,
+      days: {
+        '2026-08-03': { sf: 'success' },
+        '2026-08-04': { sf: 'success' },
+        '2026-08-05': { sf: 'success' },
+        '2026-08-06': { sf: 'success' },
+        '2026-08-07': { sf: 'success' },
+        '2026-08-08': { c: 1 },
+      },
+    });
+
+    expect(model.weeks[0]).toMatchObject({
+      controlledMode: true,
+      smokeFreeMode: false,
+      controlledCompliantDays: 6,
+      controlledWeekUsed: 1,
+      controlledBudgetExceeded: false,
+    });
+  });
+
   it('resume totales y días superados sin contar fechas futuras', () => {
     const model = createWeeksModel({
       now: new Date(2026, 6, 26, 12),
@@ -137,9 +177,43 @@ describe('modelo de semanas', () => {
       statusClass: 'bad',
     });
     expect(model.weeks[1]).toMatchObject({
+      index: 1,
       total: 30,
       daysOverLimit: 1,
       statusClass: 'curr',
     });
+  });
+
+  it('abre directamente la gráfica de la semana pulsada', () => {
+    const rows = [];
+    const list = {
+      innerHTML: '',
+      appendChild: (element) => rows.push(element),
+    };
+    const document = {
+      getElementById: () => list,
+      createElement: (tagName) => ({
+        tagName,
+        dataset: {},
+        setAttribute: vi.fn(),
+        addEventListener(name, listener) {
+          this[name] = listener;
+        },
+      }),
+    };
+    const onWeekClick = vi.fn();
+
+    renderWeeksView({
+      document,
+      now: new Date(2026, 6, 26, 12),
+      config,
+      days: {},
+      onWeekClick,
+    });
+
+    expect(rows[0].tagName).toBe('button');
+    expect(rows[0].dataset.weekIndex).toBe('0');
+    rows[0].click();
+    expect(onWeekClick).toHaveBeenCalledWith(0);
   });
 });

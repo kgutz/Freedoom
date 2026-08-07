@@ -3,6 +3,7 @@ import {
   BOSS_MAX_HP,
   calculateBossCombatStatus,
   calculateDailyBossDamage,
+  calculateWeekBossDamage,
   createBossCombat,
   reconcileBossCombat,
 } from './boss-combat-rules.js';
@@ -149,6 +150,47 @@ describe('combate semanal', () => {
       won: true,
       completedDays: 6,
       controlledWeekUsed: 2,
+      controlledBudgetExceeded: false,
+    });
+  });
+
+  it('respeta cada camino cuando el consumo controlado empieza a mitad de semana', () => {
+    const mixedConfig = {
+      ...config,
+      startDate: '2026-08-02',
+      journeyMode: 'controlled',
+      journeyOriginMode: 'smoke_free',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 5,
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-08-08',
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 5,
+        },
+      ],
+    };
+    const result = calculateWeekBossDamage({
+      week: 0,
+      now: new Date(2026, 7, 8, 20),
+      config: mixedConfig,
+      days: {
+        '2026-08-03': { sf: 'success' },
+        '2026-08-04': { sf: 'success' },
+        '2026-08-05': { sf: 'success' },
+        '2026-08-06': { sf: 'success' },
+        '2026-08-07': { sf: 'success' },
+        '2026-08-08': { c: 1 },
+      },
+      settleAll: true,
+    });
+
+    expect(result).toMatchObject({
+      controlledMode: true,
+      smokeFreeMode: true,
+      hits: 6,
+      controlledWeekUsed: 1,
       controlledBudgetExceeded: false,
     });
   });
