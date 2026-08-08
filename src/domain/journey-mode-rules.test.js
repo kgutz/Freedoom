@@ -134,6 +134,7 @@ describe('modos del viaje', () => {
       effectiveDate: '2026-08-07',
       repairedFromDate: '2026-08-08',
     });
+    expect(result.config.controlledHistoryStartDate).toBe('2026-08-01');
     expect(journeyModeForDate(result.config, '2026-08-07')).toBe(
       JOURNEY_MODE_CONTROLLED,
     );
@@ -142,6 +143,44 @@ describe('modos del viaje', () => {
         '2026-08-07': { sf: SMOKE_FREE_STATUS_SUCCESS },
       }),
     ).toMatchObject({ changed: false, repaired: false });
+  });
+
+  it('habilita el fin de semana histórico y mantiene los días futuros', () => {
+    const config = {
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      journeyOriginMode: JOURNEY_MODE_SMOKE_FREE,
+      startDate: '2026-08-02',
+      controlledHistoryStartDate: '2026-08-01',
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-08-07',
+          journeyMode: JOURNEY_MODE_CONTROLLED,
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 5,
+        },
+      ],
+    };
+
+    expect(journeyModeForDate(config, '2026-07-31')).toBe(
+      JOURNEY_MODE_SMOKE_FREE,
+    );
+    expect(journeyModeForDate(config, '2026-08-01')).toBe(
+      JOURNEY_MODE_CONTROLLED,
+    );
+    expect(journeyModeForDate(config, '2026-08-02')).toBe(
+      JOURNEY_MODE_CONTROLLED,
+    );
+    expect(journeyModeForDate(config, '2026-08-03')).toBe(
+      JOURNEY_MODE_SMOKE_FREE,
+    );
+    expect(journeyConfigForDate(config, '2026-08-01')).toMatchObject({
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 5,
+    });
+    expect(journeyModeForDate(config, '2026-08-14')).toBe(
+      JOURNEY_MODE_CONTROLLED,
+    );
   });
 
   it('trata un día sin decisión como pendiente', () => {

@@ -12,7 +12,7 @@ export const SMOKE_FREE_EVOLUTION_BOSSES = 3;
 export const CONTROLLED_EVOLUTION_BOSSES = 3;
 export const DEFAULT_CONTROLLED_DAYS = [5, 6, 0];
 export const DEFAULT_CONTROLLED_WEEKLY_LIMIT = 3;
-export const CONTROLLED_TRANSITION_REPAIR_VERSION = 1;
+export const CONTROLLED_TRANSITION_REPAIR_VERSION = 2;
 
 export const SMOKE_FREE_STATUS_PENDING = 'pending';
 export const SMOKE_FREE_STATUS_SUCCESS = 'success';
@@ -97,7 +97,28 @@ export function journeyModeForDate(config, date) {
       mode = normalizeJourneyMode(transition.journeyMode);
     }
   });
+  const historicalTransition = historicalControlledTransitionForDate(
+    config,
+    transitions,
+    dateKey,
+  );
+  if (historicalTransition) return JOURNEY_MODE_CONTROLLED;
   return mode;
+}
+
+function historicalControlledTransitionForDate(config, transitions, dateKey) {
+  const historyStart = config?.controlledHistoryStartDate;
+  if (!historyStart || dateKey < historyStart) return null;
+  const firstControlled = transitions.find(
+    (transition) =>
+      normalizeJourneyMode(transition.journeyMode) ===
+      JOURNEY_MODE_CONTROLLED,
+  );
+  if (!firstControlled || dateKey >= firstControlled.effectiveDate) return null;
+  const date = parseKey(dateKey);
+  return controlledDaysOf(firstControlled).includes(date.getDay())
+    ? firstControlled
+    : null;
 }
 
 export function journeyConfigForDate(config, date) {
@@ -131,6 +152,19 @@ export function journeyConfigForDate(config, date) {
       };
     }
   });
+  const historicalTransition = historicalControlledTransitionForDate(
+    config,
+    transitions,
+    dateKey,
+  );
+  if (historicalTransition) {
+    result = {
+      ...result,
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      controlledDays: [...controlledDaysOf(historicalTransition)],
+      controlledWeeklyLimit: controlledWeeklyLimitOf(historicalTransition),
+    };
+  }
   return result;
 }
 
@@ -243,14 +277,37 @@ export function repairLegacyControlledTransitionStart(config, days = {}) {
       })
     : config.journeyTransitions;
 
+  let controlledHistoryStartDate = config.controlledHistoryStartDate;
+  let historyAdded = false;
+  const hasControlledTransition = Array.isArray(transitions) &&
+    transitions.some(
+      (transition) =>
+        normalizeJourneyMode(transition?.journeyMode) ===
+        JOURNEY_MODE_CONTROLLED,
+    );
+  if (
+    !controlledHistoryStartDate &&
+    hasControlledTransition &&
+    normalizeJourneyMode(config.journeyOriginMode) === JOURNEY_MODE_SMOKE_FREE &&
+    config.startDate
+  ) {
+    const previousDate = parseKey(config.startDate);
+    previousDate.setDate(previousDate.getDate() - 1);
+    controlledHistoryStartDate = keyOf(previousDate);
+    historyAdded = true;
+  }
+
   return {
     config: {
       ...config,
       ...(Array.isArray(transitions) ? { journeyTransitions: transitions } : {}),
+      ...(controlledHistoryStartDate
+        ? { controlledHistoryStartDate }
+        : {}),
       controlledTransitionRepairVersion:
         CONTROLLED_TRANSITION_REPAIR_VERSION,
     },
-    changed: repaired || !alreadyChecked,
+    changed: repaired || historyAdded || !alreadyChecked,
     repaired,
   };
 }
