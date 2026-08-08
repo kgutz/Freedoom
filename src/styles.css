@@ -474,8 +474,8 @@
   .loading::before{background:linear-gradient(rgba(11,9,7,.2),rgba(11,9,7,.34))}
   .loading .onboarding-scene,#ob1 .onboarding-scene{z-index:0}
   .load-logo{width:min(280px,72%);height:auto;image-rendering:pixelated;
-    position:relative;z-index:2;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 1.2s ease forwards;opacity:0}
-  .loading.replay .load-logo{animation:logoIn 1.2s ease forwards}
+    position:relative;z-index:2;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));opacity:0}
+  .loading.ready .load-logo,.loading.ready.replay .load-logo{animation:logoIn .4s ease forwards}
   .loading.exit{pointer-events:none;animation:loadingOut .4s ease forwards}
   @keyframes loadingOut{from{opacity:1}to{opacity:0}}
 
@@ -504,7 +504,8 @@
   #ob1{text-align:center}
   #ob1::before{background:linear-gradient(rgba(11,9,7,.34),rgba(11,9,7,.5))}
   .ob-logo{width:min(300px,82%);height:auto;image-rendering:pixelated;
-    position:relative;z-index:2;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));animation:logoIn 1.2s ease forwards;opacity:0;display:inline-block}
+    position:relative;z-index:2;filter:drop-shadow(0 6px 20px rgba(0,0,0,.6));opacity:0;display:inline-block}
+  #ob1.intro-ready .ob-logo{animation:logoIn .4s ease forwards}
   @keyframes logoIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
   .ob-fallback{position:relative;z-index:2;font-family:'Sora',sans-serif;font-weight:700;font-size:44px;letter-spacing:.04em;color:var(--kodak);animation:logoIn 1.2s ease forwards;opacity:0}
   #ob1.exit{pointer-events:none;animation:loadingOut .4s ease forwards}
@@ -888,6 +889,6 @@
 
   @media (prefers-reduced-motion: reduce){
     *{transition:none!important}
-    .load-logo,.loading.replay .load-logo{animation-duration:.01ms}
+    .load-logo,.loading.ready .load-logo,.loading.ready.replay .load-logo,#ob1.intro-ready .ob-logo{animation-duration:.01ms}
     .loading.exit{animation-duration:.01ms}
   }

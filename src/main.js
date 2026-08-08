@@ -99,11 +99,14 @@ import {
   minutesOf,
   parseKey
 } from './domain/date-utils.js';
+import {
+  SPLASH_FADE_MS,
+  SPLASH_MIN_VISIBLE_MS,
+  waitForSplashAssets
+} from './ui/splash-assets.js';
 
-const APP_VERSION='124';
+const APP_VERSION='125';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
-const RETURN_SPLASH_LOGO_MS=1200;
-const RETURN_SPLASH_FADE_MS=400;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -121,7 +124,6 @@ let state={
 let calCursor=currentDayDate();
 let editingKey=null;
 let saveTimer=null;
-const initialSplashStartedAt=performance.now();
 let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
@@ -130,33 +132,42 @@ let classChangeReturn=null;
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
 
-function finishReturnSplash(delay=RETURN_SPLASH_LOGO_MS){
+async function revealReturnSplash({replay=false}={}){
+  const loading=document.getElementById('loading');
+  loading.style.display='flex';
+  loading.classList.remove('exit','ready','replay');
+  await waitForSplashAssets(loading);
+  if(!returnSplashPlaying) return null;
+  void loading.offsetWidth;
+  loading.classList.add('ready');
+  if(replay) loading.classList.add('replay');
+  return performance.now();
+}
+
+const initialSplashReady=revealReturnSplash();
+
+function finishReturnSplash(startedAt){
   clearTimeout(returnSplashTimer);
+  const elapsed=startedAt===null?0:performance.now()-startedAt;
   returnSplashTimer=setTimeout(()=>{
     const loading=document.getElementById('loading');
     loading.classList.add('exit');
     returnSplashTimer=setTimeout(()=>{
       loading.style.display='none';
-      loading.classList.remove('exit','replay');
+      loading.classList.remove('exit','ready','replay');
       returnSplashPlaying=false;
-    },RETURN_SPLASH_FADE_MS);
-  },Math.max(0,delay));
+    },SPLASH_FADE_MS);
+  },Math.max(0,SPLASH_MIN_VISIBLE_MS-elapsed));
 }
 
-function finishInitialReturnSplash(){
-  const elapsed=performance.now()-initialSplashStartedAt;
-  finishReturnSplash(RETURN_SPLASH_LOGO_MS-elapsed);
+async function finishInitialReturnSplash(){
+  finishReturnSplash(await initialSplashReady);
 }
 
-function playReturnSplash(){
+async function playReturnSplash(){
   if(returnSplashPlaying||!state.onboarded||!(state.game&&state.game.cls)) return;
-  const loading=document.getElementById('loading');
-  loading.style.display='flex';
-  loading.classList.remove('exit','replay');
-  void loading.offsetWidth;
-  loading.classList.add('replay');
   returnSplashPlaying=true;
-  finishReturnSplash();
+  finishReturnSplash(await revealReturnSplash({replay:true}));
 }
 
 /* ---------- utilidades de fecha ---------- */

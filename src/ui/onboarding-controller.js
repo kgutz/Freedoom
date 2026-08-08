@@ -7,6 +7,11 @@ import {
   DEFAULT_CONTROLLED_WEEKLY_LIMIT,
   normalizeJourneyMode,
 } from '../domain/journey-mode-rules.js';
+import {
+  SPLASH_FADE_MS,
+  SPLASH_MIN_VISIBLE_MS,
+  waitForSplashAssets,
+} from './splash-assets.js';
 
 export function createOnboardingResult({
   startDate,
@@ -70,28 +75,34 @@ export function createOnboardingController({
   let chosenClass = null;
   let chosenJourneyMode = null;
   let introTimer = null;
+  let introSequence = 0;
 
   const clearIntroTimer=()=>{
     clearTimeout(introTimer);
     introTimer=null;
+    introSequence+=1;
   };
 
-  const playIntro=()=>{
-    clearIntroTimer();
+  const playIntro=async()=>{
+    clearTimeout(introTimer);
+    const sequence=++introSequence;
     const intro=document.getElementById('ob1');
-    intro.classList.remove('exit');
+    intro.classList.remove('exit','intro-ready');
+    await waitForSplashAssets(intro);
+    if(sequence!==introSequence||!intro.classList.contains('active')) return;
+    intro.classList.add('intro-ready');
     introTimer=setTimeout(()=>{
       if(!intro.classList.contains('active')) return;
       intro.classList.add('exit');
       introTimer=setTimeout(()=>{
         if(intro.classList.contains('active')) showStep(2);
-      },400);
-    },1200);
+      },SPLASH_FADE_MS);
+    },SPLASH_MIN_VISIBLE_MS);
   };
 
   const showStep = (step) => {
     clearIntroTimer();
-    document.getElementById('ob1').classList.remove('exit');
+    document.getElementById('ob1').classList.remove('exit','intro-ready');
     document
       .querySelectorAll('.ob-step')
       .forEach((element) => element.classList.remove('active'));
