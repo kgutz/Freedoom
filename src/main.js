@@ -107,7 +107,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='129';
+const APP_VERSION='130';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */

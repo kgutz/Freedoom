@@ -34,6 +34,31 @@ describe('daño diario al jefe', () => {
       }),
     ).toMatchObject({ completed: false, total: 0 });
   });
+
+  it('golpea al jefe si termina un día permitido sin fumar', () => {
+    expect(
+      calculateDailyBossDamage({
+        record: { c: 0 },
+        limit: 0,
+        settled: true,
+        journeyMode: 'controlled',
+        controlledAllowedDay: true,
+        controlledBudgetExceeded: false,
+      }),
+    ).toMatchObject({ completed: true, completion: 25, total: 25 });
+
+    expect(
+      calculateDailyBossDamage({
+        record: { c: 0 },
+        limit: 0,
+        settled: false,
+        journeyMode: 'controlled',
+        controlledAllowedDay: true,
+        controlledBudgetExceeded: false,
+      }),
+    ).toMatchObject({ completed: true, completion: 0, total: 0 });
+  });
+
   it('hace 25 por cumplir y hasta 10 por margen', () => {
     expect(
       calculateDailyBossDamage({

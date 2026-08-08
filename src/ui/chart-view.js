@@ -64,7 +64,10 @@ export function createChartModel({
 
   const planStart = parseKey(config.startDate);
   const points = dates.map((date) => {
-    const past = daysBetween(now, date) <= 0;
+    const dayDistance = daysBetween(now, date);
+    const past = dayDistance <= 0;
+    const settled = dayDistance < 0;
+    const isToday = dayDistance === 0;
     const tracked = past && daysBetween(planStart, date) >= 0;
     const dateConfig=journeyConfigForDate(config,date);
     const smokeFreeMode=isSmokeFreeMode(dateConfig);
@@ -73,6 +76,8 @@ export function createChartModel({
     return {
       date,
       past,
+      settled,
+      isToday,
       tracked,
       cigarettes: (records[keyOf(date)] || EMPTY_DAY).c || 0,
       smokeFreeStatus: smokeFreeStatusOf(records[keyOf(date)] || EMPTY_DAY),
@@ -129,7 +134,7 @@ export function createChartModel({
       ? point.smokeFreeStatus===SMOKE_FREE_STATUS_SUCCESS
       : point.controlledMode
         ? point.controlledAllowed
-          ? !point.controlledBudgetExceeded
+          ? point.settled && !point.controlledBudgetExceeded
           : point.smokeFreeStatus===SMOKE_FREE_STATUS_SUCCESS
         : false,
   ).length;
@@ -208,6 +213,9 @@ export function renderChartView({
           } else if (point.cigarettes > 0) {
             content += `<rect x="${centerX - barWidth / 2}" y="${bottom - 70}" width="${barWidth}" height="70" rx="3" fill="var(--kodak)" opacity=".9"/>`;
             content += `<text x="${centerX}" y="${bottom - 76}" font-size="10" fill="var(--kodak)" text-anchor="middle">${point.cigarettes}</text>`;
+          } else if (point.settled) {
+            content += `<rect x="${centerX - barWidth / 2}" y="${top + 18}" width="${barWidth}" height="${plotHeight - 18}" rx="3" fill="var(--ok)" opacity=".9"/>`;
+            content += `<text x="${centerX}" y="${top + 12}" font-size="11" fill="var(--ok)" text-anchor="middle">✓</text>`;
           } else {
             content += `<circle cx="${centerX}" cy="${bottom - 4}" r="2.5" fill="var(--kodak)" opacity=".7"/>`;
           }

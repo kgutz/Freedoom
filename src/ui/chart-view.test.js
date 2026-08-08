@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { keyOf } from '../domain/date-utils.js';
 import { createChartModel } from './chart-view.js';
 
 const config = {
@@ -101,5 +102,69 @@ describe('modelo de gráficas', () => {
     expect(model.points).toHaveLength(31);
     expect(model.title).toBe('julio 2026');
     expect(model.yMax).toBeGreaterThan(30);
+  });
+
+  it('cierra en verde un día permitido sin consumo y mantiene hoy en curso', () => {
+    const controlledConfig = {
+      startDate: '2026-08-02',
+      startLimit: 21,
+      journeyMode: 'controlled',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 5,
+    };
+    const model = createChartModel({
+      mode: 'semana',
+      weekIndex: 0,
+      month: new Date(2026, 7, 1),
+      now: new Date(2026, 7, 8, 12),
+      config: controlledConfig,
+      records: {
+        '2026-08-02': { c: 2 },
+        '2026-08-07': { c: 0 },
+        '2026-08-08': { c: 1 },
+      },
+    });
+
+    expect(model.points.find((point) => keyOf(point.date) === '2026-08-07')).toMatchObject({
+      controlledAllowed: true,
+      settled: true,
+      cigarettes: 0,
+    });
+    expect(model.points.find((point) => keyOf(point.date) === '2026-08-08')).toMatchObject({
+      controlledAllowed: true,
+      isToday: true,
+      settled: false,
+      cigarettes: 1,
+    });
+    expect(model.completedDays).toBe(2);
+  });
+
+  it('marca como fallidos todos los días permitidos cuando se supera el máximo semanal', () => {
+    const model = createChartModel({
+      mode: 'semana',
+      weekIndex: 0,
+      month: new Date(2026, 7, 1),
+      now: new Date(2026, 7, 8, 12),
+      config: {
+        startDate: '2026-08-02',
+        startLimit: 21,
+        journeyMode: 'controlled',
+        controlledDays: [5, 6, 0],
+        controlledWeeklyLimit: 5,
+      },
+      records: {
+        '2026-08-02': { c: 2 },
+        '2026-08-07': { c: 3 },
+        '2026-08-08': { c: 1 },
+      },
+    });
+
+    const allowedPoints = model.points.filter(
+      (point) => point.tracked && point.controlledAllowed,
+    );
+    expect(allowedPoints).toHaveLength(3);
+    expect(allowedPoints.every((point) => point.controlledBudgetExceeded)).toBe(true);
+    expect(model.completedDays).toBe(0);
+    expect(model.failedDays).toBe(3);
   });
 });

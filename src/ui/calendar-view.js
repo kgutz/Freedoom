@@ -83,11 +83,13 @@ export function createCalendarModel({ cursor, now, config, days }) {
       : 0;
     const controlledBudgetExceeded =
       controlledWeekUsed > controlledWeeklyLimitOf(dateConfig);
+    const isSettled = daysBetween(now, date) < 0;
     entries.push({
       day,
       key,
       isToday: key === today,
       isFuture: daysBetween(now, date) > 0,
+      isSettled,
       cigarettes: record.c || 0,
       pills: record.p || 0,
       beers: record.b || 0,
@@ -289,7 +291,9 @@ export function renderCalendarView({
             ? '<span class="sf smoked" aria-label="Límite semanal superado">×</span>'
             : entry.cigarettes > 0
               ? `<span class="c">${entry.cigarettes}</span>`
-              : '<span class="sf pending" aria-label="Día permitido sin consumo">·</span>'
+              : entry.isSettled
+                ? '<span class="sf success" aria-label="Día permitido cumplido sin fumar">✓</span>'
+                : '<span class="sf pending" aria-label="Día permitido en curso">·</span>'
           : smokeFreeMark
         : entry.smokeFreeMode
         ? smokeFreeMark
