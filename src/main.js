@@ -28,6 +28,7 @@ import {
   journeyConfigForDate,
   journeyDayDate,
   applyDueJourneyTransition,
+  repairLegacyControlledTransitionStart,
   scheduleControlledJourneyTransition,
   journeyEvolutionUnlocked,
   smokeFreeStatusOf,
@@ -105,7 +106,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='125';
+const APP_VERSION='126';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -222,6 +223,15 @@ function applyPendingJourneyTransition(date=new Date()){
   state.config=result.config;
   scheduleSave({type:'journey:transition-applied',day:keyOf(date)});
   return true;
+}
+function repairJourneyTransitionHistory(){
+  const result=repairLegacyControlledTransitionStart(state.config,state.days);
+  if(!result.changed) return false;
+  state.config=result.config;
+  scheduleSave({
+    type:result.repaired?'journey:transition-history-repaired':'journey:transition-history-checked'
+  });
+  return result.repaired;
 }
 function setDay(k,c,p,t,b,s,action){
   c=Math.max(0,c); p=Math.max(0,p);
@@ -408,7 +418,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){applyPendingJourneyTransition();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
+function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
 
 function renderHoy(){
   let stats=null;
@@ -987,6 +997,12 @@ function closeModal(){
     }else if(record.sf!==undefined){
       delete record.sf;
       state.days[editingKey]=record;
+    }
+  }else if(isControlledMode(editingConfig)&&isControlledSmokingDay(editingConfig,editingDate)){
+    const record=state.days[editingKey];
+    if(record&&record.sf!==undefined){
+      state.days[editingKey]={...record};
+      delete state.days[editingKey].sf;
     }
   }
   setDay(editingKey,c,p,undefined,b,undefined,{type:'day:update',day:editingKey,cigarettes:c,pills:p,beers:b});

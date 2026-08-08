@@ -1,5 +1,5 @@
 import { bossCountForPlan } from './plan-rules.js';
-import { keyOf } from './date-utils.js';
+import { keyOf, parseKey } from './date-utils.js';
 import {
   DEFAULT_DAY_START_TIME,
   logicalDayDate,
@@ -12,6 +12,7 @@ export const SMOKE_FREE_EVOLUTION_BOSSES = 3;
 export const CONTROLLED_EVOLUTION_BOSSES = 3;
 export const DEFAULT_CONTROLLED_DAYS = [5, 6, 0];
 export const DEFAULT_CONTROLLED_WEEKLY_LIMIT = 3;
+export const CONTROLLED_TRANSITION_REPAIR_VERSION = 1;
 
 export const SMOKE_FREE_STATUS_PENDING = 'pending';
 export const SMOKE_FREE_STATUS_SUCCESS = 'success';
@@ -144,6 +145,7 @@ export function scheduleControlledJourneyTransition({
     pendingJourneyTransition: {
       journeyMode: JOURNEY_MODE_CONTROLLED,
       effectiveDate,
+      requestedDate: effectiveDate,
       controlledDays:
         Array.isArray(controlledDays) && controlledDays.length
           ? [...new Set(controlledDays.map(Number))]
@@ -177,6 +179,9 @@ export function applyDueJourneyTransition(config, date) {
       ...(config.journeyTransitions || []),
       {
         effectiveDate,
+        ...(pending.requestedDate
+          ? { requestedDate: pending.requestedDate }
+          : {}),
         journeyMode: pending.journeyMode,
         controlledDays: [...pending.controlledDays],
         controlledWeeklyLimit: pending.controlledWeeklyLimit,
@@ -188,6 +193,68 @@ export function applyDueJourneyTransition(config, date) {
   };
   delete nextConfig.pendingJourneyTransition;
   return { config: nextConfig, applied: true };
+}
+
+export function repairLegacyControlledTransitionStart(config, days = {}) {
+  if (
+    !config ||
+    config.pendingJourneyTransition ||
+    config.controlledTransitionRepairVersion >=
+      CONTROLLED_TRANSITION_REPAIR_VERSION
+  ) {
+    return { config, changed: false, repaired: false };
+  }
+
+  let repaired = false;
+  const transitions = Array.isArray(config.journeyTransitions)
+    ? config.journeyTransitions.map((transition) => {
+        if (
+          normalizeJourneyMode(transition?.journeyMode) !==
+            JOURNEY_MODE_CONTROLLED ||
+          !transition.effectiveDate ||
+          transition.requestedDate
+        ) {
+          return transition;
+        }
+
+        const controlledDays = controlledDaysOf(transition);
+        let correctedDate = parseKey(transition.effectiveDate);
+        while (true) {
+          const previousDate = new Date(correctedDate);
+          previousDate.setDate(previousDate.getDate() - 1);
+          const previousKey = keyOf(previousDate);
+          if (
+            previousKey < (config.startDate || previousKey) ||
+            !controlledDays.includes(previousDate.getDay()) ||
+            smokeFreeStatusOf(days[previousKey]) !==
+              SMOKE_FREE_STATUS_SUCCESS
+          ) {
+            break;
+          }
+          correctedDate = previousDate;
+        }
+
+        const correctedKey = keyOf(correctedDate);
+        if (correctedKey === transition.effectiveDate) return transition;
+        repaired = true;
+        return {
+          ...transition,
+          effectiveDate: correctedKey,
+          repairedFromDate: transition.effectiveDate,
+        };
+      })
+    : config.journeyTransitions;
+
+  return {
+    config: {
+      ...config,
+      ...(Array.isArray(transitions) ? { journeyTransitions: transitions } : {}),
+      controlledTransitionRepairVersion:
+        CONTROLLED_TRANSITION_REPAIR_VERSION,
+    },
+    changed: true,
+    repaired,
+  };
 }
 
 export function smokeFreeStatusOf(record) {

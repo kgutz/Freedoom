@@ -4,6 +4,7 @@ import {
   JOURNEY_MODE_SMOKE_FREE,
   JOURNEY_MODE_CONTROLLED,
   SMOKE_FREE_STATUS_PENDING,
+  SMOKE_FREE_STATUS_SUCCESS,
   bossCountForJourney,
   journeyEvolutionUnlocked,
   normalizeJourneyMode,
@@ -15,6 +16,7 @@ import {
   journeyConfigForDate,
   journeyModeForDate,
   applyDueJourneyTransition,
+  repairLegacyControlledTransitionStart,
   scheduleControlledJourneyTransition,
 } from './journey-mode-rules.js';
 
@@ -104,6 +106,41 @@ describe('modos del viaje', () => {
     expect(journeyModeForDate(applied.config, '2026-08-09')).toBe(
       JOURNEY_MODE_CONTROLLED,
     );
+  });
+
+  it('repara el viernes usado como solución provisional antes de la transición', () => {
+    const legacyConfig = {
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      journeyOriginMode: JOURNEY_MODE_SMOKE_FREE,
+      startDate: '2026-08-02',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 5,
+      journeyTransitions: [
+        {
+          effectiveDate: '2026-08-08',
+          journeyMode: JOURNEY_MODE_CONTROLLED,
+          controlledDays: [5, 6, 0],
+          controlledWeeklyLimit: 5,
+        },
+      ],
+    };
+    const result = repairLegacyControlledTransitionStart(legacyConfig, {
+      '2026-08-07': { c: 0, sf: SMOKE_FREE_STATUS_SUCCESS },
+    });
+
+    expect(result).toMatchObject({ changed: true, repaired: true });
+    expect(result.config.journeyTransitions[0]).toMatchObject({
+      effectiveDate: '2026-08-07',
+      repairedFromDate: '2026-08-08',
+    });
+    expect(journeyModeForDate(result.config, '2026-08-07')).toBe(
+      JOURNEY_MODE_CONTROLLED,
+    );
+    expect(
+      repairLegacyControlledTransitionStart(result.config, {
+        '2026-08-07': { sf: SMOKE_FREE_STATUS_SUCCESS },
+      }),
+    ).toMatchObject({ changed: false, repaired: false });
   });
 
   it('trata un día sin decisión como pendiente', () => {
