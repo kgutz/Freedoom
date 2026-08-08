@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v126</div>
+  <div class="ob-version" id="obVersion">v128</div>
 </div>
 
 <div id="loading" class="loading">
@@ -400,7 +400,7 @@
       </div>
       <button class="mini-btn recovery-open" id="btnRecoveries" type="button">Copias de recuperación</button>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v126</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v128</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -595,7 +595,7 @@
 <div class="modal-bg" id="modalBg">
   <div class="modal">
     <h3 id="modalTitle"></h3>
-    <div class="edit-row">
+    <div class="edit-row" id="mSmokeFreeRow">
       <span class="lbl">Resultado</span>
       <div class="day-status-editor" id="mSmokeFreeStatus">
         <button type="button" data-modal-smoke-free="success">✓ Sin fumar</button>
@@ -611,7 +611,7 @@
         <button id="mCigAdd">+</button>
       </div>
     </div>
-    <div class="edit-row">
+    <div class="edit-row" id="mPillRow">
       <span class="lbl">Pastillas</span>
       <div class="stepper">
         <button id="mPillSub">−</button>
@@ -619,7 +619,7 @@
         <button id="mPillAdd">+</button>
       </div>
     </div>
-    <div class="edit-row">
+    <div class="edit-row" id="mBeerRow">
       <span class="lbl">Cervezas</span>
       <div class="stepper">
         <button id="mCerSub">−</button>

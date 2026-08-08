@@ -115,6 +115,7 @@ describe('modos del viaje', () => {
       startDate: '2026-08-02',
       controlledDays: [5, 6, 0],
       controlledWeeklyLimit: 5,
+      controlledTransitionRepairVersion: 1,
       journeyTransitions: [
         {
           effectiveDate: '2026-08-08',

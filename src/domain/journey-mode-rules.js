@@ -196,15 +196,13 @@ export function applyDueJourneyTransition(config, date) {
 }
 
 export function repairLegacyControlledTransitionStart(config, days = {}) {
-  if (
-    !config ||
-    config.pendingJourneyTransition ||
-    config.controlledTransitionRepairVersion >=
-      CONTROLLED_TRANSITION_REPAIR_VERSION
-  ) {
+  if (!config || config.pendingJourneyTransition) {
     return { config, changed: false, repaired: false };
   }
 
+  const alreadyChecked =
+    config.controlledTransitionRepairVersion >=
+    CONTROLLED_TRANSITION_REPAIR_VERSION;
   let repaired = false;
   const transitions = Array.isArray(config.journeyTransitions)
     ? config.journeyTransitions.map((transition) => {
@@ -252,7 +250,7 @@ export function repairLegacyControlledTransitionStart(config, days = {}) {
       controlledTransitionRepairVersion:
         CONTROLLED_TRANSITION_REPAIR_VERSION,
     },
-    changed: true,
+    changed: repaired || !alreadyChecked,
     repaired,
   };
 }

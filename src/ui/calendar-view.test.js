@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createCalendarModel,
+  createDayEditorModel,
   createWeeksModel,
   renderWeeksView,
 } from './calendar-view.js';
@@ -11,6 +12,45 @@ const config = {
 };
 
 describe('modelo del calendario', () => {
+  it('solo muestra en el editor los registros activados por el usuario', () => {
+    expect(
+      createDayEditorModel({
+        config: {
+          ...config,
+          journeyMode: 'controlled',
+          controlledDays: [5, 6, 0],
+          takesPills: false,
+          pillsGoal: 0,
+          tracksBeer: false,
+        },
+        date: new Date(2026, 7, 8),
+      }),
+    ).toEqual({
+      showCigarettes: true,
+      showSmokeFreeStatus: false,
+      showPills: false,
+      showBeers: false,
+    });
+
+    expect(
+      createDayEditorModel({
+        config: {
+          ...config,
+          journeyMode: 'smoke_free',
+          takesPills: true,
+          pillsGoal: 3,
+          tracksBeer: true,
+        },
+        date: new Date(2026, 7, 8),
+      }),
+    ).toEqual({
+      showCigarettes: false,
+      showSmokeFreeStatus: true,
+      showPills: true,
+      showBeers: true,
+    });
+  });
+
   it('muestra cada fecha con el camino que tenía al registrarse', () => {
     const transitionedConfig = {
       ...config,

@@ -40,6 +40,25 @@ function controlledWeekUsage(config, days, date) {
   return used;
 }
 
+export function createDayEditorModel({ config, date }) {
+  const dateConfig = journeyConfigForDate(config, date);
+  const smokeFreeMode = isSmokeFreeMode(dateConfig);
+  const controlledMode = isControlledMode(dateConfig);
+  const controlledAllowed =
+    controlledMode && isControlledSmokingDay(dateConfig, date);
+
+  return {
+    showCigarettes:
+      !smokeFreeMode && (!controlledMode || controlledAllowed),
+    showSmokeFreeStatus:
+      smokeFreeMode || (controlledMode && !controlledAllowed),
+    showPills:
+      config?.takesPills !== false &&
+      Math.max(0, Number(config?.pillsGoal) || 0) > 0,
+    showBeers: config?.tracksBeer !== false,
+  };
+}
+
 export function createCalendarModel({ cursor, now, config, days }) {
   const smokeFreeMode = isSmokeFreeMode(config);
   const controlledMode = isControlledMode(config);

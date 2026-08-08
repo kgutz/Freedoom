@@ -70,6 +70,7 @@ import {
   serializeState
 } from './storage/state-storage.js';
 import {
+  createDayEditorModel,
   renderCalendarView,
   renderWeeksView
 } from './ui/calendar-view.js';
@@ -106,7 +107,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='126';
+const APP_VERSION='128';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -964,15 +965,12 @@ function openModal(k){
   document.getElementById('mCigVal').textContent=rec.c;
   document.getElementById('mPillVal').textContent=rec.p;
   document.getElementById('mCerVal').textContent=rec.b||0;
-  const dayConfig=journeyConfigForDate(state.config,d);
-  const smokeFreeMode=isSmokeFreeMode(dayConfig);
-  const controlledMode=isControlledMode(dayConfig);
-  const controlledAllowed=controlledMode&&isControlledSmokingDay(dayConfig,d);
-  document.getElementById('mCigRow').style.display=
-    smokeFreeMode||(controlledMode&&!controlledAllowed)?'none':'';
+  const editorModel=createDayEditorModel({config:state.config,date:d});
+  document.getElementById('mCigRow').style.display=editorModel.showCigarettes?'':'none';
+  document.getElementById('mSmokeFreeRow').style.display=editorModel.showSmokeFreeStatus?'':'none';
+  document.getElementById('mPillRow').style.display=editorModel.showPills?'':'none';
+  document.getElementById('mBeerRow').style.display=editorModel.showBeers?'':'none';
   const statusEditor=document.getElementById('mSmokeFreeStatus');
-  statusEditor.parentElement.style.display=
-    smokeFreeMode||(controlledMode&&!controlledAllowed)?'':'none';
   const status=smokeFreeStatusOf(rec);
   statusEditor.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
     button.classList.toggle('active',button.dataset.modalSmokeFree===status);
