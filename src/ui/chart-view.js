@@ -106,12 +106,15 @@ export function createChartModel({
   yMax = Math.ceil(yMax * 1.15);
 
   const trackedPoints = points.filter((point) => point.tracked);
+  const settledTrackedPoints = trackedPoints.filter((point) => point.settled);
   let peak = null;
   let minimum = null;
   let total = 0;
   trackedPoints.forEach((point) => {
     total += point.cigarettes;
     if (!peak || point.cigarettes > peak.cigarettes) peak = point;
+  });
+  settledTrackedPoints.forEach((point) => {
     if (!minimum || point.cigarettes < minimum.cigarettes) minimum = point;
   });
   const smokeFreeDays = trackedPoints.filter(

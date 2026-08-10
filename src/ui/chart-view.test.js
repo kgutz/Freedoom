@@ -87,6 +87,24 @@ describe('modelo de gráficas', () => {
     );
   });
 
+  it('calcula el mínimo solo con días anteriores ya cerrados', () => {
+    const model = createChartModel({
+      mode: 'semana',
+      weekIndex: 0,
+      month: new Date(2026, 6, 1),
+      now: new Date(2026, 6, 19, 12),
+      config,
+      records: {
+        '2026-07-17': { c: 12 },
+        '2026-07-18': { c: 8 },
+        '2026-07-19': { c: 1 },
+      },
+    });
+
+    expect(model.minimum.cigarettes).toBe(8);
+    expect(model.minimum.isToday).toBe(false);
+  });
+
   it('genera todos los días de un mes y una escala suficiente', () => {
     const model = createChartModel({
       mode: 'mes',
