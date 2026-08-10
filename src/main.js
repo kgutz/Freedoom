@@ -107,7 +107,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='130';
+const APP_VERSION='131';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -293,6 +293,17 @@ function setStorageHealth(next){
   renderStorageHealth();
 }
 function handleSaveResult(result){
+  if(result?.blocked){
+    setStorageHealth({
+      state:'error',
+      revision:result.revision||storageHealth.revision,
+      savedAt:result.savedAt||storageHealth.savedAt,
+      title:'Pérdida de datos bloqueada',
+      detail:'La copia con información sigue protegida',
+      warning:'Freedoom detectó que la partida iba a volver casi a cero y no sustituyó tus copias. Cierra y abre la app para recuperar automáticamente la última partida completa.'
+    });
+    return;
+  }
   if(!result||!Number.isFinite(result.revision)){
     setStorageHealth({
       state:'saved',title:'Guardado ✓',detail:'Partida guardada',warning:''
@@ -1252,7 +1263,7 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
         ? (isControlledMode(state.config)
-            ? '✓ Día fuera de consumo cumplido · −25 HP al jefe · XP del día'
+            ? '✓ Día completado · −25 HP al jefe · XP del día'
             : '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice)
         : 'Día registrado. Mañana continúa tu camino.',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
@@ -1470,10 +1481,44 @@ document.getElementById('grafNext').addEventListener('click',()=>{
 });
 
 /* ---------- recuperación del guardado ---------- */
-function recoverySourceLabel(source){
-  if(source==='main') return 'Partida principal';
-  if(source==='indexeddb') return 'Copia interna';
-  return 'Copia automática';
+function appendRecoverySection(list,{title,description,items}){
+  if(!items.length) return;
+  const section=document.createElement('section');
+  section.className='recovery-section';
+  const heading=document.createElement('div');
+  heading.className='recovery-section-heading';
+  const headingTitle=document.createElement('b');
+  headingTitle.textContent=title;
+  heading.append(headingTitle);
+  if(description){
+    const headingDescription=document.createElement('small');
+    headingDescription.textContent=description;
+    heading.append(headingDescription);
+  }
+  const rows=document.createElement('div');
+  rows.className='recovery-group-rows';
+  items.forEach(({recovery,label,detail,recommended=false})=>{
+    const row=document.createElement('div');
+    row.className='recovery-row';
+    if(recommended) row.classList.add('recommended');
+    const info=document.createElement('div');
+    const name=document.createElement('b');
+    name.textContent=label;
+    const meta=document.createElement('small');
+    meta.textContent=`${savedAtLabel(recovery.savedAt)} · ${detail}`;
+    info.append(name,meta);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='mini-btn';
+    button.dataset.recoveryRevision=String(recovery.revision);
+    button.dataset.recoverySource=recovery.source;
+    button.dataset.recoveryLabel=label;
+    button.textContent='Restaurar';
+    row.append(info,button);
+    rows.append(row);
+  });
+  section.append(heading,rows);
+  list.append(section);
 }
 async function openRecoveryModal(){
   const modal=document.getElementById('recoveryBg');
@@ -1490,22 +1535,39 @@ async function openRecoveryModal(){
       list.append(empty);
       return;
     }
-    recoveries.forEach((recovery,index)=>{
-      const row=document.createElement('div');
-      row.className='recovery-row';
-      const info=document.createElement('div');
-      const name=document.createElement('b');
-      name.textContent=`Copia ${recovery.revision}${index===0?' · más reciente':''}`;
-      const meta=document.createElement('small');
-      meta.textContent=`${savedAtLabel(recovery.savedAt)} · ${recoverySourceLabel(recovery.source)}`;
-      info.append(name,meta);
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='mini-btn';
-      button.dataset.recoveryRevision=String(recovery.revision);
-      button.textContent='Restaurar';
-      row.append(info,button);
-      list.append(row);
+    const lastInformation=recoveries.find(recovery=>recovery.source==='last-info');
+    const daily=recoveries.find(recovery=>recovery.source==='daily');
+    const weekly=recoveries.find(recovery=>recovery.source==='weekly');
+    const recent=recoveries
+      .filter(recovery=>!['last-info','daily','weekly'].includes(recovery.source))
+      .sort((left,right)=>(right.generation||0)-(left.generation||0)||right.revision-left.revision)
+      .slice(0,3);
+    appendRecoverySection(list,{
+      title:'Recomendada',
+      description:'La referencia más segura si tu partida desapareció.',
+      items:lastInformation?[{
+        recovery:lastInformation,
+        label:'Última partida con información',
+        detail:'Protegida contra regresiones',
+        recommended:true
+      }]:[]
+    });
+    appendRecoverySection(list,{
+      title:'Copias protegidas',
+      description:'Puntos de retorno separados por tiempo.',
+      items:[
+        daily&&{recovery:daily,label:'Copia diaria',detail:'Mejor estado guardado ese día'},
+        weekly&&{recovery:weekly,label:'Copia semanal',detail:'Estado protegido de la semana'}
+      ].filter(Boolean)
+    });
+    appendRecoverySection(list,{
+      title:'Cambios recientes',
+      description:'Últimos guardados automáticos disponibles.',
+      items:recent.map((recovery,index)=>({
+        recovery,
+        label:index===0?'Guardado más reciente':index===1?'Guardado anterior':'Guardado más antiguo disponible',
+        detail:'Copia automática reciente'
+      }))
     });
   }catch(error){
     list.textContent='No se pudieron leer las copias: '+(error.message||'error desconocido');
@@ -1523,16 +1585,19 @@ document.getElementById('recoveryList').addEventListener('click',async event=>{
   const button=event.target.closest('[data-recovery-revision]');
   if(!button) return;
   const revision=Number(button.dataset.recoveryRevision);
-  if(!confirm(`¿Restaurar la copia ${revision}? La partida actual se conservará como otra copia.`)) return;
+  const source=button.dataset.recoverySource||null;
+  const label=button.dataset.recoveryLabel||'esta partida';
+  if(!confirm(`¿Restaurar “${label}”? La partida actual se conservará como otra copia.`)) return;
   button.disabled=true;
   try{
-    const recovered=await store.recoveryState(revision,STORAGE_KEY);
+    const recovered=await store.recoveryState(revision,STORAGE_KEY,source);
     if(!recovered) throw new Error('La copia ya no está disponible');
+    store.authorizeDestructiveSave('recovery');
     state=mergeState(state,recovered);
     scheduleSave({type:'recovery:restore',revision});
     closeRecoveryModal();
     renderAll();
-    showToast('Partida recuperada desde la copia '+revision,'heal');
+    showToast('Partida recuperada · '+label,'heal');
   }catch(error){
     button.disabled=false;
     showToast('No se pudo recuperar: '+(error.message||'error desconocido'),'dmg');
@@ -2095,6 +2160,7 @@ bindBackupControls({
   navigator,
   getState:()=>state,
   onImported:(importedState)=>{
+    store.authorizeDestructiveSave('import');
     state=importedState;
     registerDailyWakeEstimate();
     scheduleSave();
@@ -2107,7 +2173,12 @@ bindBackupControls({
    cambia de día a medianoche en controlado o a la hora configurada en los demás caminos */
 let lastDay=todayKey();
 function checkDay(){
-  if(todayKey()!==lastDay){lastDay=todayKey();renderAll();showPendingWeekResult();}
+  if(todayKey()!==lastDay){
+    lastDay=todayKey();
+    scheduleSave({type:'storage:daily-checkpoint',day:lastDay});
+    renderAll();
+    showPendingWeekResult();
+  }
   else{renderHoy();renderHero();}
 }
 setInterval(checkDay,60000);
@@ -2160,6 +2231,7 @@ function startOnboarding(){
 /* reiniciar app */
 document.getElementById('btnReset').addEventListener('click',()=>{
   if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
+  store.authorizeDestructiveSave('reset');
   state={
     config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
     days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
@@ -2181,6 +2253,7 @@ document.getElementById('btnReset').addEventListener('click',()=>{
     document.getElementById('mainNav').classList.add('show');
     renderAll();
     ensureHero();
+    scheduleSave({type:'storage:checkpoint'});
     showPendingWeekResult();
     finishInitialReturnSplash();
   }

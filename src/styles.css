@@ -347,8 +347,15 @@
   .storage-health[data-state="error"]{border-color:var(--warn)}
   .storage-health[data-state="error"] .storage-health-dot{background:var(--warn)}
   .recovery-open{display:block;width:100%;margin-top:8px}
-  .recovery-list{display:grid;gap:8px;margin-top:14px;max-height:48vh;overflow:auto}
+  .recovery-list{display:grid;gap:16px;margin-top:14px;max-height:48vh;overflow:auto}
+  .recovery-section{display:grid;gap:7px}
+  .recovery-section-heading{padding:0 2px}
+  .recovery-section-heading>b{display:block;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--kodak)}
+  .recovery-section-heading>small{display:block;margin-top:2px;font-size:9px;line-height:1.4;color:var(--muted)}
+  .recovery-group-rows{display:grid;gap:8px}
   .recovery-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--panel2)}
+  .recovery-row.recommended{border-color:var(--kodak);background:rgba(232,180,74,.08);box-shadow:inset 0 0 0 1px rgba(232,180,74,.08)}
+  .recovery-row.recommended b{color:var(--kodak)}
   .recovery-row b{display:block;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text)}
   .recovery-row small{display:block;margin-top:2px;font-size:9px;color:var(--muted)}
   .recovery-row button{border:1px solid var(--kodak);border-radius:999px;background:none;color:var(--kodak);padding:7px 10px;font-family:'Sora',sans-serif;font-size:10px;font-weight:600;cursor:pointer}

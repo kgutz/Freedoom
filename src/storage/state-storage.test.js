@@ -7,8 +7,10 @@ import {
   createBrowserStore,
   exportBackup,
   importBackup,
+  isCatastrophicStateRegression,
   mergeState,
   parseState,
+  stateInformationProfile,
 } from './state-storage.js';
 
 function memoryLocalStorage({ fail } = {}) {
@@ -200,6 +202,137 @@ describe('copias de seguridad', () => {
 });
 
 describe('adaptador del navegador', () => {
+  it('reconoce una caída catastrófica frente a una partida con progreso', () => {
+    const richState = {
+      ...v34State,
+      days: {
+        '2026-07-20': { c: 12 },
+        '2026-07-21': { c: 11 },
+        '2026-07-22': { c: 10 },
+        '2026-07-23': { c: 9 },
+      },
+    };
+
+    expect(stateInformationProfile(richState).meaningful).toBe(true);
+    expect(isCatastrophicStateRegression(defaultState(), richState)).toBe(true);
+    expect(isCatastrophicStateRegression(richState, defaultState())).toBe(false);
+  });
+
+  it('mantiene una copia diaria y otra semanal fuera de la rotación', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date(2026, 7, 10, 10));
+      const localStorage = memoryLocalStorage();
+      const store = createBrowserStore({ localStorage });
+      store.set(STORAGE_KEY, exportBackup(v34State));
+
+      let recoveries = await store.listRecoveries();
+      expect(recoveries.find((item) => item.source === 'daily')).toMatchObject({
+        revision: 1,
+        periodKey: '2026-08-10',
+      });
+      expect(recoveries.find((item) => item.source === 'weekly')).toMatchObject({
+        revision: 1,
+        periodKey: '2026-08-10',
+      });
+      expect(recoveries.find((item) => item.source === 'last-info')).toMatchObject({
+        revision: 1,
+        state: v34State,
+      });
+
+      vi.setSystemTime(new Date(2026, 7, 11, 10));
+      store.set(STORAGE_KEY, exportBackup(v34State));
+      recoveries = await store.listRecoveries();
+      expect(recoveries.find((item) => item.source === 'daily')).toMatchObject({
+        revision: 2,
+        periodKey: '2026-08-11',
+      });
+      expect(recoveries.find((item) => item.source === 'weekly')).toMatchObject({
+        revision: 1,
+        periodKey: '2026-08-10',
+      });
+      expect(recoveries.find((item) => item.source === 'last-info')).toMatchObject({
+        revision: 2,
+        state: v34State,
+      });
+
+      vi.setSystemTime(new Date(2026, 7, 17, 10));
+      store.set(STORAGE_KEY, exportBackup(v34State));
+      recoveries = await store.listRecoveries();
+      expect(recoveries.find((item) => item.source === 'weekly')).toMatchObject({
+        revision: 3,
+        periodKey: '2026-08-17',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('bloquea que un estado inicial sustituya una partida completa', async () => {
+    const localStorage = memoryLocalStorage();
+    const store = createBrowserStore({ localStorage });
+    store.set(STORAGE_KEY, exportBackup(v34State));
+
+    expect(store.set(STORAGE_KEY, exportBackup(defaultState()))).toMatchObject({
+      blocked: true,
+      revision: 1,
+    });
+    const recoveries = await store.listRecoveries();
+    expect(recoveries.find((item) => item.source === 'last-info')).toMatchObject({
+      revision: 1,
+      state: v34State,
+    });
+    await expect(store.get(STORAGE_KEY)).resolves.toMatchObject({
+      value: exportBackup(v34State),
+      revision: 1,
+    });
+  });
+
+  it('recupera una copia rica aunque una revisión accidental más nueva esté vacía', async () => {
+    const localStorage = memoryLocalStorage();
+    const store = createBrowserStore({ localStorage });
+    store.set(STORAGE_KEY, exportBackup(v34State));
+    const emptyText = exportBackup(defaultState());
+    localStorage.values.set(STORAGE_KEY, emptyText);
+    localStorage.values.set(
+      `${STORAGE_KEY}:meta`,
+      JSON.stringify({
+        revision: 2,
+        savedAt: Date.now() + 1,
+        generation: 0,
+        checksum: checksumOf(emptyText),
+      }),
+    );
+
+    const reloaded = createBrowserStore({ localStorage });
+    await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
+      value: exportBackup(v34State),
+      recovered: true,
+    });
+  });
+
+  it('respeta un reinicio voluntario y conserva las copias anteriores manuales', async () => {
+    const localStorage = memoryLocalStorage();
+    const store = createBrowserStore({ localStorage });
+    store.set(STORAGE_KEY, exportBackup(v34State));
+    store.authorizeDestructiveSave('reset');
+    expect(store.set(STORAGE_KEY, exportBackup(defaultState()))).toMatchObject({
+      blocked: false,
+      generation: 1,
+    });
+
+    const reloaded = createBrowserStore({ localStorage });
+    await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
+      value: exportBackup(defaultState()),
+      generation: 1,
+      recovered: false,
+      source: 'main',
+    });
+    const recoveries = await reloaded.listRecoveries();
+    expect(recoveries.some((item) => item.source === 'daily')).toBe(true);
+    expect(recoveries.some((item) => item.source === 'weekly')).toBe(true);
+  });
+
   it('usa localStorage inmediatamente en la aplicación web', async () => {
     const localStorage = memoryLocalStorage();
     const store = createBrowserStore({ localStorage });

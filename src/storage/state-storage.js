@@ -6,11 +6,96 @@ export const ACTION_LOG_LIMIT = 50;
 const META_SUFFIX = ':meta';
 const SLOT_SUFFIX = ':recovery:';
 const ACTION_SUFFIX = ':actions';
+const DAILY_SUFFIX = ':daily';
+const WEEKLY_SUFFIX = ':weekly';
+const LAST_INFO_SUFFIX = ':last-info';
 const DATABASE_NAME = 'freedoom-recovery';
 const DATABASE_STORE = 'snapshots';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function collectionSize(value) {
+  return isObject(value) ? Object.keys(value).length : 0;
+}
+
+export function stateInformationProfile(state) {
+  const safeState = isObject(state) ? state : {};
+  const game = isObject(safeState.game) ? safeState.game : {};
+  const combat = isObject(game.bossCombat) ? game.bossCombat : {};
+  const habits = isObject(safeState.habits) ? safeState.habits : {};
+  const dayCount = collectionSize(safeState.days);
+  const habitCount = Array.isArray(habits.items) ? habits.items.length : 0;
+  const habitEntryCount = collectionSize(habits.entries);
+  const bossesDown = Math.max(0, Number(combat.legacyBossesDown) || 0) +
+    Math.max(0, Number(combat.defeated) || 0);
+  const bossHistoryCount = Array.isArray(combat.history)
+    ? combat.history.length
+    : 0;
+  const hasHero = typeof game.cls === 'string' && game.cls.length > 0;
+  const onboarded = safeState.onboarded === true;
+  const score =
+    (onboarded ? 40 : 0) +
+    (hasHero ? 80 : 0) +
+    Math.min(240, dayCount * 4) +
+    Math.min(120, habitCount * 15) +
+    Math.min(120, habitEntryCount * 3) +
+    Math.min(180, bossesDown * 40) +
+    Math.min(80, bossHistoryCount * 10);
+
+  return {
+    score,
+    onboarded,
+    hasHero,
+    dayCount,
+    habitCount,
+    habitEntryCount,
+    bossesDown,
+    bossHistoryCount,
+    meaningful:
+      (onboarded && hasHero) ||
+      dayCount > 0 ||
+      habitCount > 0 ||
+      habitEntryCount > 0 ||
+      bossesDown > 0,
+  };
+}
+
+export function isCatastrophicStateRegression(candidateState, referenceState) {
+  const candidate = stateInformationProfile(candidateState);
+  const reference = stateInformationProfile(referenceState);
+  if (!reference.meaningful) return false;
+  if (reference.onboarded && reference.hasHero &&
+      (!candidate.onboarded || !candidate.hasHero)) return true;
+
+  const daysCollapsed =
+    reference.dayCount >= 4 &&
+    candidate.dayCount <= Math.max(1, Math.floor(reference.dayCount * 0.25));
+  const habitsCollapsed =
+    reference.habitCount >= 2 && candidate.habitCount === 0;
+  const bossesCollapsed =
+    reference.bossesDown >= 1 && candidate.bossesDown === 0;
+  const scoreCollapsed =
+    reference.score >= 120 && candidate.score <= reference.score * 0.35;
+
+  return scoreCollapsed ||
+    (daysCollapsed && (habitsCollapsed || bossesCollapsed || candidate.score < 120));
+}
+
+function localDateKey(timestamp) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function localWeekKey(timestamp) {
+  const date = new Date(timestamp);
+  const mondayOffset = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - mondayOffset);
+  return localDateKey(date.getTime());
 }
 
 export function serializeState(state) {
@@ -81,16 +166,25 @@ export function checksumOf(serialized) {
   return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export function createStateEnvelope(state, revision, savedAt = Date.now()) {
+export function createStateEnvelope(
+  state,
+  revision,
+  savedAt = Date.now(),
+  { generation = 0, snapshotType = null, periodKey = null } = {},
+) {
   const value = serializeState(state);
-  return {
+  const envelope = {
     format: 'freedoom-state',
     schemaVersion: STORAGE_SCHEMA_VERSION,
     revision: Math.max(1, Math.trunc(Number(revision) || 1)),
     savedAt: Math.max(0, Math.trunc(Number(savedAt) || Date.now())),
+    generation: Math.max(0, Math.trunc(Number(generation) || 0)),
     checksum: checksumOf(value),
     state,
   };
+  if (snapshotType) envelope.snapshotType = snapshotType;
+  if (periodKey) envelope.periodKey = periodKey;
+  return envelope;
 }
 
 export function parseStateEnvelope(serialized) {
@@ -108,7 +202,10 @@ export function parseStateEnvelope(serialized) {
   if (checksumOf(stateText) !== envelope.checksum) {
     throw new Error('Copia de recuperación dañada');
   }
-  return envelope;
+  return {
+    ...envelope,
+    generation: Math.max(0, Math.trunc(Number(envelope.generation) || 0)),
+  };
 }
 
 function safeEnvelope(serialized, source) {
@@ -201,6 +298,9 @@ function localCandidates(localStorage, key) {
         state: parseState(mainValue),
         revision: validMeta ? meta.revision : 0,
         savedAt: validMeta ? meta.savedAt : 0,
+        generation: validMeta
+          ? Math.max(0, Math.trunc(Number(meta.generation) || 0))
+          : 0,
         checksum: checksumOf(mainValue),
         source: 'main',
       });
@@ -215,16 +315,135 @@ function localCandidates(localStorage, key) {
     );
     if (candidate) candidates.push(candidate);
   }
+  const daily = safeEnvelope(
+    localStorage.getItem(`${key}${DAILY_SUFFIX}`),
+    'daily',
+  );
+  if (daily) candidates.push(daily);
+  const weekly = safeEnvelope(
+    localStorage.getItem(`${key}${WEEKLY_SUFFIX}`),
+    'weekly',
+  );
+  if (weekly) candidates.push(weekly);
+  const lastInfo = safeEnvelope(
+    localStorage.getItem(`${key}${LAST_INFO_SUFFIX}`),
+    'last-info',
+  );
+  if (lastInfo) candidates.push(lastInfo);
   return candidates;
 }
 
 function newestCandidate(candidates) {
   const priorities = { main: 3, indexeddb: 1 };
-  return [...candidates].sort((left, right) => {
+  const highestGeneration = candidates.reduce(
+    (highest, candidate) => Math.max(highest, candidate.generation || 0),
+    0,
+  );
+  const currentGeneration = candidates.filter(
+    (candidate) => (candidate.generation || 0) === highestGeneration,
+  );
+  const sorted = [...currentGeneration].sort((left, right) => {
     if (right.revision !== left.revision) return right.revision - left.revision;
     if (right.savedAt !== left.savedAt) return right.savedAt - left.savedAt;
     return (priorities[right.source] || 2) - (priorities[left.source] || 2);
-  })[0] || null;
+  });
+  const newest = sorted[0] || null;
+  if (!newest) return null;
+
+  const richest = [...currentGeneration].sort((left, right) => {
+    const scoreDifference =
+      stateInformationProfile(right.state).score -
+      stateInformationProfile(left.state).score;
+    if (scoreDifference) return scoreDifference;
+    if (right.revision !== left.revision) return right.revision - left.revision;
+    return right.savedAt - left.savedAt;
+  })[0];
+  return richest && isCatastrophicStateRegression(newest.state, richest.state)
+    ? richest
+    : newest;
+}
+
+function protectedSnapshotDecision(existing, envelope, periodKey) {
+  const incomingProfile = stateInformationProfile(envelope.state);
+  if (!incomingProfile.meaningful) return false;
+  if (!existing) return true;
+  if ((existing.generation || 0) !== (envelope.generation || 0)) return true;
+  const existingProfile = stateInformationProfile(existing.state);
+  if (existing.periodKey !== periodKey) {
+    return !isCatastrophicStateRegression(envelope.state, existing.state);
+  }
+  return incomingProfile.score > existingProfile.score;
+}
+
+function updateProtectedSnapshot({
+  localStorage,
+  key,
+  suffix,
+  source,
+  envelope,
+  periodKey,
+}) {
+  const storageKey = `${key}${suffix}`;
+  const existing = safeEnvelope(localStorage.getItem(storageKey), source);
+  if (!protectedSnapshotDecision(existing, envelope, periodKey)) {
+    return { available: Boolean(existing), updated: false, error: null };
+  }
+  try {
+    const protectedEnvelope = createStateEnvelope(
+      envelope.state,
+      envelope.revision,
+      envelope.savedAt,
+      {
+        generation: envelope.generation,
+        snapshotType: source,
+        periodKey,
+      },
+    );
+    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    const verified = parseStateEnvelope(localStorage.getItem(storageKey));
+    return {
+      available: verified.checksum === protectedEnvelope.checksum,
+      updated: true,
+      error: null,
+    };
+  } catch (error) {
+    return { available: Boolean(existing), updated: false, error };
+  }
+}
+
+function updateLastInformativeSnapshot({ localStorage, key, envelope }) {
+  const storageKey = `${key}${LAST_INFO_SUFFIX}`;
+  const existing = safeEnvelope(localStorage.getItem(storageKey), 'last-info');
+  const incomingProfile = stateInformationProfile(envelope.state);
+  const canReplace =
+    incomingProfile.meaningful &&
+    (!existing ||
+      (existing.generation || 0) !== (envelope.generation || 0) ||
+      !isCatastrophicStateRegression(envelope.state, existing.state));
+  if (!canReplace) {
+    return { available: Boolean(existing), updated: false, error: null };
+  }
+  try {
+    const protectedEnvelope = createStateEnvelope(
+      envelope.state,
+      envelope.revision,
+      envelope.savedAt,
+      {
+        generation: envelope.generation,
+        snapshotType: 'last-info',
+        periodKey: localDateKey(envelope.savedAt),
+      },
+    );
+    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    const verified = parseStateEnvelope(localStorage.getItem(storageKey));
+    return {
+      available: verified.checksum === protectedEnvelope.checksum,
+      updated: true,
+      error: null,
+    };
+  } catch (error) {
+    return { available: Boolean(existing), updated: false, error };
+  }
 }
 
 export function createBrowserStore(browserWindow) {
@@ -236,6 +455,8 @@ export function createBrowserStore(browserWindow) {
   );
   let currentRevision = 0;
   let currentSavedAt = 0;
+  let currentGeneration = 0;
+  let pendingGenerationAdvance = false;
 
   const recoveryList = async (key = STORAGE_KEY) => {
     if (usesExternalStorage || !localStorage) return [];
@@ -247,13 +468,23 @@ export function createBrowserStore(browserWindow) {
     }
     const unique = new Map();
     candidates.forEach((candidate) => {
-      const previous = unique.get(candidate.revision);
+      const protectedSource =
+        candidate.source === 'daily' ||
+        candidate.source === 'weekly' ||
+        candidate.source === 'last-info';
+      const identity = protectedSource
+        ? `${candidate.source}:${candidate.generation || 0}:${candidate.revision}`
+        : `${candidate.generation || 0}:${candidate.revision}`;
+      const previous = unique.get(identity);
       if (!previous || candidate.savedAt > previous.savedAt) {
-        unique.set(candidate.revision, candidate);
+        unique.set(identity, candidate);
       }
     });
     return [...unique.values()].sort(
-      (left, right) => right.revision - left.revision,
+      (left, right) =>
+        (right.generation || 0) - (left.generation || 0) ||
+        right.revision - left.revision ||
+        right.savedAt - left.savedAt,
     );
   };
 
@@ -268,16 +499,23 @@ export function createBrowserStore(browserWindow) {
       if (!selected) return null;
       currentRevision = Math.max(0, selected.revision || 0);
       currentSavedAt = Math.max(0, selected.savedAt || 0);
-      const main = candidates.find((candidate) => candidate.source === 'main');
+      currentGeneration = Math.max(0, selected.generation || 0);
+      const main = candidates.find(
+        (candidate) =>
+          candidate.source === 'main' &&
+          (candidate.generation || 0) === currentGeneration,
+      );
       const recovered = selected.source !== 'main' && (
         !main || selected.revision > main.revision ||
-        checksumOf(serializeState(selected.state)) !== main.checksum
+        checksumOf(serializeState(selected.state)) !== main.checksum ||
+        isCatastrophicStateRegression(main.state, selected.state)
       );
       return {
         key,
         value: serializeState(selected.state),
         revision: currentRevision,
         savedAt: currentSavedAt,
+        generation: currentGeneration,
         recovered,
         source: selected.source,
       };
@@ -287,9 +525,41 @@ export function createBrowserStore(browserWindow) {
       if (usesExternalStorage) return externalStorage.set(key, value);
       if (!localStorage) throw new Error('Almacenamiento local no disponible');
       const parsedState = parseState(value);
+      const existingCandidates = localCandidates(localStorage, key).filter(
+        (candidate) => (candidate.generation || 0) === currentGeneration,
+      );
+      const richestExisting = [...existingCandidates].sort(
+        (left, right) =>
+          stateInformationProfile(right.state).score -
+          stateInformationProfile(left.state).score,
+      )[0];
+      if (
+        !pendingGenerationAdvance &&
+        richestExisting &&
+        isCatastrophicStateRegression(parsedState, richestExisting.state)
+      ) {
+        return {
+          key,
+          value,
+          revision: currentRevision,
+          savedAt: currentSavedAt,
+          generation: currentGeneration,
+          verified: false,
+          recoverySaved: true,
+          degraded: false,
+          blocked: true,
+          protectedSource: richestExisting.source,
+        };
+      }
+      if (pendingGenerationAdvance) {
+        currentGeneration += 1;
+        pendingGenerationAdvance = false;
+      }
       const revision = currentRevision + 1;
       const savedAt = Date.now();
-      const envelope = createStateEnvelope(parsedState, revision, savedAt);
+      const envelope = createStateEnvelope(parsedState, revision, savedAt, {
+        generation: currentGeneration,
+      });
       const envelopeText = JSON.stringify(envelope);
       const slotKey = `${key}${SLOT_SUFFIX}${revision % RECOVERY_SLOT_COUNT}`;
       let recoverySaved = false;
@@ -315,6 +585,7 @@ export function createBrowserStore(browserWindow) {
           JSON.stringify({
             revision,
             savedAt,
+            generation: currentGeneration,
             checksum: checksumOf(value),
           }),
         );
@@ -323,7 +594,33 @@ export function createBrowserStore(browserWindow) {
         mainError = error;
       }
 
-      if (!recoverySaved && !mainSaved) {
+      const dailySnapshot = updateProtectedSnapshot({
+        localStorage,
+        key,
+        suffix: DAILY_SUFFIX,
+        source: 'daily',
+        envelope,
+        periodKey: localDateKey(savedAt),
+      });
+      const weeklySnapshot = updateProtectedSnapshot({
+        localStorage,
+        key,
+        suffix: WEEKLY_SUFFIX,
+        source: 'weekly',
+        envelope,
+        periodKey: localWeekKey(savedAt),
+      });
+      const lastInformativeSnapshot = updateLastInformativeSnapshot({
+        localStorage,
+        key,
+        envelope,
+      });
+      const requiresProtectedSnapshots = stateInformationProfile(parsedState).meaningful;
+
+      if (!recoverySaved && !mainSaved &&
+          !dailySnapshot.available &&
+          !weeklySnapshot.available &&
+          !lastInformativeSnapshot.available) {
         throw mainError || recoveryError || new Error('No se pudo guardar la partida');
       }
 
@@ -335,21 +632,46 @@ export function createBrowserStore(browserWindow) {
         value,
         revision,
         savedAt,
+        generation: currentGeneration,
+        blocked: false,
         verified: mainSaved,
         recoverySaved,
-        degraded: !mainSaved || !recoverySaved,
-        errors: [mainError, recoveryError].filter(Boolean),
+        dailySnapshot,
+        weeklySnapshot,
+        lastInformativeSnapshot,
+        degraded:
+          !mainSaved ||
+          !recoverySaved ||
+          (requiresProtectedSnapshots &&
+            (!dailySnapshot.available ||
+              !weeklySnapshot.available ||
+              !lastInformativeSnapshot.available)),
+        errors: [
+          mainError,
+          recoveryError,
+          dailySnapshot.error,
+          weeklySnapshot.error,
+          lastInformativeSnapshot.error,
+        ].filter(Boolean),
         mirrorPromise,
       };
+    },
+
+    authorizeDestructiveSave() {
+      pendingGenerationAdvance = true;
     },
 
     async listRecoveries(key = STORAGE_KEY) {
       return recoveryList(key);
     },
 
-    async recoveryState(revision, key = STORAGE_KEY) {
+    async recoveryState(revision, key = STORAGE_KEY, source = null) {
       const candidates = await recoveryList(key);
-      return candidates.find((candidate) => candidate.revision === revision)?.state || null;
+      return candidates.find(
+        (candidate) =>
+          candidate.revision === revision &&
+          (!source || candidate.source === source),
+      )?.state || null;
     },
 
     recordAction(action, key = STORAGE_KEY) {
@@ -389,6 +711,10 @@ export function createBrowserStore(browserWindow) {
 
     get savedAt() {
       return currentSavedAt;
+    },
+
+    get generation() {
+      return currentGeneration;
     },
   };
 }

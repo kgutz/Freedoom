@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v130</div>
+  <div class="ob-version" id="obVersion">v131</div>
 </div>
 
 <div id="loading" class="loading">
@@ -400,7 +400,7 @@
       </div>
       <button class="mini-btn recovery-open" id="btnRecoveries" type="button">Copias de recuperación</button>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v130</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v131</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -496,8 +496,9 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💾</span><span>Guardado y recuperación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de la partida principal, mantiene automáticamente varias copias recientes de recuperación.</p>
-          <p class="hint">Si la partida principal estuviera incompleta o dañada, la app intentará recuperar la copia válida más reciente. En Ajustes puedes ver el estado del guardado y abrir <b style="color:var(--text)">Copias de recuperación</b> para restaurar una versión anterior manualmente.</p>
+          <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
+          <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedoom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
+          <p class="hint">En Ajustes puedes abrir <b style="color:var(--text)">Copias de recuperación</b>. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
           <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y usa <b style="color:var(--text)">Exportar</b> para conservar una copia externa. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
         </div>
       </details>
@@ -647,7 +648,7 @@
 <div class="modal-bg center" id="recoveryBg" style="z-index:32">
   <div class="modal recovery-modal">
     <h3>Copias de recuperación</h3>
-    <p class="hint" style="margin-top:-8px">Freedoom conserva automáticamente las últimas versiones verificadas de tu partida.</p>
+    <p class="hint" style="margin-top:-8px">La opción recomendada es la última partida que conservaba información real. También puedes elegir copias recientes, diaria o semanal.</p>
     <div id="recoveryList" class="recovery-list"></div>
     <button class="close" id="recoveryClose" type="button">Cerrar</button>
   </div>
