@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v132</div>
+  <div class="ob-version" id="obVersion">v133</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v132</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v133</span></p>
       </div>
     </div>
   </div>
@@ -542,6 +542,21 @@
     <h3 id="backupTitle">Copia de seguridad</h3>
     <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…"></textarea>
     <button class="close" id="backupAction">Importar</button>
+  </div>
+</div>
+
+<!-- CONFIRMACIÓN REFORZADA PARA REINICIAR -->
+<div class="modal-bg center" id="resetGuardBg" style="z-index:36">
+  <div class="modal reset-guard-modal" role="dialog" aria-modal="true" aria-labelledby="resetGuardTitle">
+    <h3 id="resetGuardTitle">Reiniciar app</h3>
+    <p>Esta acción puede borrar todo tu progreso local. Para continuar, escribe exactamente:</p>
+    <strong>REINICIAR SESIÓN</strong>
+    <input id="resetGuardInput" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Escribe REINICIAR SESIÓN">
+    <small>Después aparecerá una última confirmación.</small>
+    <div class="reset-guard-actions">
+      <button type="button" id="resetGuardCancel">Cancelar</button>
+      <button type="button" id="resetGuardContinue" disabled>Continuar</button>
+    </div>
   </div>
 </div>
 

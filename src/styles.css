@@ -583,6 +583,15 @@
   .settings-footer .btn-reset{margin:0}
   .settings-footer .set-logo{margin:20px auto 0}
   .settings-version{margin:6px 0 0;text-align:center;opacity:.6}
+  .reset-guard-modal p{margin:0 0 12px;color:var(--muted);font-size:12px;line-height:1.55}
+  .reset-guard-modal>strong{display:block;margin-bottom:8px;color:var(--warn);font-family:'IBM Plex Mono',monospace;font-size:13px;letter-spacing:.05em;text-align:center}
+  .reset-guard-modal>input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--text);padding:12px;font-family:'IBM Plex Mono',monospace;font-size:14px;text-align:center;text-transform:uppercase;outline:none}
+  .reset-guard-modal>input:focus{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.12)}
+  .reset-guard-modal>small{display:block;margin-top:7px;color:var(--muted);font-size:9px;text-align:center}
+  .reset-guard-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}
+  .reset-guard-actions button{border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);padding:11px 8px;font:600 11px 'Sora',sans-serif;cursor:pointer}
+  .reset-guard-actions #resetGuardContinue{background:var(--warn);border-color:var(--warn);color:#1A0D0D}
+  .reset-guard-actions #resetGuardContinue:disabled{background:var(--panel2);border-color:var(--line);color:var(--muted);opacity:.55;cursor:not-allowed}
   .load-txt{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;opacity:.7}
   .menu-logo{width:70%;max-width:230px;height:auto;display:block;margin:0 auto 4px;image-rendering:pixelated}
   .set-logo{width:60%;max-width:180px;height:auto;display:block;margin:6px auto 4px;image-rendering:pixelated;opacity:.9}

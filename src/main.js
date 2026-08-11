@@ -48,6 +48,10 @@ import {
 } from './domain/smoking-rules.js';
 import { castSpellEffect } from './domain/spell-rules.js';
 import {
+  RESET_CONFIRMATION_PHRASE,
+  matchesResetConfirmation
+} from './domain/reset-rules.js';
+import {
   adjustHabitProgress,
   habitReward,
   nextHabitOrder,
@@ -107,7 +111,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='132';
+const APP_VERSION='133';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -2217,9 +2221,22 @@ function startOnboarding(){
   onboarding.start();
 }
 
-/* reiniciar app */
-document.getElementById('btnReset').addEventListener('click',()=>{
-  if(!confirm('¿Reiniciar la app? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos.')) return;
+/* reiniciar app: frase deliberada + confirmación final */
+const resetGuardBg=document.getElementById('resetGuardBg');
+const resetGuardInput=document.getElementById('resetGuardInput');
+const resetGuardContinue=document.getElementById('resetGuardContinue');
+function closeResetGuard(){
+  resetGuardBg.classList.remove('show');
+  resetGuardInput.value='';
+  resetGuardContinue.disabled=true;
+}
+function openResetGuard(){
+  resetGuardInput.value='';
+  resetGuardContinue.disabled=true;
+  resetGuardBg.classList.add('show');
+  window.setTimeout(()=>resetGuardInput.focus(),50);
+}
+function resetApp(){
   store.authorizeDestructiveSave('reset');
   state={
     config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
@@ -2228,6 +2245,24 @@ document.getElementById('btnReset').addEventListener('click',()=>{
   scheduleSave();
   document.getElementById('sheetSet').classList.remove('show');
   startOnboarding();
+}
+document.getElementById('btnReset').addEventListener('click',openResetGuard);
+resetGuardInput.addEventListener('input',()=>{
+  resetGuardContinue.disabled=!matchesResetConfirmation(resetGuardInput.value);
+});
+resetGuardInput.addEventListener('keydown',event=>{
+  if(event.key==='Escape') closeResetGuard();
+  if(event.key==='Enter'&&!resetGuardContinue.disabled) resetGuardContinue.click();
+});
+document.getElementById('resetGuardCancel').addEventListener('click',closeResetGuard);
+resetGuardBg.addEventListener('click',event=>{
+  if(event.target===resetGuardBg) closeResetGuard();
+});
+resetGuardContinue.addEventListener('click',()=>{
+  if(!matchesResetConfirmation(resetGuardInput.value)) return;
+  closeResetGuard();
+  if(!confirm(`¿Reiniciar definitivamente? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos. Frase verificada: ${RESET_CONFIRMATION_PHRASE}.`)) return;
+  resetApp();
 });
 
 (async function(){
