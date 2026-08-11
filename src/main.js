@@ -316,7 +316,7 @@ function handleSaveResult(result){
     revision:result.revision,
     savedAt:result.savedAt,
     title:degraded?'Guardado con protección reducida':'Guardado ✓',
-    detail:`Copia ${result.revision} · ${savedAtLabel(result.savedAt)}`,
+    detail:`Último guardado · ${savedAtLabel(result.savedAt)}`,
     warning:degraded
       ? 'Tus datos se han guardado, pero una de las copias de seguridad falló. Exporta una copia desde Ajustes.'
       : ''
@@ -348,7 +348,7 @@ async function load(){
         revision:r.revision||0,
         savedAt:r.savedAt||0,
         title:r.recovered?'Partida recuperada automáticamente':'Guardado ✓',
-        detail:r.savedAt?`Copia ${r.revision} · ${savedAtLabel(r.savedAt)}`:'Partida compatible cargada',
+        detail:r.savedAt?`Último guardado · ${savedAtLabel(r.savedAt)}`:'Partida compatible cargada',
         warning:r.recovered
           ? 'La copia principal no era la más reciente o estaba dañada. Freedoom recuperó la última copia válida.'
           : ''
@@ -1564,14 +1564,8 @@ async function openRecoveryModal(){
 function closeRecoveryModal(){
   document.getElementById('recoveryBg').classList.remove('show');
 }
-document.getElementById('recoveryExport').addEventListener('click',()=>{
-  closeRecoveryModal();
-  document.getElementById('btnExport').click();
-});
-document.getElementById('recoveryImport').addEventListener('click',()=>{
-  closeRecoveryModal();
-  document.getElementById('btnImport').click();
-});
+document.getElementById('btnExport').addEventListener('click',closeRecoveryModal);
+document.getElementById('btnImport').addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryClose').addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryBg').addEventListener('click',event=>{
   if(event.target.id==='recoveryBg') closeRecoveryModal();

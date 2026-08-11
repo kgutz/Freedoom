@@ -579,6 +579,10 @@
     background:none;border:1.5px solid var(--kodak);color:var(--kodak);
     font-family:'Sora',sans-serif;font-weight:700;font-size:14px;letter-spacing:.02em}
   .btn-reset:active{background:rgba(232,180,74,.12)}
+  .settings-footer{display:grid;gap:0;margin-top:18px}
+  .settings-footer .btn-reset{margin:0}
+  .settings-footer .set-logo{margin:20px auto 0}
+  .settings-version{margin:6px 0 0;text-align:center;opacity:.6}
   .load-txt{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.1em;opacity:.7}
   .menu-logo{width:70%;max-width:230px;height:auto;display:block;margin:0 auto 4px;image-rendering:pixelated}
   .set-logo{width:60%;max-width:180px;height:auto;display:block;margin:6px auto 4px;image-rendering:pixelated;opacity:.9}

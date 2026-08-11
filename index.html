@@ -387,20 +387,11 @@
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
-      <div class="set-row">
-        <label>Copia de seguridad</label>
-        <div style="display:flex;gap:8px">
-          <button class="mini-btn" id="btnExport">Exportar</button>
-          <button class="mini-btn" id="btnImport">Importar</button>
-        </div>
+      <div class="settings-footer">
+        <button class="btn-reset" id="btnReset">Reiniciar app</button>
+        <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v132</span></p>
       </div>
-      <div class="storage-health" id="storageHealth" data-state="idle">
-        <span class="storage-health-dot" aria-hidden="true"></span>
-        <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
-      </div>
-      <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v132</span> · arquitectura modular</p>
-      <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
 </div>
@@ -652,6 +643,10 @@
   <div class="modal recovery-modal">
     <h3>Copias de seguridad</h3>
     <p class="hint" style="margin-top:-8px">Guarda una copia fuera de la app o recupera una partida anterior.</p>
+    <div class="storage-health" id="storageHealth" data-state="idle">
+      <span class="storage-health-dot" aria-hidden="true"></span>
+      <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
+    </div>
     <div id="recoveryList" class="recovery-list"></div>
     <div class="recovery-manual">
       <div class="recovery-manual-copy">
@@ -659,8 +654,8 @@
         <small>Exporta un código o importa uno que guardaste anteriormente.</small>
       </div>
       <div class="recovery-manual-actions">
-        <button class="mini-btn" id="recoveryExport" type="button">Exportar</button>
-        <button class="mini-btn" id="recoveryImport" type="button">Importar</button>
+        <button class="mini-btn" id="btnExport" type="button">Exportar</button>
+        <button class="mini-btn" id="btnImport" type="button">Importar</button>
       </div>
     </div>
     <button class="close" id="recoveryClose" type="button">Cerrar</button>
