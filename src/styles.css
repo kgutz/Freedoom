@@ -346,8 +346,13 @@
   .storage-health[data-state="saving"] .storage-health-dot{background:var(--kodak)}
   .storage-health[data-state="error"]{border-color:var(--warn)}
   .storage-health[data-state="error"] .storage-health-dot{background:var(--warn)}
-  .recovery-open{display:block;width:100%;margin-top:8px}
   .recovery-list{display:grid;gap:16px;margin-top:14px;max-height:48vh;overflow:auto}
+  .recovery-manual{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;background:var(--panel2)}
+  .recovery-manual-copy{min-width:0}
+  .recovery-manual-copy b{display:block;font-family:'Sora',sans-serif;font-size:11px;color:var(--text)}
+  .recovery-manual-copy small{display:block;margin-top:3px;font-size:9px;line-height:1.4;color:var(--muted)}
+  .recovery-manual-actions{display:flex;gap:7px;flex:0 0 auto}
+  .recovery-manual-actions .mini-btn{padding:7px 9px}
   .recovery-section{display:grid;gap:7px}
   .recovery-section-heading{padding:0 2px}
   .recovery-section-heading>b{display:block;font-family:'Sora',sans-serif;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--kodak)}

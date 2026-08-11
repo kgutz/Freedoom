@@ -9,6 +9,7 @@ export function bindNavigation({
   document,
   window,
   onOpenSettings,
+  onOpenRecoveries,
   onHabits,
   onCalendar,
 }) {
@@ -42,6 +43,10 @@ export function bindNavigation({
   document.getElementById('menuAjustes').addEventListener('click', () => {
     document.getElementById('menuBg').classList.remove('show');
     onOpenSettings();
+  });
+  document.getElementById('menuRecoveries').addEventListener('click', () => {
+    document.getElementById('menuBg').classList.remove('show');
+    onOpenRecoveries();
   });
   document.getElementById('menuInstr').addEventListener('click', () => {
     document.getElementById('menuBg').classList.remove('show');

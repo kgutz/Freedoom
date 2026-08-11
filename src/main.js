@@ -107,7 +107,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='131';
+const APP_VERSION='132';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -366,7 +366,7 @@ async function load(){
     console.error('Error cargando la partida',e);
     setStorageHealth({
       state:'error',title:'No se pudo cargar la partida',detail:e.message||'Error desconocido',
-      warning:'Freedoom no pudo leer el guardado. No reinicies la app: revisa Copias de recuperación en Ajustes.'
+      warning:'Freedoom no pudo leer el guardado. No reinicies la app: revisa Copias de seguridad en el menú.'
     });
   }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -1421,6 +1421,7 @@ const navigation=bindNavigation({
   document,
   window,
   onOpenSettings:openAjustes,
+  onOpenRecoveries:openRecoveryModal,
   onHabits:renderHabits,
   onCalendar:()=>{
     calCursor=currentDayDate();
@@ -1538,10 +1539,6 @@ async function openRecoveryModal(){
     const lastInformation=recoveries.find(recovery=>recovery.source==='last-info');
     const daily=recoveries.find(recovery=>recovery.source==='daily');
     const weekly=recoveries.find(recovery=>recovery.source==='weekly');
-    const recent=recoveries
-      .filter(recovery=>!['last-info','daily','weekly'].includes(recovery.source))
-      .sort((left,right)=>(right.generation||0)-(left.generation||0)||right.revision-left.revision)
-      .slice(0,3);
     appendRecoverySection(list,{
       title:'Recomendada',
       description:'La referencia más segura si tu partida desapareció.',
@@ -1560,15 +1557,6 @@ async function openRecoveryModal(){
         weekly&&{recovery:weekly,label:'Copia semanal',detail:'Estado protegido de la semana'}
       ].filter(Boolean)
     });
-    appendRecoverySection(list,{
-      title:'Cambios recientes',
-      description:'Últimos guardados automáticos disponibles.',
-      items:recent.map((recovery,index)=>({
-        recovery,
-        label:index===0?'Guardado más reciente':index===1?'Guardado anterior':'Guardado más antiguo disponible',
-        detail:'Copia automática reciente'
-      }))
-    });
   }catch(error){
     list.textContent='No se pudieron leer las copias: '+(error.message||'error desconocido');
   }
@@ -1576,7 +1564,14 @@ async function openRecoveryModal(){
 function closeRecoveryModal(){
   document.getElementById('recoveryBg').classList.remove('show');
 }
-document.getElementById('btnRecoveries').addEventListener('click',openRecoveryModal);
+document.getElementById('recoveryExport').addEventListener('click',()=>{
+  closeRecoveryModal();
+  document.getElementById('btnExport').click();
+});
+document.getElementById('recoveryImport').addEventListener('click',()=>{
+  closeRecoveryModal();
+  document.getElementById('btnImport').click();
+});
 document.getElementById('recoveryClose').addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryBg').addEventListener('click',event=>{
   if(event.target.id==='recoveryBg') closeRecoveryModal();

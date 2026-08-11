@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v131</div>
+  <div class="ob-version" id="obVersion">v132</div>
 </div>
 
 <div id="loading" class="loading">
@@ -398,9 +398,8 @@
         <span class="storage-health-dot" aria-hidden="true"></span>
         <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
       </div>
-      <button class="mini-btn recovery-open" id="btnRecoveries" type="button">Copias de recuperación</button>
       <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v131</span> · arquitectura modular</p>
+      <p class="hint" style="text-align:center;opacity:.6">Freedoom <span id="settingsVersion">v132</span> · arquitectura modular</p>
       <button class="btn-reset" id="btnReset">Reiniciar app</button>
     </div>
   </div>
@@ -498,7 +497,7 @@
         <div class="faq-answer">
           <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
           <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedoom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
-          <p class="hint">En Ajustes puedes abrir <b style="color:var(--text)">Copias de recuperación</b>. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
+          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b>. Allí puedes exportar o importar una copia manual y restaurar las copias automáticas. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
           <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y usa <b style="color:var(--text)">Exportar</b> para conservar una copia externa. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
         </div>
       </details>
@@ -567,6 +566,10 @@
     <button class="menu-item" id="menuAjustes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
       Ajustes
+    </button>
+    <button class="menu-item" id="menuRecoveries">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5C5 5.6 8.1 4 12 4s7 1.6 7 3.5S15.9 11 12 11 5 9.4 5 7.5Z"/><path d="M5 7.5v4c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-4"/><path d="M5 11.5v4c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-4"/></svg>
+      Copias de seguridad
     </button>
   </div>
 </div>
@@ -644,12 +647,22 @@
   </div>
 </div>
 
-<!-- COPIAS AUTOMÁTICAS DE RECUPERACIÓN -->
+<!-- COPIAS DE SEGURIDAD -->
 <div class="modal-bg center" id="recoveryBg" style="z-index:32">
   <div class="modal recovery-modal">
-    <h3>Copias de recuperación</h3>
-    <p class="hint" style="margin-top:-8px">La opción recomendada es la última partida que conservaba información real. También puedes elegir copias recientes, diaria o semanal.</p>
+    <h3>Copias de seguridad</h3>
+    <p class="hint" style="margin-top:-8px">Guarda una copia fuera de la app o recupera una partida anterior.</p>
     <div id="recoveryList" class="recovery-list"></div>
+    <div class="recovery-manual">
+      <div class="recovery-manual-copy">
+        <b>Copia manual</b>
+        <small>Exporta un código o importa uno que guardaste anteriormente.</small>
+      </div>
+      <div class="recovery-manual-actions">
+        <button class="mini-btn" id="recoveryExport" type="button">Exportar</button>
+        <button class="mini-btn" id="recoveryImport" type="button">Importar</button>
+      </div>
+    </div>
     <button class="close" id="recoveryClose" type="button">Cerrar</button>
   </div>
 </div>
