@@ -48,6 +48,21 @@ import {
 } from './domain/smoking-rules.js';
 import { castSpellEffect } from './domain/spell-rules.js';
 import {
+  acknowledgeLootNotice,
+  attemptForge,
+  canActivateDailyRelic,
+  emptyLootState,
+  equipRelic,
+  equippedRelicBonuses,
+  grantBossRewards,
+  isRelicEquipped,
+  markDailyRelicActivation,
+  normalizeLootState,
+  pendingLootNotice,
+  unequipRelic
+} from './domain/loot-rules.js';
+import { relicDefinition, relicRankEffect } from './data/loot-data.js';
+import {
   RESET_CONFIRMATION_PHRASE,
   matchesResetConfirmation
 } from './domain/reset-rules.js';
@@ -87,6 +102,13 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
+import {
+  forgeResultMarkup,
+  renderForgeView,
+  renderInventoryView,
+  renderLootNotice,
+  renderRelicDetail
+} from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
@@ -111,8 +133,22 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='134';
+const APP_VERSION='135';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
+const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
+const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
+const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
+  ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
+  : 0;
+const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))
+  : 0;
+const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
+  ? LOCAL_DEMO_MIGRATION
+    ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
+    : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v1`
+  : STORAGE_KEY;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -125,7 +161,8 @@ let state={
   seeded:false,
   seededV:0,
   game:{cls:null},
-  onboarded:false
+  onboarded:false,
+  ...emptyLootState()
 };
 let calCursor=currentDayDate();
 let editingKey=null;
@@ -134,6 +171,7 @@ let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
 let classChangeReturn=null;
+let initializeLocalDemo=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -342,11 +380,16 @@ async function requestPersistentStorage(){
 
 async function load(){
   try{
-    const r=await store.get(STORAGE_KEY);
+    let r=await store.get(ACTIVE_STORAGE_KEY);
+    if(!r&&LOCAL_DEMO_BOSSES){
+      r=await store.get(STORAGE_KEY);
+      initializeLocalDemo=true;
+    }
     if(r&&r.value){
       const saved=parseState(r.value);
       const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
       state=mergeState(state,saved);
+      state={...state,...normalizeLootState(state)};
       setStorageHealth({
         state:'saved',
         revision:r.revision||0,
@@ -384,17 +427,19 @@ async function load(){
     state.seeded=true;
     scheduleSave();
   }
+  if(LOCAL_LOOT_NOTICE_PREVIEW) initializeLocalDemo=true;
+  if(initializeLocalDemo) prepareLocalBossDemo();
 }
 function scheduleSave(action){
   if(action){
-    try{ store.recordAction(action); }
+    try{ store.recordAction(action,ACTIVE_STORAGE_KEY); }
     catch(error){ console.warn('No se pudo registrar la acción',error); }
   }
   setStorageHealth({state:'saving',title:'Guardando…',detail:'Verificando la partida',warning:''});
   /* en el móvil (localStorage) guarda al instante: si cierras la app justo después de un +, no se pierde */
   if(!store.usesExternalStorage){
     try{
-      const result=store.set(STORAGE_KEY,serializeState(state));
+      const result=store.set(ACTIVE_STORAGE_KEY,serializeState(state));
       handleSaveResult(result);
     }catch(e){
       console.error('Error guardando',e);
@@ -407,7 +452,7 @@ function scheduleSave(action){
   }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    try{ handleSaveResult(await store.set(STORAGE_KEY,serializeState(state))); }
+    try{ handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state))); }
     catch(e){
       console.error('Error guardando',e);
       setStorageHealth({
@@ -434,7 +479,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();}
+function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();queueLootNotice();}
 
 function renderHoy(){
   let stats=null;
@@ -530,17 +575,196 @@ function renderSettings(){
 
 /* ==================== RPG / TAMAGOTCHI ==================== */
 
+function applyLootSlices(result){
+  state.economy=result.economy;
+  state.loot=result.loot;
+  state.inventory=result.inventory;
+  state.forge=result.forge;
+}
+
+function prepareLocalBossDemo(){
+  if(!LOCAL_DEMO_BOSSES) return;
+  initializeLocalDemo=false;
+  state.config={
+    ...state.config,
+    startLimit:Math.max(6,Number(state.config?.startLimit)||20)
+  };
+  state.onboarded=true;
+  state.game={
+    ...(state.game||{}),
+    cls:state.game?.cls||'paladin',
+    name:state.game?.name||'Héroe de prueba',
+    hp:Number.isFinite(state.game?.hp)?state.game.hp:115,
+    mp:Number.isFinite(state.game?.mp)?state.game.mp:90,
+    buffs:{...(state.game?.buffs||{})},
+    day:todayKey()
+  };
+  const currentWeek=Math.max(0,weekIndexOf(currentDayDate()));
+  state.game.bossCombat={
+    version:2,
+    startedWeek:currentWeek,
+    legacyBossesDown:LOCAL_DEMO_BOSSES,
+    defeated:0,
+    bossIndex:LOCAL_DEMO_BOSSES,
+    week:currentWeek,
+    hpAtWeekStart:150,
+    victoryRecorded:false,
+    spellHits:[],
+    history:Array.from({length:LOCAL_DEMO_BOSSES},(_,index)=>({
+      week:index,bossIndex:index,won:true,damage:150,remainingHp:0
+    }))
+  };
+  Object.assign(state,emptyLootState());
+  if(LOCAL_DEMO_MIGRATION){
+    scheduleSave({type:'demo:loot-migration',count:LOCAL_DEMO_MIGRATION});
+    return;
+  }
+  applyLootSlices(grantBossRewards({
+    state,
+    bossesDown:LOCAL_DEMO_BOSSES,
+    source:'retroactive',
+    seed:`local-demo-${LOCAL_DEMO_BOSSES}`,
+    nowTimestamp:Date.now()
+  }));
+  const demoRelics=state.inventory.relics;
+  if(demoRelics.relic_01) Object.assign(demoRelics.relic_01,{rarity:'rare',affixes:[]});
+  if(demoRelics.relic_02) Object.assign(demoRelics.relic_02,{rarity:'legendary',affixes:['arcane']});
+  if(demoRelics.relic_03) Object.assign(demoRelics.relic_03,{rarity:'mythic',affixes:['discipline','fortune']});
+  if(demoRelics.relic_04) Object.assign(demoRelics.relic_04,{rarity:'legendary',affixes:['vitality']});
+  state.inventory.equipped=['relic_01','relic_03'].filter(id=>demoRelics[id]);
+  state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
+  state.loot.migrationComplete=true;
+  scheduleSave({type:'demo:bosses',count:LOCAL_DEMO_BOSSES});
+}
+
+function relicBonuses(){
+  return equippedRelicBonuses(state);
+}
+
+function storedRelicXp(){
+  return Object.entries(state.inventory?.dailyActivations||{})
+    .filter(([key,value])=>key.startsWith('relic_06:')&&Number(value)>0)
+    .reduce((total,[,value])=>total+Number(value),0);
+}
+
+function lootMigrationSeed(){
+  return [
+    state.config?.startDate||'',
+    state.game?.name||'',
+    state.game?.cls||'',
+  ].join('|');
+}
+
+function totalBossesDown(){
+  const combat=state.game?.bossCombat;
+  return Math.max(0,combat?.legacyBossesDown||0)+
+    Math.max(0,combat?.defeated||0);
+}
+
+function syncLootRewards(source){
+  if(!state.game?.cls) return [];
+  const before=JSON.stringify({
+    economy:state.economy,loot:state.loot,
+    inventory:state.inventory,forge:state.forge
+  });
+  const result=grantBossRewards({
+    state,
+    bossesDown:totalBossesDown(),
+    source,
+    seed:lootMigrationSeed(),
+    nowTimestamp:Date.now()
+  });
+  applyLootSlices(result);
+  const after=JSON.stringify({
+    economy:state.economy,loot:state.loot,
+    inventory:state.inventory,forge:state.forge
+  });
+  if(before!==after){
+    scheduleSave({
+      type:source==='retroactive'?'loot:migrated':'loot:boss-reward',
+      rewards:result.rewards.map(reward=>reward.rewardId)
+    });
+  }
+  return result.rewards;
+}
+
+function markRelicDaily(relicId,key,value=true){
+  const updated=markDailyRelicActivation(state,relicId,key);
+  if(value!==true){
+    updated.inventory.dailyActivations[`${relicId}:${key}`]=value;
+  }
+  applyLootSlices(updated);
+}
+
+function recoverMana(amount){
+  if(amount<=0) return 0;
+  const bonus=relicBonuses().manaRecoveryBonus;
+  const before=state.game.mp||0;
+  state.game.mp=capMp(before+amount+bonus);
+  return state.game.mp-before;
+}
+
+function applyFirstDamageRelic(damage,key=todayKey()){
+  if(damage<=0||!canActivateDailyRelic(state,'relic_01',key)){
+    return {damage,reduction:0,activationKey:null};
+  }
+  const reduction=Math.min(
+    damage,
+    relicRankEffect(
+      'relic_01',
+      state.inventory.relics.relic_01?.rank||1
+    )
+  );
+  markRelicDaily('relic_01',key,true);
+  return {damage:Math.max(0,damage-reduction),reduction,activationKey:`relic_01:${key}`};
+}
+
+function restoreRelicActivation(activationKey){
+  if(!activationKey||!state.inventory?.dailyActivations) return;
+  delete state.inventory.dailyActivations[activationKey];
+}
+
+function awardRelicDayXp(key){
+  if(!canActivateDailyRelic(state,'relic_06',key)) return 0;
+  const amount=relicRankEffect(
+    'relic_06',
+    state.inventory.relics.relic_06?.rank||1
+  );
+  markRelicDaily('relic_06',key,amount);
+  return amount;
+}
+
+function revokeRelicDayXp(key){
+  const activationKey=`relic_06:${key}`;
+  const amount=Number(state.inventory?.dailyActivations?.[activationKey])||0;
+  if(amount>0) delete state.inventory.dailyActivations[activationKey];
+  return amount;
+}
+
+function completedDayForKey(key){
+  const date=parseKey(key);
+  const dateConfig=journeyConfigForDate(state.config,date);
+  if(isSmokeFreeMode(dateConfig)){
+    return smokeFreeStatusOf(getDay(key))===SMOKE_FREE_STATUS_SUCCESS;
+  }
+  if(isControlledMode(dateConfig)) return controlledDayCompleted(key);
+  return getDay(key).c<=limitOfDate(date);
+}
+
 
 
 function gameStats(){
   const intoxication=currentIntoxication();
+  const bonuses=relicBonuses();
   return calculateGameStats({
     now:currentDayDate(),
     config:state.config,
     days:state.days,
     game:state.game,
     habits:state.habits,
-    passiveMultiplier:intoxication.passiveMultiplier
+    passiveMultiplier:intoxication.passiveMultiplier,
+    relicXp:storedRelicXp(),
+    relicBonuses:bonuses
   });
 }
 
@@ -583,6 +807,7 @@ function renderWeekResultModal(){
     `;
     document.getElementById('weekResultClose').addEventListener('click',()=>{
       document.getElementById('weekResultBg').classList.remove('show');
+      queueLootNotice();
     });
   }else{
     const idx=Number.isFinite(wr.bossIndex)
@@ -641,6 +866,7 @@ function renderWeekResultModal(){
       renderAll();
     });
   }
+  state={...state,...normalizeLootState(state)};
 }
 function registerDailyWakeEstimate(now=new Date()){
   const cutoff=dayStartMinutes(state.config.dayStartTime||DEFAULT_DAY_START_TIME);
@@ -693,6 +919,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     config:state.config,
     bossesDown:totalBossesDown
   });
+  syncLootRewards(state.loot?.migrationComplete===true?'victory':'retroactive');
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
       const mx=heroMaxes();
@@ -706,15 +933,24 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
         const knightReduction=smokeFreeMode&&g.cls==='knight'&&lvl>=5
           ? 0.1*currentIntoxication(actualTimestamp).passiveMultiplier
           : 0;
+        const relicPenaltyReduction=isRelicEquipped(state,'relic_04')
+          ? relicRankEffect(
+              'relic_04',state.inventory.relics.relic_04?.rank||1
+            )/100
+          : 0;
+        const damageRate=Math.max(
+          0,
+          0.3-knightReduction-relicPenaltyReduction
+        );
         const penalty=weeklyBossPenalty({
           hp:g.hp,
           maxHp:mx.maxHp,
           maxMp:mx.maxMp,
-          damageRate:0.3-knightReduction
+          damageRate
         });
         g.hp=penalty.hp;
         g.mp=penalty.mp;
-        weekResult.penalty={shielded:false,hpRate:0.3-knightReduction,mpRate:0.2};
+        weekResult.penalty={shielded:false,hpRate:damageRate,mpRate:0.2};
       }
     }
     g.weekResult=weekResult;
@@ -755,6 +991,7 @@ function ensureHero(){
         : isControlledMode(previousConfig)
           ? controlledDayCompleted(g.day)
           : c<=lim;
+    if(completedDay) awardRelicDayXp(g.day);
     const recovered=dailyRecovery({
       completedDay,
       currentMana:g.mp,
@@ -788,7 +1025,8 @@ function ensureHero(){
     classId:g.cls,
     regenerationActive:Boolean(g.buffs.regenUntil&&g.buffs.regenUntil>now),
     passiveMultiplier:intoxication.passiveMultiplier,
-    druidFastRegeneration:!usesSmokeFreeSkills(state.config)
+    druidFastRegeneration:!usesSmokeFreeSkills(state.config),
+    additiveMinutesReduction:relicBonuses().regenerationMinutesReduction
   });
   if(regenerated.ticks>0){
     g.hp=regenerated.hp;
@@ -840,6 +1078,10 @@ function smokeDamage(){
     passiveMultiplier:intoxication.passiveMultiplier,
     dayStartTime:state.config.dayStartTime||DEFAULT_DAY_START_TIME
   });
+  const relicDamage=applyFirstDamageRelic(result.dmg,key);
+  result.dmg=relicDamage.damage;
+  result.relicReduction=relicDamage.reduction;
+  result.relicActivationKey=relicDamage.activationKey;
   if(result.consumesRoots) g.rootsDay=key;
   if(result.consumesShield) g.buffs.shield--;
   if(result.dmg>0) g.hp=Math.max(0,g.hp-result.dmg);
@@ -864,6 +1106,12 @@ function castSpell(id){
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
   const intoxication=currentIntoxication(now);
+  const relicDiscountActive=canActivateDailyRelic(
+    state,'relic_05',todayKey()
+  );
+  const manaDiscount=relicDiscountActive
+    ? relicRankEffect('relic_05',state.inventory.relics.relic_05?.rank||1)
+    : 0;
   const result=castSpellEffect({
     game:g,
     spell:sp,
@@ -874,8 +1122,12 @@ function castSpell(id){
     maxHp:st.maxHp,
     activeFailureChance:intoxication.activeFailureChance,
     passiveMultiplier:intoxication.passiveMultiplier,
-    smokeFreeMode:usesSmokeFreeSkills(state.config)
+    smokeFreeMode:usesSmokeFreeSkills(state.config),
+    manaDiscount
   });
+  if(manaDiscount>0&&(result.ok||result.reason==='intoxicated')){
+    markRelicDaily('relic_05',todayKey(),true);
+  }
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
@@ -924,7 +1176,8 @@ function renderHero(){
       game:state.game,
       stats:null,
       boss:null,
-      armor:0
+      armor:0,
+      lootState:state
     });
     return;
   }
@@ -951,8 +1204,70 @@ function renderHero(){
     boss,
     armor:heroArmor(),
     intoxication,
-    dayKey
+    dayKey,
+    lootState:state
   });
+}
+
+let lootNoticeOpening=false;
+let activeLootNoticeId=null;
+let forgeLocked=false;
+let selectedForgeRelicId=null;
+function showInventoryPanel(panel='inventory',scrollToEquipped=false){
+  const inventorySelected=panel==='inventory';
+  const inventoryBody=document.getElementById('inventoryBody');
+  const forgeBody=document.getElementById('forgeBody');
+  const inventoryTab=document.getElementById('inventoryTab');
+  const forgeTab=document.getElementById('forgeTab');
+  inventoryBody.hidden=!inventorySelected;
+  forgeBody.hidden=inventorySelected;
+  inventoryTab.classList.toggle('active',inventorySelected);
+  forgeTab.classList.toggle('active',!inventorySelected);
+  inventoryTab.setAttribute('aria-selected',String(inventorySelected));
+  forgeTab.setAttribute('aria-selected',String(!inventorySelected));
+  if(inventorySelected){
+    renderInventoryView(document,state);
+    if(scrollToEquipped) requestAnimationFrame(()=>document.getElementById('inventoryEquippedSection')?.scrollIntoView({block:'start'}));
+  }else selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId);
+}
+function openInventory(){
+  showInventoryPanel('inventory');
+  document.getElementById('sheetInventory').classList.add('show');
+}
+function openRelicDetail(relicId){
+  if(!renderRelicDetail(document,state,relicId)) return;
+  document.getElementById('sheetRelicDetail').classList.add('show');
+}
+async function showPendingLootNotice(){
+  if(lootNoticeOpening||document.getElementById('lootNoticeBg').classList.contains('show')) return;
+  if(document.getElementById('weekResultBg').classList.contains('show')) return;
+  const notice=pendingLootNotice(state);
+  if(!notice) return;
+  lootNoticeOpening=true;
+  try{
+    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+    renderLootNotice(document,state,notice);
+    activeLootNoticeId=notice.id;
+    document.getElementById('lootNoticeBg').classList.add('show');
+  }catch(error){
+    console.error('No se pudo guardar el botín antes del aviso',error);
+    showToast('No se pudo asegurar el guardado del botín','dmg');
+  }finally{lootNoticeOpening=false;}
+}
+function queueLootNotice(){
+  window.setTimeout(()=>void showPendingLootNotice(),0);
+}
+function acknowledgeActiveLootNotice(){
+  if(!activeLootNoticeId) return;
+  applyLootSlices(acknowledgeLootNotice(state,activeLootNoticeId));
+  activeLootNoticeId=null;
+  document.getElementById('lootNoticeBg').classList.remove('show');
+  scheduleSave({type:'loot:notice-acknowledged'});
+}
+function capHeroAfterEquipmentChange(){
+  if(!state.game?.cls) return;
+  state.game.hp=capHp(state.game.hp||0);
+  state.game.mp=capMp(state.game.mp||0);
 }
 
 /* --- libro de habilidades: detalle completo de las 6 de la clase actual --- */
@@ -1019,6 +1334,12 @@ function closeModal(){
     }
   }
   setDay(editingKey,c,p,undefined,b,undefined,{type:'day:update',day:editingKey,cigarettes:c,pills:p,beers:b});
+  if(editingKey<todayKey()){
+    if(completedDayForKey(editingKey)) awardRelicDayXp(editingKey);
+    else revokeRelicDayXp(editingKey);
+    scheduleSave({type:'relic:historical-day-sync',day:editingKey});
+    renderAll();
+  }
   document.getElementById('modalBg').classList.remove('show');
 }
 
@@ -1055,15 +1376,17 @@ document.getElementById('addCig').addEventListener('click',()=>{
     ashCurseActive:Boolean(state.game.buffs&&state.game.buffs.cenizaUntil>Date.now()),
     passiveMultiplier:currentIntoxication().passiveMultiplier
   });
-  if(rewards.mana>0) state.game.mp=capMp((state.game.mp||0)+rewards.mana);
+  const recoveredMana=rewards.mana>0?recoverMana(rewards.mana):0;
   (state.game.cigDmg=state.game.cigDmg||[]).push({
     d:r.dmg,
     p:r.perfect,
     x:rewards.xp,
-    m:rewards.mana,
+    m:recoveredMana,
     h:r.healed,
     r:r.consumesRoots,
-    sh:r.consumesShield
+    sh:r.consumesShield,
+    lr:r.relicReduction||0,
+    la:r.relicActivationKey||null
   });
   setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0),{
     type:'cigarette:add',day:k,count:d.c+1
@@ -1074,7 +1397,7 @@ document.getElementById('addCig').addEventListener('click',()=>{
   }
   if(r.shielded) showToast('🛡 Escudo absorbió el ataque del jefe','heal');
   else if(r.dmg>0) showToast('⚔ El jefe ataca · −'+r.dmg+' de vida','dmg');
-  else if(r.perfect) showToast('Disparo perfecto · −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+rewards.mana+' 💧','heal');
+  else if(r.perfect) showToast('Disparo perfecto · −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+recoveredMana+' 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -1096,7 +1419,8 @@ document.getElementById('subCig').addEventListener('click',()=>{
   const arr=state.game.cigDmg;
   let wasPerfect=false, exX=0;
   if(arr&&arr.length){
-    const undo=smokeUndoEffects(arr.pop());
+    const damageEntry=arr.pop();
+    const undo=smokeUndoEffects(damageEntry);
     wasPerfect=undo.perfect;
     exX=undo.xp;
     if(undo.damage>0&&state.game.hp!==undefined){
@@ -1112,6 +1436,7 @@ document.getElementById('subCig').addEventListener('click',()=>{
       state.game.buffs=state.game.buffs||{};
       state.game.buffs.shield=(state.game.buffs.shield||0)+1;
     }
+    restoreRelicActivation(damageEntry?.la);
     scheduleSave();
   }
   setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0),{
@@ -1136,7 +1461,7 @@ document.getElementById('addPill').addEventListener('click',()=>{
     const hpBefore=state.game.hp;
     const mpBefore=state.game.mp||0;
     state.game.hp=capHp(hpBefore+reward.healing);
-    state.game.mp=capMp(mpBefore+reward.mana);
+    recoverMana(reward.mana);
     d.ph=state.game.hp-hpBefore;
     d.pm=state.game.mp-mpBefore;
     scheduleSave();
@@ -1169,9 +1494,15 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   g.intoxication=added.effects;
   const shielded=usesSmokeFreeSkills(state.config)&&(g.buffs?.shield||0)>0;
   if(shielded) g.buffs.shield--;
-  const bd=shielded?0:BEER_DAMAGE;
+  const relicDamage=shielded
+    ? {damage:0,reduction:0,activationKey:null}
+    : applyFirstDamageRelic(BEER_DAMAGE,k);
+  const bd=relicDamage.damage;
   if(bd>0&&g.hp!==undefined) g.hp=Math.max(0,g.hp-bd);
-  (g.beerDmg=g.beerDmg||[]).push({d:bd,i:added.effect.id,sh:shielded});
+  (g.beerDmg=g.beerDmg||[]).push({
+    d:bd,i:added.effect.id,sh:shielded,
+    lr:relicDamage.reduction,la:relicDamage.activationKey
+  });
   scheduleSave();
   setDay(k,d.c,d.p,undefined,(d.b||0)+1,undefined,{
     type:'beer:add',day:k,count:(d.b||0)+1
@@ -1190,6 +1521,7 @@ document.getElementById('subBeer').addEventListener('click',()=>{
   const arr=g.beerDmg;
   const beerEntry=(arr&&arr.length)?arr.pop():BEER_DAMAGE;
   const undo=beerUndoEffects(beerEntry);
+  restoreRelicActivation(beerEntry?.la);
   if(beerEntry&&typeof beerEntry==='object'&&beerEntry.sh){
     g.buffs=g.buffs||{};
     g.buffs.shield=(g.buffs.shield||0)+1;
@@ -1228,6 +1560,7 @@ function applySmokeFreeDayRewards(key,status){
   const rewards=g.smokeFreeRewards=g.smokeFreeRewards||{};
   rewards.healedDays=rewards.healedDays||[];
   if(rewards.healedDays.includes(key)) return '';
+  const relicXp=awardRelicDayXp(key);
   const lvl=gameStats().lvl;
   const passive=currentIntoxication().passiveMultiplier;
   let healing=0;
@@ -1239,7 +1572,8 @@ function applySmokeFreeDayRewards(key,status){
     healing=g.hp-before;
   }
   rewards.healedDays.push(key);
-  return healing>0?' · +'+healing+' ♥':'';
+  return (healing>0?' · +'+healing+' ♥':'')+
+    (relicXp>0?' · +'+relicXp+' XP reliquia':'');
 }
 document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
   const button=event.target.closest('[data-smoke-free-status]');
@@ -1256,11 +1590,13 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
     const next={...record};
     delete next.sf;
     state.days[key]=next;
+    revokeRelicDayXp(key);
     showToast('El día vuelve a estar pendiente','heal');
   }else{
     state.days[key]={...record,sf:status};
     const rewardNotice=applySmokeFreeDayRewards(key,status);
     if(status!==SMOKE_FREE_STATUS_SUCCESS&&state.game){
+      revokeRelicDayXp(key);
       ensureHero();
       state.game.hpT=Date.now();
     }
@@ -1531,7 +1867,7 @@ async function openRecoveryModal(){
   list.textContent='Buscando copias…';
   modal.classList.add('show');
   try{
-    const recoveries=await store.listRecoveries(STORAGE_KEY);
+    const recoveries=await store.listRecoveries(ACTIVE_STORAGE_KEY);
     list.replaceChildren();
     if(!recoveries.length){
       const empty=document.createElement('p');
@@ -1583,7 +1919,7 @@ document.getElementById('recoveryList').addEventListener('click',async event=>{
   if(!confirm(`¿Restaurar “${label}”? La partida actual se conservará como otra copia.`)) return;
   button.disabled=true;
   try{
-    const recovered=await store.recoveryState(revision,STORAGE_KEY,source);
+    const recovered=await store.recoveryState(revision,ACTIVE_STORAGE_KEY,source);
     if(!recovered) throw new Error('La copia ya no está disponible');
     store.authorizeDestructiveSave('recovery');
     state=mergeState(state,recovered);
@@ -1619,9 +1955,9 @@ function applySmokeFreeHabitRewards({result}){
     rewards.sorcererHabitDays=rewards.sorcererHabitDays||[];
     if(!rewards.sorcererHabitDays.includes(key)){
       const mana=Math.max(0,Math.round(5*passive));
-      g.mp=capMp((g.mp||0)+mana);
+      const recovered=recoverMana(mana);
       rewards.sorcererHabitDays.push(key);
-      if(mana>0) notices.push('+'+mana+' 💧');
+      if(recovered>0) notices.push('+'+recovered+' 💧');
     }
   }
   if(g.cls==='druid'&&lvl>=12){
@@ -1629,18 +1965,18 @@ function applySmokeFreeHabitRewards({result}){
     if(!rewards.druidHabitDays.includes(key)){
       const amount=Math.max(0,Math.round(5*passive));
       g.hp=capHp((g.hp||0)+amount);
-      g.mp=capMp((g.mp||0)+amount);
+      const recovered=recoverMana(amount);
       rewards.druidHabitDays.push(key);
-      if(amount>0) notices.push('+'+amount+' ♥/💧');
+      if(amount>0) notices.push('+'+amount+' ♥ · +'+recovered+' 💧');
     }
   }
   if(g.cls==='sorcerer'&&g.buffs?.cenizaUntil>Date.now()){
     const entryKey=`${result.entry.habitId}|${result.entry.periodKey}`;
     rewards.cenizaHabitEntries=rewards.cenizaHabitEntries||[];
     if(!rewards.cenizaHabitEntries.includes(entryKey)){
-      g.mp=capMp((g.mp||0)+10);
+      const recovered=recoverMana(10);
       rewards.cenizaHabitEntries.push(entryKey);
-      notices.push('+10 💧 Ceniza');
+      notices.push('+'+recovered+' 💧 Ceniza');
     }
   }
   return notices.length?' · '+notices.join(' · '):'';
@@ -1786,19 +2122,41 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const smokeFreeMode=usesSmokeFreeSkills(state.config);
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
+    const dayKey=todayKey();
+    const relicHabitXpActive=canActivateDailyRelic(state,'relic_03',dayKey);
+    const flatRewardBonus=relicBonuses().habitXpBonus+
+      (relicHabitXpActive
+        ? relicRankEffect(
+            'relic_03',state.inventory.relics.relic_03?.rank||1
+          )
+        : 0);
     const result=adjustHabitProgress({
       habitState:state.habits,
       habit,
       delta:parseInt(adjust.dataset.habitDelta,10),
       date:currentDayDate(),
       planStartDate:state.config.startDate,
-      rewardMultiplier:focusActive?1.5:1
+      rewardMultiplier:focusActive?1.5:1,
+      flatRewardBonus
     });
     state.habits=result.habitState;
     let extraMessage='';
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
       extraMessage=' · Ojo Certero';
+    }
+    let relicHabitNotice='';
+    if(result.xpDelta>0&&relicHabitXpActive){
+      markRelicDaily('relic_03',dayKey,true);
+      relicHabitNotice=' · Daga de Alquitrán';
+    }
+    if(result.xpDelta>0&&canActivateDailyRelic(state,'relic_02',dayKey)){
+      const mana=relicRankEffect(
+        'relic_02',state.inventory.relics.relic_02?.rank||1
+      );
+      const recovered=recoverMana(mana);
+      markRelicDaily('relic_02',dayKey,true);
+      if(recovered>0) relicHabitNotice+=' · +'+recovered+' 💧 Lágrima';
     }
     const habitRewardNotice=result.xpDelta>0&&smokeFreeMode
       ? applySmokeFreeHabitRewards({result})
@@ -1808,7 +2166,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       period:result.entry.periodKey||''
     });
     renderAll();
-    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP'+extraMessage+habitRewardNotice,'heal');
+    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP'+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
     else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
     return;
@@ -1979,6 +2337,10 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
 
 /* elegir clase de héroe y lanzar hechizos */
 document.getElementById('view-hero').addEventListener('click',e=>{
+  if(e.target.closest('[data-open-inventory]')){
+    openInventory();
+    return;
+  }
   if(e.target.closest('[data-scroll-skills]')){
     const skillsCard=document.getElementById('heroSkillsCard');
     const skillsTitle=document.getElementById('heroSkillsTitle');
@@ -2033,6 +2395,91 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     switchView(destination.viewId,destination.buttonId);
     renderAll();
   }
+});
+
+document.getElementById('sheetInventory').addEventListener('click',event=>{
+  if(event.target.closest('#inventoryTab')){ showInventoryPanel('inventory'); return; }
+  if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
+  const forgeChoice=event.target.closest('[data-select-forge-relic]');
+  if(forgeChoice){
+    const previousScroll=forgeChoice.closest('.forge-relic-grid')?.scrollLeft||0;
+    selectedForgeRelicId=forgeChoice.dataset.selectForgeRelic;
+    renderForgeView(document,state,selectedForgeRelicId);
+    const relicStrip=document.querySelector('.forge-relic-grid');
+    if(relicStrip) relicStrip.scrollLeft=previousScroll;
+    return;
+  }
+  const relic=event.target.closest('[data-open-relic]');
+  if(relic) openRelicDetail(relic.dataset.openRelic);
+});
+document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const equip=event.target.closest('[data-equip-relic]');
+  if(equip){
+    const replace=Number.isInteger(Number(equip.dataset.replaceSlot))
+      ? Number(equip.dataset.replaceSlot)
+      : null;
+    const result=equipRelic(state,equip.dataset.equipRelic,replace);
+    if(!result.ok){ showToast('No hay un espacio libre para esa reliquia','dmg'); return; }
+    applyLootSlices(result); capHeroAfterEquipmentChange();
+    scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
+    document.getElementById('sheetRelicDetail').classList.remove('show');
+    document.getElementById('sheetInventory').classList.add('show');
+    showInventoryPanel('inventory',true); renderHero();
+    showToast('Reliquia equipada','heal');
+    return;
+  }
+  const unequip=event.target.closest('[data-unequip-relic]');
+  if(unequip){
+    applyLootSlices(unequipRelic(state,unequip.dataset.unequipRelic)); capHeroAfterEquipmentChange();
+    scheduleSave({type:'loot:unequip',relicId:unequip.dataset.unequipRelic});
+    renderRelicDetail(document,state,unequip.dataset.unequipRelic); renderInventoryView(document,state); renderHero();
+    showToast('Reliquia desequipada','heal');
+    return;
+  }
+});
+async function handleForgeAttempt(forge){
+  if(!forge||forge.disabled||forgeLocked) return;
+  forgeLocked=true;
+  forge.disabled=true;
+  const relicId=forge.dataset.forgeRelic;
+  const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const result=attemptForge({state,relicId,operationId});
+  if(result.ok){
+    applyLootSlices(result);
+    try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
+    catch(error){
+      console.error('No se pudo guardar el intento de Forja',error);
+      showToast('No se pudo confirmar el guardado de la Forja','dmg');
+    }
+    document.getElementById('forgeResultBody').innerHTML=forgeResultMarkup(result,relicDefinition(relicId)?.name||'Reliquia');
+    document.getElementById('forgeResultBg').classList.add('show');
+    selectedForgeRelicId=relicId;
+    renderForgeView(document,state,selectedForgeRelicId); renderInventoryView(document,state); renderHero();
+  }else showToast(result.reason==='coins'?'No tienes suficientes monedas':'No cumples los requisitos de la Forja','dmg');
+  forgeLocked=false;
+}
+document.getElementById('forgeBody').addEventListener('click',event=>{
+  const forge=event.target.closest('[data-forge-relic]');
+  if(forge) handleForgeAttempt(forge);
+});
+document.getElementById('forgeResultClose').addEventListener('click',()=>{
+  document.getElementById('forgeResultBg').classList.remove('show');
+});
+document.getElementById('lootNoticeActions').addEventListener('click',event=>{
+  const inventory=event.target.closest('[data-loot-inventory]');
+  const equip=event.target.closest('[data-loot-equip]');
+  const keepGoing=event.target.closest('[data-loot-continue]');
+  if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); return; }
+  if(equip){
+    const result=equipRelic(state,equip.dataset.lootEquip);
+    if(result.ok) applyLootSlices(result);
+    acknowledgeActiveLootNotice();
+    switchView('view-hero','navHero'); renderHero(); openInventory();
+    if(result.ok){ capHeroAfterEquipmentChange(); scheduleSave({type:'loot:equip',relicId:equip.dataset.lootEquip}); renderInventoryView(document,state); renderHero(); showToast('Reliquia equipada','heal'); }
+    else openRelicDetail(equip.dataset.lootEquip);
+    return;
+  }
+  if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
 });
 
 let selectedBossMedal=null;
@@ -2154,7 +2601,7 @@ bindBackupControls({
   getState:()=>state,
   onImported:(importedState)=>{
     store.authorizeDestructiveSave('import');
-    state=importedState;
+    state={...importedState,...normalizeLootState(importedState)};
     registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
@@ -2240,7 +2687,8 @@ function resetApp(){
   store.authorizeDestructiveSave('reset');
   state={
     config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
-    days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false
+    days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false,
+    ...emptyLootState()
   };
   scheduleSave();
   document.getElementById('sheetSet').classList.remove('show');
@@ -2279,6 +2727,9 @@ resetGuardContinue.addEventListener('click',()=>{
     ensureHero();
     scheduleSave({type:'storage:checkpoint'});
     showPendingWeekResult();
-    finishInitialReturnSplash();
+    if(LOCAL_LOOT_NOTICE_PREVIEW){
+      await finishInitialReturnSplash();
+      await showPendingLootNotice();
+    }else finishInitialReturnSplash();
   }
 })();

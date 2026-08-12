@@ -14,6 +14,7 @@ export function castSpellEffect({
   passiveMultiplier = 1,
   smokeFreeMode = false,
   randomValue = Math.random(),
+  manaDiscount = 0,
 }) {
   if (!spell) return { ok: false, reason: 'unknown-spell' };
   if (level < spell.lvl) {
@@ -24,11 +25,15 @@ export function castSpellEffect({
   }
 
   const mana = game.mp || 0;
-  if (mana < spell.cost) {
+  const effectiveCost = Math.max(
+    0,
+    spell.cost - Math.max(0, Math.round(Number(manaDiscount) || 0)),
+  );
+  if (mana < effectiveCost) {
     return {
       ok: false,
       reason: 'mana',
-      requiredMana: spell.cost,
+      requiredMana: effectiveCost,
       minimumMana: spell.id === 'alma',
     };
   }
@@ -40,9 +45,9 @@ export function castSpellEffect({
       game: {
         ...game,
         buffs: { ...(game.buffs || {}) },
-        mp: mana - spell.cost,
+        mp: mana - effectiveCost,
       },
-      spentMana: spell.cost,
+      spentMana: effectiveCost,
     };
   }
 
@@ -52,24 +57,25 @@ export function castSpellEffect({
   };
 
   if (spell.id === 'alma') {
-    const healing = Math.floor(mana / 2);
+    const spentMana = Math.max(0, mana - Math.max(0, Math.round(manaDiscount)));
+    const healing = Math.floor(spentMana / 2);
     const hpBefore = nextGame.hp;
     nextGame.hp = cappedHealth(nextGame.hp + healing, maxHp);
-    nextGame.mp = 0;
+    nextGame.mp = mana - spentMana;
     nextGame.ultiW = currentWeek;
     return {
       ok: true,
       game: nextGame,
-      spentMana: mana,
+      spentMana,
       healing: nextGame.hp - hpBefore,
     };
   }
 
-  nextGame.mp = mana - spell.cost;
+  nextGame.mp = mana - effectiveCost;
   const result = {
     ok: true,
     game: nextGame,
-    spentMana: spell.cost,
+    spentMana: effectiveCost,
     healing: 0,
   };
 

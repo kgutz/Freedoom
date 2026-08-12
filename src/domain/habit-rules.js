@@ -148,6 +148,7 @@ export function adjustHabitProgress({
   date,
   planStartDate,
   rewardMultiplier = 1,
+  flatRewardBonus = 0,
 }) {
   const normalized = normalizeHabitState(habitState);
   const periodKey = habitPeriodKey(habit, date, planStartDate);
@@ -170,7 +171,8 @@ export function adjustHabitProgress({
   );
   const xpAwarded = completed
     ? Math.min(
-        Math.round(habitReward(habit)*Math.max(1,Number(rewardMultiplier)||1)),
+        Math.round(habitReward(habit)*Math.max(1,Number(rewardMultiplier)||1)) +
+          Math.max(0, Math.round(Number(flatRewardBonus) || 0)),
         Math.max(0, cap - used),
       )
     : 0;

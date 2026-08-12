@@ -39,10 +39,15 @@ export function regenerationIntervalMinutes({
   regenerationActive = false,
   passiveMultiplier = 1,
   druidFastRegeneration = true,
+  additiveMinutesReduction = 0,
 }) {
   const baseInterval =
     classId === 'druid'&&druidFastRegeneration ? 10 - 3 * passiveMultiplier : 10;
-  return regenerationActive ? baseInterval / 2 : baseInterval;
+  const reducedInterval = Math.max(
+    1,
+    baseInterval - Math.max(0, Number(additiveMinutesReduction) || 0),
+  );
+  return regenerationActive ? reducedInterval / 2 : reducedInterval;
 }
 
 export function regenerateHealth({
@@ -54,6 +59,7 @@ export function regenerateHealth({
   regenerationActive = false,
   passiveMultiplier = 1,
   druidFastRegeneration = true,
+  additiveMinutesReduction = 0,
 }) {
   const intervalMs =
     regenerationIntervalMinutes({
@@ -61,6 +67,7 @@ export function regenerateHealth({
       regenerationActive,
       passiveMultiplier,
       druidFastRegeneration,
+      additiveMinutesReduction,
     }) * 60_000;
   const elapsed = Math.max(0, nowTimestamp - hpTimestamp);
   const ticks = Math.floor(elapsed / intervalMs);

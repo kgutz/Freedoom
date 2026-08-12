@@ -28,6 +28,19 @@ export function stateInformationProfile(state) {
   const dayCount = collectionSize(safeState.days);
   const habitCount = Array.isArray(habits.items) ? habits.items.length : 0;
   const habitEntryCount = collectionSize(habits.entries);
+  const economy = isObject(safeState.economy) ? safeState.economy : {};
+  const loot = isObject(safeState.loot) ? safeState.loot : {};
+  const inventory = isObject(safeState.inventory) ? safeState.inventory : {};
+  const forge = isObject(safeState.forge) ? safeState.forge : {};
+  const relicCount = collectionSize(inventory.relics);
+  const claimedRewardCount = Array.isArray(loot.claimedBossRewards)
+    ? loot.claimedBossRewards.length
+    : 0;
+  const economyValue = Math.max(0, Number(economy.coins) || 0) +
+    Math.max(0, Number(economy.bossBlood) || 0) * 25;
+  const forgeHistoryCount = Array.isArray(forge.history)
+    ? forge.history.length
+    : 0;
   const bossesDown = Math.max(0, Number(combat.legacyBossesDown) || 0) +
     Math.max(0, Number(combat.defeated) || 0);
   const bossHistoryCount = Array.isArray(combat.history)
@@ -42,7 +55,11 @@ export function stateInformationProfile(state) {
     Math.min(120, habitCount * 15) +
     Math.min(120, habitEntryCount * 3) +
     Math.min(180, bossesDown * 40) +
-    Math.min(80, bossHistoryCount * 10);
+    Math.min(80, bossHistoryCount * 10) +
+    Math.min(180, relicCount * 30) +
+    Math.min(120, claimedRewardCount * 20) +
+    Math.min(80, Math.floor(economyValue / 10)) +
+    Math.min(40, forgeHistoryCount * 5);
 
   return {
     score,
@@ -53,12 +70,20 @@ export function stateInformationProfile(state) {
     habitEntryCount,
     bossesDown,
     bossHistoryCount,
+    relicCount,
+    claimedRewardCount,
+    economyValue,
+    forgeHistoryCount,
     meaningful:
       (onboarded && hasHero) ||
       dayCount > 0 ||
       habitCount > 0 ||
       habitEntryCount > 0 ||
-      bossesDown > 0,
+      bossesDown > 0 ||
+      relicCount > 0 ||
+      claimedRewardCount > 0 ||
+      economyValue > 0 ||
+      forgeHistoryCount > 0,
   };
 }
 
@@ -76,10 +101,14 @@ export function isCatastrophicStateRegression(candidateState, referenceState) {
     reference.habitCount >= 2 && candidate.habitCount === 0;
   const bossesCollapsed =
     reference.bossesDown >= 1 && candidate.bossesDown === 0;
+  const lootCollapsed =
+    (reference.relicCount >= 1 && candidate.relicCount === 0) ||
+    (reference.claimedRewardCount >= 1 && candidate.claimedRewardCount === 0) ||
+    (reference.economyValue >= 50 && candidate.economyValue === 0);
   const scoreCollapsed =
     reference.score >= 120 && candidate.score <= reference.score * 0.35;
 
-  return scoreCollapsed ||
+  return lootCollapsed || scoreCollapsed ||
     (daysCollapsed && (habitsCollapsed || bossesCollapsed || candidate.score < 120));
 }
 
@@ -117,6 +146,10 @@ export function mergeState(currentState, savedState) {
     days: currentState.days,
     game: currentState.game,
     habits: currentState.habits,
+    economy: currentState.economy,
+    loot: currentState.loot,
+    inventory: currentState.inventory,
+    forge: currentState.forge,
   };
 
   if (isObject(savedState.config)) {
@@ -136,6 +169,10 @@ export function mergeState(currentState, savedState) {
         : {},
     };
   }
+  if (isObject(savedState.economy)) nextState.economy = savedState.economy;
+  if (isObject(savedState.loot)) nextState.loot = savedState.loot;
+  if (isObject(savedState.inventory)) nextState.inventory = savedState.inventory;
+  if (isObject(savedState.forge)) nextState.forge = savedState.forge;
   if (savedState.onboarded === true) nextState.onboarded = true;
 
   return nextState;

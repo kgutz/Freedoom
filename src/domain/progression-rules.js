@@ -33,6 +33,7 @@ function calculateXpPass({
   habits,
   levelHint,
   passiveMultiplier,
+  relicXp = 0,
 }) {
   const start = parseKey(config.startDate);
   const goal = config.pillsGoal || 3;
@@ -48,7 +49,8 @@ function calculateXpPass({
   const pardons = game?.pardons || [];
   const judgmentDays = game?.judgmentDays || [];
   const pestXpDays = game?.pestXpDays || [];
-  let xp = (game?.bonusXp || 0) + habitXpTotal(habits);
+  let xp = (game?.bonusXp || 0) + habitXpTotal(habits) +
+    Math.max(0, Number(relicXp) || 0);
   let streak = 0;
   let minimumCigarettes = null;
   const controlledWeekWithinLimit=(date,dateConfig)=>{
@@ -217,6 +219,8 @@ export function calculateGameStats({
   game,
   habits,
   passiveMultiplier = 1,
+  relicXp = 0,
+  relicBonuses = {},
 }) {
   const firstPass = calculateXpPass({
     now,
@@ -226,6 +230,7 @@ export function calculateGameStats({
     habits,
     levelHint: 1,
     passiveMultiplier,
+    relicXp,
   });
   const firstLevel = levelFromXp(firstPass.xp);
   const result = calculateXpPass({
@@ -236,6 +241,7 @@ export function calculateGameStats({
     habits,
     levelHint: firstLevel,
     passiveMultiplier,
+    relicXp,
   });
   const level = levelFromXp(result.xp);
   const currentThreshold = 35 * (level - 1) * (level - 1);
@@ -246,7 +252,9 @@ export function calculateGameStats({
       Math.max(1, nextThreshold - currentThreshold),
   );
   const tier = level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
-  const { maxHp, maxMp } = classMaxes(game?.cls, level);
+  const baseMaxes = classMaxes(game?.cls, level);
+  const maxHp = baseMaxes.maxHp + Math.max(0, Number(relicBonuses.maxHp) || 0);
+  const maxMp = baseMaxes.maxMp + Math.max(0, Number(relicBonuses.maxMana) || 0);
   const evolutionUnlocked = journeyEvolutionUnlocked({
     config,
     bossesDown: result.bossesDown,

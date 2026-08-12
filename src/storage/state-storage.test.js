@@ -72,6 +72,32 @@ const v34State = {
 };
 
 describe('compatibilidad del estado', () => {
+  it('preserva economía, reliquias y Forja en exportación e importación', () => {
+    const lootState = {
+      ...v34State,
+      economy: { coins: 110, bossBlood: 2, transactions: [{ id: 'reward' }] },
+      loot: { claimedBossRewards: ['boss_reward_01'], notices: [], migrationComplete: true },
+      inventory: { relics: { relic_01: { id: 'relic_01', unlocked: true, rank: 2 } }, equipped: ['relic_01'] },
+      forge: { attempts: { 'relic_01:rank-3': 1 }, history: [{ operationId: 'forge-1' }] },
+    };
+    const restored = importBackup({
+      ...defaultState(), economy: {}, loot: {}, inventory: {}, forge: {},
+    }, exportBackup(lootState));
+    expect(restored.economy.coins).toBe(110);
+    expect(restored.inventory.relics.relic_01.rank).toBe(2);
+    expect(restored.forge.attempts['relic_01:rank-3']).toBe(1);
+  });
+
+  it('bloquea una regresión que borraría una colección aunque conserve el héroe', () => {
+    const protectedState = {
+      ...v34State,
+      economy: { coins: 75, bossBlood: 1 },
+      loot: { claimedBossRewards: ['boss_reward_01'] },
+      inventory: { relics: { relic_01: { id: 'relic_01' } } },
+    };
+    expect(isCatastrophicStateRegression(v34State, protectedState)).toBe(true);
+  });
+
   it('carga una partida v34 conservando datos y nuevos valores por defecto', () => {
     const loaded = mergeState(defaultState(), v34State);
 

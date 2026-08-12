@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v134</div>
+  <div class="ob-version" id="obVersion">v135</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v134</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v135</span></p>
       </div>
     </div>
   </div>
@@ -484,6 +484,15 @@
         </div>
       </details>
       <details class="faq-item">
+        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">◆</span><span>Botín y reliquias</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-answer">
+          <p class="hint">Cada uno de los seis primeros jefes entrega una reliquia exclusiva garantizada, monedas y una unidad de Sangre de Jefe. La recompensa solo puede recibirse una vez, incluso al importar o restaurar una partida.</p>
+          <div class="hint"><span class="faq-lead">Rareza de una reliquia:</span><ul class="faq-bullets"><li>Rara: <b style="color:#80adc3">60%</b>, sin efectos extras.</li><li>Legendaria: <b style="color:#e2a74a">30%</b>, con 1 efecto extra.</li><li>Mítica: <b style="color:#c57ce8">10%</b>, con 2 efectos extras distintos.</li></ul></div>
+          <p class="hint">Puedes equipar dos reliquias desde Héroe → Inventario. Solo las equipadas aplican sus efectos principales y efectos extras; desequiparlas no borra ninguna activación ya consumida durante ese día o semana.</p>
+          <p class="hint">La Forja mejora el rango de una reliquia gastando monedas. La Sangre de Jefe solo es un requisito acumulativo y nunca se consume. Si el intento falla no pierdes la reliquia ni su rango: aumenta la probabilidad del siguiente intento hasta llegar al 100%.</p>
+        </div>
+      </details>
+      <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💾</span><span>Guardado y recuperación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
@@ -498,6 +507,25 @@
 </div>
 
 <!-- GRIMORIO (detalle de habilidades) -->
+<div class="sheet-bg" id="sheetInventory" style="z-index:28">
+  <div class="sheet inventory-sheet">
+    <div class="sheet-head sk-head-center"><h3>Inventario y Forja</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
+    <div class="inventory-tabs" role="tablist" aria-label="Inventario y Forja">
+      <button type="button" class="active" id="inventoryTab" role="tab" aria-selected="true">Inventario</button>
+      <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>
+    </div>
+    <div id="inventoryBody"></div>
+    <div id="forgeBody" hidden></div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetRelicDetail" style="z-index:30">
+  <div class="sheet relic-detail-sheet">
+    <div class="sheet-head sk-head-center"><h3>Reliquia</h3><button class="sheet-close" data-sheet="sheetRelicDetail">✕</button></div>
+    <div id="relicDetailBody"></div>
+  </div>
+</div>
+
 <div class="sheet-bg" id="sheetSkills">
   <div class="sheet">
     <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetSkills">✕</button></div>
@@ -542,6 +570,24 @@
     <h3 id="backupTitle">Copia de seguridad</h3>
     <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…"></textarea>
     <button class="close" id="backupAction">Importar</button>
+  </div>
+</div>
+
+<!-- Recompensas ya guardadas: la migración retroactiva exige entrar al inventario. -->
+<div class="modal-bg center loot-notice-bg" id="lootNoticeBg" style="z-index:40">
+  <div class="modal loot-notice-modal" role="dialog" aria-modal="true" aria-labelledby="lootNoticeTitle">
+    <h3 id="lootNoticeTitle"></h3>
+    <p id="lootNoticeIntro"></p>
+    <div id="lootNoticeRewards" class="loot-notice-rewards"></div>
+    <div id="lootNoticeSummary" class="loot-notice-summary"></div>
+    <div id="lootNoticeActions" class="loot-notice-actions"></div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="forgeResultBg" style="z-index:41">
+  <div class="modal forge-result-modal">
+    <div id="forgeResultBody"></div>
+    <button class="close" id="forgeResultClose" type="button">Continuar</button>
   </div>
 </div>
 

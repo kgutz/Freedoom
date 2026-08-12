@@ -15,6 +15,7 @@ import {
   isSmokeFreeMode,
   usesSmokeFreeSkills,
 } from '../domain/journey-mode-rules.js';
+import { inventoryAccessMarkup } from './inventory-view.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -152,6 +153,7 @@ export function renderHeroView({
   armor,
   intoxication,
   dayKey,
+  lootState,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -353,6 +355,8 @@ export function renderHeroView({
         <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(heroStats.prog * 100)}%"></div></div>
       </div>
     </div>
+
+    ${inventoryAccessMarkup(lootState || {})}
 
     <div class="card">
       <div class="boss-top">
