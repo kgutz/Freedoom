@@ -685,7 +685,7 @@
   .faq-answer>.faq-bullets:first-child{margin-top:0}
 
   /* ---------- héroe RPG ---------- */
-  .hero-top{display:flex;gap:18px;align-items:center;margin-bottom:6px}
+  .hero-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px}
   .sprite-box{
     width:120px;height:120px;flex-shrink:0;position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
@@ -712,16 +712,16 @@
   .sprite-svg.hurt{filter:saturate(.55) drop-shadow(0 0 7px rgba(196,85,62,.6));animation:none}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
   .hero-id{position:relative;flex:1;min-width:0;padding-right:38px}
-  .hero-rank-row{min-height:28px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .hero-id .rango{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-  .hero-quick-actions{position:absolute;right:0;top:0;display:grid;gap:6px}
+  .hero-rank-row{min-height:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .hero-id .rango{font-size:11px;line-height:1;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .hero-quick-actions{position:absolute;right:0;top:0;display:grid;gap:9px}
   .hero-quick-action{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--kodak);cursor:pointer}
   .hero-quick-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .hero-quick-action:active{background:rgba(232,180,74,.15);transform:scale(.96)}
   .hero-quick-action:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-inventory-jump.discovery-active{animation:inventoryDiscoveryGlow 4.5s ease-in-out .11s infinite both}
   @keyframes inventoryDiscoveryGlow{0%,24%,100%{border-color:var(--line);box-shadow:none;color:var(--kodak);transform:scale(1)}12%{border-color:#f5d373;box-shadow:0 0 0 3px rgba(232,180,74,.16),0 0 15px rgba(232,180,74,.72);color:#ffe8a0;transform:scale(1.08)}}
-  .hero-id .nombre{font-size:19px;font-weight:600;margin:2px 0 4px}
+  .hero-id .nombre{font-size:19px;font-weight:600;margin:7px 0 4px}
   .hero-id .nivel{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--kodak)}
   .hero-resource-wallet{display:inline-flex;align-items:center;gap:12px;margin:7px 0 0;padding:2px 0;border:0;background:transparent;color:var(--text);cursor:pointer}
   .hero-resource-wallet:active{opacity:.72}
