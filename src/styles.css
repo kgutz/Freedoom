@@ -969,6 +969,14 @@
   .forge-upgrade-preview i,.forge-result-upgrade i{color:var(--kodak);font-style:normal;font-size:15px}
   .forge-upgrade-max>div strong{min-width:100px}
   .forge-result-upgrade{margin:13px 0}
+  .relic-affixes li{align-items:center}
+  .relic-affixes li small{color:var(--muted);font:500 8px 'IBM Plex Mono',monospace}
+  .relic-effect-link{appearance:none;border:0;padding:0;background:transparent;color:var(--kodak);font:600 10px 'Sora',sans-serif;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}
+  .relic-effect-link:focus-visible{outline:1px solid var(--kodak);outline-offset:4px;border-radius:2px}
+  .relic-effect-info-modal{text-align:center;max-width:330px}
+  .relic-effect-info-kicker{display:block;color:var(--kodak);font:600 8px 'IBM Plex Mono',monospace;letter-spacing:.13em}
+  .relic-effect-info-modal h3{margin:7px 0 9px;color:var(--kodak)}
+  .relic-effect-info-modal p{margin:0 0 16px;color:var(--text);font-size:12px;line-height:1.6}
   .resource-icon--coin:after{display:none}
   .relic-active-meta{margin-top:3px;color:var(--kodak);font:600 8px 'IBM Plex Mono',monospace;white-space:nowrap}
   .relic-grid .relic-card{border-width:1px;border-style:solid;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)}

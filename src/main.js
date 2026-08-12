@@ -107,6 +107,7 @@ import {
   renderForgeView,
   renderInventoryView,
   renderLootNotice,
+  renderRelicEffectInfo,
   renderRelicDetail
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
@@ -2413,6 +2414,13 @@ document.getElementById('sheetInventory').addEventListener('click',event=>{
   if(relic) openRelicDetail(relic.dataset.openRelic);
 });
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const effectInfo=event.target.closest('[data-relic-effect]');
+  if(effectInfo){
+    if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
+      document.getElementById('relicEffectInfoBg').classList.add('show');
+    }
+    return;
+  }
   const equip=event.target.closest('[data-equip-relic]');
   if(equip){
     const replace=Number.isInteger(Number(equip.dataset.replaceSlot))
@@ -2436,6 +2444,12 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     showToast('Reliquia desequipada','heal');
     return;
   }
+});
+document.getElementById('relicEffectInfoClose').addEventListener('click',()=>{
+  document.getElementById('relicEffectInfoBg').classList.remove('show');
+});
+document.getElementById('relicEffectInfoBg').addEventListener('click',event=>{
+  if(event.target.id==='relicEffectInfoBg') event.currentTarget.classList.remove('show');
 });
 async function handleForgeAttempt(forge){
   if(!forge||forge.disabled||forgeLocked) return;

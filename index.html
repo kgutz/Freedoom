@@ -495,8 +495,8 @@
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">▣</span><span>Inventario y equipamiento</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">En Héroe encontrarás el acceso <b style="color:var(--kodak)">Inventario y Forja</b>. Puedes conservar todas tus reliquias, pero llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
-          <p class="hint">Cada reliquia posee un efecto principal propio que puede relacionarse con la vida, el maná, los hábitos, los hechizos o el progreso semanal. Su nombre, efecto y valores solo aparecen después de desbloquearla.</p>
-          <p class="hint">Las reliquias legendarias y míticas también incorporan efectos extras. Estos se generan al recibir el objeto y se revelan junto a él en el Inventario.</p>
+          <p class="hint">Cada reliquia proporciona efectos que pueden mejorar tu partida. Su nombre, poder y valores permanecen ocultos hasta que la consigues.</p>
+          <p class="hint">Cuando una reliquia tenga un efecto extra, su nombre aparecerá en amarillo y subrayado. Tócalo para consultar qué hace sin revelar los efectos de objetos que todavía no has descubierto.</p>
           <p class="hint">Puedes cambiar las reliquias equipadas cuando quieras. Un efecto diario o semanal que ya se haya utilizado no vuelve a activarse por desequipar y equipar el objeto.</p>
         </div>
       </details>
@@ -540,6 +540,15 @@
   <div class="sheet relic-detail-sheet">
     <div class="sheet-head sk-head-center"><h3>Reliquia</h3><button class="sheet-close" data-sheet="sheetRelicDetail">✕</button></div>
     <div id="relicDetailBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="relicEffectInfoBg" style="z-index:32">
+  <div class="modal relic-effect-info-modal" role="dialog" aria-modal="true" aria-labelledby="relicEffectInfoTitle">
+    <span class="relic-effect-info-kicker">EFECTO EXTRA</span>
+    <h3 id="relicEffectInfoTitle"></h3>
+    <p id="relicEffectInfoDescription"></p>
+    <button class="close" id="relicEffectInfoClose" type="button">Entendido</button>
   </div>
 </div>
 

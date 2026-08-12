@@ -6,6 +6,7 @@ import {
   renderForgeView,
   renderInventoryView,
   renderLootNotice,
+  renderRelicEffectInfo,
   renderRelicDetail,
   resourceIcon,
 } from './inventory-view.js';
@@ -18,7 +19,8 @@ function lootWithBosses(count, source = 'retroactive') {
 
 function fakeDocument() {
   const elements = Object.fromEntries([
-    'inventoryBody', 'forgeBody', 'relicDetailBody', 'lootNoticeTitle', 'lootNoticeIntro',
+    'inventoryBody', 'forgeBody', 'relicDetailBody', 'relicEffectInfoTitle',
+    'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
   return { elements, getElementById: (id) => elements[id] || null };
@@ -80,6 +82,19 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('5 HP');
     expect(html).toContain('7 HP');
     expect(html).toContain('Su efecto principal se ha fortalecido');
+  });
+
+  it('solo revela la descripción del efecto extra cuando se solicita', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    state.inventory.relics.relic_03.rarity = 'legendary';
+    state.inventory.relics.relic_03.affixes = ['discipline'];
+    renderRelicDetail(document, state, 'relic_03');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('data-relic-effect="discipline"');
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('+1 XP al completar hábitos');
+    expect(renderRelicEffectInfo(document, 'discipline')).toBe(true);
+    expect(document.elements.relicEffectInfoTitle.textContent).toBe('Disciplina');
+    expect(document.elements.relicEffectInfoDescription.textContent).toContain('+1 XP');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

@@ -138,7 +138,7 @@ export function renderRelicDetail(document, lootState, relicId) {
   const affixes = relic.affixes.length
     ? relic.affixes.map((id) => {
         const affix = AFFIX_DEFINITIONS[id];
-        return `<li><b>${escapeHtml(affix.name)}</b><span>${escapeHtml(affix.description)}</span></li>`;
+        return `<li><button type="button" class="relic-effect-link" data-relic-effect="${id}">${escapeHtml(affix.name)}</button><small>Toca para ver</small></li>`;
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
   const effect = relicRankEffect(relicId, relic.rank);
@@ -153,6 +153,17 @@ export function renderRelicDetail(document, lootState, relicId) {
     <div class="relic-equip-actions">
       ${equipmentActions}
     </div>`;
+  return true;
+}
+
+export function renderRelicEffectInfo(document, effectId) {
+  const effect = AFFIX_DEFINITIONS[effectId];
+  if (!effect) return false;
+  const title = document.getElementById('relicEffectInfoTitle');
+  const description = document.getElementById('relicEffectInfoDescription');
+  if (!title || !description) return false;
+  title.textContent = effect.name;
+  description.textContent = effect.description;
   return true;
 }
 
