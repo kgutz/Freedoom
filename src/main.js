@@ -2451,7 +2451,7 @@ async function handleForgeAttempt(forge){
       console.error('No se pudo guardar el intento de Forja',error);
       showToast('No se pudo confirmar el guardado de la Forja','dmg');
     }
-    document.getElementById('forgeResultBody').innerHTML=forgeResultMarkup(result,relicDefinition(relicId)?.name||'Reliquia');
+    document.getElementById('forgeResultBody').innerHTML=forgeResultMarkup(result,relicDefinition(relicId)?.name||'Reliquia',relicId);
     document.getElementById('forgeResultBg').classList.add('show');
     selectedForgeRelicId=relicId;
     renderForgeView(document,state,selectedForgeRelicId); renderInventoryView(document,state); renderHero();

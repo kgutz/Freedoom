@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { grantBossRewards } from '../domain/loot-rules.js';
 import {
+  forgeResultMarkup,
   inventoryAccessMarkup,
   renderForgeView,
   renderInventoryView,
@@ -64,7 +65,21 @@ describe('interfaz de inventario y botín', () => {
     expect(html.match(/data-select-forge-relic=/g)).toHaveLength(3);
     expect(html).toContain('Pity');
     expect(html).toContain('PROBABILIDAD 70%');
+    expect(html).toContain('MEJORA DEL EFECTO');
+    expect(html).toContain('5 MANÁ');
+    expect(html).toContain('7 MANÁ');
     expect(html).toContain('La Sangre de Jefe es un requisito y no se consume');
+  });
+
+  it('confirma el valor mejorado cuando la Forja tiene éxito', () => {
+    const html = forgeResultMarkup({
+      success: true,
+      spentCoins: 50,
+      preview: { targetRank: 2 },
+    }, 'Corazón de Hollín', 'relic_01');
+    expect(html).toContain('5 HP');
+    expect(html).toContain('7 HP');
+    expect(html).toContain('Su efecto principal se ha fortalecido');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

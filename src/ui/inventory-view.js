@@ -38,6 +38,23 @@ export function rarityClass(rarity) {
   return `rarity-${RARITIES[rarity] ? rarity : 'rare'}`;
 }
 
+function relicEffectValue(relicId, value) {
+  if (relicId === 'relic_01') return `${value} HP`;
+  if (relicId === 'relic_02' || relicId === 'relic_05') return `${value} MANÁ`;
+  if (relicId === 'relic_04') return `${value} PUNTOS`;
+  return `${value} XP`;
+}
+
+function forgeUpgradeMarkup(definition, relicId, currentRank, targetRank) {
+  const current = relicEffectValue(relicId, relicRankEffect(relicId, currentRank));
+  const target = relicEffectValue(relicId, relicRankEffect(relicId, targetRank));
+  return `<div class="forge-upgrade-preview">
+    <span>MEJORA DEL EFECTO</span>
+    <p>${escapeHtml(definition.effectLabel)}</p>
+    <div><b>${current}</b><i aria-hidden="true">→</i><strong>${target}</strong></div>
+  </div>`;
+}
+
 export function relicCardMarkup({ definition, relic, equipped = false, slot = null }) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const statusMarkup = equipped
@@ -161,7 +178,8 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const preview = forgePreview(normalized, relicId);
   const forgeControls = preview.ok
-    ? `<div class="forge-values">
+    ? `${forgeUpgradeMarkup(selectedDefinition, relicId, relic.rank, preview.targetRank)}
+      <div class="forge-values">
         <span>Coste ${resourceValue('coin', preview.cost)}</span>
         <span>Requisito ${resourceValue('boss-blood', preview.bloodRequired)}</span>
         <span>Disponibles ${resourceValue('coin', preview.coinsAvailable)}</span>
@@ -174,7 +192,11 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
       </div>
       <p>La Sangre de Jefe es un requisito y no se consume. Las monedas sí se pierden si la Forja falla.</p>
       <button type="button" class="forge-attempt" data-forge-relic="${relicId}"${preview.coinsAvailable < preview.cost || preview.bloodAvailable < preview.bloodRequired ? ' disabled' : ''}>INTENTAR MEJORA</button>`
-    : '<div class="forge-max">RANGO MÁXIMO ALCANZADO</div>';
+    : `<div class="forge-upgrade-preview forge-upgrade-max">
+        <span>EFECTO ACTUAL</span>
+        <p>${escapeHtml(selectedDefinition.effectLabel)}</p>
+        <div><strong>${relicEffectValue(relicId, relicRankEffect(relicId, relic.rank))}</strong></div>
+      </div><div class="forge-max">RANGO MÁXIMO ALCANZADO</div>`;
   const choices = ownedDefinitions.map((definition) => {
     const choiceRelic = normalized.inventory.relics[definition.id];
     const choiceRarity = RARITIES[choiceRelic.rarity] || RARITIES.rare;
@@ -232,9 +254,12 @@ export function renderLootNotice(document, lootState, notice) {
     : `<button type="button" data-loot-equip="${notice.relicIds[0]}">EQUIPAR</button><button type="button" data-loot-continue>CONTINUAR</button>`;
 }
 
-export function forgeResultMarkup(result, relicName) {
+export function forgeResultMarkup(result, relicName, relicId) {
   if (result.success) {
-    return `<div class="forge-result success"><span>FORJA EXITOSA</span><h3>${escapeHtml(relicName)} alcanzó el Rango ${result.preview.targetRank}</h3><p>Se han gastado ${result.spentCoins} monedas. La Sangre de Jefe permanece intacta.</p></div>`;
+    const previousRank = Math.max(1, result.preview.targetRank - 1);
+    const previousValue = relicEffectValue(relicId, relicRankEffect(relicId, previousRank));
+    const newValue = relicEffectValue(relicId, relicRankEffect(relicId, result.preview.targetRank));
+    return `<div class="forge-result success"><span>FORJA EXITOSA</span><h3>${escapeHtml(relicName)} alcanzó el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido. Se han gastado ${result.spentCoins} monedas y la Sangre de Jefe permanece intacta.</p></div>`;
   }
   return `<div class="forge-result failure"><span>FORJA FALLIDA</span><h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe permanece intacta.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
 }
