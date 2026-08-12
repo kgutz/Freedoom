@@ -325,7 +325,7 @@ export function renderHeroView({
         <div class="sprite-box"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt=""><div class="sprite-aura ${auraClass}"></div>${spriteImage(classId, model.mood)}${sleeping}</div>
         <div class="hero-id">
           <div class="hero-rank-row">
-            <div class="rango">${classData.tiers[heroStats.tier]}</div>
+            <div class="rango">${classData.name}</div>
             <button class="hero-skills-jump" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
             </button>

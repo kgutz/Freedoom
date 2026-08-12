@@ -149,6 +149,7 @@ describe('modelo de Héroe', () => {
     });
 
     expect(heroContent.innerHTML).toContain('id="bossInfoBtn"');
+    expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
     expect(heroContent.innerHTML).toContain('data-scroll-skills');
     expect(heroContent.innerHTML).toContain('id="heroSkillsCard"');
     expect(heroContent.innerHTML).toContain('aria-label="Ir a habilidades"');
