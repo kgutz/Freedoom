@@ -15,7 +15,7 @@ import {
   isSmokeFreeMode,
   usesSmokeFreeSkills,
 } from '../domain/journey-mode-rules.js';
-import { inventoryAccessMarkup } from './inventory-view.js';
+import { resourceValue } from './inventory-view.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -154,6 +154,7 @@ export function renderHeroView({
   intoxication,
   dayKey,
   lootState,
+  inventoryDiscoveryActive = false,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -328,12 +329,21 @@ export function renderHeroView({
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
-            <button class="hero-skills-jump" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
+          </div>
+          <div class="hero-quick-actions">
+            <button class="hero-quick-action" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
+            </button>
+            <button class="hero-quick-action hero-inventory-jump${inventoryDiscoveryActive ? ' discovery-active' : ''}" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
             </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
+          <button class="hero-resource-wallet" type="button" data-open-inventory aria-label="Abrir inventario y forja">
+            ${resourceValue('coin', lootState?.economy?.coins)}
+            ${resourceValue('boss-blood', lootState?.economy?.bossBlood)}
+          </button>
           <div class="hero-summary">
             <span>Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'}</span>
             <span>Armadura: <b>−${model.armor}</b></span>
@@ -355,8 +365,6 @@ export function renderHeroView({
         <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(heroStats.prog * 100)}%"></div></div>
       </div>
     </div>
-
-    ${inventoryAccessMarkup(lootState || {})}
 
     <div class="card">
       <div class="boss-top">

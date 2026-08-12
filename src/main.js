@@ -134,8 +134,9 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='135';
+const APP_VERSION='136';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
+const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:two-day`;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
@@ -1206,8 +1207,43 @@ function renderHero(){
     armor:heroArmor(),
     intoxication,
     dayKey,
-    lootState:state
+    lootState:state,
+    inventoryDiscoveryActive:isInventoryDiscoveryActive()
   });
+}
+
+function isInventoryDiscoveryActive(){
+  try{
+    const discovery=JSON.parse(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY)||'{}')||{};
+    if(discovery.completed) return false;
+    return !discovery.firstAcknowledgedDay||discovery.firstAcknowledgedDay!==localCalendarDayKey();
+  }catch{
+    return true;
+  }
+}
+
+function localCalendarDayKey(now=new Date()){
+  const year=now.getFullYear();
+  const month=String(now.getMonth()+1).padStart(2,'0');
+  const day=String(now.getDate()).padStart(2,'0');
+  return `${year}-${month}-${day}`;
+}
+
+function acknowledgeInventoryDiscovery(){
+  const inventoryButton=document.querySelector('.hero-inventory-jump.discovery-active');
+  inventoryButton?.classList.remove('discovery-active');
+  try{
+    const today=localCalendarDayKey();
+    const discovery=JSON.parse(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY)||'{}')||{};
+    if(discovery.completed) return;
+    if(!discovery.firstAcknowledgedDay){
+      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,JSON.stringify({firstAcknowledgedDay:today,completed:false}));
+      return;
+    }
+    if(discovery.firstAcknowledgedDay!==today){
+      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,JSON.stringify({...discovery,completed:true}));
+    }
+  }catch{}
 }
 
 let lootNoticeOpening=false;
@@ -1769,6 +1805,14 @@ const navigation=bindNavigation({
     renderCal();
     renderWeeks();
   }
+});
+document.getElementById('navHero').addEventListener('click',()=>{
+  renderHero();
+  const inventoryButton=document.querySelector('.hero-inventory-jump.discovery-active');
+  if(!inventoryButton) return;
+  inventoryButton.classList.remove('discovery-active');
+  void inventoryButton.offsetWidth;
+  inventoryButton.classList.add('discovery-active');
 });
 function switchView(viewId,buttonId){
   navigation.switchView(viewId,buttonId);
@@ -2339,6 +2383,7 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
 /* elegir clase de héroe y lanzar hechizos */
 document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-inventory]')){
+    acknowledgeInventoryDiscovery();
     openInventory();
     return;
   }
