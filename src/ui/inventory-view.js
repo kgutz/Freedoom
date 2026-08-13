@@ -321,6 +321,9 @@ export function renderLootNotice(document, lootState, notice) {
     </div>`;
   }).join('');
   const retroactive = notice.source === 'retroactive';
+  const bloodBonusMarkup = notice.bonusBossBlood > 0
+    ? `<div class="loot-blood-bonus">¡GOLPE DE SUERTE! · SANGRE DOBLE (+${notice.bonusBossBlood})</div>`
+    : '';
   document.getElementById('lootNoticeTitle').textContent =
     retroactive ? 'NUEVAS RECOMPENSAS' : 'BOTÍN CONSEGUIDO';
   document.getElementById('lootNoticeIntro').textContent = retroactive
@@ -329,7 +332,7 @@ export function renderLootNotice(document, lootState, notice) {
       ? 'El jefe ha dejado una reliquia exclusiva y recursos para la Forja.'
       : 'Has conseguido los recursos del jefe. Su reliquia podrá recuperarse en la Tienda.';
   document.getElementById('lootNoticeRewards').innerHTML =
-    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards + failedRewards;
+    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards + failedRewards + bloodBonusMarkup;
   document.getElementById('lootNoticeSummary').innerHTML = `
     <span class="loot-summary-value"><b>${notice.relicIds.length}</b><small>RELIQUIA${notice.relicIds.length === 1 ? '' : 'S'}</small></span>
     <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('coin')}<b>${notice.coins}</b></span><small>MONEDAS</small></span>

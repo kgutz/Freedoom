@@ -185,4 +185,16 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.lootNoticeRewards.innerHTML).toContain('NO CONSEGUIDA');
     expect(document.elements.lootNoticeActions.innerHTML).toContain('data-loot-shop');
   });
+
+  it('destaca una recompensa de Sangre doble', () => {
+    const document = fakeDocument();
+    const state = grantBossRewards({
+      state: {}, bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.1, relicRandom: () => 0.2,
+      bloodRandom: () => 0.01, nowTimestamp: 10,
+    });
+    renderLootNotice(document, state, state.loot.notices[0]);
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('SANGRE DOBLE (+1)');
+    expect(document.elements.lootNoticeSummary.innerHTML).toContain('<b>2</b>');
+  });
 });

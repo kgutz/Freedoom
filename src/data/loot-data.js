@@ -11,6 +11,7 @@ export const BOSS_REWARDS = [
   { coins: 145, bossBlood: 3 },
 ];
 export const RELIC_DROP_RATE = 0.7;
+export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
 export const SHOP_ROTATION_DAYS = 3;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
 

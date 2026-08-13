@@ -515,7 +515,8 @@
           <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 monedas</b>, necesita <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">70% → 85% → 100%</b>.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 monedas</b>, necesita <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">45% → 60% → 75% → 90% → 100%</b>.</li></ul></div>
           <div class="hint"><span class="faq-lead">Cómo se consumen los recursos:</span><ul class="faq-bullets"><li>Las monedas se gastan siempre que realizas un intento.</li><li>La Sangre de Jefe solo se consume cuando la mejora tiene éxito: 1 para alcanzar el Rango II y 2 para alcanzar el Rango III.</li><li>Si la Forja falla, conservas toda la Sangre y la reliquia mantiene su rango.</li><li>No puedes intentar una mejora si no tienes monedas o Sangre suficientes para completarla.</li></ul></div>
           <p class="hint">Cada fallo aumenta el pity y mejora la probabilidad del siguiente intento hasta garantizar el éxito. Una operación ya registrada no puede descontar monedas o Sangre dos veces, y el saldo se conserva al exportar, importar o restaurar una copia.</p>
-          <p class="hint">Cada jefe derrotado entrega Sangre de Jefe garantizada. La cantidad aumenta provisionalmente con la progresión del jefe. Es un recurso estratégico: puedes mejorar reliquias, recuperarlas en la Tienda o guardarla para el futuro.</p>
+          <p class="hint">Cada jefe derrotado entrega Sangre de Jefe garantizada. La cantidad aumenta provisionalmente con la progresión del jefe y existe un <b style="color:var(--resource-blood)">2% de probabilidad</b> de recibir el doble. El resultado se guarda y no puede repetirse recargando la app.</p>
+          <p class="hint">La Sangre es un recurso estratégico: puedes mejorar reliquias, recuperarlas en la Tienda, guardarla para el futuro o pagar <b style="color:var(--resource-blood)">1 Sangre</b> para cambiar la clase de un héroe ya creado. La clase inicial siempre es gratuita.</p>
           <p class="hint">Algunos efectos extras pueden mejorar ligeramente la probabilidad de la Forja mientras la reliquia que los contiene está equipada.</p>
         </div>
       </details>
@@ -536,7 +537,7 @@
 <!-- GRIMORIO (detalle de habilidades) -->
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
   <div class="sheet inventory-sheet">
-    <div class="sheet-head sk-head-center"><h3>Inventario, Forja y Tienda</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
+    <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
     <div class="inventory-tabs" role="tablist" aria-label="Inventario, Forja y Tienda">
       <button type="button" class="active" id="inventoryTab" role="tab" aria-selected="true">Inventario</button>
       <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>

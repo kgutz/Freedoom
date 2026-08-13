@@ -1,5 +1,6 @@
 import {
   AFFIX_DEFINITIONS,
+  BOSS_BLOOD_DOUBLE_RATE,
   FORTUNE_CAP,
   FORGE_BLOOD_REQUIREMENTS,
   FORGE_COSTS,
@@ -247,6 +248,7 @@ function noticeForRewards(rewards, source, nowTimestamp) {
     })),
     coins: rewards.reduce((total, reward) => total + reward.coins, 0),
     bossBlood: rewards.reduce((total, reward) => total + reward.bossBlood, 0),
+    bonusBossBlood: rewards.reduce((total, reward) => total + reward.bonusBossBlood, 0),
     acknowledged: false,
     createdAt: nowTimestamp,
   };
@@ -260,6 +262,7 @@ export function grantBossRewards({
   random = null,
   dropRandom = random,
   relicRandom = random,
+  bloodRandom = random,
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
@@ -293,7 +296,16 @@ export function grantBossRewards({
           );
     const reward = bossReward(bossIndex);
     if (!reward) continue;
-    const { coins, bossBlood } = reward;
+    const { coins } = reward;
+    const bloodRoll = source === 'victory'
+      ? typeof bloodRandom === 'function'
+        ? bloodRandom()
+        : deterministicRandom(`${seed}:${definition.rewardId}:blood`)
+      : 1;
+    const bloodDoubled = source === 'victory' &&
+      Math.max(0, Math.min(0.999999999, bloodRoll)) < BOSS_BLOOD_DOUBLE_RATE;
+    const bonusBossBlood = bloodDoubled ? reward.bossBlood : 0;
+    const bossBlood = reward.bossBlood + bonusBossBlood;
     if (obtained) normalized.inventory.relics[definition.id] = relic;
     normalized.economy.coins += coins;
     normalized.economy.bossBlood += bossBlood;
@@ -303,6 +315,8 @@ export function grantBossRewards({
       rewardId: definition.rewardId,
       coins,
       bossBlood,
+      baseBossBlood: reward.bossBlood,
+      bonusBossBlood,
       relicOutcome: obtained ? 'obtained' : 'failed',
       at: nowTimestamp,
     });
@@ -323,6 +337,8 @@ export function grantBossRewards({
       obtained,
       coins,
       bossBlood,
+      baseBossBlood: reward.bossBlood,
+      bonusBossBlood,
     });
   }
   if (rewards.length) {
@@ -478,6 +494,42 @@ export function purchaseShopRelic({
   });
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   return { ...normalized, ok: true, purchase, relic: normalized.inventory.relics[relicId] };
+}
+
+export function payClassChange({
+  state,
+  fromClass,
+  toClass,
+  operationId,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = normalizeLootState(state);
+  if (!operationId) return { ...normalized, ok: false, reason: 'missing-operation' };
+  if (!fromClass || !toClass || fromClass === toClass) {
+    return { ...normalized, ok: false, reason: 'same-class' };
+  }
+  const transactionId = `class-change:${operationId}`;
+  if (normalized.economy.transactions.some((entry) => entry.id === transactionId)) {
+    return { ...normalized, ok: false, reason: 'duplicate-operation' };
+  }
+  if (normalized.economy.bossBlood < 1) {
+    return { ...normalized, ok: false, reason: 'blood' };
+  }
+  normalized.economy.bossBlood -= 1;
+  const transaction = {
+    id: transactionId,
+    operationId,
+    type: 'class_change',
+    fromClass,
+    toClass,
+    coins: 0,
+    bossBlood: -1,
+    bossBloodSpent: 1,
+    at: nowTimestamp,
+  };
+  normalized.economy.transactions.push(transaction);
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return { ...normalized, ok: true, spentBossBlood: 1, transaction };
 }
 
 export function equipRelic(lootState, relicId, replaceIndex = null) {

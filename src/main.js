@@ -59,6 +59,7 @@ import {
   isRelicEquipped,
   markDailyRelicActivation,
   normalizeLootState,
+  payClassChange,
   pendingLootNotice,
   purchaseShopRelic,
   unequipRelic
@@ -137,7 +138,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='140';
+const APP_VERSION='142';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
 const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
@@ -180,6 +181,7 @@ let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
 let classChangeReturn=null;
+let pendingClassChange=null;
 let initializeLocalDemo=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
@@ -2439,18 +2441,54 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   const card=e.target.closest('[data-cls]');
   if(card){
+    const selectedClass=card.dataset.cls;
+    let classChangePaid=false;
+    if(pendingClassChange){
+      const {fromClass}=pendingClassChange;
+      if(selectedClass===fromClass){
+        state.game.cls=fromClass;
+        pendingClassChange=null;
+        const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
+        classChangeReturn=null;
+        switchView(destination.viewId,destination.buttonId);
+        renderAll();
+        showToast('Mantienes tu clase actual','heal');
+        return;
+      }
+      const payment=payClassChange({
+        state,
+        fromClass,
+        toClass:selectedClass,
+        operationId:`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        nowTimestamp:Date.now()
+      });
+      if(!payment.ok){
+        state.game.cls=fromClass;
+        pendingClassChange=null;
+        const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
+        classChangeReturn=null;
+        switchView(destination.viewId,destination.buttonId);
+        renderAll();
+        showToast('Necesitas 1 Sangre de Jefe','dmg');
+        return;
+      }
+      applyLootSlices(payment);
+      classChangePaid=true;
+      pendingClassChange=null;
+    }
     const hadHero=(state.game.hp!==undefined);
-    state.game.cls=card.dataset.cls;
+    state.game.cls=selectedClass;
     if(hadHero){
       state.game.buffs={};              /* los efectos de la clase anterior ya no aplican */
       state.game.hp=capHp(state.game.hp);   /* se conserva el valor, topado al nuevo máximo */
       state.game.mp=capMp(state.game.mp);
     }
-    scheduleSave();
+    scheduleSave(classChangePaid?{type:'hero:class-change',toClass:selectedClass,bossBloodSpent:1}:undefined);
     const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
     classChangeReturn=null;
     switchView(destination.viewId,destination.buttonId);
     renderAll();
+    if(classChangePaid) showToast('Clase cambiada · −1 Sangre de Jefe','heal');
   }
 });
 
@@ -2699,12 +2737,20 @@ document.getElementById('bossMedalDownload').addEventListener('click',async()=>{
 });
 
 document.getElementById('cfgResetCls').addEventListener('click',()=>{
+  const currentClass=state.game?.cls;
+  if(!currentClass) return;
+  const blood=Math.max(0,Number(state.economy?.bossBlood)||0);
+  if(blood<1){
+    showToast('Necesitas 1 Sangre de Jefe para cambiar de clase','dmg');
+    return;
+  }
+  if(!confirm(`Cambiar de clase cuesta 1 Sangre de Jefe. Actualmente tienes ${blood}. ¿Seguro que quieres continuar?`)) return;
   classChangeReturn={
     viewId:document.querySelector('.view.active')?.id||'view-hoy',
     buttonId:document.querySelector('#mainNav button.active')?.id||'navHoy'
   };
+  pendingClassChange={fromClass:currentClass};
   state.game.cls=null;
-  scheduleSave();
   document.getElementById('sheetSet').classList.remove('show');
   switchView('view-hero','navHero');
   renderHero();

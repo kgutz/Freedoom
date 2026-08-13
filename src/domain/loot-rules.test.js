@@ -13,6 +13,7 @@ import {
   markDailyRelicActivation,
   normalizeLootState,
   pendingLootNotice,
+  payClassChange,
   purchaseShopRelic,
   rarityFromRoll,
   rollRelic,
@@ -172,12 +173,48 @@ describe('loot de bosses', () => {
   it('garantiza oro y Sangre 1/1/1/2/2/3 aunque fallen todas las reliquias', () => {
     const state = grantBossRewards({
       state: emptyLootState(), bossesDown: 6, source: 'victory',
-      dropRandom: () => 0.99, relicRandom: sequence(0.2), nowTimestamp: 10,
+      dropRandom: () => 0.99, relicRandom: sequence(0.2), bloodRandom: () => 0.5,
+      nowTimestamp: 10,
     });
     expect(state.rewards.map((reward) => reward.bossBlood)).toEqual([1, 1, 1, 2, 2, 3]);
     expect(state.economy.bossBlood).toBe(10);
     expect(state.economy.coins).toBe(650);
     expect(Object.keys(state.inventory.relics)).toHaveLength(0);
+  });
+
+  it('duplica la Sangre con una probabilidad exacta del 2% y guarda el resultado', () => {
+    const lucky = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.1, relicRandom: sequence(0.2),
+      bloodRandom: () => 0.019999, nowTimestamp: 10,
+    });
+    expect(lucky.rewards[0]).toMatchObject({
+      baseBossBlood: 1, bonusBossBlood: 1, bossBlood: 2,
+    });
+    expect(lucky.economy.bossBlood).toBe(2);
+    expect(lucky.loot.notices[0].bonusBossBlood).toBe(1);
+    const normal = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.1, relicRandom: sequence(0.2),
+      bloodRandom: () => 0.02, nowTimestamp: 10,
+    });
+    expect(normal.rewards[0]).toMatchObject({ bonusBossBlood: 0, bossBlood: 1 });
+  });
+
+  it('no vuelve a tirar la Sangre doble para una recompensa resuelta', () => {
+    let bloodRolls = 0;
+    const first = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.1, relicRandom: sequence(0.2),
+      bloodRandom: () => { bloodRolls += 1; return 0.01; }, nowTimestamp: 10,
+    });
+    const second = grantBossRewards({
+      state: first, bossesDown: 1, source: 'victory',
+      bloodRandom: () => { bloodRolls += 1; return 0.9; }, nowTimestamp: 20,
+    });
+    expect(bloodRolls).toBe(1);
+    expect(second.economy.bossBlood).toBe(2);
+    expect(second.rewards).toEqual([]);
   });
 
   it('migra conservadoramente reliquias antiguas y nunca las rerollea', () => {
@@ -193,6 +230,40 @@ describe('loot de bosses', () => {
     });
     expect(after.rewards).toEqual([]);
     expect(after.inventory.relics.relic_01).toMatchObject({ rarity: 'legendary', rank: 2 });
+  });
+});
+
+describe('cambio de clase', () => {
+  it('cobra una Sangre, registra la operación y bloquea duplicados', () => {
+    const state = emptyLootState();
+    state.economy.bossBlood = 2;
+    const changed = payClassChange({
+      state, fromClass: 'paladin', toClass: 'druid', operationId: 'class-1', nowTimestamp: 10,
+    });
+    expect(changed.ok).toBe(true);
+    expect(changed.economy.bossBlood).toBe(1);
+    expect(changed.economy.transactions.at(-1)).toMatchObject({
+      type: 'class_change', fromClass: 'paladin', toClass: 'druid', bossBlood: -1,
+    });
+    const duplicate = payClassChange({
+      state: changed, fromClass: 'paladin', toClass: 'druid', operationId: 'class-1',
+    });
+    expect(duplicate.reason).toBe('duplicate-operation');
+    expect(duplicate.economy.bossBlood).toBe(1);
+  });
+
+  it('no cobra al mantener la clase y bloquea el cambio sin Sangre', () => {
+    const state = emptyLootState();
+    state.economy.bossBlood = 1;
+    expect(payClassChange({
+      state, fromClass: 'paladin', toClass: 'paladin', operationId: 'same-class',
+    }).reason).toBe('same-class');
+    state.economy.bossBlood = 0;
+    const blocked = payClassChange({
+      state, fromClass: 'paladin', toClass: 'knight', operationId: 'no-blood',
+    });
+    expect(blocked.reason).toBe('blood');
+    expect(blocked.economy.transactions).toEqual([]);
   });
 });
 
