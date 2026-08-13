@@ -5,6 +5,7 @@ import {
   canActivateDailyRelic,
   deterministicRelicRoll,
   emptyLootState,
+  ensureShopRotation,
   equipRelic,
   equippedRelicBonuses,
   forgePreview,
@@ -12,8 +13,11 @@ import {
   markDailyRelicActivation,
   normalizeLootState,
   pendingLootNotice,
+  purchaseShopRelic,
   rarityFromRoll,
   rollRelic,
+  shopOffers,
+  shopPriceForRelic,
   unequipRelic,
 } from './loot-rules.js';
 
@@ -102,7 +106,7 @@ describe('loot de bosses', () => {
     });
     expect(six.rewards).toHaveLength(6);
     expect(six.economy.coins).toBe(650);
-    expect(six.economy.bossBlood).toBe(6);
+    expect(six.economy.bossBlood).toBe(10);
     expect(deterministicRelicRoll('relic_01', 'hero')).toEqual(
       deterministicRelicRoll('relic_01', 'hero'),
     );
@@ -116,6 +120,201 @@ describe('loot de bosses', () => {
     const acknowledged = acknowledgeLootNotice(state, notice.id);
     expect(pendingLootNotice(acknowledged)).toBeNull();
     expect(acknowledged.economy.coins).toBe(160);
+  });
+
+  it('aplica 70% de drop y 30% de fallo solo a victorias nuevas', () => {
+    const obtained = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.699999, relicRandom: sequence(0.2), nowTimestamp: 10,
+    });
+    const failed = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.7, relicRandom: sequence(0.2), nowTimestamp: 10,
+    });
+    expect(obtained.rewards[0].obtained).toBe(true);
+    expect(obtained.loot.bossRelicOutcomes.boss_reward_01.status).toBe('obtained');
+    expect(failed.rewards[0].obtained).toBe(false);
+    expect(failed.loot.bossRelicOutcomes.boss_reward_01.status).toBe('failed');
+    expect(failed.inventory.relics.relic_01).toBeUndefined();
+  });
+
+  it('resuelve el RNG de drop exactamente una vez por recompensa', () => {
+    let calls = 0;
+    const first = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => { calls += 1; return 0.9; },
+      relicRandom: sequence(0.2), nowTimestamp: 10,
+    });
+    const second = grantBossRewards({
+      state: first, bossesDown: 1, source: 'victory',
+      dropRandom: () => { calls += 1; return 0; },
+      relicRandom: sequence(0.95, 0, 0), nowTimestamp: 20,
+    });
+    expect(calls).toBe(1);
+    expect(second.rewards).toEqual([]);
+    expect(second.loot.bossRelicOutcomes.boss_reward_01.status).toBe('failed');
+  });
+
+  it('repite el mismo resultado determinista si el guardado no llegó a persistirse', () => {
+    const first = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      seed: 'partida-segura', nowTimestamp: 10,
+    });
+    const retry = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      seed: 'partida-segura', nowTimestamp: 20,
+    });
+    expect(retry.rewards[0].obtained).toBe(first.rewards[0].obtained);
+    expect(retry.rewards[0].rarity).toBe(first.rewards[0].rarity);
+    expect(retry.rewards[0].affixes).toEqual(first.rewards[0].affixes);
+  });
+
+  it('garantiza oro y Sangre 1/1/1/2/2/3 aunque fallen todas las reliquias', () => {
+    const state = grantBossRewards({
+      state: emptyLootState(), bossesDown: 6, source: 'victory',
+      dropRandom: () => 0.99, relicRandom: sequence(0.2), nowTimestamp: 10,
+    });
+    expect(state.rewards.map((reward) => reward.bossBlood)).toEqual([1, 1, 1, 2, 2, 3]);
+    expect(state.economy.bossBlood).toBe(10);
+    expect(state.economy.coins).toBe(650);
+    expect(Object.keys(state.inventory.relics)).toHaveLength(0);
+  });
+
+  it('migra conservadoramente reliquias antiguas y nunca las rerollea', () => {
+    const legacy = emptyLootState();
+    legacy.inventory.relics.relic_01 = {
+      unlocked: true, rarity: 'legendary', rank: 2, affixes: ['fortune'], bossIndex: 0,
+    };
+    const normalized = normalizeLootState(legacy);
+    expect(normalized.loot.claimedBossRewards).toContain('boss_reward_01');
+    expect(normalized.loot.bossRelicOutcomes.boss_reward_01.status).toBe('obtained');
+    const after = grantBossRewards({
+      state: normalized, bossesDown: 1, source: 'victory', dropRandom: () => 0.99,
+    });
+    expect(after.rewards).toEqual([]);
+    expect(after.inventory.relics.relic_01).toMatchObject({ rarity: 'legendary', rank: 2 });
+  });
+});
+
+describe('Tienda de reliquias falladas', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const NOW = 20 * DAY;
+
+  function failedBosses(count = 1) {
+    return grantBossRewards({
+      state: emptyLootState(), bossesDown: count, source: 'victory',
+      dropRandom: () => 0.99, relicRandom: sequence(0.2), nowTimestamp: NOW,
+    });
+  }
+
+  it('solo incluye bosses derrotados cuyo drop falló', () => {
+    const failed = failedBosses(1);
+    expect(shopOffers(failed, NOW).map((offer) => offer.relicId)).toEqual(['relic_01']);
+    const obtained = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.1, relicRandom: sequence(0.2), nowTimestamp: NOW,
+    });
+    expect(shopOffers(obtained, NOW)).toEqual([]);
+    expect(shopOffers(emptyLootState(), NOW)).toEqual([]);
+  });
+
+  it('deriva los precios del reward del boss', () => {
+    const offers = shopOffers(failedBosses(6), NOW);
+    const first = offers.find((offer) => offer.relicId === 'relic_01');
+    expect(first).toMatchObject({ coinPrice: 150, bloodPrice: 1 });
+    expect(shopPriceForRelic('relic_04')).toEqual({ coinPrice: 230, bloodPrice: 2 });
+    expect(shopPriceForRelic('relic_06')).toEqual({ coinPrice: 290, bloodPrice: 3 });
+  });
+
+  it('compra de forma atómica con oro y Sangre suficientes', () => {
+    const state = failedBosses(1);
+    state.economy.coins = 200;
+    state.economy.bossBlood = 2;
+    const result = purchaseShopRelic({
+      state, relicId: 'relic_01', operationId: 'buy-1', nowTimestamp: NOW,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.economy).toMatchObject({ coins: 50, bossBlood: 1 });
+    expect(result.inventory.relics.relic_01).toBeTruthy();
+    expect(result.loot.bossRelicOutcomes.boss_reward_01.status).toBe('purchased');
+    expect(result.economy.transactions.at(-1)).toMatchObject({
+      type: 'shop_purchase', coins: -150, bossBlood: -1,
+    });
+    expect(shopOffers(result, NOW)).toEqual([]);
+  });
+
+  it('no modifica nada cuando falta oro o Sangre', () => {
+    const noCoins = failedBosses(1);
+    noCoins.economy.coins = 149;
+    noCoins.economy.bossBlood = 5;
+    const coinsResult = purchaseShopRelic({
+      state: noCoins, relicId: 'relic_01', operationId: 'no-coins', nowTimestamp: NOW,
+    });
+    expect(coinsResult.reason).toBe('coins');
+    expect(coinsResult.economy).toMatchObject({ coins: 149, bossBlood: 5 });
+    expect(coinsResult.inventory.relics.relic_01).toBeUndefined();
+    const noBlood = failedBosses(1);
+    noBlood.economy.coins = 200;
+    noBlood.economy.bossBlood = 0;
+    const bloodResult = purchaseShopRelic({
+      state: noBlood, relicId: 'relic_01', operationId: 'no-blood', nowTimestamp: NOW,
+    });
+    expect(bloodResult.reason).toBe('blood');
+    expect(bloodResult.economy.coins).toBe(200);
+    expect(bloodResult.inventory.relics.relic_01).toBeUndefined();
+  });
+
+  it('impide una compra doble con el mismo evento o la misma reliquia', () => {
+    const state = failedBosses(1);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 5;
+    const first = purchaseShopRelic({
+      state, relicId: 'relic_01', operationId: 'same', nowTimestamp: NOW,
+    });
+    const duplicate = purchaseShopRelic({
+      state: first, relicId: 'relic_01', operationId: 'same', nowTimestamp: NOW,
+    });
+    const otherEvent = purchaseShopRelic({
+      state: first, relicId: 'relic_01', operationId: 'other', nowTimestamp: NOW,
+    });
+    expect(duplicate.reason).toBe('duplicate-operation');
+    expect(otherEvent.reason).toBe('unavailable');
+    expect(duplicate.economy.coins).toBe(first.economy.coins);
+  });
+
+  it('rota cada tres días, mantiene una única pendiente y limita a tres', () => {
+    const one = ensureShopRotation(failedBosses(1), NOW);
+    expect(one.shop.rotation.relicIds).toEqual(['relic_01']);
+    const many = ensureShopRotation(failedBosses(6), NOW);
+    expect(many.shop.rotation.relicIds).toHaveLength(3);
+    const same = ensureShopRotation(JSON.parse(JSON.stringify(many)), NOW + DAY / 2);
+    expect(same.shop.rotation).toEqual(many.shop.rotation);
+    const next = ensureShopRotation(same, NOW + 3 * DAY);
+    expect(next.shop.rotation.period).toBeGreaterThan(same.shop.rotation.period);
+    expect(next.shop.rotation.relicIds).not.toEqual(same.shop.rotation.relicIds);
+    const clockMovedBack = ensureShopRotation(next, NOW);
+    expect(clockMovedBack.shop.rotation).toEqual(next.shop.rotation);
+    const seen = new Set();
+    let rotating = many;
+    for (let index = 0; index < 6; index += 1) {
+      rotating = ensureShopRotation(rotating, NOW + index * 3 * DAY);
+      rotating.shop.rotation.relicIds.forEach((id) => seen.add(id));
+    }
+    expect(seen).toEqual(new Set([
+      'relic_01', 'relic_02', 'relic_03', 'relic_04', 'relic_05', 'relic_06',
+    ]));
+  });
+
+  it('serializa, recupera y recalcula sin rerollear drop ni Tienda', () => {
+    const original = ensureShopRotation(failedBosses(4), NOW);
+    const restored = normalizeLootState(JSON.parse(JSON.stringify(original)));
+    const rewardedAgain = grantBossRewards({
+      state: restored, bossesDown: 4, source: 'victory', dropRandom: () => 0,
+    });
+    expect(rewardedAgain.rewards).toEqual([]);
+    expect(ensureShopRotation(restored, NOW).shop.rotation)
+      .toEqual(original.shop.rotation);
+    expect(restored.loot.bossRelicOutcomes).toEqual(original.loot.bossRelicOutcomes);
   });
 });
 

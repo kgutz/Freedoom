@@ -150,6 +150,7 @@ export function mergeState(currentState, savedState) {
     loot: currentState.loot,
     inventory: currentState.inventory,
     forge: currentState.forge,
+    shop: currentState.shop,
   };
 
   if (isObject(savedState.config)) {
@@ -173,6 +174,7 @@ export function mergeState(currentState, savedState) {
   if (isObject(savedState.loot)) nextState.loot = savedState.loot;
   if (isObject(savedState.inventory)) nextState.inventory = savedState.inventory;
   if (isObject(savedState.forge)) nextState.forge = savedState.forge;
+  if (isObject(savedState.shop)) nextState.shop = savedState.shop;
   if (savedState.onboarded === true) nextState.onboarded = true;
 
   return nextState;

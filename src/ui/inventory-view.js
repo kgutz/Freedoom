@@ -7,8 +7,11 @@ import {
 } from '../data/loot-data.js';
 import {
   forgePreview,
+  ensureShopRotation,
   normalizeLootState,
+  shopOffers,
 } from '../domain/loot-rules.js';
+import { BOSSES } from '../data/game-data.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -57,15 +60,25 @@ function forgeUpgradeMarkup(definition, relicId, currentRank, targetRank) {
 
 export function relicCardMarkup({ definition, relic, equipped = false, slot = null }) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
-  const statusMarkup = equipped
+  const isActiveSlot = slot !== null;
+  const statusMarkup = isActiveSlot
     ? `<span class="relic-active-meta">${rarity.label} - RANGO ${relic.rank}</span>`
-    : `<span class="rarity-label">${rarity.label}</span><small>RANGO ${relic.rank}</small>`;
-  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}" data-open-relic="${definition.id}"${slot !== null ? ` data-equipped-slot="${slot}"` : ''}>
+    : `<span class="relic-card-meta rarity-label">${rarity.label} · RANGO ${relic.rank}</span>`;
+  const accessibleName = `${definition.name}, ${rarity.label}, rango ${relic.rank}${equipped ? ', Equipada' : ''}`;
+  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}"` : ''}>
     ${relicArt(definition)}
     <span class="relic-card-copy">
       <b>${escapeHtml(definition.name)}</b>
       ${statusMarkup}
     </span>
+  </button>`;
+}
+
+function relicCollectionItemMarkup({ definition, relic, equipped = false }) {
+  const rarity = RARITIES[relic.rarity] || RARITIES.rare;
+  const accessibleName = `${definition.name}, ${rarity.label}, rango ${relic.rank}${equipped ? ', Equipada' : ''}`;
+  return `<button type="button" class="relic-collection-item ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}">
+    ${relicArt(definition)}
   </button>`;
 }
 
@@ -96,7 +109,7 @@ export function renderInventoryView(document, lootState) {
   }).join('');
   const collection = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
-    .map((definition) => relicCardMarkup({
+    .map((definition) => relicCollectionItemMarkup({
       definition,
       relic: normalized.inventory.relics[definition.id],
       equipped: equipped.includes(definition.id),
@@ -114,7 +127,7 @@ export function renderInventoryView(document, lootState) {
       <div class="equipped-relics">${equippedSlots}</div>
     </section>
     <section class="inventory-section">
-      <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.relics).length}</small></div>
+      <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.relics).length}/?</small></div>
       <div class="relic-grid">${collection || '<div class="inventory-empty">Derrota a tu primer jefe para conseguir una reliquia.</div>'}</div>
     </section>`;
 }
@@ -234,6 +247,54 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
   return relicId;
 }
 
+function shopTimeLabel(endsAt, nowTimestamp) {
+  const remaining = Math.max(0, endsAt - nowTimestamp);
+  const days = Math.floor(remaining / 86400000);
+  const hours = Math.ceil((remaining % 86400000) / 3600000);
+  if (days > 0) return `${days} D · ${hours} H`;
+  return `${Math.max(1, hours)} H`;
+}
+
+export function renderShopView(document, lootState, nowTimestamp = Date.now()) {
+  const normalized = ensureShopRotation(lootState, nowTimestamp);
+  const body = document.getElementById('shopBody');
+  if (!body) return;
+  const offers = shopOffers(normalized, nowTimestamp);
+  const rotation = normalized.shop.rotation;
+  const content = offers.length
+    ? `<div class="shop-grid">${offers.map((offer) => {
+        const rarity = RARITIES[offer.relic.rarity] || RARITIES.rare;
+        const lacksCoins = normalized.economy.coins < offer.coinPrice;
+        const lacksBlood = normalized.economy.bossBlood < offer.bloodPrice;
+        const buttonText = lacksCoins ? 'FALTA ORO' : lacksBlood ? 'FALTA SANGRE' : 'COMPRAR';
+        return `<article class="shop-relic ${rarityClass(offer.relic.rarity)}">
+          ${relicArt(offer.definition)}
+          <div class="shop-relic-copy">
+            <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
+            <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
+            <small>${escapeHtml(BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`)}</small>
+          </div>
+          <div class="shop-price">
+            ${resourceValue('coin', offer.coinPrice)}
+            ${resourceValue('boss-blood', offer.bloodPrice)}
+          </div>
+          <button type="button" data-buy-relic="${offer.relicId}"${lacksCoins || lacksBlood ? ' disabled' : ''}>${buttonText}</button>
+        </article>`;
+      }).join('')}</div>`
+    : `<div class="shop-empty">
+        <div class="shop-empty-art" aria-hidden="true">?</div>
+        <h4>No hay reliquias disponibles</h4>
+        <p>Las reliquias que no consigas al derrotar a un jefe podrán aparecer aquí. La tienda cambia cada 3 días y podrás recuperarlas usando Oro y Sangre de Jefe.</p>
+      </div>`;
+  body.innerHTML = `
+    <section class="inventory-resources">
+      ${resourceValue('coin', normalized.economy.coins, 'MONEDAS')}
+      ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
+    </section>
+    <div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
+    ${content}`;
+}
+
 export function renderLootNotice(document, lootState, notice) {
   const normalized = normalizeLootState(lootState);
   const rewards = notice.relicIds.map((relicId) => {
@@ -248,14 +309,27 @@ export function renderLootNotice(document, lootState, notice) {
       <div><b>${escapeHtml(definition.name)}</b><span class="rarity-label">${RARITIES[relic.rarity].label}</span><small>${escapeHtml(affixText)}</small></div>
     </div>`;
   }).join('');
+  const failedRewards = (notice.failedRelicIds || []).map((relicId) => {
+    const definition = relicDefinition(relicId);
+    const outcome = definition
+      ? normalized.loot.bossRelicOutcomes[definition.rewardId]
+      : null;
+    if (!definition || !outcome) return '';
+    return `<div class="loot-reward-item missed ${rarityClass(outcome.relic?.rarity)}">
+      ${relicArt(definition)}
+      <div><b>${escapeHtml(definition.name)}</b><span class="loot-missed-label">NO CONSEGUIDA</span><small>Ahora puede aparecer en la Tienda.</small></div>
+    </div>`;
+  }).join('');
   const retroactive = notice.source === 'retroactive';
   document.getElementById('lootNoticeTitle').textContent =
     retroactive ? 'NUEVAS RECOMPENSAS' : 'BOTÍN CONSEGUIDO';
   document.getElementById('lootNoticeIntro').textContent = retroactive
     ? 'Tus victorias ahora tienen recompensa. Los jefes que ya habías derrotado han dejado nuevas reliquias y recursos.'
-    : 'El jefe ha dejado una reliquia exclusiva y recursos para la Forja.';
+    : notice.relicIds.length
+      ? 'El jefe ha dejado una reliquia exclusiva y recursos para la Forja.'
+      : 'Has conseguido los recursos del jefe. Su reliquia podrá recuperarse en la Tienda.';
   document.getElementById('lootNoticeRewards').innerHTML =
-    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards;
+    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards + failedRewards;
   document.getElementById('lootNoticeSummary').innerHTML = `
     <span class="loot-summary-value"><b>${notice.relicIds.length}</b><small>RELIQUIA${notice.relicIds.length === 1 ? '' : 'S'}</small></span>
     <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('coin')}<b>${notice.coins}</b></span><small>MONEDAS</small></span>
@@ -263,10 +337,14 @@ export function renderLootNotice(document, lootState, notice) {
   const actions = document.getElementById('lootNoticeActions');
   actions.innerHTML = retroactive
     ? '<button type="button" data-loot-inventory>IR AL INVENTARIO</button>'
-    : `<button type="button" data-loot-equip="${notice.relicIds[0]}">EQUIPAR</button><button type="button" data-loot-continue>CONTINUAR</button>`;
+    : notice.relicIds[0]
+      ? `<button type="button" data-loot-equip="${notice.relicIds[0]}">EQUIPAR</button><button type="button" data-loot-continue>CONTINUAR</button>`
+      : '<button type="button" data-loot-shop>IR A LA TIENDA</button><button type="button" data-loot-continue>CONTINUAR</button>';
 }
 
 export function forgeResultMarkup(result, relicName, relicId) {
+  const definition = relicDefinition(relicId);
+  const artMarkup = definition ? `<div class="forge-result-art">${relicArt(definition)}</div>` : '';
   if (result.success) {
     const previousRank = Math.max(1, result.preview.targetRank - 1);
     const previousValue = relicEffectValue(relicId, relicRankEffect(relicId, previousRank));
@@ -274,7 +352,7 @@ export function forgeResultMarkup(result, relicName, relicId) {
     const bloodCopy = result.spentBossBlood === 1
       ? 'Se ha consumido 1 Sangre de Jefe.'
       : `Se han consumido ${result.spentBossBlood} Sangres de Jefe.`;
-    return `<div class="forge-result success"><span>FORJA COMPLETADA</span><h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
+    return `<div class="forge-result success"><span>FORJA COMPLETADA</span>${artMarkup}<h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
   }
-  return `<div class="forge-result failure"><span>FORJA FALLIDA</span><h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+  return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
 }

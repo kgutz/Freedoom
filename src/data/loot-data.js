@@ -1,9 +1,18 @@
-export const LOOT_SCHEMA_VERSION = 1;
+export const LOOT_SCHEMA_VERSION = 2;
 export const MAX_INITIAL_RELICS = 6;
 export const MAX_EQUIPPED_RELICS = 2;
 
-export const BOSS_COIN_REWARDS = [75, 85, 100, 115, 130, 145];
-export const BOSS_BLOOD_REWARD = 1;
+export const BOSS_REWARDS = [
+  { coins: 75, bossBlood: 1 },
+  { coins: 85, bossBlood: 1 },
+  { coins: 100, bossBlood: 1 },
+  { coins: 115, bossBlood: 2 },
+  { coins: 130, bossBlood: 2 },
+  { coins: 145, bossBlood: 3 },
+];
+export const RELIC_DROP_RATE = 0.7;
+export const SHOP_ROTATION_DAYS = 3;
+export const SHOP_MAX_VISIBLE_RELICS = 3;
 
 export const RARITIES = {
   rare: { id: 'rare', label: 'RARO', rate: 0.6, affixCount: 0 },
@@ -137,6 +146,11 @@ export const FORGE_PROBABILITIES = {
 
 export function relicDefinition(relicId) {
   return RELIC_DEFINITIONS.find((relic) => relic.id === relicId) || null;
+}
+
+export function bossReward(bossIndex) {
+  const reward = BOSS_REWARDS[bossIndex];
+  return reward ? { ...reward } : null;
 }
 
 export function relicRankEffect(relicId, rank = 1) {

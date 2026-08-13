@@ -53,12 +53,14 @@ import {
   canActivateDailyRelic,
   emptyLootState,
   equipRelic,
+  ensureShopRotation,
   equippedRelicBonuses,
   grantBossRewards,
   isRelicEquipped,
   markDailyRelicActivation,
   normalizeLootState,
   pendingLootNotice,
+  purchaseShopRelic,
   unequipRelic
 } from './domain/loot-rules.js';
 import { relicDefinition, relicRankEffect } from './data/loot-data.js';
@@ -108,7 +110,8 @@ import {
   renderInventoryView,
   renderLootNotice,
   renderRelicEffectInfo,
-  renderRelicDetail
+  renderRelicDetail,
+  renderShopView
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
@@ -134,21 +137,24 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='137';
+const APP_VERSION='140';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
 const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
 const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_SHOP?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
-  ? LOCAL_DEMO_MIGRATION
+  ? LOCAL_DEMO_SHOP
+    ? `${STORAGE_KEY}:demo-shop-${LOCAL_DEMO_SHOP}-v1`
+    : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
     : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v1`
   : STORAGE_KEY;
@@ -583,6 +589,7 @@ function applyLootSlices(result){
   state.loot=result.loot;
   state.inventory=result.inventory;
   state.forge=result.forge;
+  state.shop=result.shop;
 }
 
 function prepareLocalBossDemo(){
@@ -634,6 +641,16 @@ function prepareLocalBossDemo(){
   if(demoRelics.relic_02) Object.assign(demoRelics.relic_02,{rarity:'legendary',affixes:['arcane']});
   if(demoRelics.relic_03) Object.assign(demoRelics.relic_03,{rarity:'mythic',affixes:['discipline','fortune']});
   if(demoRelics.relic_04) Object.assign(demoRelics.relic_04,{rarity:'legendary',affixes:['vitality']});
+  if(LOCAL_DEMO_SHOP==='failed'&&demoRelics.relic_01){
+    const failedRelic={...demoRelics.relic_01,affixes:[...demoRelics.relic_01.affixes]};
+    delete demoRelics.relic_01;
+    state.loot.bossRelicOutcomes.boss_reward_01={
+      status:'failed',relicId:'relic_01',resolvedAt:Date.now(),source:'demo',relic:failedRelic
+    };
+    state.economy.coins=250;
+    state.economy.bossBlood=2;
+    applyLootSlices(ensureShopRotation(state,Date.now()));
+  }
   state.inventory.equipped=['relic_01','relic_03'].filter(id=>demoRelics[id]);
   state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
   state.loot.migrationComplete=true;
@@ -1229,23 +1246,38 @@ function isInventoryDiscoveryActive(){
 let lootNoticeOpening=false;
 let activeLootNoticeId=null;
 let forgeLocked=false;
+let shopLocked=false;
 let selectedForgeRelicId=null;
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const inventorySelected=panel==='inventory';
+  const forgeSelected=panel==='forge';
+  const shopSelected=panel==='shop';
   const inventoryBody=document.getElementById('inventoryBody');
   const forgeBody=document.getElementById('forgeBody');
+  const shopBody=document.getElementById('shopBody');
   const inventoryTab=document.getElementById('inventoryTab');
   const forgeTab=document.getElementById('forgeTab');
+  const shopTab=document.getElementById('shopTab');
   inventoryBody.hidden=!inventorySelected;
-  forgeBody.hidden=inventorySelected;
+  forgeBody.hidden=!forgeSelected;
+  shopBody.hidden=!shopSelected;
   inventoryTab.classList.toggle('active',inventorySelected);
-  forgeTab.classList.toggle('active',!inventorySelected);
+  forgeTab.classList.toggle('active',forgeSelected);
+  shopTab.classList.toggle('active',shopSelected);
   inventoryTab.setAttribute('aria-selected',String(inventorySelected));
-  forgeTab.setAttribute('aria-selected',String(!inventorySelected));
+  forgeTab.setAttribute('aria-selected',String(forgeSelected));
+  shopTab.setAttribute('aria-selected',String(shopSelected));
   if(inventorySelected){
     renderInventoryView(document,state);
     if(scrollToEquipped) requestAnimationFrame(()=>document.getElementById('inventoryEquippedSection')?.scrollIntoView({block:'start'}));
-  }else selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId);
+  }else if(forgeSelected){
+    selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId);
+  }else{
+    const before=JSON.stringify(state.shop);
+    applyLootSlices(ensureShopRotation(state,Date.now()));
+    if(before!==JSON.stringify(state.shop)) scheduleSave({type:'shop:rotation'});
+    renderShopView(document,state,Date.now());
+  }
 }
 function openInventory(){
   showInventoryPanel('inventory');
@@ -2422,9 +2454,45 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
 });
 
-document.getElementById('sheetInventory').addEventListener('click',event=>{
+document.getElementById('sheetInventory').addEventListener('click',async event=>{
   if(event.target.closest('#inventoryTab')){ showInventoryPanel('inventory'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
+  if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
+  const purchase=event.target.closest('[data-buy-relic]');
+  if(purchase){
+    if(purchase.disabled||shopLocked) return;
+    shopLocked=true;
+    purchase.disabled=true;
+    const relicId=purchase.dataset.buyRelic;
+    const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const previousLootState=normalizeLootState(state);
+    const result=purchaseShopRelic({state,relicId,operationId,nowTimestamp:Date.now()});
+    if(result.ok){
+      applyLootSlices(result);
+      let purchaseSaved=true;
+      try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
+      catch(error){
+        purchaseSaved=false;
+        applyLootSlices(previousLootState);
+        console.error('No se pudo guardar la compra de la Tienda',error);
+        showToast('No se pudo confirmar el guardado de la compra','dmg');
+      }
+      renderShopView(document,state,Date.now());
+      renderInventoryView(document,state);
+      renderHero();
+      if(purchaseSaved) showToast('Reliquia recuperada','heal');
+    }else{
+      const message=result.reason==='coins'
+        ? 'No tienes suficientes monedas'
+        : result.reason==='blood'
+          ? 'No tienes suficiente Sangre de Jefe'
+          : 'Esta reliquia ya no está disponible';
+      showToast(message,'dmg');
+      renderShopView(document,state,Date.now());
+    }
+    shopLocked=false;
+    return;
+  }
   const forgeChoice=event.target.closest('[data-select-forge-relic]');
   if(forgeChoice){
     const previousScroll=forgeChoice.closest('.forge-relic-grid')?.scrollLeft||0;
@@ -2513,9 +2581,11 @@ document.getElementById('forgeResultClose').addEventListener('click',()=>{
 });
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
+  const shop=event.target.closest('[data-loot-shop]');
   const equip=event.target.closest('[data-loot-equip]');
   const keepGoing=event.target.closest('[data-loot-continue]');
   if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); return; }
+  if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); showInventoryPanel('shop'); return; }
   if(equip){
     const result=equipRelic(state,equip.dataset.lootEquip);
     if(result.ok) applyLootSlices(result);

@@ -8,6 +8,7 @@ import {
   renderLootNotice,
   renderRelicEffectInfo,
   renderRelicDetail,
+  renderShopView,
   resourceIcon,
 } from './inventory-view.js';
 
@@ -19,7 +20,7 @@ function lootWithBosses(count, source = 'retroactive') {
 
 function fakeDocument() {
   const elements = Object.fromEntries([
-    'inventoryBody', 'forgeBody', 'relicDetailBody', 'relicEffectInfoTitle',
+    'inventoryBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -38,7 +39,7 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(6);
     renderInventoryView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('650');
-    expect(document.elements.inventoryBody.innerHTML).toContain('<small>6</small>');
+    expect(document.elements.inventoryBody.innerHTML).toContain('<small>6/?</small>');
     expect(document.elements.inventoryBody.innerHTML).not.toContain('6 / 6');
     expect(document.elements.inventoryBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
     expect(inventoryAccessMarkup(state)).toContain('INVENTARIO Y FORJA');
@@ -46,6 +47,22 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('Corazón de Hollín');
     expect(document.elements.inventoryBody.innerHTML).toContain('Lágrima de Espectro');
     expect(document.elements.inventoryBody.innerHTML).toContain('relic_06_colmillo_nicotina.png');
+  });
+
+  it('distingue visual y semánticamente una reliquia equipada dentro de la colección', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    state.inventory.equipped = ['relic_02'];
+    state.inventory.relics.relic_02.rarity = 'mythic';
+    renderInventoryView(document, state);
+    const html = document.elements.inventoryBody.innerHTML;
+    expect(html).toContain('aria-label="Lágrima de Espectro, MÍTICO, rango 1, Equipada"');
+    expect(html).toContain('MÍTICO - RANGO 1');
+    expect(html).toContain('<small>3/?</small>');
+    const collectionHtml = html.slice(html.indexOf('<div class="relic-grid">'));
+    expect(collectionHtml).not.toContain('relic-card-copy');
+    expect(collectionHtml).not.toContain('relic-card-meta');
+    expect(collectionHtml).toContain('relic-collection-item');
   });
 
   it('separa el detalle de la reliquia de sus controles de Forja', () => {
@@ -96,6 +113,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('7 HP');
     expect(html).toContain('Su efecto principal se ha fortalecido');
     expect(html).toContain('Se ha consumido 1 Sangre de Jefe');
+    expect(html).toContain('relic_01_corazon_hollin.png');
   });
 
   it('explica los efectos extras directamente en el detalle', () => {
@@ -128,5 +146,43 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.lootNoticeRewards.innerHTML).toContain(
       'relics/boss_loot_chest.png',
     );
+  });
+
+  it('muestra el estado vacío de la Tienda sin ocultar sus recursos', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    renderShopView(document, state, 20 * 86400000);
+    const html = document.elements.shopBody.innerHTML;
+    expect(html).toContain('No hay reliquias disponibles');
+    expect(html).toContain('cambia cada 3 días');
+    expect(html).toContain('SANGRE DE JEFE');
+  });
+
+  it('presenta una reliquia fallada con precios y compra', () => {
+    const document = fakeDocument();
+    const state = grantBossRewards({
+      state: {}, bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.99, relicRandom: () => 0.2,
+      nowTimestamp: 20 * 86400000,
+    });
+    state.economy.coins = 200;
+    state.economy.bossBlood = 2;
+    renderShopView(document, state, 20 * 86400000);
+    const html = document.elements.shopBody.innerHTML;
+    expect(html).toContain('Corazón de Hollín');
+    expect(html).toContain('data-buy-relic="relic_01"');
+    expect(html).toContain('<b>150</b>');
+    expect(html).toContain('<b>1</b>');
+  });
+
+  it('explica un drop fallado y ofrece ir a la Tienda', () => {
+    const document = fakeDocument();
+    const state = grantBossRewards({
+      state: {}, bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.99, relicRandom: () => 0.2, nowTimestamp: 10,
+    });
+    renderLootNotice(document, state, state.loot.notices[0]);
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('NO CONSEGUIDA');
+    expect(document.elements.lootNoticeActions.innerHTML).toContain('data-loot-shop');
   });
 });

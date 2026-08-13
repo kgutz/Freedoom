@@ -72,21 +72,35 @@ const v34State = {
 };
 
 describe('compatibilidad del estado', () => {
-  it('preserva economía, reliquias y Forja en exportación e importación', () => {
+  it('preserva economía, reliquias, Forja y Tienda en exportación e importación', () => {
     const lootState = {
       ...v34State,
       economy: { coins: 110, bossBlood: 2, transactions: [{ id: 'reward' }] },
-      loot: { claimedBossRewards: ['boss_reward_01'], notices: [], migrationComplete: true },
+      loot: {
+        claimedBossRewards: ['boss_reward_01'],
+        bossRelicOutcomes: {
+          boss_reward_01: { status: 'purchased', relicId: 'relic_01', operationId: 'buy-1' },
+        },
+        notices: [], migrationComplete: true,
+      },
       inventory: { relics: { relic_01: { id: 'relic_01', unlocked: true, rank: 2 } }, equipped: ['relic_01'] },
       forge: { attempts: { 'relic_01:rank-3': 1 }, history: [{ operationId: 'forge-1' }] },
+      shop: {
+        schemaVersion: 1,
+        rotation: { period: 4, startedAt: 100, endsAt: 200, relicIds: ['relic_02'] },
+        purchases: [{ operationId: 'buy-1', relicId: 'relic_01' }],
+      },
     };
     const restored = importBackup({
-      ...defaultState(), economy: {}, loot: {}, inventory: {}, forge: {},
+      ...defaultState(), economy: {}, loot: {}, inventory: {}, forge: {}, shop: {},
     }, exportBackup(lootState));
     expect(restored.economy.coins).toBe(110);
     expect(restored.economy.bossBlood).toBe(2);
     expect(restored.inventory.relics.relic_01.rank).toBe(2);
+    expect(restored.loot.bossRelicOutcomes.boss_reward_01.status).toBe('purchased');
     expect(restored.forge.attempts['relic_01:rank-3']).toBe(1);
+    expect(restored.shop.rotation.relicIds).toEqual(['relic_02']);
+    expect(restored.shop.purchases[0].operationId).toBe('buy-1');
   });
 
   it('bloquea una regresión que borraría una colección aunque conserve el héroe', () => {

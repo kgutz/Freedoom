@@ -1,7 +1,5 @@
 import {
   AFFIX_DEFINITIONS,
-  BOSS_BLOOD_REWARD,
-  BOSS_COIN_REWARDS,
   FORTUNE_CAP,
   FORGE_BLOOD_REQUIREMENTS,
   FORGE_COSTS,
@@ -9,8 +7,12 @@ import {
   LOOT_SCHEMA_VERSION,
   MAX_EQUIPPED_RELICS,
   MAX_INITIAL_RELICS,
+  RELIC_DROP_RATE,
   RARITIES,
   RELIC_DEFINITIONS,
+  SHOP_MAX_VISIBLE_RELICS,
+  SHOP_ROTATION_DAYS,
+  bossReward,
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
@@ -18,6 +20,8 @@ import {
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const arrayOf = (value) => (Array.isArray(value) ? value : []);
+const SHOP_ROTATION_MS = SHOP_ROTATION_DAYS * 24 * 60 * 60 * 1000;
+const OUTCOME_STATUSES = new Set(['obtained', 'failed', 'purchased']);
 
 export function emptyLootState() {
   return {
@@ -25,6 +29,7 @@ export function emptyLootState() {
     loot: {
       schemaVersion: LOOT_SCHEMA_VERSION,
       claimedBossRewards: [],
+      bossRelicOutcomes: {},
       notices: [],
       migrationComplete: false,
     },
@@ -35,6 +40,28 @@ export function emptyLootState() {
       weeklyActivations: {},
     },
     forge: { attempts: {}, history: [] },
+    shop: {
+      schemaVersion: 1,
+      rotation: null,
+      purchases: [],
+    },
+  };
+}
+
+function normalizeRelicRecord(id, value) {
+  const relic = objectOf(value);
+  const rarity = RARITIES[relic.rarity] ? relic.rarity : 'rare';
+  return {
+    unlocked: relic.unlocked !== false,
+    rarity,
+    rank: Math.min(3, Math.max(1, Number(relic.rank) || 1)),
+    affixes: [...new Set(arrayOf(relic.affixes))]
+      .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId]))
+      .slice(0, RARITIES[rarity].affixCount),
+    obtainedAt: Number(relic.obtainedAt) || 0,
+    bossIndex: Number.isFinite(relic.bossIndex)
+      ? relic.bossIndex
+      : relicDefinition(id)?.bossIndex,
   };
 }
 
@@ -44,26 +71,44 @@ export function normalizeLootState(state = {}) {
   const loot = objectOf(state.loot);
   const inventory = objectOf(state.inventory);
   const forge = objectOf(state.forge);
+  const shop = objectOf(state.shop);
   const relics = Object.fromEntries(
     Object.entries(objectOf(inventory.relics))
       .filter(([id]) => Boolean(relicDefinition(id)))
       .map(([id, value]) => {
-        const relic = objectOf(value);
-        const rarity = RARITIES[relic.rarity] ? relic.rarity : 'rare';
-        return [id, {
-          unlocked: relic.unlocked !== false,
-          rarity,
-          rank: Math.min(3, Math.max(1, Number(relic.rank) || 1)),
-          affixes: [...new Set(arrayOf(relic.affixes))]
-            .filter((id) => Boolean(AFFIX_DEFINITIONS[id]))
-            .slice(0, RARITIES[rarity].affixCount),
-          obtainedAt: Number(relic.obtainedAt) || 0,
-          bossIndex: Number.isFinite(relic.bossIndex)
-            ? relic.bossIndex
-            : relicDefinition(id)?.bossIndex,
-        }];
+        return [id, normalizeRelicRecord(id, value)];
       }),
   );
+  const claimedBossRewards = new Set(arrayOf(loot.claimedBossRewards));
+  const bossRelicOutcomes = {};
+  for (const [rewardId, rawOutcome] of Object.entries(objectOf(loot.bossRelicOutcomes))) {
+    const definition = RELIC_DEFINITIONS.find((item) => item.rewardId === rewardId);
+    const outcome = objectOf(rawOutcome);
+    if (!definition || !OUTCOME_STATUSES.has(outcome.status)) continue;
+    bossRelicOutcomes[rewardId] = {
+      status: outcome.status,
+      relicId: definition.id,
+      resolvedAt: Math.max(0, Number(outcome.resolvedAt) || 0),
+      source: typeof outcome.source === 'string' ? outcome.source : 'migration',
+      ...(outcome.relic ? { relic: normalizeRelicRecord(definition.id, outcome.relic) } : {}),
+      ...(outcome.purchasedAt ? { purchasedAt: Number(outcome.purchasedAt) || 0 } : {}),
+      ...(outcome.operationId ? { operationId: String(outcome.operationId) } : {}),
+    };
+  }
+  for (const definition of RELIC_DEFINITIONS) {
+    if (relics[definition.id]) {
+      claimedBossRewards.add(definition.rewardId);
+      if (!bossRelicOutcomes[definition.rewardId]) {
+        bossRelicOutcomes[definition.rewardId] = {
+          status: 'obtained', relicId: definition.id, resolvedAt: 0, source: 'legacy',
+        };
+      }
+    } else if (claimedBossRewards.has(definition.rewardId) && !bossRelicOutcomes[definition.rewardId]) {
+      bossRelicOutcomes[definition.rewardId] = {
+        status: 'obtained', relicId: definition.id, resolvedAt: 0, source: 'legacy',
+      };
+    }
+  }
   const equipped = [...new Set(arrayOf(inventory.equipped))]
     .filter((id) => relics[id]?.unlocked)
     .slice(0, MAX_EQUIPPED_RELICS);
@@ -78,8 +123,15 @@ export function normalizeLootState(state = {}) {
         LOOT_SCHEMA_VERSION,
         Number(loot.schemaVersion) || 0,
       ),
-      claimedBossRewards: [...new Set(arrayOf(loot.claimedBossRewards))],
-      notices: arrayOf(loot.notices).map((notice) => ({ ...notice })),
+      claimedBossRewards: [...claimedBossRewards],
+      bossRelicOutcomes,
+      notices: arrayOf(loot.notices).map((notice) => ({
+        ...notice,
+        relicIds: arrayOf(notice?.relicIds).filter((id) => Boolean(relicDefinition(id))),
+        failedRelicIds: arrayOf(notice?.failedRelicIds)
+          .filter((id) => Boolean(relicDefinition(id))),
+        results: arrayOf(notice?.results).map((result) => ({ ...result })),
+      })),
       migrationComplete: loot.migrationComplete === true,
     },
     inventory: {
@@ -91,6 +143,25 @@ export function normalizeLootState(state = {}) {
     forge: {
       attempts: { ...objectOf(forge.attempts) },
       history: arrayOf(forge.history).slice(-100),
+    },
+    shop: {
+      schemaVersion: Math.max(1, Number(shop.schemaVersion) || 0),
+      rotation: (() => {
+        const rotation = objectOf(shop.rotation);
+        if (!Number.isInteger(rotation.period)) return null;
+        const startedAt = Math.max(0, Number(rotation.startedAt) || 0);
+        const endsAt = Math.max(0, Number(rotation.endsAt) || 0);
+        if (endsAt <= startedAt) return null;
+        return {
+          period: Math.max(0, rotation.period),
+          startedAt,
+          endsAt,
+          relicIds: [...new Set(arrayOf(rotation.relicIds))]
+            .filter((id) => Boolean(relicDefinition(id)))
+            .slice(0, SHOP_MAX_VISIBLE_RELICS),
+        };
+      })(),
+      purchases: arrayOf(shop.purchases).map((purchase) => ({ ...purchase })).slice(-100),
     },
   };
 }
@@ -166,7 +237,14 @@ function noticeForRewards(rewards, source, nowTimestamp) {
     id: `${source}:${rewards.map((reward) => reward.rewardId).join(',')}`,
     source,
     rewardIds: rewards.map((reward) => reward.rewardId),
-    relicIds: rewards.map((reward) => reward.relicId),
+    relicIds: rewards.filter((reward) => reward.obtained).map((reward) => reward.relicId),
+    failedRelicIds: rewards.filter((reward) => !reward.obtained).map((reward) => reward.relicId),
+    results: rewards.map((reward) => ({
+      rewardId: reward.rewardId,
+      relicId: reward.relicId,
+      obtained: reward.obtained,
+      rarity: reward.rarity,
+    })),
     coins: rewards.reduce((total, reward) => total + reward.coins, 0),
     bossBlood: rewards.reduce((total, reward) => total + reward.bossBlood, 0),
     acknowledged: false,
@@ -179,7 +257,9 @@ export function grantBossRewards({
   bossesDown,
   source = 'victory',
   seed = '',
-  random = Math.random,
+  random = null,
+  dropRandom = random,
+  relicRandom = random,
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
@@ -192,34 +272,57 @@ export function grantBossRewards({
   for (let bossIndex = 0; bossIndex < maximum; bossIndex += 1) {
     const definition = RELIC_DEFINITIONS[bossIndex];
     if (!definition || claimed.has(definition.rewardId)) continue;
-    const relic = source === 'retroactive'
+    const guaranteedLegacyReward = source === 'retroactive';
+    const dropRoll = typeof dropRandom === 'function'
+      ? dropRandom()
+      : deterministicRandom(`${seed}:${definition.rewardId}:drop`);
+    const obtained = guaranteedLegacyReward ||
+      Math.max(0, Math.min(0.999999999, dropRoll)) < RELIC_DROP_RATE;
+    const relic = guaranteedLegacyReward
       ? deterministicRelicRoll(
           definition.id,
           `${seed}:${definition.rewardId}`,
           nowTimestamp,
         )
-      : rollRelic(definition.id, random, nowTimestamp);
-    const coins = BOSS_COIN_REWARDS[bossIndex];
-    normalized.inventory.relics[definition.id] = relic;
+      : typeof relicRandom === 'function'
+        ? rollRelic(definition.id, relicRandom, nowTimestamp)
+        : deterministicRelicRoll(
+            definition.id,
+            `${seed}:${definition.rewardId}:relic`,
+            nowTimestamp,
+          );
+    const reward = bossReward(bossIndex);
+    if (!reward) continue;
+    const { coins, bossBlood } = reward;
+    if (obtained) normalized.inventory.relics[definition.id] = relic;
     normalized.economy.coins += coins;
-    normalized.economy.bossBlood += BOSS_BLOOD_REWARD;
+    normalized.economy.bossBlood += bossBlood;
     normalized.economy.transactions.push({
       id: `${definition.rewardId}:grant`,
       type: 'boss-reward',
       rewardId: definition.rewardId,
       coins,
-      bossBlood: BOSS_BLOOD_REWARD,
+      bossBlood,
+      relicOutcome: obtained ? 'obtained' : 'failed',
       at: nowTimestamp,
     });
     normalized.loot.claimedBossRewards.push(definition.rewardId);
+    normalized.loot.bossRelicOutcomes[definition.rewardId] = {
+      status: obtained ? 'obtained' : 'failed',
+      relicId: definition.id,
+      resolvedAt: nowTimestamp,
+      source,
+      relic,
+    };
     claimed.add(definition.rewardId);
     rewards.push({
       rewardId: definition.rewardId,
       relicId: definition.id,
       rarity: relic.rarity,
       affixes: [...relic.affixes],
+      obtained,
       coins,
-      bossBlood: BOSS_BLOOD_REWARD,
+      bossBlood,
     });
   }
   if (rewards.length) {
@@ -242,6 +345,139 @@ export function pendingLootNotice(lootState) {
   return normalizeLootState(lootState).loot.notices.find(
     (notice) => !notice.acknowledged,
   ) || null;
+}
+
+function failedRelicIds(normalized) {
+  return RELIC_DEFINITIONS
+    .filter((definition) =>
+      normalized.loot.bossRelicOutcomes[definition.rewardId]?.status === 'failed' &&
+      !normalized.inventory.relics[definition.id])
+    .map((definition) => definition.id);
+}
+
+function rotationSelection(relicIds, period) {
+  const sorted = [...new Set(relicIds)].sort();
+  if (sorted.length <= SHOP_MAX_VISIBLE_RELICS) return sorted;
+  const offset = period % sorted.length;
+  return Array.from({ length: SHOP_MAX_VISIBLE_RELICS }, (_, index) =>
+    sorted[(offset + index) % sorted.length]);
+}
+
+export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
+  const normalized = normalizeLootState(lootState);
+  const safeNow = Math.max(0, Number(nowTimestamp) || 0);
+  const previous = normalized.shop.rotation;
+  const pending = failedRelicIds(normalized);
+  const elapsedPeriods = previous && safeNow >= previous.endsAt
+    ? Math.floor((safeNow - previous.endsAt) / SHOP_ROTATION_MS) + 1
+    : 0;
+  const effectivePeriod = previous ? previous.period + elapsedPeriods : 0;
+  const startedAt = previous
+    ? previous.startedAt + elapsedPeriods * SHOP_ROTATION_MS
+    : safeNow;
+  const periodChanged = !previous || elapsedPeriods > 0;
+  let relicIds = periodChanged
+    ? rotationSelection(pending, effectivePeriod)
+    : [...previous.relicIds];
+  if (!periodChanged && relicIds.length < SHOP_MAX_VISIBLE_RELICS) {
+    const additions = rotationSelection(
+      pending.filter((id) => !relicIds.includes(id)),
+      effectivePeriod,
+    );
+    relicIds = [...relicIds, ...additions]
+      .slice(0, SHOP_MAX_VISIBLE_RELICS);
+  }
+  normalized.shop.rotation = {
+    period: effectivePeriod,
+    startedAt,
+    endsAt: startedAt + SHOP_ROTATION_MS,
+    relicIds,
+  };
+  return normalized;
+}
+
+export function shopPriceForRelic(relicId) {
+  const definition = relicDefinition(relicId);
+  const reward = definition ? bossReward(definition.bossIndex) : null;
+  return reward ? { coinPrice: reward.coins * 2, bloodPrice: reward.bossBlood } : null;
+}
+
+export function shopOffers(lootState, nowTimestamp = Date.now()) {
+  const normalized = ensureShopRotation(lootState, nowTimestamp);
+  return normalized.shop.rotation.relicIds
+    .map((relicId) => {
+      const definition = relicDefinition(relicId);
+      const outcome = definition
+        ? normalized.loot.bossRelicOutcomes[definition.rewardId]
+        : null;
+      const price = definition ? shopPriceForRelic(definition.id) : null;
+      if (!definition || !price || outcome?.status !== 'failed' ||
+          normalized.inventory.relics[relicId]) return null;
+      return {
+        relicId,
+        definition,
+        relic: normalizeRelicRecord(relicId, outcome.relic),
+        bossIndex: definition.bossIndex,
+        ...price,
+      };
+    })
+    .filter(Boolean);
+}
+
+export function purchaseShopRelic({
+  state,
+  relicId,
+  operationId,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = ensureShopRotation(state, nowTimestamp);
+  if (!operationId) return { ...normalized, ok: false, reason: 'missing-operation' };
+  if (normalized.shop.purchases.some((entry) => entry.operationId === operationId) ||
+      normalized.economy.transactions.some((entry) => entry.id === `shop:${operationId}`)) {
+    return { ...normalized, ok: false, reason: 'duplicate-operation' };
+  }
+  const offer = shopOffers(normalized, nowTimestamp)
+    .find((candidate) => candidate.relicId === relicId);
+  if (!offer) return { ...normalized, ok: false, reason: 'unavailable' };
+  if (normalized.economy.coins < offer.coinPrice) {
+    return { ...normalized, ok: false, reason: 'coins', offer };
+  }
+  if (normalized.economy.bossBlood < offer.bloodPrice) {
+    return { ...normalized, ok: false, reason: 'blood', offer };
+  }
+  normalized.economy.coins -= offer.coinPrice;
+  normalized.economy.bossBlood -= offer.bloodPrice;
+  normalized.inventory.relics[relicId] = {
+    ...offer.relic,
+    unlocked: true,
+    obtainedAt: nowTimestamp,
+  };
+  const outcome = normalized.loot.bossRelicOutcomes[offer.definition.rewardId];
+  normalized.loot.bossRelicOutcomes[offer.definition.rewardId] = {
+    ...outcome,
+    status: 'purchased',
+    purchasedAt: nowTimestamp,
+    operationId,
+  };
+  const purchase = {
+    id: `shop:${operationId}`,
+    operationId,
+    relicId,
+    rewardId: offer.definition.rewardId,
+    coinsSpent: offer.coinPrice,
+    bossBloodSpent: offer.bloodPrice,
+    at: nowTimestamp,
+  };
+  normalized.shop.purchases.push(purchase);
+  normalized.shop.purchases = normalized.shop.purchases.slice(-100);
+  normalized.economy.transactions.push({
+    ...purchase,
+    type: 'shop_purchase',
+    coins: -offer.coinPrice,
+    bossBlood: -offer.bloodPrice,
+  });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return { ...normalized, ok: true, purchase, relic: normalized.inventory.relics[relicId] };
 }
 
 export function equipRelic(lootState, relicId, replaceIndex = null) {
