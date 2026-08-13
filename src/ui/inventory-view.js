@@ -28,7 +28,7 @@ export function resourceValue(type, value, label = '') {
 }
 
 function relicArt(definition) {
-  return `<div class="relic-art">
+  return `<div class="relic-art relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${definition.bossIndex + 1}</span>
   </div>`;
@@ -138,12 +138,12 @@ export function renderRelicDetail(document, lootState, relicId) {
   const affixes = relic.affixes.length
     ? relic.affixes.map((id) => {
         const affix = AFFIX_DEFINITIONS[id];
-        return `<li><button type="button" class="relic-effect-link" data-relic-effect="${id}">${escapeHtml(affix.name)}</button><small>Toca para ver</small></li>`;
+        return `<li><b class="relic-affix-name">${escapeHtml(affix.name)}</b><p>${escapeHtml(affix.description)}</p></li>`;
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
   const effect = relicRankEffect(relicId, relic.rank);
   body.innerHTML = `<div class="relic-detail-frame ${rarityClass(relic.rarity)}">
-      ${relicArt(definition)}
+      <div class="relic-detail-art">${relicArt(definition)}</div>
       <div class="rarity-label">${rarity.label}</div>
       <h3>${escapeHtml(definition.name)}</h3>
       <div class="relic-rank">RANGO ${relic.rank}</div>
@@ -152,6 +152,7 @@ export function renderRelicDetail(document, lootState, relicId) {
     <div class="relic-affixes"><span>EFECTOS EXTRAS</span><ul>${affixes}</ul></div>
     <div class="relic-equip-actions">
       ${equipmentActions}
+      <button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>
     </div>`;
   return true;
 }

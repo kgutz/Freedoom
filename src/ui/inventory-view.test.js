@@ -84,17 +84,16 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Su efecto principal se ha fortalecido');
   });
 
-  it('solo revela la descripción del efecto extra cuando se solicita', () => {
+  it('explica los efectos extras directamente en el detalle', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
     state.inventory.relics.relic_03.rarity = 'legendary';
     state.inventory.relics.relic_03.affixes = ['discipline'];
     renderRelicDetail(document, state, 'relic_03');
-    expect(document.elements.relicDetailBody.innerHTML).toContain('data-relic-effect="discipline"');
-    expect(document.elements.relicDetailBody.innerHTML).not.toContain('+1 XP al completar hábitos');
-    expect(renderRelicEffectInfo(document, 'discipline')).toBe(true);
-    expect(document.elements.relicEffectInfoTitle.textContent).toBe('Disciplina');
-    expect(document.elements.relicEffectInfoDescription.textContent).toContain('+1 XP');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Disciplina');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('+1 XP al completar hábitos');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('relic-detail-art');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('data-open-forge-relic="relic_03"');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

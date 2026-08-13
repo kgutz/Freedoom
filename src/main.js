@@ -136,7 +136,8 @@ import {
 
 const APP_VERSION='136';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
-const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:two-day`;
+const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
+const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
@@ -1214,36 +1215,15 @@ function renderHero(){
 
 function isInventoryDiscoveryActive(){
   try{
-    const discovery=JSON.parse(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY)||'{}')||{};
-    if(discovery.completed) return false;
-    return !discovery.firstAcknowledgedDay||discovery.firstAcknowledgedDay!==localCalendarDayKey();
+    let startedAt=Number(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY));
+    if(!Number.isFinite(startedAt)||startedAt<=0){
+      startedAt=Date.now();
+      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,String(startedAt));
+    }
+    return Date.now()-startedAt<INVENTORY_DISCOVERY_DURATION_MS;
   }catch{
     return true;
   }
-}
-
-function localCalendarDayKey(now=new Date()){
-  const year=now.getFullYear();
-  const month=String(now.getMonth()+1).padStart(2,'0');
-  const day=String(now.getDate()).padStart(2,'0');
-  return `${year}-${month}-${day}`;
-}
-
-function acknowledgeInventoryDiscovery(){
-  const inventoryButton=document.querySelector('.hero-inventory-jump.discovery-active');
-  inventoryButton?.classList.remove('discovery-active');
-  try{
-    const today=localCalendarDayKey();
-    const discovery=JSON.parse(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY)||'{}')||{};
-    if(discovery.completed) return;
-    if(!discovery.firstAcknowledgedDay){
-      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,JSON.stringify({firstAcknowledgedDay:today,completed:false}));
-      return;
-    }
-    if(discovery.firstAcknowledgedDay!==today){
-      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,JSON.stringify({...discovery,completed:true}));
-    }
-  }catch{}
 }
 
 let lootNoticeOpening=false;
@@ -2383,7 +2363,6 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
 /* elegir clase de héroe y lanzar hechizos */
 document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-inventory]')){
-    acknowledgeInventoryDiscovery();
     openInventory();
     return;
   }
@@ -2459,6 +2438,14 @@ document.getElementById('sheetInventory').addEventListener('click',event=>{
   if(relic) openRelicDetail(relic.dataset.openRelic);
 });
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const forgeShortcut=event.target.closest('[data-open-forge-relic]');
+  if(forgeShortcut){
+    selectedForgeRelicId=forgeShortcut.dataset.openForgeRelic;
+    document.getElementById('sheetRelicDetail').classList.remove('show');
+    document.getElementById('sheetInventory').classList.add('show');
+    showInventoryPanel('forge');
+    return;
+  }
   const effectInfo=event.target.closest('[data-relic-effect]');
   if(effectInfo){
     if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
