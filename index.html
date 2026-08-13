@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v136</div>
+  <div class="ob-version" id="obVersion">v137</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v136</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v137</span></p>
       </div>
     </div>
   </div>
@@ -494,18 +494,20 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">▣</span><span>Inventario y equipamiento</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">En Héroe encontrarás el acceso <b style="color:var(--kodak)">Inventario y Forja</b>. Puedes conservar todas tus reliquias, pero llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
+          <p class="hint">En Héroe, el icono de la mochila abre <b style="color:var(--kodak)">Inventario y Forja</b>. Puedes conservar todas tus reliquias, pero llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
           <p class="hint">Cada reliquia proporciona efectos que pueden mejorar tu partida. Su nombre, poder y valores permanecen ocultos hasta que la consigues.</p>
-          <p class="hint">Cuando una reliquia tenga un efecto extra, su nombre aparecerá en amarillo y subrayado. Tócalo para consultar qué hace sin revelar los efectos de objetos que todavía no has descubierto.</p>
+          <p class="hint">Cuando una reliquia tenga efectos extras, cada nombre aparecerá en amarillo con su explicación debajo. Solo puedes consultar los efectos de los objetos que ya hayas descubierto.</p>
           <p class="hint">Puedes cambiar las reliquias equipadas cuando quieras. Un efecto diario o semanal que ya se haya utilizado no vuelve a activarse por desequipar y equipar el objeto.</p>
         </div>
       </details>
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚒</span><span>Forja</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">La Forja permite mejorar el efecto principal de una reliquia desde el Rango I hasta el Rango III. Selecciona primero la reliquia y revisa el coste, el requisito y la probabilidad antes de confirmar.</p>
-          <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 monedas</b>, requiere <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y comienza con un <b style="color:var(--kodak)">70%</b> de éxito.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 monedas</b>, requiere <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y comienza con un <b style="color:var(--kodak)">45%</b> de éxito.</li></ul></div>
-          <p class="hint">Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume cuando la mejora tiene éxito: una unidad para alcanzar el Rango II y dos para alcanzar el Rango III. Si la Forja falla, conservas toda la Sangre, la reliquia mantiene su rango y aumenta la probabilidad del siguiente intento hasta alcanzar el 100%.</p>
+          <p class="hint">La Forja permite mejorar el efecto principal de una reliquia desde el Rango I hasta el Rango III. Puedes elegirla en la propia Forja o pulsar <b style="color:var(--kodak)">Forjar</b> desde su ficha para llevarla allí directamente.</p>
+          <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 monedas</b>, necesita <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">70% → 85% → 100%</b>.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 monedas</b>, necesita <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">45% → 60% → 75% → 90% → 100%</b>.</li></ul></div>
+          <div class="hint"><span class="faq-lead">Cómo se consumen los recursos:</span><ul class="faq-bullets"><li>Las monedas se gastan siempre que realizas un intento.</li><li>La Sangre de Jefe solo se consume cuando la mejora tiene éxito: 1 para alcanzar el Rango II y 2 para alcanzar el Rango III.</li><li>Si la Forja falla, conservas toda la Sangre y la reliquia mantiene su rango.</li><li>No puedes intentar una mejora si no tienes monedas o Sangre suficientes para completarla.</li></ul></div>
+          <p class="hint">Cada fallo aumenta el pity y mejora la probabilidad del siguiente intento hasta garantizar el éxito. Una operación ya registrada no puede descontar monedas o Sangre dos veces, y el saldo se conserva al exportar, importar o restaurar una copia.</p>
+          <p class="hint">Cada jefe derrotado entrega una Sangre de Jefe. Es un recurso estratégico: puedes especializar unas pocas reliquias, repartir mejoras entre varias o guardarla para objetos futuros.</p>
           <p class="hint">Algunos efectos extras pueden mejorar ligeramente la probabilidad de la Forja mientras la reliquia que los contiene está equipada.</p>
         </div>
       </details>
