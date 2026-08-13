@@ -84,6 +84,7 @@ describe('compatibilidad del estado', () => {
       ...defaultState(), economy: {}, loot: {}, inventory: {}, forge: {},
     }, exportBackup(lootState));
     expect(restored.economy.coins).toBe(110);
+    expect(restored.economy.bossBlood).toBe(2);
     expect(restored.inventory.relics.relic_01.rank).toBe(2);
     expect(restored.forge.attempts['relic_01:rank-3']).toBe(1);
   });
@@ -391,6 +392,19 @@ describe('adaptador del navegador', () => {
     await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
       value:'{"step":2}',revision:2,recovered:true,source:'recovery-2'
     });
+  });
+
+  it('una copia de recuperación conserva el saldo de Sangre de Jefe', async () => {
+    const localStorage=memoryLocalStorage();
+    const store=createBrowserStore({localStorage});
+    const savedState={...v34State,economy:{coins:60,bossBlood:1,transactions:[]}};
+    store.set(STORAGE_KEY,exportBackup(savedState));
+    localStorage.values.set(STORAGE_KEY,'{"config":');
+
+    const reloaded=createBrowserStore({localStorage});
+    const recovered=await reloaded.get(STORAGE_KEY);
+    expect(recovered.recovered).toBe(true);
+    expect(importBackup(defaultState(),recovered.value).economy.bossBlood).toBe(1);
   });
 
   it('ignora una recuperación dañada y vuelve a la anterior', async () => {

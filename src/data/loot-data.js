@@ -129,7 +129,7 @@ export const RELIC_RANK_EFFECTS = {
 };
 
 export const FORGE_COSTS = { 2: 50, 3: 100 };
-export const FORGE_BLOOD_REQUIREMENTS = { 2: 1, 3: 3 };
+export const FORGE_BLOOD_REQUIREMENTS = { 2: 1, 3: 2 };
 export const FORGE_PROBABILITIES = {
   2: [70, 85, 100],
   3: [45, 60, 75, 90, 100],

@@ -2501,7 +2501,7 @@ async function handleForgeAttempt(forge){
     document.getElementById('forgeResultBg').classList.add('show');
     selectedForgeRelicId=relicId;
     renderForgeView(document,state,selectedForgeRelicId); renderInventoryView(document,state); renderHero();
-  }else showToast(result.reason==='coins'?'No tienes suficientes monedas':'No cumples los requisitos de la Forja','dmg');
+  }else showToast(result.reason==='coins'?'No tienes suficientes monedas':result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'No cumples los requisitos de la Forja','dmg');
   forgeLocked=false;
 }
 document.getElementById('forgeBody').addEventListener('click',event=>{

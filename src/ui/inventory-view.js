@@ -193,16 +193,16 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
     ? `${forgeUpgradeMarkup(selectedDefinition, relicId, relic.rank, preview.targetRank)}
       <div class="forge-values">
         <span>Coste ${resourceValue('coin', preview.cost)}</span>
-        <span>Requisito ${resourceValue('boss-blood', preview.bloodRequired)}</span>
-        <span>Disponibles ${resourceValue('coin', preview.coinsAvailable)}</span>
-        <span>Sangre ${resourceValue('boss-blood', preview.bloodAvailable)}</span>
+        <span>Monedas disponibles ${resourceValue('coin', preview.coinsAvailable)}</span>
+        <span>Sangre necesaria ${resourceValue('boss-blood', preview.bloodRequired)}</span>
+        <span>Disponible ${resourceValue('boss-blood', preview.bloodAvailable)}</span>
       </div>
       <div class="forge-chance">
         <span>Pity <b>${preview.pityProbability}%</b></span>
         <span>Fortuna <b>+${preview.fortune}%</b></span>
         <strong>PROBABILIDAD ${preview.finalProbability}%</strong>
       </div>
-      <p>La Sangre de Jefe es un requisito y no se consume. Las monedas sí se pierden si la Forja falla.</p>
+      <p>La Sangre de Jefe solo se consume si la mejora tiene éxito. Las monedas se gastan en cada intento.</p>
       <button type="button" class="forge-attempt" data-forge-relic="${relicId}"${preview.coinsAvailable < preview.cost || preview.bloodAvailable < preview.bloodRequired ? ' disabled' : ''}>INTENTAR MEJORA</button>`
     : `<div class="forge-upgrade-preview forge-upgrade-max">
         <span>EFECTO ACTUAL</span>
@@ -271,7 +271,10 @@ export function forgeResultMarkup(result, relicName, relicId) {
     const previousRank = Math.max(1, result.preview.targetRank - 1);
     const previousValue = relicEffectValue(relicId, relicRankEffect(relicId, previousRank));
     const newValue = relicEffectValue(relicId, relicRankEffect(relicId, result.preview.targetRank));
-    return `<div class="forge-result success"><span>FORJA EXITOSA</span><h3>${escapeHtml(relicName)} alcanzó el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido. Se han gastado ${result.spentCoins} monedas y la Sangre de Jefe permanece intacta.</p></div>`;
+    const bloodCopy = result.spentBossBlood === 1
+      ? 'Se ha consumido 1 Sangre de Jefe.'
+      : `Se han consumido ${result.spentBossBlood} Sangres de Jefe.`;
+    return `<div class="forge-result success"><span>FORJA COMPLETADA</span><h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
   }
-  return `<div class="forge-result failure"><span>FORJA FALLIDA</span><h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe permanece intacta.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+  return `<div class="forge-result failure"><span>FORJA FALLIDA</span><h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
 }

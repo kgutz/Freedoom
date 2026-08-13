@@ -193,7 +193,7 @@ describe('Forja', () => {
     return state;
   }
 
-  it('aplica pity completo de Rango II y no consume Sangre', () => {
+  it('aplica pity completo de Rango II, conserva Sangre al fallar y consume 1 al acertar', () => {
     let state = forgeState();
     let result = attemptForge({
       state, relicId: 'relic_01', operationId: 'a', randomValue: 0.99,
@@ -213,6 +213,20 @@ describe('Forja', () => {
     expect(result.success).toBe(true);
     expect(result.inventory.relics.relic_01.rank).toBe(2);
     expect(result.economy.coins).toBe(500);
+    expect(result.economy.bossBlood).toBe(5);
+    expect(result.spentBossBlood).toBe(1);
+    expect(result.forge.history.at(-1)).toMatchObject({
+      previousRank: 1,
+      newRank: 2,
+      coinsSpent: 50,
+      bossBloodSpent: 1,
+      success: true,
+    });
+    expect(result.economy.transactions.at(-1)).toMatchObject({
+      type: 'forge_success',
+      bossBlood: -1,
+      bossBloodSpent: 1,
+    });
   });
 
   it('aplica pity completo de Rango III', () => {
@@ -226,6 +240,8 @@ describe('Forja', () => {
         randomValue: 0.999,
       });
       expect(result.success).toBe(false);
+      expect(result.economy.bossBlood).toBe(6);
+      expect(result.spentBossBlood).toBe(0);
       state = result;
     }
     const guaranteed = forgePreview(state, 'relic_01');
@@ -238,7 +254,8 @@ describe('Forja', () => {
     });
     expect(result.success).toBe(true);
     expect(result.inventory.relics.relic_01.rank).toBe(3);
-    expect(result.economy.bossBlood).toBe(6);
+    expect(result.economy.bossBlood).toBe(4);
+    expect(result.spentBossBlood).toBe(2);
   });
 
   it('suma Fortuna, limita al 100 y valida recursos', () => {
@@ -256,6 +273,18 @@ describe('Forja', () => {
       relicId: 'relic_01',
       operationId: 'no-blood',
     }).reason).toBe('blood');
+    expect(noBlood.economy.bossBlood).toBe(0);
+    const oneBloodForRankThree = forgeState({ blood: 1 });
+    oneBloodForRankThree.inventory.relics.relic_01.rank = 2;
+    const blockedRankThree = attemptForge({
+      state: oneBloodForRankThree,
+      relicId: 'relic_01',
+      operationId: 'rank-three-no-blood',
+      randomValue: 0,
+    });
+    expect(blockedRankThree.reason).toBe('blood');
+    expect(blockedRankThree.inventory.relics.relic_01.rank).toBe(2);
+    expect(blockedRankThree.economy.bossBlood).toBe(1);
   });
 
   it('bloquea la misma operación dos veces', () => {
@@ -272,8 +301,40 @@ describe('Forja', () => {
       randomValue: 0,
     });
     expect(first.success).toBe(true);
+    expect(first.economy.bossBlood).toBe(5);
     expect(second.reason).toBe('duplicate-operation');
     expect(second.economy.coins).toBe(first.economy.coins);
+    expect(second.economy.bossBlood).toBe(first.economy.bossBlood);
+    expect(second.forge.history.filter((entry) => entry.operationId === 'same')).toHaveLength(1);
+  });
+
+  it('conserva la Sangre en fallos y nunca permite un saldo negativo', () => {
+    const rankTwoFailure = attemptForge({
+      state: forgeState({ blood: 1 }),
+      relicId: 'relic_01',
+      operationId: 'rank-two-failure',
+      randomValue: 0.99,
+    });
+    expect(rankTwoFailure.success).toBe(false);
+    expect(rankTwoFailure.economy.bossBlood).toBe(1);
+    expect(rankTwoFailure.forge.history.at(-1).bossBloodSpent).toBe(0);
+    expect(rankTwoFailure.economy.transactions.at(-1)).toMatchObject({
+      type: 'forge_failure',
+      bossBlood: 0,
+      bossBloodSpent: 0,
+    });
+
+    const exactRankThreeBlood = forgeState({ blood: 2 });
+    exactRankThreeBlood.inventory.relics.relic_01.rank = 2;
+    const rankThreeSuccess = attemptForge({
+      state: exactRankThreeBlood,
+      relicId: 'relic_01',
+      operationId: 'rank-three-exact-blood',
+      randomValue: 0,
+    });
+    expect(rankThreeSuccess.success).toBe(true);
+    expect(rankThreeSuccess.economy.bossBlood).toBe(0);
+    expect(rankThreeSuccess.economy.bossBlood).toBeGreaterThanOrEqual(0);
   });
 
   it('normaliza y conserva economía, equipo, pity e historial', () => {
@@ -286,5 +347,6 @@ describe('Forja', () => {
       state.inventory.dailyActivations,
     );
     expect(normalized.economy.coins).toBe(state.economy.coins);
+    expect(normalized.economy.bossBlood).toBe(state.economy.bossBlood);
   });
 });

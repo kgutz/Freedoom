@@ -374,7 +374,12 @@ export function attemptForge({
   normalized.economy.coins -= preview.cost;
   const success = Math.max(0, Math.min(0.999999999, randomValue)) <
     preview.finalProbability / 100;
+  const bossBloodSpent = success ? preview.bloodRequired : 0;
   if (success) {
+    normalized.economy.bossBlood = Math.max(
+      0,
+      normalized.economy.bossBlood - bossBloodSpent,
+    );
     normalized.inventory.relics[relicId] = {
       ...normalized.inventory.relics[relicId],
       rank: preview.targetRank,
@@ -388,10 +393,14 @@ export function attemptForge({
     id: `forge:${operationId}`,
     operationId,
     relicId,
+    previousRank: preview.targetRank - 1,
+    newRank: success ? preview.targetRank : preview.targetRank - 1,
     targetRank: preview.targetRank,
+    coinsSpent: preview.cost,
     cost: preview.cost,
     bloodRequired: preview.bloodRequired,
-    bloodConsumed: 0,
+    bossBloodSpent,
+    bloodConsumed: bossBloodSpent,
     probability: preview.finalProbability,
     success,
     at: nowTimestamp,
@@ -400,10 +409,14 @@ export function attemptForge({
   normalized.forge.history = normalized.forge.history.slice(-100);
   normalized.economy.transactions.push({
     id: `forge:${operationId}:coins`,
-    type: 'forge',
+    type: success ? 'forge_success' : 'forge_failure',
     relicId,
+    previousRank: preview.targetRank - 1,
+    newRank: success ? preview.targetRank : preview.targetRank - 1,
+    coinsSpent: preview.cost,
+    bossBloodSpent,
     coins: -preview.cost,
-    bossBlood: 0,
+    bossBlood: bossBloodSpent ? -bossBloodSpent : 0,
     success,
     at: nowTimestamp,
   });
@@ -413,6 +426,7 @@ export function attemptForge({
     ok: true,
     success,
     spentCoins: preview.cost,
+    spentBossBlood: bossBloodSpent,
     preview,
     nextProbability: nextPreview?.finalProbability || null,
   };

@@ -70,18 +70,32 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('MEJORA DEL EFECTO');
     expect(html).toContain('5 MANÁ');
     expect(html).toContain('7 MANÁ');
-    expect(html).toContain('La Sangre de Jefe es un requisito y no se consume');
+    expect(html).toContain('La Sangre de Jefe solo se consume si la mejora tiene éxito');
+    expect(html).toContain('Sangre necesaria');
+  });
+
+  it('renderizar o recalcular la Forja nunca vuelve a consumir Sangre', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    state.economy.bossBlood = 2;
+    const original = JSON.stringify(state);
+    renderForgeView(document, state, 'relic_01');
+    renderForgeView(document, state, 'relic_01');
+    expect(state.economy.bossBlood).toBe(2);
+    expect(JSON.stringify(state)).toBe(original);
   });
 
   it('confirma el valor mejorado cuando la Forja tiene éxito', () => {
     const html = forgeResultMarkup({
       success: true,
       spentCoins: 50,
+      spentBossBlood: 1,
       preview: { targetRank: 2 },
     }, 'Corazón de Hollín', 'relic_01');
     expect(html).toContain('5 HP');
     expect(html).toContain('7 HP');
     expect(html).toContain('Su efecto principal se ha fortalecido');
+    expect(html).toContain('Se ha consumido 1 Sangre de Jefe');
   });
 
   it('explica los efectos extras directamente en el detalle', () => {
