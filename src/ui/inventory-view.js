@@ -48,14 +48,17 @@ function relicEffectValue(relicId, value) {
   return `${value} XP`;
 }
 
-function forgeUpgradeMarkup(definition, relicId, currentRank, targetRank) {
+function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
   const current = relicEffectValue(relicId, relicRankEffect(relicId, currentRank));
   const target = relicEffectValue(relicId, relicRankEffect(relicId, targetRank));
   return `<div class="forge-upgrade-preview">
-    <span>MEJORA DEL EFECTO</span>
-    <p>${escapeHtml(definition.effectLabel)}</p>
+    <span>RANGO ${currentRank} <i aria-hidden="true">→</i> RANGO ${targetRank}</span>
     <div><b>${current}</b><i aria-hidden="true">→</i><strong>${target}</strong></div>
   </div>`;
+}
+
+function forgeRankStars(rank) {
+  return `${'★'.repeat(Math.max(0, Math.min(3, rank)))}${'☆'.repeat(Math.max(0, 3 - rank))}`;
 }
 
 export function relicCardMarkup({ definition, relic, equipped = false, slot = null }) {
@@ -203,45 +206,39 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const preview = forgePreview(normalized, relicId);
   const forgeControls = preview.ok
-    ? `${forgeUpgradeMarkup(selectedDefinition, relicId, relic.rank, preview.targetRank)}
-      <div class="forge-values">
-        <span>Coste ${resourceValue('coin', preview.cost)}</span>
-        <span>Monedas disponibles ${resourceValue('coin', preview.coinsAvailable)}</span>
-        <span>Sangre necesaria ${resourceValue('boss-blood', preview.bloodRequired)}</span>
-        <span>Disponible ${resourceValue('boss-blood', preview.bloodAvailable)}</span>
+    ? `${forgeUpgradeMarkup(relicId, relic.rank, preview.targetRank)}
+      <div class="forge-cost" aria-label="Coste de la mejora">
+        <span>COSTE</span>
+        ${resourceValue('coin', preview.cost)}
+        ${resourceValue('boss-blood', preview.bloodRequired)}
       </div>
-      <div class="forge-chance">
-        <span>Pity <b>${preview.pityProbability}%</b></span>
-        <span>Fortuna <b>+${preview.fortune}%</b></span>
-        <strong>PROBABILIDAD ${preview.finalProbability}%</strong>
-      </div>
-      <p>La Sangre de Jefe solo se consume si la mejora tiene éxito. Las monedas se gastan en cada intento.</p>
-      <button type="button" class="forge-attempt" data-forge-relic="${relicId}"${preview.coinsAvailable < preview.cost || preview.bloodAvailable < preview.bloodRequired ? ' disabled' : ''}>INTENTAR MEJORA</button>`
+      <button type="button" class="forge-attempt" data-forge-relic="${relicId}"${preview.coinsAvailable < preview.cost || preview.bloodAvailable < preview.bloodRequired ? ' disabled' : ''}>FORJAR</button>
+      <details class="forge-info">
+        <summary>PROBABILIDAD ${preview.finalProbability}% <span aria-hidden="true">ⓘ</span></summary>
+        <div class="forge-info-popover"><div><span>Pity <b>${preview.pityProbability}%</b></span><span>Fortuna <b>+${preview.fortune}%</b></span></div>
+        <p>Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
+      </details>`
     : `<div class="forge-upgrade-preview forge-upgrade-max">
         <span>EFECTO ACTUAL</span>
-        <p>${escapeHtml(selectedDefinition.effectLabel)}</p>
         <div><strong>${relicEffectValue(relicId, relicRankEffect(relicId, relic.rank))}</strong></div>
       </div><div class="forge-max">RANGO MÁXIMO ALCANZADO</div>`;
   const choices = ownedDefinitions.map((definition) => {
     const choiceRelic = normalized.inventory.relics[definition.id];
-    const choiceRarity = RARITIES[choiceRelic.rarity] || RARITIES.rare;
     return `<button type="button" class="forge-relic-choice ${rarityClass(choiceRelic.rarity)}${definition.id === relicId ? ' selected' : ''}" data-select-forge-relic="${definition.id}" aria-label="Forjar ${escapeHtml(definition.name)}">
       ${relicArt(definition)}
-      <b>${escapeHtml(definition.name)}</b>
-      <span class="rarity-label">${choiceRarity.label}</span>
-      <small>RANGO ${choiceRelic.rank}</small>
+      <span class="forge-choice-rank" aria-hidden="true">${choiceRelic.rank}</span>
     </button>`;
   }).join('');
   body.innerHTML = `
-    <section class="inventory-section forge-collection">
-      <div class="inventory-section-head"><span>ELIGE UNA RELIQUIA</span><small>${ownedDefinitions.length} DISPONIBLES</small></div>
+    <div class="forge-toolbar"><strong>FORJA</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <section class="forge-collection" aria-label="Selecciona una reliquia">
       <div class="forge-relic-grid">${choices}</div>
     </section>
     <section class="forge-focus ${rarityClass(relic.rarity)}">
       <div class="forge-focus-art">${relicArt(selectedDefinition)}</div>
-      <div class="rarity-label">${rarity.label}</div>
       <h3>${escapeHtml(selectedDefinition.name)}</h3>
-      <div class="forge-title">${preview.ok ? `RANGO ${relic.rank} → ${preview.targetRank}` : `RANGO ${relic.rank}`}</div>
+      <div class="forge-rank-line"><span>${forgeRankStars(relic.rank)}</span><b>${rarity.label} · RANGO ${relic.rank}</b></div>
+      <p class="forge-current-effect">${escapeHtml(selectedDefinition.effectLabel)} <strong>${relicEffectValue(relicId, relicRankEffect(relicId, relic.rank))}</strong></p>
       <div class="forge-panel">${forgeControls}</div>
     </section>`;
   return relicId;

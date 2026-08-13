@@ -84,11 +84,13 @@ describe('interfaz de inventario y botín', () => {
     expect(html.match(/data-select-forge-relic=/g)).toHaveLength(3);
     expect(html).toContain('Pity');
     expect(html).toContain('PROBABILIDAD 70%');
-    expect(html).toContain('MEJORA DEL EFECTO');
+    expect(html).toContain('RANGO 1 <i aria-hidden="true">→</i> RANGO 2');
     expect(html).toContain('5 MANÁ');
     expect(html).toContain('7 MANÁ');
     expect(html).toContain('La Sangre de Jefe solo se consume si la mejora tiene éxito');
-    expect(html).toContain('Sangre necesaria');
+    expect(html).toContain('class="forge-attempt"');
+    expect(html).toContain('>FORJAR</button>');
+    expect(html).toContain('class="forge-toolbar"');
   });
 
   it('renderizar o recalcular la Forja nunca vuelve a consumir Sangre', () => {
