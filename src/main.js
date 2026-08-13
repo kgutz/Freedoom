@@ -107,6 +107,7 @@ import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
 import {
   forgeResultMarkup,
+  inventoryReferenceOffset,
   renderForgeView,
   renderInventoryView,
   renderLootNotice,
@@ -138,7 +139,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.45';
+const APP_VERSION='1.46';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
 const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
@@ -1250,6 +1251,32 @@ let activeLootNoticeId=null;
 let forgeLocked=false;
 let shopLocked=false;
 let selectedForgeRelicId=null;
+function positionInventorySheetFromForge(){
+  const overlay=document.getElementById('sheetInventory');
+  const sheet=overlay?.querySelector('.inventory-sheet');
+  const inventoryBody=document.getElementById('inventoryBody');
+  const forgeBody=document.getElementById('forgeBody');
+  const shopBody=document.getElementById('shopBody');
+  const mainNav=document.getElementById('mainNav');
+  if(!overlay?.classList.contains('show')||!sheet||!inventoryBody||!forgeBody||!shopBody) return;
+  const hiddenStates=[inventoryBody.hidden,forgeBody.hidden,shopBody.hidden];
+  renderForgeView(document,state,selectedForgeRelicId);
+  inventoryBody.hidden=true;
+  forgeBody.hidden=false;
+  shopBody.hidden=true;
+  sheet.classList.add('measuring-forge-reference');
+  const overlayStyle=getComputedStyle(overlay);
+  const viewportHeight=Math.min(overlay.clientHeight,window.visualViewport?.height||overlay.clientHeight);
+  const navClearance=mainNav?.classList.contains('show')?mainNav.getBoundingClientRect().height:0;
+  const availableHeight=Math.max(0,viewportHeight-
+    (parseFloat(overlayStyle.paddingTop)||0)-(parseFloat(overlayStyle.paddingBottom)||0)-navClearance);
+  const referenceHeight=sheet.scrollHeight;
+  overlay.style.setProperty('--inventory-nav-clearance',`${navClearance}px`);
+  overlay.style.setProperty('--inventory-panel-offset',
+    `${inventoryReferenceOffset(availableHeight,referenceHeight)}px`);
+  sheet.classList.remove('measuring-forge-reference');
+  [inventoryBody.hidden,forgeBody.hidden,shopBody.hidden]=hiddenStates;
+}
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const inventorySelected=panel==='inventory';
   const forgeSelected=panel==='forge';
@@ -1280,11 +1307,21 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
     if(before!==JSON.stringify(state.shop)) scheduleSave({type:'shop:rotation'});
     renderShopView(document,state,Date.now());
   }
+  positionInventorySheetFromForge();
 }
 function openInventory(){
   showInventoryPanel('inventory');
   document.getElementById('sheetInventory').classList.add('show');
+  positionInventorySheetFromForge();
 }
+let inventoryPositionFrame=0;
+function scheduleInventorySheetPosition(){
+  if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
+  cancelAnimationFrame(inventoryPositionFrame);
+  inventoryPositionFrame=requestAnimationFrame(positionInventorySheetFromForge);
+}
+window.addEventListener('resize',scheduleInventorySheetPosition);
+window.visualViewport?.addEventListener('resize',scheduleInventorySheetPosition);
 function openRelicDetail(relicId){
   if(!renderRelicDetail(document,state,relicId)) return;
   document.getElementById('sheetRelicDetail').classList.add('show');

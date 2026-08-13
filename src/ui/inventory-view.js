@@ -41,6 +41,12 @@ export function rarityClass(rarity) {
   return `rarity-${RARITIES[rarity] ? rarity : 'rare'}`;
 }
 
+export function inventoryReferenceOffset(availableHeight, referenceHeight) {
+  const available = Math.max(0, Number(availableHeight) || 0);
+  const reference = Math.max(0, Number(referenceHeight) || 0);
+  return Math.max(0, Math.floor((available - Math.min(reference, available)) / 2));
+}
+
 function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
   if (relicId === 'relic_02' || relicId === 'relic_05') return `${value} MANÁ`;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { grantBossRewards } from '../domain/loot-rules.js';
 import {
   forgeResultMarkup,
+  inventoryReferenceOffset,
   inventoryAccessMarkup,
   renderForgeView,
   renderInventoryView,
@@ -28,6 +29,12 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('centra todas las pestañas con la altura real de Forja y prioriza pantallas bajas', () => {
+    expect(inventoryReferenceOffset(600, 400)).toBe(100);
+    expect(inventoryReferenceOffset(400, 500)).toBe(0);
+    expect(inventoryReferenceOffset(0, 400)).toBe(0);
+  });
+
   it('usa iconos CSS accesibles y no imágenes para las monedas y la sangre', () => {
     expect(resourceIcon('coin')).toContain('resource-icon--coin');
     expect(resourceIcon('boss-blood')).toContain('resource-icon--boss-blood');
