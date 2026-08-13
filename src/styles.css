@@ -941,6 +941,9 @@
   .relic-card,.relic-detail-frame,.loot-reward-item{border-color:var(--rarity-rare)}.relic-card.rarity-legendary,.relic-detail-frame.rarity-legendary,.loot-reward-item.rarity-legendary{border-color:var(--rarity-legendary)}.relic-card.rarity-mythic,.relic-detail-frame.rarity-mythic,.loot-reward-item.rarity-mythic{border-color:var(--rarity-mythic)}
   .equipped-relics .relic-card{aspect-ratio:1;flex-direction:column;justify-content:center;gap:7px;padding:12px;text-align:center}.equipped-relics .relic-art{width:min(96px,72%);height:auto;aspect-ratio:1;flex:0 0 auto}.equipped-relics .relic-card-copy{align-items:center}.equipped-relics .relic-card-copy>b{font-size:10px}.equipped-relics .relic-slot-empty{aspect-ratio:1;min-height:0}
   .relic-art--relic_01 img{width:calc(100% + 6px);height:calc(100% + 6px);max-width:none}
+  .inventory-sheet{display:flex;flex-direction:column;height:min(100%,760px);overflow:hidden}
+  .inventory-sheet>.sheet-head,.inventory-sheet>.inventory-tabs{flex:0 0 auto}
+  .inventory-sheet>#inventoryBody,.inventory-sheet>#forgeBody,.inventory-sheet>#shopBody{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding-bottom:6px}
   .inventory-tabs{display:flex;gap:6px;margin:2px 0 16px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
   .inventory-tabs button{flex:1;border:0;border-radius:8px;padding:10px;background:transparent;color:var(--muted);font-family:'Sora',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
   .inventory-tabs button.active{background:var(--kodak);color:#241c0e}
