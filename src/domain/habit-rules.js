@@ -4,6 +4,12 @@ import { weekIndexFor, weekRangeFor } from './plan-rules.js';
 export const HABIT_DAILY_XP_CAP = 25;
 export const HABIT_WEEKLY_XP_CAP = 35;
 
+export const HABIT_COIN_REWARDS = Object.freeze({
+  daily: Object.freeze({ easy: 1, medium: 2, hard: 3 }),
+  weekly: Object.freeze({ easy: 3, medium: 5, hard: 8 }),
+  allDailyCompletedBonus: 3,
+});
+
 export const HABIT_DIFFICULTIES = {
   easy: { label: 'Fácil', dailyXp: 3, weeklyXp: 9 },
   medium: { label: 'Media', dailyXp: 6, weeklyXp: 18 },
@@ -11,7 +17,7 @@ export const HABIT_DIFFICULTIES = {
 };
 
 export function emptyHabitState() {
-  return { items: [], entries: {} };
+  return { items: [], entries: {}, dailyCoinBonuses: {} };
 }
 
 export function normalizeHabitState(value) {
@@ -27,6 +33,12 @@ export function normalizeHabitState(value) {
       typeof value.entries === 'object' &&
       !Array.isArray(value.entries)
         ? value.entries
+        : {},
+    dailyCoinBonuses:
+      value.dailyCoinBonuses &&
+      typeof value.dailyCoinBonuses === 'object' &&
+      !Array.isArray(value.dailyCoinBonuses)
+        ? value.dailyCoinBonuses
         : {},
   };
 }
@@ -103,6 +115,14 @@ export function habitReward(habit) {
     : HABIT_DIFFICULTIES[difficulty].dailyXp;
 }
 
+export function habitCoinReward(habit) {
+  const difficulty = HABIT_DIFFICULTIES[habit?.difficulty]
+    ? habit.difficulty
+    : 'easy';
+  const frequency = habit?.frequency === 'weekly' ? 'weekly' : 'daily';
+  return HABIT_COIN_REWARDS[frequency][difficulty];
+}
+
 export function habitPeriodKey(habit, date, planStartDate) {
   if (habit?.frequency !== 'weekly') return `d:${keyOf(date)}`;
   const week = Math.max(0, weekIndexFor(planStartDate, date));
@@ -124,6 +144,7 @@ export function habitEntryFor(habitState, habit, date, planStartDate) {
       frequency: habit.frequency,
       count: 0,
       xpAwarded: 0,
+      coinsAwarded: 0,
     }
   );
 }
@@ -154,6 +175,7 @@ export function adjustHabitProgress({
   const periodKey = habitPeriodKey(habit, date, planStartDate);
   const entryKey = habitEntryKey(habit.id, periodKey);
   const previous = habitEntryFor(normalized, habit, date, planStartDate);
+  const wasCompleted = previous.count >= habit.target;
   const count = Math.min(
     habit.target,
     Math.max(0, previous.count + Math.trunc(Number(delta) || 0)),
@@ -191,6 +213,158 @@ export function adjustHabitProgress({
     entry,
     xpDelta: xpAwarded - (Number(previous.xpAwarded) || 0),
     completed,
+    wasCompleted,
+    becameCompleted: !wasCompleted && completed,
+    becameIncomplete: wasCompleted && !completed,
+  };
+}
+
+function normalizedEconomy(value) {
+  const economy = value && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : {};
+  return {
+    ...economy,
+    coins: Math.max(0, Math.trunc(Number(economy.coins) || 0)),
+    bossBlood: Math.max(0, Math.trunc(Number(economy.bossBlood) || 0)),
+    transactions: Array.isArray(economy.transactions)
+      ? economy.transactions.filter((entry) => entry && typeof entry === 'object')
+      : [],
+  };
+}
+
+function transactionAward(economy, transactionId) {
+  const transaction = economy.transactions.find((entry) => entry.id === transactionId);
+  return Math.max(0, Math.trunc(Number(transaction?.coins) || 0));
+}
+
+function setCoinEntitlement({ economy, transactionId, currentAward, targetAward, transaction }) {
+  const safeCurrent = Math.max(0, Math.trunc(Number(currentAward) || 0));
+  const safeTarget = Math.max(0, Math.trunc(Number(targetAward) || 0));
+  const requestedDelta = safeTarget - safeCurrent;
+  const coinDelta = requestedDelta < 0
+    ? -Math.min(economy.coins, Math.abs(requestedDelta))
+    : requestedDelta;
+  const awarded = safeCurrent + coinDelta;
+  const nextEconomy = {
+    ...economy,
+    coins: Math.max(0, economy.coins + coinDelta),
+  };
+  const existing = economy.transactions.find((entry) => entry.id === transactionId);
+  if (coinDelta !== 0 || existing) {
+    nextEconomy.transactions = [
+      ...economy.transactions.filter((entry) => entry.id !== transactionId),
+      {
+        ...existing,
+        ...transaction,
+        id: transactionId,
+        coins: awarded,
+      },
+    ].slice(-200);
+  }
+  return { economy: nextEconomy, awarded, coinDelta };
+}
+
+function allDailyHabitsCompleted(habitState, date, planStartDate) {
+  const activeDaily = habitState.items.filter((item) =>
+    item?.active !== false && item?.frequency !== 'weekly');
+  if (!activeDaily.length) return false;
+  return activeDaily.every((item) => {
+    const entry = habitEntryFor(habitState, item, date, planStartDate);
+    return entry.count >= item.target;
+  });
+}
+
+export function applyHabitCoinRewards({
+  habitState,
+  economy,
+  habit,
+  date,
+  planStartDate,
+  becameCompleted = false,
+  becameIncomplete = false,
+  nowTimestamp = Date.now(),
+}) {
+  let normalized = normalizeHabitState(habitState);
+  let nextEconomy = normalizedEconomy(economy);
+  const periodKey = habitPeriodKey(habit, date, planStartDate);
+  const entryKey = habitEntryKey(habit.id, periodKey);
+  const entry = habitEntryFor(normalized, habit, date, planStartDate);
+  const habitTransactionId = `habit-coin:${entryKey}`;
+  const recordedHabitAward = Math.max(
+    Math.max(0, Math.trunc(Number(entry.coinsAwarded) || 0)),
+    transactionAward(nextEconomy, habitTransactionId),
+  );
+  const targetHabitAward = becameCompleted
+    ? habitCoinReward(habit)
+    : becameIncomplete
+      ? 0
+      : recordedHabitAward;
+  const habitResult = setCoinEntitlement({
+    economy: nextEconomy,
+    transactionId: habitTransactionId,
+    currentAward: recordedHabitAward,
+    targetAward: targetHabitAward,
+    transaction: {
+      type: 'habit_coin_reward',
+      habitId: habit.id,
+      periodKey,
+      frequency: habit?.frequency === 'weekly' ? 'weekly' : 'daily',
+      at: nowTimestamp,
+    },
+  });
+  nextEconomy = habitResult.economy;
+  normalized = {
+    ...normalized,
+    entries: {
+      ...normalized.entries,
+      [entryKey]: { ...entry, coinsAwarded: habitResult.awarded },
+    },
+  };
+
+  let bonusCoinDelta = 0;
+  const dailyPeriodKey = `d:${keyOf(date)}`;
+  if (habit?.frequency !== 'weekly' && (becameCompleted || becameIncomplete || normalized.dailyCoinBonuses[dailyPeriodKey])) {
+    const previousBonus = normalized.dailyCoinBonuses[dailyPeriodKey] || {};
+    const bonusTransactionId = `habit-coin-bonus:${dailyPeriodKey}`;
+    const recordedBonusAward = Math.max(
+      Math.max(0, Math.trunc(Number(previousBonus.coinsAwarded) || 0)),
+      transactionAward(nextEconomy, bonusTransactionId),
+    );
+    const targetBonusAward = allDailyHabitsCompleted(normalized, date, planStartDate)
+      ? HABIT_COIN_REWARDS.allDailyCompletedBonus
+      : 0;
+    const bonusResult = setCoinEntitlement({
+      economy: nextEconomy,
+      transactionId: bonusTransactionId,
+      currentAward: recordedBonusAward,
+      targetAward: targetBonusAward,
+      transaction: {
+        type: 'habit_all_daily_bonus',
+        periodKey: dailyPeriodKey,
+        at: nowTimestamp,
+      },
+    });
+    nextEconomy = bonusResult.economy;
+    bonusCoinDelta = bonusResult.coinDelta;
+    normalized = {
+      ...normalized,
+      dailyCoinBonuses: {
+        ...normalized.dailyCoinBonuses,
+        [dailyPeriodKey]: {
+          periodKey: dailyPeriodKey,
+          coinsAwarded: bonusResult.awarded,
+        },
+      },
+    };
+  }
+
+  return {
+    habitState: normalized,
+    economy: nextEconomy,
+    habitCoinDelta: habitResult.coinDelta,
+    bonusCoinDelta,
+    coinDelta: habitResult.coinDelta + bonusCoinDelta,
   };
 }
 

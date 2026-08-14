@@ -154,7 +154,8 @@ export function renderHeroView({
   intoxication,
   dayKey,
   lootState,
-  inventoryDiscoveryActive = false,
+  classChange = false,
+  currentClass = null,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -177,7 +178,8 @@ export function renderHeroView({
           const classData=classDataForJourney(classId,{
             smokeFree:usesSmokeFreeSkills(config),
           });
-          return `<div class="cls-card" data-cls="${classId}">
+          const isCurrent=classChange&&classId===currentClass;
+          return `<div class="cls-card${isCurrent?' current-class':''}" data-cls="${classId}">
         ${spriteImage(classId, 'happy')}
         <div class="cn">${classData.name}</div>
         <div class="ce">${classData.es}</div>
@@ -186,9 +188,12 @@ export function renderHeroView({
         },
       )
       .join('');
-    box.innerHTML = `<div class="card">
+    box.innerHTML = `<div class="card class-selection-card">
+      ${classChange ? '<button type="button" class="class-change-back" id="classChangeBack" aria-label="Volver sin cambiar de clase">← Volver</button>' : ''}
       <h2>Elige tu clase</h2>
-      <p class="hint" style="margin:0 0 14px">Tu héroe vive de tus datos: gana XP cada día que cumples, sube de nivel, y su salud refleja cómo llevas el día de hoy. Elige con cabeza — el camino son 21 semanas.</p>
+      <p class="hint" style="margin:0 0 14px">${classChange
+        ? 'Puedes revisar todos los héroes. La Sangre de Jefe solo se gastará cuando confirmes tu nueva clase.'
+        : 'Tu héroe vive de tus datos: gana XP cada día que cumples, sube de nivel, y su salud refleja cómo llevas el día de hoy. Elige con cabeza — el camino son 21 semanas.'}</p>
       <div class="cls-grid">${cards}</div>
     </div>`;
     return;
@@ -331,7 +336,7 @@ export function renderHeroView({
             <div class="rango">${classData.name}</div>
           </div>
           <div class="hero-quick-actions">
-            <button class="hero-quick-action hero-inventory-jump${inventoryDiscoveryActive ? ' discovery-active' : ''}" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
+            <button class="hero-quick-action hero-inventory-jump" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
             </button>
             <button class="hero-quick-action" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
@@ -368,10 +373,10 @@ export function renderHeroView({
 
     <div class="card">
       <div class="boss-top">
-        <div class="boss-box">
-          <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <button type="button" class="boss-box boss-box-open" data-open-current-boss-medal="${currentBossIndex}" data-boss-file="boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" aria-label="Abrir medallón de ${bossState.name}">
+          <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" alt="${bossState.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="boss-fallback" style="display:none">💀</span>
-        </div>
+        </button>
         <div class="boss-id">
           <div class="boss-head">
             <h2 style="margin:0">Jefe de la semana</h2>
@@ -414,6 +419,7 @@ export function renderSkillsView({
   level,
   intoxication,
   config,
+  targetId = 'skillsBody',
 }) {
   if (!classId || !CLASSES[classId]) return;
   const classData = classDataForJourney(classId,{
@@ -446,7 +452,9 @@ export function renderSkillsView({
     </div>`;
     })
     .join('');
-  document.getElementById('skillsBody').innerHTML = `
+  const target=document.getElementById(targetId);
+  if(!target) return;
+  target.innerHTML = `
     ${
       intoxication?.level > 0
         ? `<div class="drunk-warning">🍺 Borrachera ${intoxication.level}% · las pasivas tienen −${intoxication.level}% de potencia y las activas ${intoxication.level}% de fallo.</div>`

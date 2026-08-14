@@ -82,6 +82,8 @@ import {
 } from './domain/reset-rules.js';
 import {
   adjustHabitProgress,
+  applyHabitCoinRewards,
+  habitCoinReward,
   habitReward,
   nextHabitOrder,
   normalizeHabitInput,
@@ -156,10 +158,8 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.60';
+const APP_VERSION='1.63';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
-const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
-const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
@@ -208,6 +208,7 @@ let returnSplashPlaying=true;
 let backgroundedAt=null;
 let classChangeReturn=null;
 let pendingClassChange=null;
+let selectedClassChange=null;
 let initializeLocalDemo=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
@@ -1334,7 +1335,9 @@ function renderHero(){
       stats:null,
       boss:null,
       armor:0,
-      lootState:state
+      lootState:state,
+      classChange:Boolean(pendingClassChange),
+      currentClass:pendingClassChange?.fromClass||null
     });
     return;
   }
@@ -1362,22 +1365,8 @@ function renderHero(){
     armor:heroArmor(),
     intoxication,
     dayKey,
-    lootState:state,
-    inventoryDiscoveryActive:isInventoryDiscoveryActive()
+    lootState:state
   });
-}
-
-function isInventoryDiscoveryActive(){
-  try{
-    let startedAt=Number(window.localStorage.getItem(INVENTORY_DISCOVERY_KEY));
-    if(!Number.isFinite(startedAt)||startedAt<=0){
-      startedAt=Date.now();
-      window.localStorage.setItem(INVENTORY_DISCOVERY_KEY,String(startedAt));
-    }
-    return Date.now()-startedAt<INVENTORY_DISCOVERY_DURATION_MS;
-  }catch{
-    return true;
-  }
 }
 
 let lootNoticeOpening=false;
@@ -2035,11 +2024,6 @@ const navigation=bindNavigation({
 });
 document.getElementById('navHero').addEventListener('click',()=>{
   renderHero();
-  const inventoryButton=document.querySelector('.hero-inventory-jump.discovery-active');
-  if(!inventoryButton) return;
-  inventoryButton.classList.remove('discovery-active');
-  void inventoryButton.offsetWidth;
-  inventoryButton.classList.add('discovery-active');
 });
 function switchView(viewId,buttonId){
   navigation.switchView(viewId,buttonId);
@@ -2266,10 +2250,9 @@ function updateHabitEditor(){
     button.classList.toggle('active',button.dataset.habitFrequency===habitDraftFrequency);
   });
   document.getElementById('habitTargetValue').textContent=habitDraftTarget;
-  document.getElementById('habitRewardPreview').textContent='+'+habitReward({
-    difficulty:habitDraftDifficulty,
-    frequency:habitDraftFrequency
-  })+' XP';
+  const previewHabit={difficulty:habitDraftDifficulty,frequency:habitDraftFrequency};
+  document.getElementById('habitRewardPreview').textContent='+'+habitReward(previewHabit)+
+    ' XP · +'+habitCoinReward(previewHabit)+' 🪙';
 }
 function finishHabitEditorClose(){
   const modal=document.getElementById('habitModalBg');
@@ -2409,16 +2392,28 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       (relicHabitXpActive
         ? habitXpSources.reduce((total,source)=>total+source.value,0)
         : 0);
+    const habitDate=currentDayDate();
     const result=adjustHabitProgress({
       habitState:state.habits,
       habit,
       delta:parseInt(adjust.dataset.habitDelta,10),
-      date:currentDayDate(),
+      date:habitDate,
       planStartDate:state.config.startDate,
       rewardMultiplier:focusActive?1.5:1,
       flatRewardBonus
     });
-    state.habits=result.habitState;
+    const coinResult=applyHabitCoinRewards({
+      habitState:result.habitState,
+      economy:state.economy,
+      habit,
+      date:habitDate,
+      planStartDate:state.config.startDate,
+      becameCompleted:result.becameCompleted,
+      becameIncomplete:result.becameIncomplete,
+      nowTimestamp:Date.now()
+    });
+    state.habits=coinResult.habitState;
+    state.economy=coinResult.economy;
     let extraMessage='';
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
@@ -2453,11 +2448,26 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       : '';
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
-      period:result.entry.periodKey||''
+      period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta
     });
     renderAll();
-    if(result.xpDelta>0) showToast('Hábito completado · +'+(result.xpDelta+fusionListXp)+' XP'+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
-    else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
+    const habitCoinNotice=coinResult.habitCoinDelta>0
+      ? ' · +'+coinResult.habitCoinDelta+' 🪙'
+      : coinResult.habitCoinDelta<0
+        ? ' · '+coinResult.habitCoinDelta+' 🪙'
+        : '';
+    const bonusCoinNotice=coinResult.bonusCoinDelta>0
+      ? ' · Todos los hábitos completados · +'+coinResult.bonusCoinDelta+' 🪙'
+      : coinResult.bonusCoinDelta<0
+        ? ' · Bonus diario retirado · '+coinResult.bonusCoinDelta+' 🪙'
+        : '';
+    if(result.becameCompleted){
+      const xpNotice=result.xpDelta>0
+        ? ' · +'+(result.xpDelta+fusionListXp)+' XP'
+        : ' · límite de XP alcanzado';
+      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
+    }
+    else if(result.xpDelta<0||coinResult.coinDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice,'dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
     return;
   }
@@ -2626,6 +2636,51 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
 });
 
 /* elegir clase de héroe y lanzar hechizos */
+function closeClassChangeConfirmation(){
+  selectedClassChange=null;
+  document.getElementById('classChangeConfirmBg').classList.remove('show');
+}
+
+function leaveClassChange(message='Mantienes tu clase actual'){
+  if(!pendingClassChange) return;
+  state.game.cls=pendingClassChange.fromClass;
+  pendingClassChange=null;
+  closeClassChangeConfirmation();
+  const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
+  classChangeReturn=null;
+  switchView(destination.viewId,destination.buttonId);
+  renderAll();
+  if(message) showToast(message,'heal');
+}
+
+function openClassChangeConfirmation(selectedClass){
+  if(!pendingClassChange||!CLASSES[selectedClass]) return;
+  if(selectedClass===pendingClassChange.fromClass){
+    showToast('Esta es tu clase actual. Selecciona otra.');
+    return;
+  }
+  selectedClassChange=selectedClass;
+  const classData=classDataForJourney(selectedClass,{smokeFree:usesSmokeFreeSkills(state.config)});
+  const blood=Math.max(0,Number(state.economy?.bossBlood)||0);
+  document.getElementById('classChangeConfirmTitle').textContent=`Libro de habilidades · ${classData.es}`;
+  document.getElementById('classChangeConfirmBody').innerHTML=`
+    <p class="class-change-description">${classData.desc}</p>
+    <div class="class-change-skills" id="classChangeSkills"></div>
+    <div class="class-change-cost"><span>Coste al confirmar</span><b>1 Sangre de Jefe</b><small>Tienes ${blood}</small></div>`;
+  renderSkillsView({
+    document,
+    classId:selectedClass,
+    level:pendingClassChange.level||1,
+    intoxication:currentIntoxication(),
+    config:state.config,
+    targetId:'classChangeSkills'
+  });
+  const accept=document.getElementById('classChangeConfirmAccept');
+  accept.disabled=blood<1;
+  accept.textContent=blood<1?'SIN SANGRE':'CAMBIAR CLASE';
+  document.getElementById('classChangeConfirmBg').classList.add('show');
+}
+
 document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-inventory]')){
     openInventory();
@@ -2670,42 +2725,24 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     document.getElementById('sheetBossHistory').classList.add('show');
     return;
   }
+  const currentBossMedal=e.target.closest('[data-open-current-boss-medal]');
+  if(currentBossMedal){
+    openBossMedalDetail(
+      parseInt(currentBossMedal.dataset.openCurrentBossMedal,10),
+      currentBossMedal.dataset.bossFile
+    );
+    return;
+  }
+  if(e.target.closest('#classChangeBack')){
+    leaveClassChange();
+    return;
+  }
   const card=e.target.closest('[data-cls]');
   if(card){
     const selectedClass=card.dataset.cls;
-    let classChangePaid=false;
     if(pendingClassChange){
-      const {fromClass}=pendingClassChange;
-      if(selectedClass===fromClass){
-        state.game.cls=fromClass;
-        pendingClassChange=null;
-        const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
-        classChangeReturn=null;
-        switchView(destination.viewId,destination.buttonId);
-        renderAll();
-        showToast('Mantienes tu clase actual','heal');
-        return;
-      }
-      const payment=payClassChange({
-        state,
-        fromClass,
-        toClass:selectedClass,
-        operationId:`${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        nowTimestamp:Date.now()
-      });
-      if(!payment.ok){
-        state.game.cls=fromClass;
-        pendingClassChange=null;
-        const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
-        classChangeReturn=null;
-        switchView(destination.viewId,destination.buttonId);
-        renderAll();
-        showToast('Necesitas 1 Sangre de Jefe','dmg');
-        return;
-      }
-      applyLootSlices(payment);
-      classChangePaid=true;
-      pendingClassChange=null;
+      openClassChangeConfirmation(selectedClass);
+      return;
     }
     const hadHero=(state.game.hp!==undefined);
     state.game.cls=selectedClass;
@@ -2714,13 +2751,50 @@ document.getElementById('view-hero').addEventListener('click',e=>{
       state.game.hp=capHp(state.game.hp);   /* se conserva el valor, topado al nuevo máximo */
       state.game.mp=capMp(state.game.mp);
     }
-    scheduleSave(classChangePaid?{type:'hero:class-change',toClass:selectedClass,bossBloodSpent:1}:undefined);
+    scheduleSave();
     const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
     classChangeReturn=null;
     switchView(destination.viewId,destination.buttonId);
     renderAll();
-    if(classChangePaid) showToast('Clase cambiada · −1 Sangre de Jefe','heal');
   }
+});
+
+document.getElementById('classChangeConfirmCancel').addEventListener('click',closeClassChangeConfirmation);
+document.getElementById('classChangeConfirmBg').addEventListener('click',event=>{
+  if(event.target===event.currentTarget) closeClassChangeConfirmation();
+});
+document.getElementById('classChangeConfirmAccept').addEventListener('click',()=>{
+  if(!pendingClassChange||!selectedClassChange) return;
+  const fromClass=pendingClassChange.fromClass;
+  const toClass=selectedClassChange;
+  const payment=payClassChange({
+    state,
+    fromClass,
+    toClass,
+    operationId:`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    nowTimestamp:Date.now()
+  });
+  if(!payment.ok){
+    closeClassChangeConfirmation();
+    showToast('Necesitas 1 Sangre de Jefe','dmg');
+    return;
+  }
+  applyLootSlices(payment);
+  const hadHero=state.game.hp!==undefined;
+  state.game.cls=toClass;
+  if(hadHero){
+    state.game.buffs={};
+    state.game.hp=capHp(state.game.hp);
+    state.game.mp=capMp(state.game.mp);
+  }
+  pendingClassChange=null;
+  closeClassChangeConfirmation();
+  scheduleSave({type:'hero:class-change',toClass,bossBloodSpent:1});
+  const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
+  classChangeReturn=null;
+  switchView(destination.viewId,destination.buttonId);
+  renderAll();
+  showToast('Clase cambiada · −1 Sangre de Jefe','heal');
 });
 
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
@@ -3084,12 +3158,11 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
     showToast('Necesitas 1 Sangre de Jefe para cambiar de clase','dmg');
     return;
   }
-  if(!confirm(`Cambiar de clase cuesta 1 Sangre de Jefe. Actualmente tienes ${blood}. ¿Seguro que quieres continuar?`)) return;
   classChangeReturn={
     viewId:document.querySelector('.view.active')?.id||'view-hoy',
     buttonId:document.querySelector('#mainNav button.active')?.id||'navHoy'
   };
-  pendingClassChange={fromClass:currentClass};
+  pendingClassChange={fromClass:currentClass,level:gameStats().lvl};
   state.game.cls=null;
   document.getElementById('sheetSet').classList.remove('show');
   switchView('view-hero','navHero');

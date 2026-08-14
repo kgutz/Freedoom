@@ -180,6 +180,9 @@ export function mergeState(currentState, savedState) {
       entries: isObject(savedState.habits.entries)
         ? savedState.habits.entries
         : {},
+      dailyCoinBonuses: isObject(savedState.habits.dailyCoinBonuses)
+        ? savedState.habits.dailyCoinBonuses
+        : {},
     };
   }
   if (isObject(savedState.economy)) nextState.economy = savedState.economy;

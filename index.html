@@ -480,6 +480,7 @@
         <div class="faq-answer">
           <p class="hint">Crea hábitos positivos desde su pestaña y elige cuántas veces debes realizarlos. Puedes corregir el contador con los botones + y −. La XP se concede al alcanzar el objetivo completo, y se retira si lo deshaces durante ese mismo periodo.</p>
           <div class="hint"><span class="faq-lead">Recompensas:</span><ul class="faq-bullets"><li>Diario fácil → <b style="color:var(--kodak)">3 XP</b>; medio → <b style="color:var(--kodak)">6 XP</b>; difícil → <b style="color:var(--kodak)">10 XP</b>.</li><li>Semanal fácil → <b style="color:var(--kodak)">9 XP</b>; medio → <b style="color:var(--kodak)">18 XP</b>; difícil → <b style="color:var(--kodak)">30 XP</b>.</li><li>Máximo conjunto → <b style="color:var(--kodak)">25 XP diarios</b> y <b style="color:var(--kodak)">35 XP semanales</b>.</li></ul></div>
+          <div class="hint"><span class="faq-lead">Monedas por completar:</span><ul class="faq-bullets"><li>Hábitos diarios → <b style="color:var(--resource-coin)">1, 2 o 3 monedas</b> según sean fáciles, medios o difíciles.</li><li>Hábitos semanales → <b style="color:var(--resource-coin)">3, 5 u 8 monedas</b>.</li><li>Completar todos los hábitos diarios activos concede un bonus de <b style="color:var(--resource-coin)">+3 monedas</b>.</li></ul></div>
           <p class="hint">Los hábitos aumentan la experiencia del héroe, pero no curan, no dan maná y no dañan al jefe. El progreso diario cambia junto al día de Freedoom; el semanal se reinicia el mismo día que tu semana del plan.</p>
         </div>
       </details>
@@ -646,6 +647,18 @@
     <div class="fusion-confirm-actions">
       <button type="button" id="fusionConfirmCancel">CANCELAR</button>
       <button type="button" id="fusionConfirmAccept">FUSIONAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="classChangeConfirmBg" style="z-index:42">
+  <div class="modal class-change-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="classChangeConfirmTitle">
+    <span class="relic-effect-info-kicker">CAMBIO DE CLASE</span>
+    <h3 id="classChangeConfirmTitle">¿Elegir esta clase?</h3>
+    <div id="classChangeConfirmBody"></div>
+    <div class="class-change-confirm-actions">
+      <button type="button" id="classChangeConfirmCancel">SEGUIR VIENDO</button>
+      <button type="button" id="classChangeConfirmAccept">CAMBIAR CLASE</button>
     </div>
   </div>
 </div>
