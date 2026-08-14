@@ -67,7 +67,10 @@ export function emptyLootState() {
       equipped: [],
       dailyActivations: {},
       weeklyActivations: {},
-      constancy: { cycleId: '', charge: 0 },
+      constancy: {
+        cycleId: '', charge: 0, baselineOutcomes: [], awaitingBaseline: false,
+        lastIncreaseAt: 0, lastIncreaseCharge: 0,
+      },
     },
     forge: {
       seed: '',
@@ -103,6 +106,7 @@ function normalizeRelicRecord(id, value) {
         const safe = objectOf(snapshot);
         const safeRarity = RARITIES[safe.rarity] ? safe.rarity : 'rare';
         return [baseId, {
+          ...safe,
           rarity: safeRarity,
           rank: Math.min(3, Math.max(1, Number(safe.rank) || 1)),
           affixes: [...new Set(arrayOf(safe.affixes))]
@@ -111,10 +115,15 @@ function normalizeRelicRecord(id, value) {
         }];
       }),
   );
+  const storedRank = Math.min(3, Math.max(1, Number(relic.rank) || 1));
+  const normalizedRank = fusion
+    ? Math.max(storedRank, ...Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank))
+    : storedRank;
   return {
+    ...relic,
     unlocked: relic.unlocked !== false,
     rarity: normalizedRarity,
-    rank: fusion ? 1 : Math.min(3, Math.max(1, Number(relic.rank) || 1)),
+    rank: normalizedRank,
     affixes: affixes.slice(0,
       fusion ? Object.keys(AFFIX_DEFINITIONS).length : RARITIES[rarity].affixCount),
     obtainedAt: Number(relic.obtainedAt) || 0,
@@ -241,6 +250,15 @@ export function normalizeLootState(state = {}) {
         charge: Math.min(
           6,
           Math.max(0, Math.trunc(Number(inventory.constancy?.charge) || 0)),
+        ),
+        baselineOutcomes: arrayOf(inventory.constancy?.baselineOutcomes)
+          .slice(0, 7)
+          .map((outcome) => String(outcome || '')),
+        awaitingBaseline: inventory.constancy?.awaitingBaseline === true,
+        lastIncreaseAt: Math.max(0, Number(inventory.constancy?.lastIncreaseAt) || 0),
+        lastIncreaseCharge: Math.min(
+          6,
+          Math.max(0, Math.trunc(Number(inventory.constancy?.lastIncreaseCharge) || 0)),
         ),
       },
     },
@@ -794,6 +812,9 @@ export function fusionPreview(lootState, leftId, rightId) {
   const resultRarity = previewIngredients
     ? rarityForFusion(previewIngredients, resultAffixes)
     : null;
+  const resultRank = previewIngredients
+    ? Math.max(...Object.values(previewIngredients).map((relic) => relic.rank))
+    : null;
   const discovered = Boolean(recipe.definition &&
     normalized.forge.fusion.discoveredRecipes.includes(recipe.definition.recipeId));
   let reason = null;
@@ -815,6 +836,7 @@ export function fusionPreview(lootState, leftId, rightId) {
     coinsAvailable: normalized.economy.coins,
     bloodAvailable: normalized.economy.bossBlood,
     resultRarity,
+    resultRank,
     resultAffixes,
   };
 }
@@ -851,12 +873,14 @@ export function fuseRelics({
     kind: 'fusion',
     recipeId: definition.recipeId,
     rarity: rarityForFusion(ingredients, affixes),
-    rank: 1,
+    rank: Math.max(...Object.values(ingredients).map((relic) => relic.rank)),
     affixes,
     obtainedAt: nowTimestamp,
     ingredientSnapshots,
     inheritedEffects,
   });
+  const consumesConstancySource = definition.ingredientIds.some((id) =>
+    relicProvidesConstancy(normalized, id));
   const newlyDiscovered = !normalized.forge.fusion.discoveredRecipes.includes(definition.recipeId);
   definition.ingredientIds.forEach((id) => {
     normalized.inventory.collection[id] = collectionEntry(
@@ -870,6 +894,9 @@ export function fuseRelics({
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => !definition.ingredientIds.includes(id),
   );
+  if (consumesConstancySource) {
+    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
+  }
   normalized.inventory.relics[definition.id] = fusedRelic;
   normalized.inventory.collection[definition.id] = collectionEntry(
     definition.id,
@@ -917,7 +944,19 @@ export function fuseRelics({
   };
 }
 
-export function equipRelic(lootState, relicId, replaceIndex = null) {
+function relicProvidesConstancy(normalized, relicId) {
+  const relic = normalized.inventory.relics[relicId];
+  return Boolean(relic && (relicId === 'relic_04' || Number(relic.inheritedEffects?.relic_04) > 0));
+}
+
+function clearedConstancy(cycleId = '') {
+  return {
+    cycleId, charge: 0, baselineOutcomes: [], awaitingBaseline: false,
+    lastIncreaseAt: 0, lastIncreaseCharge: 0,
+  };
+}
+
+export function equipRelic(lootState, relicId, replaceIndex = null, options = {}) {
   const normalized = normalizeLootState(lootState);
   if (!normalized.inventory.relics[relicId]?.unlocked) {
     return { ...normalized, ok: false, reason: 'locked' };
@@ -940,6 +979,25 @@ export function equipRelic(lootState, relicId, replaceIndex = null) {
       conflictingRelicId,
     };
   }
+  const replacedRelicId = validReplaceIndex
+    ? normalized.inventory.equipped[replaceIndex] || null
+    : null;
+  const removesConstancySource = Boolean(
+    replacedRelicId && relicProvidesConstancy(normalized, replacedRelicId),
+  );
+  const constancyChargeValue = normalized.inventory.constancy.charge;
+  if (removesConstancySource && constancyChargeValue > 0 && options.confirmConstancyReset !== true) {
+    return {
+      ...normalized,
+      ok: false,
+      reason: 'constancy-confirmation-required',
+      relicId: replacedRelicId,
+      charge: constancyChargeValue,
+      maxCharge: 6,
+    };
+  }
+  const hadConstancySource = normalized.inventory.equipped.some((id) =>
+    relicProvidesConstancy(normalized, id));
   if (normalized.inventory.equipped.length < MAX_EQUIPPED_RELICS) {
     normalized.inventory.equipped.push(relicId);
   } else if (validReplaceIndex) {
@@ -947,14 +1005,41 @@ export function equipRelic(lootState, relicId, replaceIndex = null) {
   } else {
     return { ...normalized, ok: false, reason: 'slots-full' };
   }
+  const hasConstancySource = normalized.inventory.equipped.some((id) =>
+    relicProvidesConstancy(normalized, id));
+  if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
+    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
+  }
+  if (hasConstancySource && (!hadConstancySource || removesConstancySource)) {
+    normalized.inventory.constancy = {
+      ...clearedConstancy(normalized.inventory.constancy.cycleId),
+      awaitingBaseline: true,
+    };
+  }
   return { ...normalized, ok: true };
 }
 
-export function unequipRelic(lootState, relicId) {
+export function unequipRelic(lootState, relicId, options = {}) {
   const normalized = normalizeLootState(lootState);
+  const removesConstancySource = relicProvidesConstancy(normalized, relicId) &&
+    normalized.inventory.equipped.includes(relicId);
+  const charge = normalized.inventory.constancy.charge;
+  if (removesConstancySource && charge > 0 && options.confirmConstancyReset !== true) {
+    return {
+      ...normalized,
+      ok: false,
+      reason: 'constancy-confirmation-required',
+      relicId,
+      charge,
+      maxCharge: 6,
+    };
+  }
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => id !== relicId,
   );
+  if (removesConstancySource) {
+    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
+  }
   return { ...normalized, ok: true };
 }
 
@@ -1058,18 +1143,49 @@ export function constancyActivationKey(cycleId) {
   return `relic_04:constancy:${cycleId}`;
 }
 
-export function syncRelicConstancy(lootState, { cycleId, outcomes = [] }) {
+export function syncRelicConstancy(lootState, {
+  cycleId, outcomes = [], nowTimestamp = Date.now(),
+}) {
   const normalized = normalizeLootState(lootState);
+  const currentOutcomes = arrayOf(outcomes).slice(0, 7).map((outcome) => String(outcome || ''));
   const activationKey = constancyActivationKey(cycleId);
   const alreadyActivated = Boolean(normalized.inventory.weeklyActivations[activationKey]) ||
     Object.keys(normalized.inventory.weeklyActivations).some((key) =>
       key.endsWith(`:constancy:${cycleId}`));
+  const equipped = normalized.inventory.equipped.some((id) =>
+    relicProvidesConstancy(normalized, id));
+  const previous = normalized.inventory.constancy;
+  if (!equipped || alreadyActivated) {
+    normalized.inventory.constancy = {
+      ...clearedConstancy(cycleId),
+      baselineOutcomes: currentOutcomes,
+    };
+    return normalized;
+  }
+  if (previous.awaitingBaseline) {
+    normalized.inventory.constancy = {
+      ...clearedConstancy(cycleId),
+      baselineOutcomes: currentOutcomes,
+    };
+    return normalized;
+  }
+  const baseline = previous.cycleId === cycleId ? previous.baselineOutcomes : [];
+  const previousCharge = previous.cycleId === cycleId ? previous.charge : 0;
+  const trackedOutcomes = currentOutcomes.filter((_outcome, index) =>
+    baseline[index] !== 'hit' && baseline[index] !== 'fail');
+  const charge = constancyCharge(trackedOutcomes);
   normalized.inventory.constancy = {
     cycleId,
-    charge: alreadyActivated
-      ? 0
-      : constancyCharge(outcomes),
+    charge,
+    baselineOutcomes: baseline,
+    awaitingBaseline: false,
+    lastIncreaseAt: charge > previousCharge ? Math.max(0, Number(nowTimestamp) || 0) : previous.lastIncreaseAt,
+    lastIncreaseCharge: charge > previousCharge ? charge : previous.lastIncreaseCharge,
   };
+  if (charge === 0) {
+    normalized.inventory.constancy.lastIncreaseAt = 0;
+    normalized.inventory.constancy.lastIncreaseCharge = 0;
+  }
   return normalized;
 }
 
@@ -1080,7 +1196,7 @@ export function activateRelicConstancy({
   bossWon = false,
   nowTimestamp = Date.now(),
 }) {
-  const normalized = syncRelicConstancy(state, { cycleId, outcomes });
+  const normalized = syncRelicConstancy(state, { cycleId, outcomes, nowTimestamp });
   const activationKey = constancyActivationKey(cycleId);
   if (!bossWon) return { ...normalized, activated: false, xp: 0, activationKey };
   let xp = 0;
@@ -1100,7 +1216,8 @@ export function activateRelicConstancy({
   }
   const fulfilledDays = arrayOf(outcomes).filter((outcome) => outcome === 'hit').length;
   for (const fusionId of ['fusion_02', 'fusion_05']) {
-    if (!normalized.inventory.equipped.includes(fusionId) || fulfilledDays < 6) continue;
+    if (!normalized.inventory.equipped.includes(fusionId) ||
+        fulfilledDays < 6 || normalized.inventory.constancy.charge < 6) continue;
     const definition = fusionDefinition(fusionId);
     const key = `${fusionId}:six-days:${cycleId}`;
     if (!definition || normalized.forge.fusion.weeklyActivations[key]) continue;
@@ -1111,7 +1228,12 @@ export function activateRelicConstancy({
     xp += bonus;
     activations.push(key);
   }
-  if (activations.length) normalized.inventory.constancy.charge = 0;
+  if (activations.length) {
+    normalized.inventory.constancy = {
+      ...clearedConstancy(cycleId),
+      baselineOutcomes: arrayOf(outcomes).slice(0, 7).map((outcome) => String(outcome || '')),
+    };
+  }
   return {
     ...normalized,
     activated: activations.length > 0,

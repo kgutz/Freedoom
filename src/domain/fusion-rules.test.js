@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { castSpellEffect } from './spell-rules.js';
+import { exportBackup, importBackup } from '../storage/state-storage.js';
 import {
   activateRelicConstancy,
   awardFusionAllHabitsXp,
@@ -18,6 +19,7 @@ import {
   purchaseShopRelic,
   shopOffers,
   shopPriceForRelic,
+  syncRelicConstancy,
 } from './loot-rules.js';
 
 function fusionState(count = 6) {
@@ -39,6 +41,34 @@ function fuse(state, leftId, rightId, operationId = 'fusion-op') {
 }
 
 describe('Fusión de reliquias', () => {
+  it.each([
+    [1, 1, 1],
+    [2, 1, 2],
+    [2, 2, 2],
+    [3, 1, 3],
+    [3, 2, 3],
+    [3, 3, 3],
+  ])('Rango %i + Rango %i produce una fusión de Rango %i sin alterar cada potencia',
+    (leftRank, rightRank, expectedRank) => {
+      const state = fusionState(2);
+      state.inventory.relics.relic_01.rank = leftRank;
+      state.inventory.relics.relic_02.rank = rightRank;
+      const result = fuse(state, 'relic_01', 'relic_02', `ranks-${leftRank}-${rightRank}`);
+      const expectedLeftValue = [0, 5, 7, 10][leftRank];
+      const expectedRightValue = [0, 5, 7, 10][rightRank];
+      expect(result.fusedRelic.rank).toBe(expectedRank);
+      expect(result.fusedRelic.ingredientSnapshots.relic_01).toMatchObject({
+        rank: leftRank, effectValue: expectedLeftValue,
+      });
+      expect(result.fusedRelic.ingredientSnapshots.relic_02).toMatchObject({
+        rank: rightRank, effectValue: expectedRightValue,
+      });
+      expect(result.fusedRelic.inheritedEffects).toEqual({
+        relic_01: expectedLeftValue,
+        relic_02: expectedRightValue,
+      });
+    });
+
   it('mantiene oculta una receta desconocida y la descubre permanentemente al fusionar', () => {
     const state = fusionState(2);
     const before = fusionPreview(state, 'relic_01', 'relic_02');
@@ -74,6 +104,7 @@ describe('Fusión de reliquias', () => {
     expect(result.inventory.relics.relic_02).toBeUndefined();
     expect(result.inventory.relics.fusion_01).toMatchObject({
       kind: 'fusion',
+      rank: 3,
       rarity: 'mythic',
       inheritedEffects: { relic_01: 7, relic_02: 10 },
       affixes: ['vitality', 'arcane'],
@@ -124,12 +155,60 @@ describe('Fusión de reliquias', () => {
     const repeated = fuse(first, 'relic_01', 'relic_02', 'same');
     expect(repeated.reason).toBe('duplicate-operation');
     expect(repeated.economy).toEqual(first.economy);
+    expect(repeated.inventory.relics.fusion_01).toEqual(first.inventory.relics.fusion_01);
     const missing = fuseRelics({
       state: fusionState(1), leftId: 'relic_01', rightId: 'relic_02', operationId: 'missing',
     });
     expect(missing.reason).toBe('missing-ingredients');
     expect(missing.economy.coins).toBe(1000);
     expect(missing.inventory.relics.relic_01).toBeDefined();
+  });
+
+  it('exportar, importar y restaurar conserva rango global y potencias individuales', () => {
+    const state = fusionState(2);
+    state.inventory.relics.relic_01.rank = 3;
+    state.inventory.relics.relic_02.rank = 1;
+    const result = fuse(state, 'relic_01', 'relic_02', 'persistent-ranks');
+    result.inventory.relics.fusion_01.futureField = { preserved: true };
+    const completeState = { ...result, config: { journeyMode: 'reduction' }, days: {} };
+    const imported = importBackup(
+      { config: {}, days: {} },
+      exportBackup(completeState),
+    );
+    const restored = normalizeLootState(JSON.parse(JSON.stringify(imported)));
+    expect(restored.inventory.relics.fusion_01).toMatchObject({
+      rank: 3,
+      inheritedEffects: { relic_01: 10, relic_02: 5 },
+      ingredientSnapshots: {
+        relic_01: { rank: 3, effectValue: 10 },
+        relic_02: { rank: 1, effectValue: 5 },
+      },
+      futureField: { preserved: true },
+    });
+  });
+
+  it('migra una fusión anterior usando el rango máximo de sus snapshots sin recalcular efectos', () => {
+    const legacy = emptyLootState();
+    legacy.inventory.relics.fusion_01 = {
+      unlocked: true,
+      kind: 'fusion',
+      recipeId: 'fusion_recipe_01',
+      rarity: 'legendary',
+      rank: 1,
+      affixes: ['vitality'],
+      ingredientSnapshots: {
+        relic_01: { rarity: 'legendary', rank: 3, affixes: ['vitality'], effectValue: 10 },
+        relic_02: { rarity: 'rare', rank: 1, affixes: [], effectValue: 5 },
+      },
+      inheritedEffects: { relic_01: 10, relic_02: 5 },
+    };
+    const migrated = normalizeLootState(legacy).inventory.relics.fusion_01;
+    expect(migrated.rank).toBe(3);
+    expect(migrated.inheritedEffects).toEqual({ relic_01: 10, relic_02: 5 });
+    expect(migrated.ingredientSnapshots).toMatchObject({
+      relic_01: { rank: 3, effectValue: 10 },
+      relic_02: { rank: 1, effectValue: 5 },
+    });
   });
 
   it('conserva en la colección los ingredientes sacrificados y distingue posesión', () => {
@@ -250,6 +329,9 @@ describe('Sinergias de Fusión', () => {
     (_fusionId, leftId, rightId, synergyXp, expectedTotal) => {
       let state = fuse(fusionState(6), leftId, rightId);
       state = equipRelic(state, _fusionId);
+      state = syncRelicConstancy(state, {
+        cycleId: 'week-1:boss-1', outcomes: [], nowTimestamp: 1,
+      });
       const first = activateRelicConstancy({
         state,
         cycleId: 'week-1:boss-1',
@@ -271,6 +353,26 @@ describe('Sinergias de Fusión', () => {
       expect(repeated.xp).toBe(0);
       expect(synergyXp).toBeGreaterThan(0);
     });
+
+  it('no concede la sinergia semanal si una fusión con Constancia se equipa tarde', () => {
+    let state = fuse(fusionState(6), 'relic_01', 'relic_04');
+    state = equipRelic(state, 'fusion_02');
+    state = syncRelicConstancy(state, {
+      cycleId: 'week-1:boss-1',
+      outcomes: ['hit', 'hit', 'hit', 'hit', 'hit'],
+      nowTimestamp: 1,
+    });
+    const result = activateRelicConstancy({
+      state,
+      cycleId: 'week-1:boss-1',
+      outcomes: ['hit', 'hit', 'hit', 'hit', 'hit', 'hit'],
+      bossWon: true,
+      nowTimestamp: 2,
+    });
+    expect(result.inventory.constancy.charge).toBe(1);
+    expect(result.activated).toBe(false);
+    expect(result.xp).toBe(0);
+  });
 });
 
 describe('compatibilidad de partidas antiguas', () => {

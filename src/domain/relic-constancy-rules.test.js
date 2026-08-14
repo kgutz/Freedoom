@@ -5,8 +5,10 @@ import {
   constancyActivationKey,
   constancyCharge,
   emptyLootState,
+  equipRelic,
   normalizeLootState,
   syncRelicConstancy,
+  unequipRelic,
 } from './loot-rules.js';
 import { weeklyBossPenalty } from './hero-rules.js';
 
@@ -126,7 +128,9 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
       cycleId: 'week-3:boss-3', outcomes: ['hit', 'hit', 'hit', 'pend'],
     });
     const reloaded = normalizeLootState(JSON.parse(JSON.stringify(synced)));
-    expect(reloaded.inventory.constancy).toEqual({ cycleId: 'week-3:boss-3', charge: 3 });
+    expect(reloaded.inventory.constancy).toMatchObject({
+      cycleId: 'week-3:boss-3', charge: 3, baselineOutcomes: [], awaitingBaseline: false,
+    });
     expect(reloaded.inventory.weeklyActivations).toEqual({});
   });
 
@@ -136,7 +140,91 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
     const before = JSON.parse(JSON.stringify(legacy.inventory.relics.relic_04));
     const normalized = normalizeLootState(legacy);
     expect(normalized.inventory.relics.relic_04).toEqual(before);
-    expect(normalized.inventory.constancy).toEqual({ cycleId: '', charge: 0 });
+    expect(normalized.inventory.constancy).toMatchObject({
+      cycleId: '', charge: 0, baselineOutcomes: [], awaitingBaseline: false,
+    });
+  });
+
+  it('solo carga días nuevos mientras una fuente de Constancia permanece equipada', () => {
+    const raw = yelmoState();
+    raw.inventory.equipped = [];
+    let state = syncRelicConstancy(raw, {
+      cycleId: 'week-3:boss-3', outcomes: ['hit'], nowTimestamp: 1,
+    });
+    expect(state.inventory.constancy.charge).toBe(0);
+
+    state = equipRelic(state, 'relic_04');
+    state = syncRelicConstancy(state, {
+      cycleId: 'week-3:boss-3', outcomes: ['hit', 'hit'], nowTimestamp: 2,
+    });
+    expect(state.inventory.constancy.charge).toBe(0);
+    state = syncRelicConstancy(state, {
+      cycleId: 'week-3:boss-3', outcomes: ['hit', 'hit', 'hit'], nowTimestamp: 3,
+    });
+    expect(state.inventory.constancy.charge).toBe(1);
+  });
+
+  it('desequipar con carga exige confirmación; cancelar conserva todo y confirmar reinicia', () => {
+    const state = yelmoState();
+    state.inventory.constancy = {
+      cycleId: 'week-3:boss-3', charge: 4, baselineOutcomes: [], awaitingBaseline: false,
+      lastIncreaseAt: 10, lastIncreaseCharge: 4,
+    };
+    const cancelled = unequipRelic(state, 'relic_04');
+    expect(cancelled).toMatchObject({
+      ok: false, reason: 'constancy-confirmation-required', charge: 4, maxCharge: 6,
+    });
+    expect(cancelled.inventory.equipped).toContain('relic_04');
+    expect(cancelled.inventory.constancy.charge).toBe(4);
+
+    const confirmed = unequipRelic(state, 'relic_04', { confirmConstancyReset: true });
+    expect(confirmed.ok).toBe(true);
+    expect(confirmed.inventory.equipped).not.toContain('relic_04');
+    expect(confirmed.inventory.constancy.charge).toBe(0);
+  });
+
+  it('desequipar con 0/6 es normal y cambiar la segunda reliquia conserva la carga', () => {
+    let state = yelmoState();
+    const zero = unequipRelic(state, 'relic_04');
+    expect(zero.ok).toBe(true);
+
+    state.inventory.relics.relic_01 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 11, bossIndex: 0,
+    };
+    state.inventory.relics.relic_02 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 12, bossIndex: 1,
+    };
+    state.inventory.equipped = ['relic_04', 'relic_01'];
+    state.inventory.constancy = {
+      cycleId: 'week-3:boss-3', charge: 3, baselineOutcomes: [], awaitingBaseline: false,
+      lastIncreaseAt: 10, lastIncreaseCharge: 3,
+    };
+    const replaced = equipRelic(state, 'relic_02', 1);
+    expect(replaced.ok).toBe(true);
+    expect(replaced.inventory.equipped).toEqual(['relic_04', 'relic_02']);
+    expect(replaced.inventory.constancy.charge).toBe(3);
+  });
+
+  it('sustituir el Yelmo cargado exige confirmación y reinicia al aceptar', () => {
+    const state = yelmoState();
+    state.inventory.relics.relic_01 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 11, bossIndex: 0,
+    };
+    state.inventory.relics.relic_02 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 12, bossIndex: 1,
+    };
+    state.inventory.equipped = ['relic_04', 'relic_02'];
+    state.inventory.constancy = {
+      cycleId: 'week-3:boss-3', charge: 2, baselineOutcomes: [], awaitingBaseline: false,
+      lastIncreaseAt: 10, lastIncreaseCharge: 2,
+    };
+    const blocked = equipRelic(state, 'relic_01', 0);
+    expect(blocked.reason).toBe('constancy-confirmation-required');
+    expect(blocked.inventory.equipped).toEqual(['relic_04', 'relic_02']);
+    const confirmed = equipRelic(state, 'relic_01', 0, { confirmConstancyReset: true });
+    expect(confirmed.ok).toBe(true);
+    expect(confirmed.inventory.equipped).toEqual(['relic_01', 'relic_02']);
+    expect(confirmed.inventory.constancy.charge).toBe(0);
   });
 
   it('el Yelmo ya no reduce el castigo semanal', () => {

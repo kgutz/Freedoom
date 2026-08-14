@@ -17,6 +17,10 @@ export const SHOP_MAX_VISIBLE_RELICS = 3;
 export const FUSION_COIN_COST = 100;
 export const FUSION_BLOOD_COST = 1;
 
+export const CHARGE_MECHANICS = {
+  constancy: { id: 'constancy', label: 'Constancia', max: 6 },
+};
+
 export const RARITIES = {
   rare: { id: 'rare', label: 'RARO', rate: 0.6, affixCount: 0 },
   legendary: {
@@ -110,6 +114,7 @@ export const RELIC_DEFINITIONS = [
     name: 'Yelmo de la Última Brasa',
     equipmentType: 'helmet',
     image: 'relics/relic_04_yelmo_ultima_brasa.png',
+    chargeMechanic: 'constancy',
     effectLabel: 'Constancia: completa 6 días consecutivos y derrota al jefe para ganar XP extraordinaria.',
     affixPool: ['vitality', 'regeneration', 'fortune'],
   },

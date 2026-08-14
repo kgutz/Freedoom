@@ -162,13 +162,24 @@ describe('compatibilidad del estado', () => {
       habits: {
         items: [{ id: 'walk', title: 'Caminar' }],
         entries: {
-          'walk|d:2026-08-01': { count: 1, xpAwarded: 3 },
+          'walk|d:2026-08-01': { count: 1, xpAwarded: 3, coinsAwarded: 1 },
         },
+        dailyCoinBonuses: {
+          'd:2026-08-01': { periodKey: 'd:2026-08-01', coinsAwarded: 3 },
+        },
+      },
+      economy: {
+        coins: 4,
+        bossBlood: 0,
+        transactions: [{ id: 'habit-coin:walk|d:2026-08-01', coins: 1 }],
       },
     });
 
     expect(loaded.habits.items[0].title).toBe('Caminar');
     expect(loaded.habits.entries['walk|d:2026-08-01'].xpAwarded).toBe(3);
+    expect(loaded.habits.entries['walk|d:2026-08-01'].coinsAwarded).toBe(1);
+    expect(loaded.habits.dailyCoinBonuses['d:2026-08-01'].coinsAwarded).toBe(3);
+    expect(loaded.economy.transactions[0].id).toBe('habit-coin:walk|d:2026-08-01');
   });
 });
 

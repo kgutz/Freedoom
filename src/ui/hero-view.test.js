@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createHeroModel,
   renderHeroView,
+  renderSkillsView,
   spriteImage,
 } from './hero-view.js';
 import { BOSSES, BOSS_LORE } from '../data/game-data.js';
@@ -103,6 +104,45 @@ describe('modelo de Héroe', () => {
     );
   });
 
+  it('permite volver del selector de cambio de clase sin gastar recursos', () => {
+    const heroContent = { innerHTML: '' };
+    renderHeroView({
+      document: { getElementById: () => heroContent },
+      ...base({ game: { cls: null } }),
+      classChange: true,
+      currentClass: 'paladin',
+    });
+
+    expect(heroContent.innerHTML).toContain('id="classChangeBack"');
+    expect(heroContent.innerHTML).toContain('solo se gastará cuando confirmes');
+    expect(heroContent.innerHTML).not.toContain('cls-info-badge');
+    expect(heroContent.innerHTML).toContain('data-cls="paladin"');
+    expect(heroContent.innerHTML).toContain('current-class');
+    expect(heroContent.innerHTML).not.toContain('CLASE ACTUAL');
+  });
+
+  it('puede renderizar el mismo libro de habilidades dentro del cambio de clase', () => {
+    const classChangeSkills = { innerHTML: '' };
+    renderSkillsView({
+      document: {
+        getElementById(id) {
+          return id === 'classChangeSkills' ? classChangeSkills : null;
+        },
+      },
+      classId: 'paladin',
+      level: 5,
+      intoxication: null,
+      config: { journeyMode: 'reduction' },
+      targetId: 'classChangeSkills',
+    });
+
+    expect(classChangeSkills.innerHTML).toContain('Pasivas — Arquero Sagrado');
+    expect(classChangeSkills.innerHTML).toContain('Ojo del Halcón');
+    expect(classChangeSkills.innerHTML).toContain('Hechizos — Arquero Sagrado');
+    expect(classChangeSkills.innerHTML).toContain('Ojo Certero');
+    expect(classChangeSkills.innerHTML).not.toContain('sprite-svg');
+  });
+
   it('mueve los últimos golpes al panel informativo del jefe', () => {
     const heroContent = { innerHTML: '' };
     const bossHistoryBody = { innerHTML: '' };
@@ -149,6 +189,8 @@ describe('modelo de Héroe', () => {
     });
 
     expect(heroContent.innerHTML).toContain('id="bossInfoBtn"');
+    expect(heroContent.innerHTML).toContain('data-open-current-boss-medal="1"');
+    expect(heroContent.innerHTML).toContain('aria-label="Abrir medallón de Espectro"');
     expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
     expect(heroContent.innerHTML).toContain('data-scroll-skills');
     expect(heroContent.innerHTML.indexOf('data-open-inventory'))
