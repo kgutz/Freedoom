@@ -49,22 +49,33 @@ import {
 import { castSpellEffect } from './domain/spell-rules.js';
 import {
   acknowledgeLootNotice,
+  activateRelicConstancy,
   attemptForge,
-  canActivateDailyRelic,
+  awardFusionAllHabitsXp,
+  availableDailyEffectSources,
+  canActivateFusionDaily,
+  createForgeSeed,
   emptyLootState,
   equipRelic,
   ensureShopRotation,
   equippedRelicBonuses,
   grantBossRewards,
-  isRelicEquipped,
-  markDailyRelicActivation,
+  fuseRelics,
+  initializeForgeSeed,
+  markDailyEffectSources,
+  markFusionDaily,
   normalizeLootState,
   payClassChange,
   pendingLootNotice,
   purchaseShopRelic,
+  syncRelicConstancy,
   unequipRelic
 } from './domain/loot-rules.js';
-import { relicDefinition, relicRankEffect } from './data/loot-data.js';
+import {
+  FUSION_RELIC_DEFINITIONS,
+  relicDefinition,
+  relicRankEffect
+} from './data/loot-data.js';
 import {
   RESET_CONFIRMATION_PHRASE,
   matchesResetConfirmation
@@ -106,9 +117,12 @@ import {
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
 import {
+  closeForgeInfoOutside,
   forgeResultMarkup,
   inventoryReferenceOffset,
   renderForgeView,
+  fusionResultMarkup,
+  renderCollectionView,
   renderInventoryView,
   renderLootNotice,
   renderRelicEffectInfo,
@@ -116,6 +130,8 @@ import {
   renderShopView
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
+import { createRecoveryModeController } from './ui/recovery-mode-controller.js';
+import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
@@ -139,22 +155,25 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.46';
+const APP_VERSION='1.57';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
 const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
+const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoFusions')==='1';
 const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
 const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_SHOP?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_SHOP?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
-  ? LOCAL_DEMO_SHOP
+  ? LOCAL_DEMO_FUSIONS
+    ? `${STORAGE_KEY}:demo-fusions-v2`
+    : LOCAL_DEMO_SHOP
     ? `${STORAGE_KEY}:demo-shop-${LOCAL_DEMO_SHOP}-v1`
     : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
@@ -187,6 +206,11 @@ let initializeLocalDemo=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
+createRecoveryModeController({
+  logo:document.querySelector('.settings-footer .set-logo'),
+  emergencySection:document.getElementById('emergencyRecoverySection'),
+  showToast
+});
 
 async function revealReturnSplash({replay=false}={}){
   const loading=document.getElementById('loading');
@@ -392,16 +416,16 @@ async function requestPersistentStorage(){
 
 async function load(){
   try{
-    let r=await store.get(ACTIVE_STORAGE_KEY);
+    let r=LOCAL_DEMO_FUSIONS?null:await store.get(ACTIVE_STORAGE_KEY);
     if(!r&&LOCAL_DEMO_BOSSES){
-      r=await store.get(STORAGE_KEY);
+      if(!LOCAL_DEMO_FUSIONS) r=await store.get(STORAGE_KEY);
       initializeLocalDemo=true;
     }
     if(r&&r.value){
       const saved=parseState(r.value);
       const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
       state=mergeState(state,saved);
-      state={...state,...normalizeLootState(state)};
+      state={...state,...initializeForgeSeed(state)};
       setStorageHealth({
         state:'saved',
         revision:r.revision||0,
@@ -457,7 +481,7 @@ function scheduleSave(action){
       console.error('Error guardando',e);
       setStorageHealth({
         state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
-        warning:'El último cambio NO se ha guardado. No cierres la app; exporta una copia desde Ajustes y libera espacio en el dispositivo.'
+        warning:'El último cambio NO se ha guardado. No cierres la app; libera espacio en el dispositivo y revisa Copias de seguridad.'
       });
     }
     return;
@@ -469,7 +493,7 @@ function scheduleSave(action){
       console.error('Error guardando',e);
       setStorageHealth({
         state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
-        warning:'El último cambio NO se ha guardado. No cierres la app y exporta una copia desde Ajustes.'
+        warning:'El último cambio NO se ha guardado. No cierres la app y revisa Copias de seguridad.'
       });
     }
   },400);
@@ -523,7 +547,7 @@ function renderCal(){
     onDayClick:openModal
   });
   document.getElementById('calendarHint').textContent=isControlledMode(state.config)
-    ? 'En días permitidos verás cuántos porros registraste. En los demás, ✓ significa que no fumaste, × que fumaste y · que sigue pendiente.'
+    ? 'En días permitidos verás cuántos cigarros registraste. En los demás, ✓ significa que no fumaste, × que fumaste y · que sigue pendiente.'
     : isSmokeFreeMode(state.config)
       ? 'Toca un día para corregirlo. ✓ significa que te mantuviste sin fumar, × que fumaste y · que sigue pendiente.'
       : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.';
@@ -644,6 +668,57 @@ function prepareLocalBossDemo(){
   if(demoRelics.relic_02) Object.assign(demoRelics.relic_02,{rarity:'legendary',affixes:['arcane']});
   if(demoRelics.relic_03) Object.assign(demoRelics.relic_03,{rarity:'mythic',affixes:['discipline','fortune']});
   if(demoRelics.relic_04) Object.assign(demoRelics.relic_04,{rarity:'legendary',affixes:['vitality']});
+  if(LOCAL_DEMO_FUSIONS){
+    const nowTimestamp=Date.now();
+    const demoFusionStyles={
+      fusion_01:{rarity:'rare',affixes:[]},
+      fusion_02:{rarity:'legendary',affixes:['vitality']},
+      fusion_03:{rarity:'mythic',affixes:['arcane','discipline']},
+      fusion_04:{rarity:'legendary',affixes:['fortune']},
+      fusion_05:{rarity:'mythic',affixes:['vitality','fortune']}
+    };
+    FUSION_RELIC_DEFINITIONS.forEach((definition,index)=>{
+      const ingredientSnapshots=Object.fromEntries(definition.ingredientIds.map(id=>[
+        id,{
+          rarity:demoRelics[id]?.rarity||'rare',
+          rank:demoRelics[id]?.rank||1,
+          affixes:[...(demoRelics[id]?.affixes||[])],
+          effectValue:relicRankEffect(id,demoRelics[id]?.rank||1)
+        }
+      ]));
+      const record={
+        unlocked:true,
+        kind:'fusion',
+        recipeId:definition.recipeId,
+        rarity:demoFusionStyles[definition.id].rarity,
+        rank:1,
+        affixes:[...demoFusionStyles[definition.id].affixes],
+        obtainedAt:nowTimestamp+index,
+        ingredientSnapshots,
+        inheritedEffects:Object.fromEntries(
+          Object.entries(ingredientSnapshots).map(([id,snapshot])=>[id,snapshot.effectValue])
+        )
+      };
+      state.inventory.relics[definition.id]=record;
+      state.inventory.collection[definition.id]={
+        discoveredAt:nowTimestamp+index,
+        kind:'fusion',
+        lastOwnedRecord:record
+      };
+    });
+    state.forge.fusion.discoveredRecipes=FUSION_RELIC_DEFINITIONS.map(({recipeId})=>recipeId);
+    applyLootSlices(normalizeLootState(state));
+    state.economy.coins=999;
+    state.economy.bossBlood=20;
+    state.game.bossCombat={
+      ...state.game.bossCombat,
+      legacyBossesDown:2,
+      bossIndex:2,
+      history:Array.from({length:2},(_,index)=>(
+        {week:index,bossIndex:index,won:true,damage:150,remainingHp:0}
+      ))
+    };
+  }
   if(LOCAL_DEMO_SHOP==='failed'&&demoRelics.relic_01){
     const failedRelic={...demoRelics.relic_01,affixes:[...demoRelics.relic_01.affixes]};
     delete demoRelics.relic_01;
@@ -654,7 +729,8 @@ function prepareLocalBossDemo(){
     state.economy.bossBlood=2;
     applyLootSlices(ensureShopRotation(state,Date.now()));
   }
-  state.inventory.equipped=['relic_01','relic_03'].filter(id=>demoRelics[id]);
+  state.inventory.equipped=(LOCAL_DEMO_FUSIONS?['fusion_01','fusion_04']:['relic_01','relic_03'])
+    .filter(id=>state.inventory.relics[id]);
   state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
   state.loot.migrationComplete=true;
   scheduleSave({type:'demo:bosses',count:LOCAL_DEMO_BOSSES});
@@ -666,7 +742,7 @@ function relicBonuses(){
 
 function storedRelicXp(){
   return Object.entries(state.inventory?.dailyActivations||{})
-    .filter(([key,value])=>key.startsWith('relic_06:')&&Number(value)>0)
+    .filter(([key,value])=>(key.startsWith('relic_06:')||key.includes(':relic_06:'))&&Number(value)>0)
     .reduce((total,[,value])=>total+Number(value),0);
 }
 
@@ -711,14 +787,6 @@ function syncLootRewards(source){
   return result.rewards;
 }
 
-function markRelicDaily(relicId,key,value=true){
-  const updated=markDailyRelicActivation(state,relicId,key);
-  if(value!==true){
-    updated.inventory.dailyActivations[`${relicId}:${key}`]=value;
-  }
-  applyLootSlices(updated);
-}
-
 function recoverMana(amount){
   if(amount<=0) return 0;
   const bonus=relicBonuses().manaRecoveryBonus;
@@ -728,39 +796,45 @@ function recoverMana(amount){
 }
 
 function applyFirstDamageRelic(damage,key=todayKey()){
-  if(damage<=0||!canActivateDailyRelic(state,'relic_01',key)){
+  const sources=availableDailyEffectSources(state,'relic_01',key);
+  if(damage<=0||!sources.length){
     return {damage,reduction:0,activationKey:null};
   }
-  const reduction=Math.min(
-    damage,
-    relicRankEffect(
-      'relic_01',
-      state.inventory.relics.relic_01?.rank||1
-    )
-  );
-  markRelicDaily('relic_01',key,true);
-  return {damage:Math.max(0,damage-reduction),reduction,activationKey:`relic_01:${key}`};
+  const reduction=Math.min(damage,sources.reduce((total,source)=>total+source.value,0));
+  applyLootSlices(markDailyEffectSources(state,'relic_01',key,sources,true));
+  return {damage:Math.max(0,damage-reduction),reduction,activationKey:sources.map(source=>source.relicId)};
 }
 
 function restoreRelicActivation(activationKey){
   if(!activationKey||!state.inventory?.dailyActivations) return;
+  if(Array.isArray(activationKey)){
+    activationKey.forEach(sourceId=>{
+      const key=sourceId==='relic_01'?`relic_01:${todayKey()}`:`${sourceId}:relic_01:${todayKey()}`;
+      delete state.inventory.dailyActivations[key];
+    });
+    return;
+  }
   delete state.inventory.dailyActivations[activationKey];
 }
 
 function awardRelicDayXp(key){
-  if(!canActivateDailyRelic(state,'relic_06',key)) return 0;
-  const amount=relicRankEffect(
-    'relic_06',
-    state.inventory.relics.relic_06?.rank||1
-  );
-  markRelicDaily('relic_06',key,amount);
+  const sources=availableDailyEffectSources(state,'relic_06',key);
+  if(!sources.length) return 0;
+  const amount=sources.reduce((total,source)=>total+source.value,0);
+  sources.forEach(source=>{
+    applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],source.value));
+  });
   return amount;
 }
 
 function revokeRelicDayXp(key){
-  const activationKey=`relic_06:${key}`;
-  const amount=Number(state.inventory?.dailyActivations?.[activationKey])||0;
-  if(amount>0) delete state.inventory.dailyActivations[activationKey];
+  let amount=0;
+  Object.entries(state.inventory?.dailyActivations||{}).forEach(([activationKey,value])=>{
+    if((activationKey===`relic_06:${key}`||activationKey.endsWith(`:relic_06:${key}`))&&Number(value)>0){
+      amount+=Number(value);
+      delete state.inventory.dailyActivations[activationKey];
+    }
+  });
   return amount;
 }
 
@@ -927,6 +1001,11 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   }
   const previous=JSON.stringify(g.bossCombat||null);
   const previousEvolution=Boolean(g.evolutionUnlocked);
+  const previousConstancy=JSON.stringify({
+    constancy:state.inventory?.constancy||null,
+    activations:state.inventory?.weeklyActivations||{},
+    bonusXp:g.bonusXp||0
+  });
   const result=reconcileBossCombat({
     combat:g.bossCombat,
     now:nowDate,
@@ -942,6 +1021,43 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     config:state.config,
     bossesDown:totalBossesDown
   });
+  let constancyXp=0;
+  const applyConstancyVictory=({week,bossIndex,pips})=>{
+    const cycleId=`week-${week}:boss-${bossIndex}`;
+    const reward=activateRelicConstancy({
+      state,
+      cycleId,
+      outcomes:pips,
+      bossWon:true,
+      nowTimestamp:actualTimestamp
+    });
+    applyLootSlices(reward);
+    if(reward.activated){
+      g.bonusXp=(g.bonusXp||0)+reward.xp;
+      constancyXp+=reward.xp;
+    }
+  };
+  for(const weekResult of result.weekResults){
+    if(weekResult.won){
+      applyConstancyVictory({
+        week:weekResult.weekIdx,
+        bossIndex:weekResult.bossIndex,
+        pips:weekResult.pips||[]
+      });
+    }
+  }
+  if(result.newlyDefeated){
+    applyConstancyVictory({
+      week:result.status.w,
+      bossIndex:result.status.bossIndex,
+      pips:result.status.pips||[]
+    });
+  }
+  const activeCycleId=`week-${result.status.w}:boss-${result.status.bossIndex}`;
+  applyLootSlices(syncRelicConstancy(state,{
+    cycleId:activeCycleId,
+    outcomes:result.status.pips||[]
+  }));
   syncLootRewards(state.loot?.migrationComplete===true?'victory':'retroactive');
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
@@ -956,14 +1072,9 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
         const knightReduction=smokeFreeMode&&g.cls==='knight'&&lvl>=5
           ? 0.1*currentIntoxication(actualTimestamp).passiveMultiplier
           : 0;
-        const relicPenaltyReduction=isRelicEquipped(state,'relic_04')
-          ? relicRankEffect(
-              'relic_04',state.inventory.relics.relic_04?.rank||1
-            )/100
-          : 0;
         const damageRate=Math.max(
           0,
-          0.3-knightReduction-relicPenaltyReduction
+          0.3-knightReduction
         );
         const penalty=weeklyBossPenalty({
           hp:g.hp,
@@ -979,8 +1090,16 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     g.weekResult=weekResult;
     g.weekModalPending=true;
   }
-  if(previous!==JSON.stringify(g.bossCombat)||result.weekResults.length||previousEvolution!==g.evolutionUnlocked){
+  const constancyChanged=previousConstancy!==JSON.stringify({
+    constancy:state.inventory?.constancy||null,
+    activations:state.inventory?.weeklyActivations||{},
+    bonusXp:g.bonusXp||0
+  });
+  if(previous!==JSON.stringify(g.bossCombat)||result.weekResults.length||previousEvolution!==g.evolutionUnlocked||constancyChanged){
     scheduleSave();
+  }
+  if(constancyXp>0){
+    showToast(`🔥 CONSTANCIA COMPLETADA · 6/6 · +${constancyXp} XP`,'heal');
   }
   return result.status;
 }
@@ -1129,12 +1248,13 @@ function castSpell(id){
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
   const intoxication=currentIntoxication(now);
-  const relicDiscountActive=canActivateDailyRelic(
-    state,'relic_05',todayKey()
-  );
-  const manaDiscount=relicDiscountActive
-    ? relicRankEffect('relic_05',state.inventory.relics.relic_05?.rank||1)
-    : 0;
+  const spellDayKey=todayKey();
+  const discountSources=availableDailyEffectSources(state,'relic_05',spellDayKey);
+  const soulAmpouleReady=canActivateFusionDaily(
+    state,'fusion_03','spell-discount',spellDayKey
+  )&&Boolean(state.forge?.fusion?.dailyActivations?.[`fusion_03:habit-ready:${spellDayKey}`]);
+  const manaDiscount=discountSources.reduce((total,source)=>total+source.value,0)+
+    (soulAmpouleReady?3:0);
   const result=castSpellEffect({
     game:g,
     spell:sp,
@@ -1149,7 +1269,10 @@ function castSpell(id){
     manaDiscount
   });
   if(manaDiscount>0&&(result.ok||result.reason==='intoxicated')){
-    markRelicDaily('relic_05',todayKey(),true);
+    applyLootSlices(markDailyEffectSources(state,'relic_05',spellDayKey,discountSources,true));
+    if(soulAmpouleReady){
+      applyLootSlices(markFusionDaily(state,'fusion_03','spell-discount',spellDayKey,true));
+    }
   }
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
@@ -1251,17 +1374,37 @@ let activeLootNoticeId=null;
 let forgeLocked=false;
 let shopLocked=false;
 let selectedForgeRelicId=null;
+let forgeMode='upgrade';
+let fusionLeftId=null;
+let fusionRightId=null;
+let pendingFusion=null;
+const EQUIPMENT_TYPE_NAMES={
+  heart:'corazones',spirit:'reliquias espirituales',dagger:'dagas',helmet:'yelmos',
+  vessel:'recipientes mágicos',fang:'colmillos'
+};
+function equipFailureMessage(result){
+  if(result?.reason==='equipment-type-conflict'){
+    return `No puedes equipar dos ${EQUIPMENT_TYPE_NAMES[result.equipmentType]||'reliquias del mismo tipo'}`;
+  }
+  if(result?.reason==='already-equipped') return 'Esa reliquia ya está equipada';
+  return 'No hay un espacio libre para esa reliquia';
+}
+function forgeRenderOptions(){
+  return {mode:forgeMode,fusionLeftId,fusionRightId};
+}
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
   const sheet=overlay?.querySelector('.inventory-sheet');
   const inventoryBody=document.getElementById('inventoryBody');
+  const collectionBody=document.getElementById('collectionBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
   const mainNav=document.getElementById('mainNav');
-  if(!overlay?.classList.contains('show')||!sheet||!inventoryBody||!forgeBody||!shopBody) return;
-  const hiddenStates=[inventoryBody.hidden,forgeBody.hidden,shopBody.hidden];
-  renderForgeView(document,state,selectedForgeRelicId);
+  if(!overlay?.classList.contains('show')||!sheet||!inventoryBody||!collectionBody||!forgeBody||!shopBody) return;
+  const hiddenStates=[inventoryBody.hidden,collectionBody.hidden,forgeBody.hidden,shopBody.hidden];
+  renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'upgrade'});
   inventoryBody.hidden=true;
+  collectionBody.hidden=true;
   forgeBody.hidden=false;
   shopBody.hidden=true;
   sheet.classList.add('measuring-forge-reference');
@@ -1270,37 +1413,51 @@ function positionInventorySheetFromForge(){
   const navClearance=mainNav?.classList.contains('show')?mainNav.getBoundingClientRect().height:0;
   const availableHeight=Math.max(0,viewportHeight-
     (parseFloat(overlayStyle.paddingTop)||0)-(parseFloat(overlayStyle.paddingBottom)||0)-navClearance);
-  const referenceHeight=sheet.scrollHeight;
+  const upgradeReferenceHeight=sheet.scrollHeight;
+  renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'fusion'});
+  const fusionReferenceHeight=sheet.scrollHeight;
+  const referenceHeight=Math.max(upgradeReferenceHeight,fusionReferenceHeight);
   overlay.style.setProperty('--inventory-nav-clearance',`${navClearance}px`);
   overlay.style.setProperty('--inventory-panel-offset',
     `${inventoryReferenceOffset(availableHeight,referenceHeight)}px`);
   sheet.classList.remove('measuring-forge-reference');
-  [inventoryBody.hidden,forgeBody.hidden,shopBody.hidden]=hiddenStates;
+  [inventoryBody.hidden,collectionBody.hidden,forgeBody.hidden,shopBody.hidden]=hiddenStates;
+  if(!hiddenStates[2]){
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+  }
 }
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const inventorySelected=panel==='inventory';
+  const collectionSelected=panel==='collection';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
   const inventoryBody=document.getElementById('inventoryBody');
+  const collectionBody=document.getElementById('collectionBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
   const inventoryTab=document.getElementById('inventoryTab');
+  const collectionTab=document.getElementById('collectionTab');
   const forgeTab=document.getElementById('forgeTab');
   const shopTab=document.getElementById('shopTab');
   inventoryBody.hidden=!inventorySelected;
+  collectionBody.hidden=!collectionSelected;
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
   inventoryTab.classList.toggle('active',inventorySelected);
+  collectionTab.classList.toggle('active',collectionSelected);
   forgeTab.classList.toggle('active',forgeSelected);
   shopTab.classList.toggle('active',shopSelected);
   inventoryTab.setAttribute('aria-selected',String(inventorySelected));
+  collectionTab.setAttribute('aria-selected',String(collectionSelected));
   forgeTab.setAttribute('aria-selected',String(forgeSelected));
   shopTab.setAttribute('aria-selected',String(shopSelected));
   if(inventorySelected){
     renderInventoryView(document,state);
     if(scrollToEquipped) requestAnimationFrame(()=>document.getElementById('inventoryEquippedSection')?.scrollIntoView({block:'start'}));
+  }else if(collectionSelected){
+    renderCollectionView(document,state);
   }else if(forgeSelected){
-    selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId);
+    selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   }else{
     const before=JSON.stringify(state.shop);
     applyLootSlices(ensureShopRotation(state,Date.now()));
@@ -2019,6 +2176,7 @@ document.getElementById('recoveryList').addEventListener('click',async event=>{
     if(!recovered) throw new Error('La copia ya no está disponible');
     store.authorizeDestructiveSave('recovery');
     state=mergeState(state,recovered);
+    state={...state,...initializeForgeSeed(state)};
     scheduleSave({type:'recovery:restore',revision});
     closeRecoveryModal();
     renderAll();
@@ -2194,6 +2352,13 @@ function saveHabitEditor(){
   showToast(wasEditing?'Hábito actualizado':'Hábito creado','heal');
 }
 
+function awardFusionDailyHabitListXp(dayKey){
+  const result=awardFusionAllHabitsXp({state,habitState:state.habits,dayKey});
+  state.habits=result.habitState;
+  applyLootSlices(result);
+  return result.xp;
+}
+
 document.getElementById('view-habits').addEventListener('click',event=>{
   const filter=event.target.closest('[data-habit-filter]');
   if(filter){
@@ -2219,12 +2384,11 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const dayKey=todayKey();
-    const relicHabitXpActive=canActivateDailyRelic(state,'relic_03',dayKey);
+    const habitXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
+    const relicHabitXpActive=habitXpSources.length>0;
     const flatRewardBonus=relicBonuses().habitXpBonus+
       (relicHabitXpActive
-        ? relicRankEffect(
-            'relic_03',state.inventory.relics.relic_03?.rank||1
-          )
+        ? habitXpSources.reduce((total,source)=>total+source.value,0)
         : 0);
     const result=adjustHabitProgress({
       habitState:state.habits,
@@ -2243,17 +2407,28 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     }
     let relicHabitNotice='';
     if(result.xpDelta>0&&relicHabitXpActive){
-      markRelicDaily('relic_03',dayKey,true);
+      applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,habitXpSources,true));
       relicHabitNotice=' · Daga de Alquitrán';
     }
-    if(result.xpDelta>0&&canActivateDailyRelic(state,'relic_02',dayKey)){
-      const mana=relicRankEffect(
-        'relic_02',state.inventory.relics.relic_02?.rank||1
-      );
+    const manaSources=result.xpDelta>0
+      ? availableDailyEffectSources(state,'relic_02',dayKey)
+      : [];
+    if(manaSources.length){
+      let mana=manaSources.reduce((total,source)=>total+source.value,0);
+      if(canActivateFusionDaily(state,'fusion_01','first-habit-mana',dayKey)){
+        mana+=3;
+        applyLootSlices(markFusionDaily(state,'fusion_01','first-habit-mana',dayKey,true));
+      }
       const recovered=recoverMana(mana);
-      markRelicDaily('relic_02',dayKey,true);
+      applyLootSlices(markDailyEffectSources(state,'relic_02',dayKey,manaSources,true));
       if(recovered>0) relicHabitNotice+=' · +'+recovered+' 💧 Lágrima';
     }
+    if(result.xpDelta>0&&state.inventory?.equipped?.includes('fusion_03')&&
+        canActivateFusionDaily(state,'fusion_03','spell-discount',dayKey)){
+      applyLootSlices(markFusionDaily(state,'fusion_03','habit-ready',dayKey,true));
+    }
+    const fusionListXp=result.xpDelta>0?awardFusionDailyHabitListXp(dayKey):0;
+    if(fusionListXp>0) relicHabitNotice+=' · +'+fusionListXp+' XP Daga del Antojo';
     const habitRewardNotice=result.xpDelta>0&&smokeFreeMode
       ? applySmokeFreeHabitRewards({result})
       : '';
@@ -2262,7 +2437,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       period:result.entry.periodKey||''
     });
     renderAll();
-    if(result.xpDelta>0) showToast('Hábito completado · +'+result.xpDelta+' XP'+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
+    if(result.xpDelta>0) showToast('Hábito completado · +'+(result.xpDelta+fusionListXp)+' XP'+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
     else if(result.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP','dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
     return;
@@ -2531,6 +2706,7 @@ document.getElementById('view-hero').addEventListener('click',e=>{
 
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
   if(event.target.closest('#inventoryTab')){ showInventoryPanel('inventory'); return; }
+  if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
   const purchase=event.target.closest('[data-buy-relic]');
@@ -2572,9 +2748,37 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(forgeChoice){
     const previousScroll=forgeChoice.closest('.forge-relic-grid')?.scrollLeft||0;
     selectedForgeRelicId=forgeChoice.dataset.selectForgeRelic;
-    renderForgeView(document,state,selectedForgeRelicId);
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     const relicStrip=document.querySelector('.forge-relic-grid');
     if(relicStrip) relicStrip.scrollLeft=previousScroll;
+    return;
+  }
+  const forgeModeButton=event.target.closest('[data-forge-mode]');
+  if(forgeModeButton){
+    forgeMode=forgeModeButton.dataset.forgeMode==='fusion'?'fusion':'upgrade';
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    scheduleInventorySheetPosition();
+    return;
+  }
+  const fusionChoice=event.target.closest('[data-select-fusion-relic]');
+  if(fusionChoice){
+    const relicId=fusionChoice.dataset.selectFusionRelic;
+    if(fusionLeftId===relicId) fusionLeftId=null;
+    else if(fusionRightId===relicId) fusionRightId=null;
+    else if(!fusionLeftId) fusionLeftId=relicId;
+    else if(!fusionRightId) fusionRightId=relicId;
+    else { fusionLeftId=relicId; fusionRightId=null; }
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  const fusionButton=event.target.closest('[data-fuse-relics]');
+  if(fusionButton&&!fusionButton.disabled){
+    const [leftId,rightId]=fusionButton.dataset.fuseRelics.split('|');
+    const left=relicDefinition(leftId),right=relicDefinition(rightId);
+    if(!left||!right) return;
+    pendingFusion={leftId,rightId};
+    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Ambas reliquias desaparecerán de tu inventario. La operación cuesta <b>100 monedas</b> y <b>1 Sangre de Jefe</b>.</p>`;
+    document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }
   const relic=event.target.closest('[data-open-relic]');
@@ -2584,6 +2788,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   const forgeShortcut=event.target.closest('[data-open-forge-relic]');
   if(forgeShortcut){
     selectedForgeRelicId=forgeShortcut.dataset.openForgeRelic;
+    forgeMode='upgrade';
     document.getElementById('sheetRelicDetail').classList.remove('show');
     document.getElementById('sheetInventory').classList.add('show');
     showInventoryPanel('forge');
@@ -2602,7 +2807,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
       ? Number(equip.dataset.replaceSlot)
       : null;
     const result=equipRelic(state,equip.dataset.equipRelic,replace);
-    if(!result.ok){ showToast('No hay un espacio libre para esa reliquia','dmg'); return; }
+    if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
     applyLootSlices(result); capHeroAfterEquipmentChange();
     scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
     document.getElementById('sheetRelicDetail').classList.remove('show');
@@ -2632,18 +2837,28 @@ async function handleForgeAttempt(forge){
   forge.disabled=true;
   const relicId=forge.dataset.forgeRelic;
   const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const previousLootState=normalizeLootState(state);
   const result=attemptForge({state,relicId,operationId});
   if(result.ok){
-    applyLootSlices(result);
-    try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
-    catch(error){
-      console.error('No se pudo guardar el intento de Forja',error);
+    const commit=await commitLootOperation({
+      previousState:previousLootState,
+      nextState:result,
+      applyState:applyLootSlices,
+      persist:()=>store.set(ACTIVE_STORAGE_KEY,serializeState(state))
+    });
+    if(!commit.ok){
+      console.error('No se pudo guardar el intento de Forja',commit.error);
       showToast('No se pudo confirmar el guardado de la Forja','dmg');
+      selectedForgeRelicId=relicId;
+      renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
+      forgeLocked=false;
+      return;
     }
+    handleSaveResult(commit.saveResult);
     document.getElementById('forgeResultBody').innerHTML=forgeResultMarkup(result,relicDefinition(relicId)?.name||'Reliquia',relicId);
     document.getElementById('forgeResultBg').classList.add('show');
     selectedForgeRelicId=relicId;
-    renderForgeView(document,state,selectedForgeRelicId); renderInventoryView(document,state); renderHero();
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
   }else showToast(result.reason==='coins'?'No tienes suficientes monedas':result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'No cumples los requisitos de la Forja','dmg');
   forgeLocked=false;
 }
@@ -2651,8 +2866,57 @@ document.getElementById('forgeBody').addEventListener('click',event=>{
   const forge=event.target.closest('[data-forge-relic]');
   if(forge) handleForgeAttempt(forge);
 });
+document.addEventListener('click',event=>closeForgeInfoOutside(document,event.target));
 document.getElementById('forgeResultClose').addEventListener('click',()=>{
   document.getElementById('forgeResultBg').classList.remove('show');
+});
+document.getElementById('fusionConfirmCancel').addEventListener('click',()=>{
+  pendingFusion=null;
+  document.getElementById('fusionConfirmBg').classList.remove('show');
+});
+document.getElementById('fusionConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='fusionConfirmBg'){
+    pendingFusion=null;
+    event.currentTarget.classList.remove('show');
+  }
+});
+document.getElementById('fusionConfirmAccept').addEventListener('click',async()=>{
+  if(!pendingFusion||forgeLocked) return;
+  forgeLocked=true;
+  const {leftId,rightId}=pendingFusion;
+  const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const previousLootState=normalizeLootState(state);
+  const result=fuseRelics({state,leftId,rightId,operationId,nowTimestamp:Date.now()});
+  if(!result.ok){
+    forgeLocked=false;
+    pendingFusion=null;
+    document.getElementById('fusionConfirmBg').classList.remove('show');
+    showToast('La Fusión ya no puede completarse','dmg');
+    return;
+  }
+  const commit=await commitLootOperation({
+    previousState:previousLootState,
+    nextState:result,
+    applyState:applyLootSlices,
+    persist:()=>store.set(ACTIVE_STORAGE_KEY,serializeState(state))
+  });
+  document.getElementById('fusionConfirmBg').classList.remove('show');
+  pendingFusion=null;
+  if(!commit.ok){
+    console.error('No se pudo guardar la Fusión',commit.error);
+    showToast('No se pudo confirmar el guardado de la Fusión','dmg');
+    forgeLocked=false;
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  handleSaveResult(commit.saveResult);
+  capHeroAfterEquipmentChange();
+  document.getElementById('forgeResultBody').innerHTML=fusionResultMarkup(result);
+  document.getElementById('forgeResultBg').classList.add('show');
+  fusionLeftId=null; fusionRightId=null;
+  renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+  renderInventoryView(document,state); renderHero();
+  forgeLocked=false;
 });
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
@@ -2667,7 +2931,10 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
     acknowledgeActiveLootNotice();
     switchView('view-hero','navHero'); renderHero(); openInventory();
     if(result.ok){ capHeroAfterEquipmentChange(); scheduleSave({type:'loot:equip',relicId:equip.dataset.lootEquip}); renderInventoryView(document,state); renderHero(); showToast('Reliquia equipada','heal'); }
-    else openRelicDetail(equip.dataset.lootEquip);
+    else{
+      openRelicDetail(equip.dataset.lootEquip);
+      showToast(equipFailureMessage(result),'dmg');
+    }
     return;
   }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
@@ -2800,7 +3067,7 @@ bindBackupControls({
   getState:()=>state,
   onImported:(importedState)=>{
     store.authorizeDestructiveSave('import');
-    state={...importedState,...normalizeLootState(importedState)};
+    state={...importedState,...initializeForgeSeed(importedState)};
     registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
@@ -2853,6 +3120,7 @@ const onboarding=createOnboardingController({
     state.config={...state.config,...result.config};
     state.game=result.game;
     state.onboarded=result.onboarded;
+    applyLootSlices(initializeForgeSeed(state,createForgeSeed()));
     registerDailyWakeEstimate();
     ensureHero();
     scheduleSave();
@@ -2929,6 +3197,12 @@ resetGuardContinue.addEventListener('click',()=>{
     if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();
       await showPendingLootNotice();
+    }else if(LOCAL_DEMO_FUSIONS){
+      await finishInitialReturnSplash();
+      switchView('view-hero','navHero');
+      renderHero();
+      openInventory();
+      showInventoryPanel('collection');
     }else finishInitialReturnSplash();
   }
 })();

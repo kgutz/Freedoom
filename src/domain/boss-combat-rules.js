@@ -446,6 +446,7 @@ export function reconcileBossCombat({
       won,
       weekIdx: next.week,
       bossIndex: next.bossIndex,
+      pips: [...damage.pips],
       damage: Math.min(next.hpAtWeekStart, damage.total),
       remainingHp,
     });

@@ -9,8 +9,10 @@ import {
   equipRelic,
   equippedRelicBonuses,
   forgePreview,
+  forgeAttemptRoll,
   grantBossRewards,
   markDailyRelicActivation,
+  initializeForgeSeed,
   normalizeLootState,
   pendingLootNotice,
   payClassChange,
@@ -460,8 +462,79 @@ describe('Forja', () => {
     };
     if (fortune) state.inventory.equipped = ['relic_01'];
     state.loot.notices = [];
+    state.forge.seed = 'forge-test-seed';
     return state;
   }
+
+  function seedForOutcome(expectedSuccess, probability = 70) {
+    for (let index = 0; index < 10_000; index += 1) {
+      const seed = `rollback-${index}`;
+      const success = forgeAttemptRoll(seed, 'relic_01', 2, 1) < probability / 100;
+      if (success === expectedSuccess) return seed;
+    }
+    throw new Error('No se encontró una semilla de prueba');
+  }
+
+  it('deriva un valor estable de semilla, reliquia, rango e intento lógico', () => {
+    const first = forgeAttemptRoll('save-abc', 'relic_01', 2, 3);
+    expect(forgeAttemptRoll('save-abc', 'relic_01', 2, 3)).toBe(first);
+    expect(forgeAttemptRoll('save-abc', 'relic_01', 2, 4)).not.toBe(first);
+    expect(forgeAttemptRoll('save-abc', 'relic_01', 3, 3)).not.toBe(first);
+  });
+
+  it.each([
+    ['exportación', false],
+    ['backup automático', false],
+    ['copia diaria', false],
+    ['copia semanal', false],
+    ['última partida con información', false],
+    ['IndexedDB', false],
+    ['exportación antes de un éxito', true],
+  ])('repite el resultado tras restaurar desde %s', (_source, expectedSuccess) => {
+    const before = forgeState();
+    before.forge.seed = seedForOutcome(expectedSuccess);
+    const snapshot = JSON.stringify(before);
+    const first = attemptForge({
+      state: before, relicId: 'relic_01', operationId: 'first', nowTimestamp: 10,
+    });
+    const restored = JSON.parse(snapshot);
+    const retry = attemptForge({
+      state: restored, relicId: 'relic_01', operationId: 'retry', nowTimestamp: 20,
+    });
+    expect(first.success).toBe(expectedSuccess);
+    expect(retry.success).toBe(first.success);
+    expect(retry.forge.history.at(-1).roll).toBe(first.forge.history.at(-1).roll);
+    expect(retry.forge.history.at(-1).logicalAttemptNumber).toBe(1);
+    expect(retry.economy.coins).toBe(first.economy.coins);
+    expect(retry.economy.bossBlood).toBe(first.economy.bossBlood);
+  });
+
+  it('mantiene Pity y Fortuna sobre la misma tirada lógica', () => {
+    const state = forgeState({ fortune: true });
+    state.forge.seed = seedForOutcome(false, 71);
+    const first = attemptForge({
+      state, relicId: 'relic_01', operationId: 'fortune-1', nowTimestamp: 10,
+    });
+    expect(first.preview).toMatchObject({ pityProbability: 70, fortune: 1, finalProbability: 71 });
+    expect(first.success).toBe(false);
+    const second = attemptForge({
+      state: first, relicId: 'relic_01', operationId: 'fortune-2', nowTimestamp: 20,
+    });
+    expect(second.preview).toMatchObject({ pityProbability: 85, fortune: 1, finalProbability: 86 });
+    expect(second.forge.history.at(-1).logicalAttemptNumber).toBe(2);
+  });
+
+  it('migra una partida antigua una sola vez y conserva la semilla al normalizar', () => {
+    const legacy = forgeState();
+    legacy.forge.seed = '';
+    legacy.onboarded = true;
+    legacy.config = { startDate: '2026-07-17', startLimit: 20 };
+    legacy.game = { name: 'Farenheil', cls: 'sorcerer' };
+    const migrated = initializeForgeSeed(legacy);
+    const loadedAgain = initializeForgeSeed(JSON.parse(JSON.stringify(migrated)));
+    expect(migrated.forge.seed).toMatch(/^legacy-/);
+    expect(loadedAgain.forge.seed).toBe(migrated.forge.seed);
+  });
 
   it('aplica pity completo de Rango II, conserva Sangre al fallar y consume 1 al acertar', () => {
     let state = forgeState();

@@ -71,7 +71,7 @@
         </div>
       </div>
       <div class="ob-field">
-        <label>¿Cuántos porros como máximo por semana?</label>
+        <label>¿Cuántos cigarros como máximo por semana?</label>
         <input type="number" id="obControlledWeeklyLimit" min="1" max="99" value="3">
         <p class="ob-note">Esta cantidad se comparte entre todos los días permitidos.</p>
       </div>
@@ -405,7 +405,7 @@
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">↟</span><span>Tu camino</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">Freedoom tiene tres puntos de partida. Puedes reducir progresivamente hasta llegar a cero, mantenerte completamente sin fumar o establecer un consumo controlado con días permitidos y un máximo semanal compartido.</p>
-          <p class="hint">En consumo controlado, los días permitidos muestran un contador de porros. En los demás debes confirmar si no fumaste. Superar el máximo semanal hace que los días permitidos de esa semana no cuenten como cumplidos.</p>
+          <p class="hint">En consumo controlado, los días permitidos muestran un contador de cigarros. En los demás debes confirmar si no fumaste. Superar el máximo semanal hace que los días permitidos de esa semana no cuenten como cumplidos.</p>
           <p class="hint">Si comenzaste en el camino sin fumar y decides pasar a consumo controlado, puedes programarlo desde Ajustes. El cambio comienza con tu siguiente semana para no alterar el jefe actual, y los días anteriores conservan sus reglas originales.</p>
           <p class="hint">Las cuatro clases adaptan sus habilidades al camino elegido. En reducción interactúan con el ritmo y los cigarros; los caminos sin fumar y controlado usan poderes centrados en confirmaciones, rachas, hábitos, vida, maná y defensa semanal.</p>
           <p class="hint">El héroe del camino de reducción evoluciona al completar todo su plan y dejar de fumar. Quien empieza sin fumar o con consumo controlado evoluciona al derrotar al tercer jefe. Los hábitos y la XP no adelantan esta evolución.</p>
@@ -494,7 +494,9 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">▣</span><span>Inventario y equipamiento</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">En Héroe, el icono de la mochila abre <b style="color:var(--kodak)">Inventario, Forja y Tienda</b>. Puedes conservar todas tus reliquias, pero llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
+          <p class="hint">En Héroe, el icono de la mochila abre <b style="color:var(--kodak)">Inventario, Colección, Forja y Tienda</b>. El Inventario contiene las reliquias que posees y puedes equipar; puedes llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
+          <p class="hint">Las dos reliquias activas deben ser de tipos diferentes: no puedes llevar dos yelmos, dos dagas, dos corazones ni dos objetos equivalentes al mismo tiempo.</p>
+          <p class="hint">La Colección registra permanentemente todo lo que hayas descubierto, aunque una reliquia ya no esté en tu Inventario. Las fusionadas se distinguen visualmente y las entradas futuras permanecen ocultas.</p>
           <p class="hint">Cada reliquia proporciona efectos que pueden mejorar tu partida. Su nombre, poder y valores permanecen ocultos hasta que la consigues.</p>
           <p class="hint">Cuando una reliquia tenga efectos extras, cada nombre aparecerá en amarillo con su explicación debajo. Solo puedes consultar los efectos de los objetos que ya hayas descubierto.</p>
           <p class="hint">Puedes cambiar las reliquias equipadas cuando quieras. Un efecto diario o semanal que ya se haya utilizado no vuelve a activarse por desequipar y equipar el objeto.</p>
@@ -505,13 +507,17 @@
         <div class="faq-answer">
           <p class="hint">Si no consigues la reliquia de un jefe, no la pierdes para siempre: queda desbloqueada para tu Tienda personal. Solo aparecen reliquias de jefes que ya hayas derrotado y cuyo drop haya fallado.</p>
           <p class="hint">La selección cambia cada <b style="color:var(--kodak)">3 días</b> y muestra hasta tres reliquias. Comprarlas cuesta el doble del oro que entregó su jefe y la misma cantidad de Sangre de Jefe.</p>
-          <p class="hint">Una reliquia comprada entra directamente en el Inventario y desaparece de la Tienda. Las compras, drops y rotaciones quedan guardados para que recargar o restaurar no vuelva a tirar sus resultados.</p>
+          <p class="hint">Una reliquia comprada entra directamente en el Inventario y desaparece de la Tienda. Si una reliquia fue consumida mediante Fusión, puede volver a la rotación conservando exactamente su rareza y efectos extras; recuperarla cuesta un <b style="color:var(--resource-coin)">25% más de monedas</b>, pero la misma Sangre de Jefe.</p>
+          <p class="hint">Las compras, drops y rotaciones quedan guardados para que recargar o restaurar no vuelva a tirar sus resultados.</p>
         </div>
       </details>
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚒</span><span>Forja</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">La Forja permite mejorar el efecto principal de una reliquia desde el Rango I hasta el Rango III. Puedes elegirla en la propia Forja o pulsar <b style="color:var(--kodak)">Forjar</b> desde su ficha para llevarla allí directamente.</p>
+          <p class="hint">La Forja tiene dos modos: <b style="color:var(--kodak)">Mejorar</b> aumenta el efecto principal de una reliquia desde el Rango I hasta el Rango III; <b style="color:var(--kodak)">Fusionar</b> combina dos reliquias base compatibles para descubrir una nueva.</p>
+          <p class="hint">Una Fusión cuesta <b style="color:var(--resource-coin)">100 monedas</b> y <b style="color:var(--resource-blood)">1 Sangre de Jefe</b>. Es 100% segura, pero consume permanentemente sus dos ingredientes. Antes de ejecutarla, Freedoom muestra una confirmación explícita.</p>
+          <p class="hint">La reliquia fusionada nunca baja de la rareza más alta de sus ingredientes. Conserva sus efectos extras sin duplicarlos: un efecto garantiza rareza Legendaria y dos o más garantizan rareza Mítica.</p>
+          <p class="hint">Las recetas desconocidas ocultan su resultado hasta completar la primera Fusión. No todas las parejas son compatibles y las reliquias fusionadas no se pueden mejorar de rango por ahora.</p>
           <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 monedas</b>, necesita <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">70% → 85% → 100%</b>.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 monedas</b>, necesita <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">45% → 60% → 75% → 90% → 100%</b>.</li></ul></div>
           <div class="hint"><span class="faq-lead">Cómo se consumen los recursos:</span><ul class="faq-bullets"><li>Las monedas se gastan siempre que realizas un intento.</li><li>La Sangre de Jefe solo se consume cuando la mejora tiene éxito: 1 para alcanzar el Rango II y 2 para alcanzar el Rango III.</li><li>Si la Forja falla, conservas toda la Sangre y la reliquia mantiene su rango.</li><li>No puedes intentar una mejora si no tienes monedas o Sangre suficientes para completarla.</li></ul></div>
           <p class="hint">Cada fallo aumenta el pity y mejora la probabilidad del siguiente intento hasta garantizar el éxito. Una operación ya registrada no puede descontar monedas o Sangre dos veces, y el saldo se conserva al exportar, importar o restaurar una copia.</p>
@@ -525,8 +531,8 @@
         <div class="faq-answer">
           <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
           <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedoom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
-          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b>. Allí puedes exportar o importar una copia manual y restaurar las copias automáticas. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
-          <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y usa <b style="color:var(--text)">Exportar</b> para conservar una copia externa. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
+          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b> y restaurar las copias automáticas. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
+          <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y revisa tus copias de seguridad. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
         </div>
       </details>
     </div>
@@ -538,12 +544,14 @@
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Inventario, Forja y Tienda">
+    <div class="inventory-tabs" role="tablist" aria-label="Inventario, Colección, Forja y Tienda">
       <button type="button" class="active" id="inventoryTab" role="tab" aria-selected="true">Inventario</button>
+      <button type="button" id="collectionTab" role="tab" aria-selected="false">Colección</button>
       <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>
       <button type="button" id="shopTab" role="tab" aria-selected="false">Tienda</button>
     </div>
     <div id="inventoryBody"></div>
+    <div id="collectionBody" hidden></div>
     <div id="forgeBody" hidden></div>
     <div id="shopBody" hidden></div>
   </div>
@@ -627,6 +635,18 @@
   <div class="modal forge-result-modal">
     <div id="forgeResultBody"></div>
     <button class="close" id="forgeResultClose" type="button">Continuar</button>
+  </div>
+</div>
+
+<div class="modal-bg center" id="fusionConfirmBg" style="z-index:42">
+  <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="fusionConfirmTitle">
+    <span class="relic-effect-info-kicker">FUSIÓN IRREVERSIBLE</span>
+    <h3 id="fusionConfirmTitle">¿Consumir estas reliquias?</h3>
+    <div id="fusionConfirmBody"></div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="fusionConfirmCancel">CANCELAR</button>
+      <button type="button" id="fusionConfirmAccept">FUSIONAR</button>
+    </div>
   </div>
 </div>
 
@@ -742,20 +762,20 @@
 <div class="modal-bg center" id="recoveryBg" style="z-index:32">
   <div class="modal recovery-modal">
     <h3>Copias de seguridad</h3>
-    <p class="hint" style="margin-top:-8px">Guarda una copia fuera de la app o recupera una partida anterior.</p>
+    <p class="hint" style="margin-top:-8px">Recupera una partida anterior guardada automáticamente.</p>
     <div class="storage-health" id="storageHealth" data-state="idle">
       <span class="storage-health-dot" aria-hidden="true"></span>
       <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
     </div>
     <div id="recoveryList" class="recovery-list"></div>
-    <div class="recovery-manual">
+    <div class="recovery-manual" id="emergencyRecoverySection" hidden>
       <div class="recovery-manual-copy">
-        <b>Copia manual</b>
-        <small>Exporta un código o importa uno que guardaste anteriormente.</small>
+        <b>Recuperación de emergencia</b>
+        <small>Herramientas destinadas únicamente a recuperar o trasladar una partida. No son necesarias para el uso normal de Freedoom.</small>
       </div>
       <div class="recovery-manual-actions">
-        <button class="mini-btn" id="btnExport" type="button">Exportar</button>
-        <button class="mini-btn" id="btnImport" type="button">Importar</button>
+        <button class="mini-btn" id="btnExport" type="button">Exportar partida</button>
+        <button class="mini-btn" id="btnImport" type="button">Importar partida</button>
       </div>
     </div>
     <button class="close" id="recoveryClose" type="button">Cerrar</button>

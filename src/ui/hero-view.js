@@ -331,11 +331,11 @@ export function renderHeroView({
             <div class="rango">${classData.name}</div>
           </div>
           <div class="hero-quick-actions">
-            <button class="hero-quick-action" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
-            </button>
             <button class="hero-quick-action hero-inventory-jump${inventoryDiscoveryActive ? ' discovery-active' : ''}" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
+            </button>
+            <button class="hero-quick-action" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
             </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>

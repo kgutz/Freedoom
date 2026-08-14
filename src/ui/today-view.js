@@ -271,7 +271,7 @@ export function renderTodayView({
         ? 'none'
         : '';
     const label = cigaretteCounter.querySelector('.pc-label');
-    if (label) label.textContent = model.controlledMode ? 'Porros hoy' : 'Cigarros hoy';
+    if (label) label.textContent = 'Cigarros hoy';
   }
   if (reductionProgress) {
     reductionProgress.style.display =

@@ -33,6 +33,7 @@ export function stateInformationProfile(state) {
   const inventory = isObject(safeState.inventory) ? safeState.inventory : {};
   const forge = isObject(safeState.forge) ? safeState.forge : {};
   const relicCount = collectionSize(inventory.relics);
+  const discoveredRelicCount = collectionSize(inventory.collection);
   const claimedRewardCount = Array.isArray(loot.claimedBossRewards)
     ? loot.claimedBossRewards.length
     : 0;
@@ -40,6 +41,9 @@ export function stateInformationProfile(state) {
     Math.max(0, Number(economy.bossBlood) || 0) * 25;
   const forgeHistoryCount = Array.isArray(forge.history)
     ? forge.history.length
+    : 0;
+  const fusionHistoryCount = Array.isArray(forge.fusion?.history)
+    ? forge.fusion.history.length
     : 0;
   const bossesDown = Math.max(0, Number(combat.legacyBossesDown) || 0) +
     Math.max(0, Number(combat.defeated) || 0);
@@ -57,9 +61,11 @@ export function stateInformationProfile(state) {
     Math.min(180, bossesDown * 40) +
     Math.min(80, bossHistoryCount * 10) +
     Math.min(180, relicCount * 30) +
+    Math.min(180, discoveredRelicCount * 25) +
     Math.min(120, claimedRewardCount * 20) +
     Math.min(80, Math.floor(economyValue / 10)) +
-    Math.min(40, forgeHistoryCount * 5);
+    Math.min(40, forgeHistoryCount * 5) +
+    Math.min(80, fusionHistoryCount * 10);
 
   return {
     score,
@@ -71,9 +77,11 @@ export function stateInformationProfile(state) {
     bossesDown,
     bossHistoryCount,
     relicCount,
+    discoveredRelicCount,
     claimedRewardCount,
     economyValue,
     forgeHistoryCount,
+    fusionHistoryCount,
     meaningful:
       (onboarded && hasHero) ||
       dayCount > 0 ||
@@ -81,9 +89,11 @@ export function stateInformationProfile(state) {
       habitEntryCount > 0 ||
       bossesDown > 0 ||
       relicCount > 0 ||
+      discoveredRelicCount > 0 ||
       claimedRewardCount > 0 ||
       economyValue > 0 ||
-      forgeHistoryCount > 0,
+      forgeHistoryCount > 0 ||
+      fusionHistoryCount > 0,
   };
 }
 
@@ -103,6 +113,8 @@ export function isCatastrophicStateRegression(candidateState, referenceState) {
     reference.bossesDown >= 1 && candidate.bossesDown === 0;
   const lootCollapsed =
     (reference.relicCount >= 1 && candidate.relicCount === 0) ||
+    (reference.discoveredRelicCount >= 1 && candidate.discoveredRelicCount === 0) ||
+    (reference.fusionHistoryCount >= 1 && candidate.fusionHistoryCount === 0) ||
     (reference.claimedRewardCount >= 1 && candidate.claimedRewardCount === 0) ||
     (reference.economyValue >= 50 && candidate.economyValue === 0);
   const scoreCollapsed =

@@ -83,8 +83,22 @@ describe('compatibilidad del estado', () => {
         },
         notices: [], migrationComplete: true,
       },
-      inventory: { relics: { relic_01: { id: 'relic_01', unlocked: true, rank: 2 } }, equipped: ['relic_01'] },
-      forge: { attempts: { 'relic_01:rank-3': 1 }, history: [{ operationId: 'forge-1' }] },
+      inventory: {
+        relics: { fusion_01: { unlocked: true, kind: 'fusion', recipeId: 'fusion_recipe_01' } },
+        collection: { relic_01: { discoveredAt: 1 }, fusion_01: { discoveredAt: 2 } },
+        equipped: ['fusion_01'],
+      },
+      forge: {
+        seed: 'forge-save-seed',
+        attempts: { 'relic_01:rank-3': 1 },
+        history: [{ operationId: 'forge-1' }],
+        fusion: {
+          discoveredRecipes: ['fusion_recipe_01'],
+          history: [{ operationId: 'fusion-1', recipeId: 'fusion_recipe_01' }],
+          dailyActivations: { 'fusion_01:first-habit-mana:2026-08-14': true },
+          weeklyActivations: {},
+        },
+      },
       shop: {
         schemaVersion: 1,
         rotation: { period: 4, startedAt: 100, endsAt: 200, relicIds: ['relic_02'] },
@@ -96,9 +110,13 @@ describe('compatibilidad del estado', () => {
     }, exportBackup(lootState));
     expect(restored.economy.coins).toBe(110);
     expect(restored.economy.bossBlood).toBe(2);
-    expect(restored.inventory.relics.relic_01.rank).toBe(2);
+    expect(restored.inventory.relics.fusion_01.recipeId).toBe('fusion_recipe_01');
+    expect(restored.inventory.collection.relic_01.discoveredAt).toBe(1);
     expect(restored.loot.bossRelicOutcomes.boss_reward_01.status).toBe('purchased');
     expect(restored.forge.attempts['relic_01:rank-3']).toBe(1);
+    expect(restored.forge.seed).toBe('forge-save-seed');
+    expect(restored.forge.fusion.discoveredRecipes).toEqual(['fusion_recipe_01']);
+    expect(restored.forge.fusion.history[0].operationId).toBe('fusion-1');
     expect(restored.shop.rotation.relicIds).toEqual(['relic_02']);
     expect(restored.shop.purchases[0].operationId).toBe('buy-1');
   });
@@ -155,6 +173,41 @@ describe('compatibilidad del estado', () => {
 });
 
 describe('copias de seguridad', () => {
+  it('recupera colección, recetas, historial y activaciones de Fusión desde una copia automática', async () => {
+    const localStorage = memoryLocalStorage();
+    const store = createBrowserStore({ localStorage, indexedDB: null });
+    const fusionState = {
+      ...v34State,
+      economy: { coins: 90, bossBlood: 1, transactions: [{ id: 'fusion:op-1' }] },
+      inventory: {
+        relics: { fusion_01: { unlocked: true, kind: 'fusion', recipeId: 'fusion_recipe_01' } },
+        collection: {
+          relic_01: { discoveredAt: 1 }, relic_02: { discoveredAt: 1 }, fusion_01: { discoveredAt: 2 },
+        },
+        equipped: ['fusion_01'],
+      },
+      forge: {
+        seed: 'seed', attempts: {}, history: [],
+        fusion: {
+          discoveredRecipes: ['fusion_recipe_01'],
+          history: [{ operationId: 'op-1', recipeId: 'fusion_recipe_01' }],
+          dailyActivations: { 'fusion_01:first-habit-mana:2026-08-14': true },
+          weeklyActivations: {},
+        },
+      },
+      shop: { schemaVersion: 1, rotation: null, purchases: [] },
+    };
+    await store.set(STORAGE_KEY, JSON.stringify(fusionState));
+    const recovered = await store.get(STORAGE_KEY);
+    const parsed = parseState(recovered.value);
+    expect(parsed.inventory.collection).toHaveProperty('fusion_01');
+    expect(parsed.forge.fusion.discoveredRecipes).toEqual(['fusion_recipe_01']);
+    expect(parsed.forge.fusion.history[0].operationId).toBe('op-1');
+    expect(parsed.forge.fusion.dailyActivations).toHaveProperty(
+      'fusion_01:first-habit-mana:2026-08-14',
+    );
+  });
+
   it('hace un recorrido exportar/importar sin perder información', () => {
     const backup = exportBackup(v34State);
     const restored = importBackup(defaultState(), backup);

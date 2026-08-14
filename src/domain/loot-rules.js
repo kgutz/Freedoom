@@ -2,27 +2,54 @@ import {
   AFFIX_DEFINITIONS,
   BOSS_BLOOD_DOUBLE_RATE,
   FORTUNE_CAP,
+  FUSION_BLOOD_COST,
+  FUSION_COIN_COST,
+  FUSION_RELIC_DEFINITIONS,
   FORGE_BLOOD_REQUIREMENTS,
   FORGE_COSTS,
   FORGE_PROBABILITIES,
   LOOT_SCHEMA_VERSION,
   MAX_EQUIPPED_RELICS,
   MAX_INITIAL_RELICS,
+  PERMANENTLY_INCOMPATIBLE_FUSIONS,
   RELIC_DROP_RATE,
+  RARITY_ORDER,
   RARITIES,
   RELIC_DEFINITIONS,
   SHOP_MAX_VISIBLE_RELICS,
   SHOP_ROTATION_DAYS,
   bossReward,
+  fusionDefinition,
+  isBaseRelic,
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
+import { HABIT_DAILY_XP_CAP } from './habit-rules.js';
 
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const arrayOf = (value) => (Array.isArray(value) ? value : []);
 const SHOP_ROTATION_MS = SHOP_ROTATION_DAYS * 24 * 60 * 60 * 1000;
 const OUTCOME_STATUSES = new Set(['obtained', 'failed', 'purchased']);
+const FUSION_HISTORY_LIMIT = 100;
+
+function higherRarity(left = 'rare', right = 'rare') {
+  return RARITY_ORDER.indexOf(right) > RARITY_ORDER.indexOf(left) ? right : left;
+}
+
+export function fusionRarityFromAffixes(baseRarity = 'rare', affixes = []) {
+  const uniqueAffixCount = new Set(
+    arrayOf(affixes).filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId])),
+  ).size;
+  const affixRarity = uniqueAffixCount >= 2
+    ? 'mythic'
+    : uniqueAffixCount === 1 ? 'legendary' : 'rare';
+  return higherRarity(RARITIES[baseRarity] ? baseRarity : 'rare', affixRarity);
+}
+
+export function fusionPairKey(leftId, rightId) {
+  return [String(leftId || ''), String(rightId || '')].sort().join('+');
+}
 
 export function emptyLootState() {
   return {
@@ -36,11 +63,18 @@ export function emptyLootState() {
     },
     inventory: {
       relics: {},
+      collection: {},
       equipped: [],
       dailyActivations: {},
       weeklyActivations: {},
+      constancy: { cycleId: '', charge: 0 },
     },
-    forge: { attempts: {}, history: [] },
+    forge: {
+      seed: '',
+      attempts: {},
+      history: [],
+      fusion: { discoveredRecipes: [], history: [], dailyActivations: {}, weeklyActivations: {} },
+    },
     shop: {
       schemaVersion: 1,
       rotation: null,
@@ -52,17 +86,58 @@ export function emptyLootState() {
 function normalizeRelicRecord(id, value) {
   const relic = objectOf(value);
   const rarity = RARITIES[relic.rarity] ? relic.rarity : 'rare';
+  const definition = relicDefinition(id);
+  const fusion = Boolean(definition?.recipeId);
+  const affixes = [...new Set(arrayOf(relic.affixes))]
+    .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId]));
+  const normalizedRarity = fusion ? fusionRarityFromAffixes(rarity, affixes) : rarity;
+  const inheritedEffects = Object.fromEntries(
+    Object.entries(objectOf(relic.inheritedEffects))
+      .filter(([baseId]) => isBaseRelic(baseId))
+      .map(([baseId, effect]) => [baseId, Math.max(0, Number(effect) || 0)]),
+  );
+  const ingredientSnapshots = Object.fromEntries(
+    Object.entries(objectOf(relic.ingredientSnapshots))
+      .filter(([baseId]) => isBaseRelic(baseId))
+      .map(([baseId, snapshot]) => {
+        const safe = objectOf(snapshot);
+        const safeRarity = RARITIES[safe.rarity] ? safe.rarity : 'rare';
+        return [baseId, {
+          rarity: safeRarity,
+          rank: Math.min(3, Math.max(1, Number(safe.rank) || 1)),
+          affixes: [...new Set(arrayOf(safe.affixes))]
+            .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId])),
+          effectValue: Math.max(0, Number(safe.effectValue) || 0),
+        }];
+      }),
+  );
   return {
     unlocked: relic.unlocked !== false,
-    rarity,
-    rank: Math.min(3, Math.max(1, Number(relic.rank) || 1)),
-    affixes: [...new Set(arrayOf(relic.affixes))]
-      .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId]))
-      .slice(0, RARITIES[rarity].affixCount),
+    rarity: normalizedRarity,
+    rank: fusion ? 1 : Math.min(3, Math.max(1, Number(relic.rank) || 1)),
+    affixes: affixes.slice(0,
+      fusion ? Object.keys(AFFIX_DEFINITIONS).length : RARITIES[rarity].affixCount),
     obtainedAt: Number(relic.obtainedAt) || 0,
     bossIndex: Number.isFinite(relic.bossIndex)
       ? relic.bossIndex
-      : relicDefinition(id)?.bossIndex,
+      : definition?.bossIndex,
+    ...(fusion ? {
+      kind: 'fusion',
+      recipeId: definition.recipeId,
+      ingredientIds: [...definition.ingredientIds],
+      inheritedEffects,
+      ingredientSnapshots,
+    } : {}),
+  };
+}
+
+function collectionEntry(id, value, fallbackRelic = null) {
+  const raw = objectOf(value);
+  const historical = raw.lastOwnedRecord || fallbackRelic;
+  return {
+    discoveredAt: Math.max(0, Number(raw.discoveredAt) || Number(fallbackRelic?.obtainedAt) || 0),
+    kind: fusionDefinition(id) ? 'fusion' : 'base',
+    ...(historical ? { lastOwnedRecord: normalizeRelicRecord(id, historical) } : {}),
   };
 }
 
@@ -80,6 +155,15 @@ export function normalizeLootState(state = {}) {
         return [id, normalizeRelicRecord(id, value)];
       }),
   );
+  const collection = Object.fromEntries(
+    Object.entries(objectOf(inventory.collection))
+      .filter(([id]) => Boolean(relicDefinition(id)))
+      .map(([id, value]) => [id, collectionEntry(id, value)]),
+  );
+  Object.entries(relics).forEach(([id, relic]) => {
+    collection[id] = collectionEntry(id, collection[id], relic);
+    collection[id].lastOwnedRecord = relic;
+  });
   const claimedBossRewards = new Set(arrayOf(loot.claimedBossRewards));
   const bossRelicOutcomes = {};
   for (const [rewardId, rawOutcome] of Object.entries(objectOf(loot.bossRelicOutcomes))) {
@@ -110,8 +194,17 @@ export function normalizeLootState(state = {}) {
       };
     }
   }
+  const equippedTypes = new Set();
   const equipped = [...new Set(arrayOf(inventory.equipped))]
     .filter((id) => relics[id]?.unlocked)
+    .filter((id) => {
+      const equipmentType = relicDefinition(id)?.equipmentType;
+      if (!equipmentType || !equippedTypes.has(equipmentType)) {
+        if (equipmentType) equippedTypes.add(equipmentType);
+        return true;
+      }
+      return false;
+    })
     .slice(0, MAX_EQUIPPED_RELICS);
   return {
     economy: {
@@ -137,13 +230,54 @@ export function normalizeLootState(state = {}) {
     },
     inventory: {
       relics,
+      collection,
       equipped,
       dailyActivations: { ...objectOf(inventory.dailyActivations) },
       weeklyActivations: { ...objectOf(inventory.weeklyActivations) },
+      constancy: {
+        cycleId: typeof inventory.constancy?.cycleId === 'string'
+          ? inventory.constancy.cycleId
+          : '',
+        charge: Math.min(
+          6,
+          Math.max(0, Math.trunc(Number(inventory.constancy?.charge) || 0)),
+        ),
+      },
     },
     forge: {
+      seed: typeof forge.seed === 'string' ? forge.seed : '',
       attempts: { ...objectOf(forge.attempts) },
       history: arrayOf(forge.history).slice(-100),
+      fusion: (() => {
+        const fusion = objectOf(forge.fusion);
+        const validRecipeIds = new Set(FUSION_RELIC_DEFINITIONS.map((item) => item.recipeId));
+        const history = arrayOf(fusion.history)
+          .filter((entry) => validRecipeIds.has(entry?.recipeId))
+          .map((entry) => ({ ...entry }))
+          .slice(-FUSION_HISTORY_LIMIT);
+        history.forEach((entry) => {
+          const definition = fusionDefinition(entry.recipeId);
+          if (!definition) return;
+          if (!collection[definition.id]) {
+            collection[definition.id] = collectionEntry(definition.id, {
+              discoveredAt: entry.at,
+              lastOwnedRecord: entry.result,
+            });
+          }
+          Object.entries(objectOf(entry.ingredients)).forEach(([id, relic]) => {
+            if (isBaseRelic(id) && !collection[id]) {
+              collection[id] = collectionEntry(id, { discoveredAt: entry.at, lastOwnedRecord: relic });
+            }
+          });
+        });
+        return {
+          discoveredRecipes: [...new Set(arrayOf(fusion.discoveredRecipes))]
+            .filter((id) => validRecipeIds.has(id)),
+          history,
+          dailyActivations: { ...objectOf(fusion.dailyActivations) },
+          weeklyActivations: { ...objectOf(fusion.weeklyActivations) },
+        };
+      })(),
     },
     shop: {
       schemaVersion: Math.max(1, Number(shop.schemaVersion) || 0),
@@ -222,6 +356,46 @@ export function deterministicRandom(seed, index = 0) {
   value ^= value >>> 17;
   value ^= value << 5;
   return (value >>> 0) / 4294967296;
+}
+
+function legacyForgeSeed(state = {}) {
+  const config = objectOf(state.config);
+  const game = objectOf(state.game);
+  const identity = [
+    'freedoom-forge-legacy-v1',
+    config.startDate || '',
+    config.startLimit || '',
+    game.name || '',
+    game.cls || '',
+  ].join('|');
+  return `legacy-${hashString(identity).toString(36)}-${hashString(`${identity}:seed`).toString(36)}`;
+}
+
+export function createForgeSeed(randomSource = globalThis.crypto) {
+  if (randomSource?.getRandomValues) {
+    const values = new Uint32Array(4);
+    randomSource.getRandomValues(values);
+    return `forge-${Array.from(values, (value) => value.toString(36)).join('-')}`;
+  }
+  const fallback = `${Math.random()}:${Math.random()}:${Date.now()}`;
+  return `forge-${hashString(fallback).toString(36)}-${hashString(`${fallback}:seed`).toString(36)}`;
+}
+
+export function initializeForgeSeed(state = {}, seed = null) {
+  const normalized = normalizeLootState(state);
+  if (!normalized.forge.seed) {
+    const hasExistingJourney = state.onboarded === true || Boolean(state.game?.cls);
+    normalized.forge.seed = String(
+      seed || (hasExistingJourney ? legacyForgeSeed(state) : createForgeSeed()),
+    );
+  }
+  return normalized;
+}
+
+export function forgeAttemptRoll(seed, relicId, targetRank, logicalAttemptNumber) {
+  return deterministicRandom(
+    `forge:v1:${seed}:${relicId}:rank-${targetRank}:attempt-${logicalAttemptNumber}`,
+  );
 }
 
 export function deterministicRelicRoll(relicId, seed, obtainedAt = 0) {
@@ -306,7 +480,15 @@ export function grantBossRewards({
       Math.max(0, Math.min(0.999999999, bloodRoll)) < BOSS_BLOOD_DOUBLE_RATE;
     const bonusBossBlood = bloodDoubled ? reward.bossBlood : 0;
     const bossBlood = reward.bossBlood + bonusBossBlood;
-    if (obtained) normalized.inventory.relics[definition.id] = relic;
+    if (obtained) {
+      normalized.inventory.relics[definition.id] = relic;
+      normalized.inventory.collection[definition.id] = collectionEntry(
+        definition.id,
+        normalized.inventory.collection[definition.id],
+        relic,
+      );
+      normalized.inventory.collection[definition.id].lastOwnedRecord = relic;
+    }
     normalized.economy.coins += coins;
     normalized.economy.bossBlood += bossBlood;
     normalized.economy.transactions.push({
@@ -371,6 +553,18 @@ function failedRelicIds(normalized) {
     .map((definition) => definition.id);
 }
 
+function recoverableRelicIds(normalized) {
+  const failed = failedRelicIds(normalized);
+  const consumed = RELIC_DEFINITIONS
+    .filter((definition) =>
+      !normalized.inventory.relics[definition.id] &&
+      normalized.inventory.collection[definition.id]?.lastOwnedRecord &&
+      normalized.forge.fusion.history.some((entry) =>
+        Boolean(entry.ingredients?.[definition.id])))
+    .map((definition) => definition.id);
+  return [...new Set([...failed, ...consumed])];
+}
+
 function rotationSelection(relicIds, period) {
   const sorted = [...new Set(relicIds)].sort();
   if (sorted.length <= SHOP_MAX_VISIBLE_RELICS) return sorted;
@@ -383,7 +577,7 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   const normalized = normalizeLootState(lootState);
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
   const previous = normalized.shop.rotation;
-  const pending = failedRelicIds(normalized);
+  const pending = recoverableRelicIds(normalized);
   const elapsedPeriods = previous && safeNow >= previous.endsAt
     ? Math.floor((safeNow - previous.endsAt) / SHOP_ROTATION_MS) + 1
     : 0;
@@ -412,10 +606,17 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   return normalized;
 }
 
-export function shopPriceForRelic(relicId) {
+export function shopPriceForRelic(relicId, source = 'failed') {
   const definition = relicDefinition(relicId);
   const reward = definition ? bossReward(definition.bossIndex) : null;
-  return reward ? { coinPrice: reward.coins * 2, bloodPrice: reward.bossBlood } : null;
+  if (!reward) return null;
+  const normalCoinPrice = reward.coins * 2;
+  return {
+    coinPrice: source === 'fusion-consumed'
+      ? Math.round(normalCoinPrice * 1.25)
+      : normalCoinPrice,
+    bloodPrice: reward.bossBlood,
+  };
 }
 
 export function shopOffers(lootState, nowTimestamp = Date.now()) {
@@ -426,14 +627,21 @@ export function shopOffers(lootState, nowTimestamp = Date.now()) {
       const outcome = definition
         ? normalized.loot.bossRelicOutcomes[definition.rewardId]
         : null;
-      const price = definition ? shopPriceForRelic(definition.id) : null;
-      if (!definition || !price || outcome?.status !== 'failed' ||
-          normalized.inventory.relics[relicId]) return null;
+      const collection = normalized.inventory.collection[relicId];
+      const consumed = Boolean(collection?.lastOwnedRecord) &&
+        normalized.forge.fusion.history.some((entry) => Boolean(entry.ingredients?.[relicId]));
+      const source = outcome?.status === 'failed'
+        ? 'failed'
+        : consumed ? 'fusion-consumed' : null;
+      const price = definition && source ? shopPriceForRelic(definition.id, source) : null;
+      if (!definition || !price || !source || normalized.inventory.relics[relicId]) return null;
+      const historicalRelic = source === 'failed' ? outcome?.relic : collection.lastOwnedRecord;
       return {
         relicId,
         definition,
-        relic: normalizeRelicRecord(relicId, outcome.relic),
+        relic: normalizeRelicRecord(relicId, historicalRelic),
         bossIndex: definition.bossIndex,
+        source,
         ...price,
       };
     })
@@ -468,18 +676,27 @@ export function purchaseShopRelic({
     unlocked: true,
     obtainedAt: nowTimestamp,
   };
+  normalized.inventory.collection[relicId] = collectionEntry(
+    relicId,
+    normalized.inventory.collection[relicId],
+    normalized.inventory.relics[relicId],
+  );
+  normalized.inventory.collection[relicId].lastOwnedRecord = normalized.inventory.relics[relicId];
   const outcome = normalized.loot.bossRelicOutcomes[offer.definition.rewardId];
-  normalized.loot.bossRelicOutcomes[offer.definition.rewardId] = {
-    ...outcome,
-    status: 'purchased',
-    purchasedAt: nowTimestamp,
-    operationId,
-  };
+  if (offer.source === 'failed') {
+    normalized.loot.bossRelicOutcomes[offer.definition.rewardId] = {
+      ...outcome,
+      status: 'purchased',
+      purchasedAt: nowTimestamp,
+      operationId,
+    };
+  }
   const purchase = {
     id: `shop:${operationId}`,
     operationId,
     relicId,
     rewardId: offer.definition.rewardId,
+    source: offer.source,
     coinsSpent: offer.coinPrice,
     bossBloodSpent: offer.bloodPrice,
     at: nowTimestamp,
@@ -532,6 +749,174 @@ export function payClassChange({
   return { ...normalized, ok: true, spentBossBlood: 1, transaction };
 }
 
+function rarityForFusion(ingredients, affixes) {
+  const highestIngredientRarity = Object.values(ingredients)
+    .reduce((best, relic) => higherRarity(best, relic.rarity), 'rare');
+  return fusionRarityFromAffixes(highestIngredientRarity, affixes);
+}
+
+function ingredientSnapshot(relicId, relic) {
+  return {
+    rarity: relic.rarity,
+    rank: relic.rank,
+    affixes: [...relic.affixes],
+    effectValue: relicRankEffect(relicId, relic.rank),
+  };
+}
+
+export function fusionRecipeStatus(leftId, rightId) {
+  if (!leftId || !rightId) return { status: 'incomplete', definition: null };
+  if (leftId === rightId) return { status: 'same-relic', definition: null };
+  const pairKey = fusionPairKey(leftId, rightId);
+  const definition = FUSION_RELIC_DEFINITIONS.find((recipe) =>
+    fusionPairKey(...recipe.ingredientIds) === pairKey) || null;
+  if (definition) return { status: 'available', definition };
+  const incompatible = PERMANENTLY_INCOMPATIBLE_FUSIONS.some((pair) =>
+    fusionPairKey(...pair) === pairKey);
+  return { status: incompatible ? 'incompatible' : 'not-designed', definition: null };
+}
+
+export function fusionPreview(lootState, leftId, rightId) {
+  const normalized = normalizeLootState(lootState);
+  const recipe = fusionRecipeStatus(leftId, rightId);
+  const ownsLeft = Boolean(normalized.inventory.relics[leftId]);
+  const ownsRight = Boolean(normalized.inventory.relics[rightId]);
+  const baseIngredients = isBaseRelic(leftId) && isBaseRelic(rightId);
+  const previewIngredients = ownsLeft && ownsRight
+    ? {
+        [leftId]: normalized.inventory.relics[leftId],
+        [rightId]: normalized.inventory.relics[rightId],
+      }
+    : null;
+  const resultAffixes = previewIngredients
+    ? [...new Set(Object.values(previewIngredients).flatMap((relic) => relic.affixes))]
+    : [];
+  const resultRarity = previewIngredients
+    ? rarityForFusion(previewIngredients, resultAffixes)
+    : null;
+  const discovered = Boolean(recipe.definition &&
+    normalized.forge.fusion.discoveredRecipes.includes(recipe.definition.recipeId));
+  let reason = null;
+  if (recipe.status !== 'available') reason = recipe.status;
+  else if (!baseIngredients) reason = 'base-only';
+  else if (normalized.inventory.relics[recipe.definition.id]) reason = 'already-owned';
+  else if (!ownsLeft || !ownsRight) reason = 'missing-ingredients';
+  else if (normalized.economy.coins < FUSION_COIN_COST) reason = 'coins';
+  else if (normalized.economy.bossBlood < FUSION_BLOOD_COST) reason = 'blood';
+  return {
+    ok: reason === null,
+    reason,
+    status: recipe.status,
+    definition: recipe.definition,
+    discovered,
+    ingredientIds: [leftId, rightId].filter(Boolean),
+    coinCost: FUSION_COIN_COST,
+    bloodCost: FUSION_BLOOD_COST,
+    coinsAvailable: normalized.economy.coins,
+    bloodAvailable: normalized.economy.bossBlood,
+    resultRarity,
+    resultAffixes,
+  };
+}
+
+export function fuseRelics({
+  state,
+  leftId,
+  rightId,
+  operationId,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = normalizeLootState(state);
+  if (!operationId) return { ...normalized, ok: false, reason: 'missing-operation' };
+  if (normalized.forge.fusion.history.some((entry) => entry.operationId === operationId) ||
+      normalized.economy.transactions.some((entry) => entry.id === `fusion:${operationId}`)) {
+    return { ...normalized, ok: false, reason: 'duplicate-operation' };
+  }
+  const preview = fusionPreview(normalized, leftId, rightId);
+  if (!preview.ok) return { ...normalized, ok: false, ...preview };
+  const definition = preview.definition;
+  const ingredients = Object.fromEntries(definition.ingredientIds.map((id) => [
+    id,
+    { ...normalized.inventory.relics[id], affixes: [...normalized.inventory.relics[id].affixes] },
+  ]));
+  const ingredientSnapshots = Object.fromEntries(
+    Object.entries(ingredients).map(([id, relic]) => [id, ingredientSnapshot(id, relic)]),
+  );
+  const inheritedEffects = Object.fromEntries(
+    Object.entries(ingredientSnapshots).map(([id, snapshot]) => [id, snapshot.effectValue]),
+  );
+  const affixes = [...new Set(Object.values(ingredients).flatMap((relic) => relic.affixes))];
+  const fusedRelic = normalizeRelicRecord(definition.id, {
+    unlocked: true,
+    kind: 'fusion',
+    recipeId: definition.recipeId,
+    rarity: rarityForFusion(ingredients, affixes),
+    rank: 1,
+    affixes,
+    obtainedAt: nowTimestamp,
+    ingredientSnapshots,
+    inheritedEffects,
+  });
+  const newlyDiscovered = !normalized.forge.fusion.discoveredRecipes.includes(definition.recipeId);
+  definition.ingredientIds.forEach((id) => {
+    normalized.inventory.collection[id] = collectionEntry(
+      id,
+      normalized.inventory.collection[id],
+      ingredients[id],
+    );
+    normalized.inventory.collection[id].lastOwnedRecord = ingredients[id];
+    delete normalized.inventory.relics[id];
+  });
+  normalized.inventory.equipped = normalized.inventory.equipped.filter(
+    (id) => !definition.ingredientIds.includes(id),
+  );
+  normalized.inventory.relics[definition.id] = fusedRelic;
+  normalized.inventory.collection[definition.id] = collectionEntry(
+    definition.id,
+    { discoveredAt: nowTimestamp, lastOwnedRecord: fusedRelic },
+    fusedRelic,
+  );
+  normalized.economy.coins -= FUSION_COIN_COST;
+  normalized.economy.bossBlood -= FUSION_BLOOD_COST;
+  if (newlyDiscovered) normalized.forge.fusion.discoveredRecipes.push(definition.recipeId);
+  const historyEntry = {
+    id: `fusion:${operationId}`,
+    operationId,
+    recipeId: definition.recipeId,
+    resultRelicId: definition.id,
+    ingredientIds: [...definition.ingredientIds],
+    ingredients,
+    result: fusedRelic,
+    coinsSpent: FUSION_COIN_COST,
+    bossBloodSpent: FUSION_BLOOD_COST,
+    newlyDiscovered,
+    at: nowTimestamp,
+  };
+  normalized.forge.fusion.history.push(historyEntry);
+  normalized.forge.fusion.history = normalized.forge.fusion.history.slice(-FUSION_HISTORY_LIMIT);
+  normalized.economy.transactions.push({
+    id: `fusion:${operationId}`,
+    operationId,
+    type: 'relic_fusion',
+    recipeId: definition.recipeId,
+    resultRelicId: definition.id,
+    coins: -FUSION_COIN_COST,
+    bossBlood: -FUSION_BLOOD_COST,
+    at: nowTimestamp,
+  });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return {
+    ...normalized,
+    ok: true,
+    preview,
+    fusedRelic,
+    historyEntry,
+    newlyDiscovered,
+    spentCoins: FUSION_COIN_COST,
+    spentBossBlood: FUSION_BLOOD_COST,
+  };
+}
+
 export function equipRelic(lootState, relicId, replaceIndex = null) {
   const normalized = normalizeLootState(lootState);
   if (!normalized.inventory.relics[relicId]?.unlocked) {
@@ -540,13 +925,24 @@ export function equipRelic(lootState, relicId, replaceIndex = null) {
   if (normalized.inventory.equipped.includes(relicId)) {
     return { ...normalized, ok: false, reason: 'already-equipped' };
   }
+  const validReplaceIndex = Number.isInteger(replaceIndex) &&
+    replaceIndex >= 0 && replaceIndex < MAX_EQUIPPED_RELICS;
+  const equipmentType = relicDefinition(relicId)?.equipmentType || '';
+  const conflictingRelicId = normalized.inventory.equipped.find((equippedId, index) =>
+    (!validReplaceIndex || index !== replaceIndex) &&
+    equipmentType && relicDefinition(equippedId)?.equipmentType === equipmentType);
+  if (conflictingRelicId) {
+    return {
+      ...normalized,
+      ok: false,
+      reason: 'equipment-type-conflict',
+      equipmentType,
+      conflictingRelicId,
+    };
+  }
   if (normalized.inventory.equipped.length < MAX_EQUIPPED_RELICS) {
     normalized.inventory.equipped.push(relicId);
-  } else if (
-    Number.isInteger(replaceIndex) &&
-    replaceIndex >= 0 &&
-    replaceIndex < MAX_EQUIPPED_RELICS
-  ) {
+  } else if (validReplaceIndex) {
     normalized.inventory.equipped[replaceIndex] = relicId;
   } else {
     return { ...normalized, ok: false, reason: 'slots-full' };
@@ -592,6 +988,43 @@ export function equippedRelicBonuses(lootState) {
   return result;
 }
 
+export function equippedRelicEffectSources(lootState, baseRelicId) {
+  const normalized = normalizeLootState(lootState);
+  return normalized.inventory.equipped.flatMap((relicId) => {
+    const relic = normalized.inventory.relics[relicId];
+    if (!relic) return [];
+    if (relicId === baseRelicId) {
+      return [{ relicId, baseRelicId, value: relicRankEffect(baseRelicId, relic.rank) }];
+    }
+    const value = Number(relic.inheritedEffects?.[baseRelicId]);
+    return value > 0 ? [{ relicId, baseRelicId, value }] : [];
+  });
+}
+
+export function effectActivationKey(sourceRelicId, baseRelicId, periodKey) {
+  return sourceRelicId === baseRelicId
+    ? activationKey(baseRelicId, periodKey)
+    : `${sourceRelicId}:${baseRelicId}:${periodKey}`;
+}
+
+export function availableDailyEffectSources(lootState, baseRelicId, dayKey) {
+  const normalized = normalizeLootState(lootState);
+  return equippedRelicEffectSources(normalized, baseRelicId).filter((source) =>
+    !normalized.inventory.dailyActivations[
+      effectActivationKey(source.relicId, baseRelicId, dayKey)
+    ]);
+}
+
+export function markDailyEffectSources(lootState, baseRelicId, dayKey, sources, value = true) {
+  const normalized = normalizeLootState(lootState);
+  arrayOf(sources).forEach((source) => {
+    normalized.inventory.dailyActivations[
+      effectActivationKey(source.relicId, baseRelicId, dayKey)
+    ] = value;
+  });
+  return normalized;
+}
+
 export function activationKey(relicId, periodKey) {
   return `${relicId}:${periodKey}`;
 }
@@ -612,10 +1045,147 @@ export function markDailyRelicActivation(lootState, relicId, dayKey) {
   return normalized;
 }
 
+export function constancyCharge(outcomes = []) {
+  let charge = 0;
+  for (const outcome of arrayOf(outcomes)) {
+    if (outcome === 'hit') charge = Math.min(6, charge + 1);
+    else if (outcome === 'fail') charge = 0;
+  }
+  return charge;
+}
+
+export function constancyActivationKey(cycleId) {
+  return `relic_04:constancy:${cycleId}`;
+}
+
+export function syncRelicConstancy(lootState, { cycleId, outcomes = [] }) {
+  const normalized = normalizeLootState(lootState);
+  const activationKey = constancyActivationKey(cycleId);
+  const alreadyActivated = Boolean(normalized.inventory.weeklyActivations[activationKey]) ||
+    Object.keys(normalized.inventory.weeklyActivations).some((key) =>
+      key.endsWith(`:constancy:${cycleId}`));
+  normalized.inventory.constancy = {
+    cycleId,
+    charge: alreadyActivated
+      ? 0
+      : constancyCharge(outcomes),
+  };
+  return normalized;
+}
+
+export function activateRelicConstancy({
+  state,
+  cycleId,
+  outcomes = [],
+  bossWon = false,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = syncRelicConstancy(state, { cycleId, outcomes });
+  const activationKey = constancyActivationKey(cycleId);
+  if (!bossWon) return { ...normalized, activated: false, xp: 0, activationKey };
+  let xp = 0;
+  const activations = [];
+  if (normalized.inventory.constancy.charge >= 6) {
+    for (const source of equippedRelicEffectSources(normalized, 'relic_04')) {
+      const key = source.relicId === 'relic_04'
+        ? activationKey
+        : `${source.relicId}:constancy:${cycleId}`;
+      if (normalized.inventory.weeklyActivations[key]) continue;
+      normalized.inventory.weeklyActivations[key] = {
+        type: 'constancy', cycleId, relicId: source.relicId, xp: source.value, at: nowTimestamp,
+      };
+      xp += source.value;
+      activations.push(key);
+    }
+  }
+  const fulfilledDays = arrayOf(outcomes).filter((outcome) => outcome === 'hit').length;
+  for (const fusionId of ['fusion_02', 'fusion_05']) {
+    if (!normalized.inventory.equipped.includes(fusionId) || fulfilledDays < 6) continue;
+    const definition = fusionDefinition(fusionId);
+    const key = `${fusionId}:six-days:${cycleId}`;
+    if (!definition || normalized.forge.fusion.weeklyActivations[key]) continue;
+    const bonus = definition.synergy.value;
+    normalized.forge.fusion.weeklyActivations[key] = {
+      type: definition.synergy.type, cycleId, relicId: fusionId, xp: bonus, at: nowTimestamp,
+    };
+    xp += bonus;
+    activations.push(key);
+  }
+  if (activations.length) normalized.inventory.constancy.charge = 0;
+  return {
+    ...normalized,
+    activated: activations.length > 0,
+    xp,
+    activationKey,
+    activations,
+  };
+}
+
+export function fusionDailyKey(fusionId, effect, dayKey) {
+  return `${fusionId}:${effect}:${dayKey}`;
+}
+
+export function canActivateFusionDaily(lootState, fusionId, effect, dayKey) {
+  const normalized = normalizeLootState(lootState);
+  const key = fusionDailyKey(fusionId, effect, dayKey);
+  return normalized.inventory.equipped.includes(fusionId) &&
+    !normalized.forge.fusion.dailyActivations[key];
+}
+
+export function markFusionDaily(lootState, fusionId, effect, dayKey, value = true) {
+  const normalized = normalizeLootState(lootState);
+  normalized.forge.fusion.dailyActivations[
+    fusionDailyKey(fusionId, effect, dayKey)
+  ] = value;
+  return normalized;
+}
+
+export function awardFusionAllHabitsXp({
+  state,
+  habitState,
+  dayKey,
+  cap = HABIT_DAILY_XP_CAP,
+}) {
+  const normalized = normalizeLootState(state);
+  const habits = objectOf(habitState);
+  const items = arrayOf(habits.items);
+  const entries = { ...objectOf(habits.entries) };
+  if (!canActivateFusionDaily(normalized, 'fusion_04', 'all-habits', dayKey)) {
+    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
+  }
+  const daily = items.filter((habit) => habit?.active !== false && habit?.frequency === 'daily');
+  const periodKey = `d:${dayKey}`;
+  const complete = daily.length > 0 && daily.every((habit) =>
+    (Number(entries[`${habit.id}|${periodKey}`]?.count) || 0) >=
+      Math.max(1, Number(habit.target) || 1));
+  if (!complete) {
+    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
+  }
+  const used = Object.values(entries).reduce((total, entry) =>
+    entry?.frequency === 'daily' && entry?.periodKey === periodKey
+      ? total + Math.max(0, Number(entry.xpAwarded) || 0)
+      : total, 0);
+  const xp = Math.min(5, Math.max(0, Math.trunc(Number(cap) || 0) - used));
+  if (xp <= 0) {
+    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
+  }
+  entries[`fusion_04|${periodKey}`] = {
+    habitId: 'fusion_04', periodKey, frequency: 'daily', count: 1, xpAwarded: xp, source: 'fusion',
+  };
+  const marked = markFusionDaily(normalized, 'fusion_04', 'all-habits', dayKey, xp);
+  return {
+    ...marked,
+    habitState: { ...habits, items, entries },
+    activated: true,
+    xp,
+  };
+}
+
 export function forgePreview(lootState, relicId) {
   const normalized = normalizeLootState(lootState);
   const relic = normalized.inventory.relics[relicId];
   if (!relic) return { ok: false, reason: 'locked' };
+  if (!isBaseRelic(relicId)) return { ok: false, reason: 'fusion-not-upgradeable', relic };
   if (relic.rank >= 3) return { ok: false, reason: 'max-rank', relic };
   const targetRank = relic.rank + 1;
   const attemptKey = `${relicId}:rank-${targetRank}`;
@@ -643,7 +1213,7 @@ export function attemptForge({
   state,
   relicId,
   operationId,
-  randomValue = Math.random(),
+  randomValue = null,
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
@@ -659,8 +1229,18 @@ export function attemptForge({
   if (normalized.economy.bossBlood < preview.bloodRequired) {
     return { ...normalized, ok: false, reason: 'blood', preview };
   }
+  if (!normalized.forge.seed) normalized.forge.seed = legacyForgeSeed(state);
+  const logicalAttemptNumber = preview.failures + 1;
+  const resolvedRandomValue = Number.isFinite(randomValue)
+    ? randomValue
+    : forgeAttemptRoll(
+        normalized.forge.seed,
+        relicId,
+        preview.targetRank,
+        logicalAttemptNumber,
+      );
   normalized.economy.coins -= preview.cost;
-  const success = Math.max(0, Math.min(0.999999999, randomValue)) <
+  const success = Math.max(0, Math.min(0.999999999, resolvedRandomValue)) <
     preview.finalProbability / 100;
   const bossBloodSpent = success ? preview.bloodRequired : 0;
   if (success) {
@@ -684,6 +1264,9 @@ export function attemptForge({
     previousRank: preview.targetRank - 1,
     newRank: success ? preview.targetRank : preview.targetRank - 1,
     targetRank: preview.targetRank,
+    attemptKey: preview.attemptKey,
+    logicalAttemptNumber,
+    roll: resolvedRandomValue,
     coinsSpent: preview.cost,
     cost: preview.cost,
     bloodRequired: preview.bloodRequired,

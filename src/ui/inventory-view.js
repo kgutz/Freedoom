@@ -1,12 +1,16 @@
 import {
   AFFIX_DEFINITIONS,
+  ALL_RELIC_DEFINITIONS,
+  FUSION_RELIC_DEFINITIONS,
   RARITIES,
   RELIC_DEFINITIONS,
+  fusionDefinition,
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
 import {
   forgePreview,
+  fusionPreview,
   ensureShopRotation,
   normalizeLootState,
   shopOffers,
@@ -31,6 +35,13 @@ export function resourceValue(type, value, label = '') {
 }
 
 function relicArt(definition) {
+  if (definition.ingredientIds?.length === 2 && !definition.image) {
+    const ingredients = definition.ingredientIds.map((id) => relicDefinition(id));
+    return `<div class="relic-art relic-art--fusion relic-art--${definition.id}">
+      ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true">`).join('')}
+      <span class="fusion-art-sigil" aria-hidden="true">✦</span>
+    </div>`;
+  }
   return `<div class="relic-art relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${definition.bossIndex + 1}</span>
@@ -47,11 +58,41 @@ export function inventoryReferenceOffset(availableHeight, referenceHeight) {
   return Math.max(0, Math.floor((available - Math.min(reference, available)) / 2));
 }
 
+export function closeForgeInfoOutside(document, target) {
+  let closed = 0;
+  document.querySelectorAll?.('.forge-info[open]').forEach((details) => {
+    if (!details.contains(target)) {
+      details.removeAttribute('open');
+      closed += 1;
+    }
+  });
+  return closed;
+}
+
 function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
   if (relicId === 'relic_02' || relicId === 'relic_05') return `${value} MANÁ`;
-  if (relicId === 'relic_04') return `${value} PUNTOS`;
   return `${value} XP`;
+}
+
+function fusionEffectDescription(definition, relic) {
+  const value = (baseId) => Math.max(0, Number(relic.inheritedEffects?.[baseId]) || 0);
+  if (definition.id === 'fusion_01') {
+    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. El primer hábito recupera ${value('relic_02') + 3} Maná.`;
+  }
+  if (definition.id === 'fusion_02') {
+    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. La Constancia concede ${value('relic_04')} XP y alcanzar seis días cumplidos otorga 20 XP adicionales.`;
+  }
+  if (definition.id === 'fusion_03') {
+    return `El primer hábito recupera ${value('relic_02')} Maná. El primer hechizo cuesta ${value('relic_05')} Maná menos, o ${value('relic_05') + 3} menos si antes completas un hábito.`;
+  }
+  if (definition.id === 'fusion_04') {
+    return `El primer hábito concede ${value('relic_03')} XP y el primer hechizo cuesta ${value('relic_05')} Maná menos. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
+  }
+  if (definition.id === 'fusion_05') {
+    return `La Constancia concede ${value('relic_04')} XP y cada día cumplido otorga ${value('relic_06')} XP. Alcanzar seis días cumplidos concede 25 XP adicionales.`;
+  }
+  return definition.effectLabel;
 }
 
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
@@ -86,7 +127,8 @@ export function relicCardMarkup({ definition, relic, equipped = false, slot = nu
 function relicCollectionItemMarkup({ definition, relic, equipped = false }) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const accessibleName = `${definition.name}, ${rarity.label}, rango ${relic.rank}${equipped ? ', Equipada' : ''}`;
-  return `<button type="button" class="relic-collection-item ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}">
+  const fusion = Boolean(definition.recipeId);
+  return `<button type="button" class="relic-collection-item ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${fusion ? ' fusion-relic' : ''}${relic.currentlyOwned === false ? ' not-owned' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}">
     ${relicArt(definition)}
   </button>`;
 }
@@ -116,7 +158,7 @@ export function renderInventoryView(document, lootState) {
       ? relicCardMarkup({ definition, relic, equipped: true, slot })
       : `<div class="relic-slot-empty"><span>SLOT ${slot + 1}</span><b>VACÍO</b></div>`;
   }).join('');
-  const collection = RELIC_DEFINITIONS
+  const inventory = ALL_RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
     .map((definition) => relicCollectionItemMarkup({
       definition,
@@ -136,20 +178,48 @@ export function renderInventoryView(document, lootState) {
       <div class="equipped-relics">${equippedSlots}</div>
     </section>
     <section class="inventory-section">
-      <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.relics).length}/?</small></div>
-      <div class="relic-grid">${collection || '<div class="inventory-empty">Derrota a tu primer jefe para conseguir una reliquia.</div>'}</div>
+      <div class="inventory-section-head"><span>INVENTARIO</span><small>${Object.keys(normalized.inventory.relics).length}</small></div>
+      <div class="relic-grid">${inventory || '<div class="inventory-empty">No tienes reliquias disponibles.</div>'}</div>
+    </section>`;
+}
+
+export function renderCollectionView(document, lootState) {
+  const normalized = normalizeLootState(lootState);
+  const equipped = normalized.inventory.equipped;
+  const collection = ALL_RELIC_DEFINITIONS
+    .filter((definition) => normalized.inventory.collection[definition.id])
+    .map((definition) => relicCollectionItemMarkup({
+      definition,
+      relic: {
+        ...normalized.inventory.collection[definition.id].lastOwnedRecord,
+        currentlyOwned: Boolean(normalized.inventory.relics[definition.id]),
+      },
+      equipped: equipped.includes(definition.id),
+    }))
+    .join('');
+  const body = document.getElementById('collectionBody');
+  if (!body) return;
+  body.innerHTML = `
+    <section class="inventory-section collection-section">
+      <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.collection).length}/?</small></div>
+      <p class="collection-hint">Aquí permanecen todas las reliquias que has descubierto, incluso si ya no están en tu Inventario.</p>
+      <div class="relic-grid">${collection}<div class="relic-collection-unknown" aria-label="Reliquia desconocida">?</div>${collection ? '' : '<div class="inventory-empty">Derrota a tu primer jefe para descubrir una reliquia.</div>'}</div>
     </section>`;
 }
 
 export function renderRelicDetail(document, lootState, relicId) {
   const normalized = normalizeLootState(lootState);
-  const relic = normalized.inventory.relics[relicId];
+  const relic = normalized.inventory.relics[relicId] ||
+    normalized.inventory.collection[relicId]?.lastOwnedRecord;
   const definition = relicDefinition(relicId);
   const body = document.getElementById('relicDetailBody');
   if (!body || !relic || !definition) return false;
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
-  const equipped = normalized.inventory.equipped.includes(relicId);
-  const equipmentActions = equipped
+  const owned = Boolean(normalized.inventory.relics[relicId]);
+  const equipped = owned && normalized.inventory.equipped.includes(relicId);
+  const equipmentActions = !owned
+    ? '<div class="relic-not-owned">DESCUBIERTA · NO POSEÍDA</div>'
+    : equipped
     ? `<button type="button" data-unequip-relic="${relicId}">DESEQUIPAR</button>`
     : normalized.inventory.equipped.length < 2
       ? `<button type="button" data-equip-relic="${relicId}">EQUIPAR</button>`
@@ -163,18 +233,23 @@ export function renderRelicDetail(document, lootState, relicId) {
         return `<li><b class="relic-affix-name">${escapeHtml(affix.name)}</b><p>${escapeHtml(affix.description)}</p></li>`;
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
-  const effect = relicRankEffect(relicId, relic.rank);
+  const fusion = Boolean(definition.recipeId);
+  const effect = fusion ? 0 : relicRankEffect(relicId, relic.rank);
+  const constancy = relicId === 'relic_04' || relic.inheritedEffects?.relic_04
+    ? `<div class="relic-constancy" aria-label="Carga de Constancia">🔥 Carga: <b>${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b></div>`
+    : '';
   body.innerHTML = `<div class="relic-detail-frame ${rarityClass(relic.rarity)}">
       <div class="relic-detail-art">${relicArt(definition)}</div>
       <div class="rarity-label">${rarity.label}</div>
       <h3>${escapeHtml(definition.name)}</h3>
-      <div class="relic-rank">RANGO ${relic.rank}</div>
+      <div class="relic-rank">${fusion ? 'RELIQUIA FUSIONADA' : `RANGO ${relic.rank}`}</div>
     </div>
-    <div class="relic-effect"><span>EFECTO PRINCIPAL</span><p>${escapeHtml(definition.effectLabel)} <b>Valor actual: ${effect}${relicId === 'relic_04' ? ' puntos porcentuales' : relicId === 'relic_01' ? ' HP' : relicId === 'relic_02' || relicId === 'relic_05' ? ' Maná' : ' XP'}</b></p></div>
+    ${constancy}
+    <div class="relic-effect"><span>EFECTO PRINCIPAL</span><p>${fusion ? escapeHtml(fusionEffectDescription(definition, relic)) : `${escapeHtml(definition.effectLabel)} <b>Valor actual: ${effect}${relicId === 'relic_01' ? ' HP' : relicId === 'relic_02' || relicId === 'relic_05' ? ' Maná' : ' XP'}</b>`}</p></div>
     <div class="relic-affixes"><span>EFECTOS EXTRAS</span><ul>${affixes}</ul></div>
     <div class="relic-equip-actions">
       ${equipmentActions}
-      <button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>
+      ${owned && !fusion ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
     </div>`;
   return true;
 }
@@ -190,8 +265,9 @@ export function renderRelicEffectInfo(document, effectId) {
   return true;
 }
 
-export function renderForgeView(document, lootState, selectedRelicId = null) {
+export function renderForgeView(document, lootState, selectedRelicId = null, options = {}) {
   const normalized = normalizeLootState(lootState);
+  const mode = options.mode === 'fusion' ? 'fusion' : 'upgrade';
   const ownedDefinitions = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id]);
   const selectedDefinition = ownedDefinitions.find((definition) => definition.id === selectedRelicId)
@@ -199,8 +275,12 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
     || null;
   const body = document.getElementById('forgeBody');
   if (!body) return null;
+  if (mode === 'fusion') {
+    renderFusionView(document, normalized, options.fusionLeftId, options.fusionRightId);
+    return selectedRelicId;
+  }
   if (!selectedDefinition) {
-    body.innerHTML = `<div class="forge-empty">
+    body.innerHTML = `${forgeModeTabs('upgrade')}<div class="forge-empty">
       <div class="forge-empty-slot">?</div>
       <h3>LA FORJA ESPERA</h3>
       <p>Derrota a un jefe para conseguir tu primera reliquia.</p>
@@ -236,7 +316,8 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
     </button>`;
   }).join('');
   body.innerHTML = `
-    <div class="forge-toolbar"><strong>FORJA</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    ${forgeModeTabs('upgrade')}
+    <div class="forge-toolbar"><strong>MEJORAR</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="forge-collection" aria-label="Selecciona una reliquia">
       <div class="forge-relic-grid">${choices}</div>
     </section>
@@ -248,6 +329,69 @@ export function renderForgeView(document, lootState, selectedRelicId = null) {
       <div class="forge-panel">${forgeControls}</div>
     </section>`;
   return relicId;
+}
+
+function forgeModeTabs(active) {
+  return `<div class="forge-mode-tabs" role="tablist" aria-label="Modo de Forja">
+    <button type="button" data-forge-mode="upgrade" class="${active === 'upgrade' ? 'active' : ''}" aria-selected="${active === 'upgrade'}">MEJORAR</button>
+    <button type="button" data-forge-mode="fusion" class="${active === 'fusion' ? 'active' : ''}" aria-selected="${active === 'fusion'}">FUSIONAR</button>
+  </div>`;
+}
+
+function fusionSlotMarkup(definition, label) {
+  return definition
+    ? `<div class="fusion-slot filled">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></div>`
+    : `<div class="fusion-slot"><span>?</span><small>${label}</small></div>`;
+}
+
+export function renderFusionView(document, lootState, leftId = null, rightId = null) {
+  const normalized = normalizeLootState(lootState);
+  const body = document.getElementById('forgeBody');
+  if (!body) return null;
+  const left = relicDefinition(leftId);
+  const right = relicDefinition(rightId);
+  const preview = fusionPreview(normalized, leftId, rightId);
+  const resultKnown = preview.definition && preview.discovered;
+  const resultMarkup = preview.definition && resultKnown
+    ? fusionSlotMarkup(preview.definition, 'RESULTADO')
+    : `<div class="fusion-slot fusion-result-unknown"><span>?</span><small>${preview.status === 'incompatible' ? 'INCOMPATIBLE' : 'RESULTADO'}</small></div>`;
+  const statusCopy = preview.reason === 'same-relic'
+    ? 'Selecciona dos reliquias diferentes.'
+    : preview.status === 'incompatible'
+      ? 'Estas reliquias no pueden fusionarse.'
+      : preview.status === 'not-designed'
+        ? 'Esta combinación todavía no está disponible.'
+        : preview.reason === 'already-owned'
+          ? 'Ya posees esta reliquia fusionada.'
+          : preview.reason === 'coins'
+            ? 'No tienes suficientes monedas.'
+            : preview.reason === 'blood'
+              ? 'No tienes suficiente Sangre de Jefe.'
+              : preview.definition && !preview.discovered
+                ? 'Receta desconocida · el resultado se revelará al fusionar.'
+                : preview.definition ? 'Fusión conocida y 100% segura.' : 'Elige dos reliquias base.';
+  const choices = RELIC_DEFINITIONS
+    .filter((definition) => normalized.inventory.relics[definition.id])
+    .map((definition) => {
+      const relic = normalized.inventory.relics[definition.id];
+      const selected = definition.id === leftId || definition.id === rightId;
+      return `<button type="button" class="forge-relic-choice ${rarityClass(relic.rarity)}${selected ? ' selected' : ''}" data-select-fusion-relic="${definition.id}" aria-label="Seleccionar ${escapeHtml(definition.name)}">${relicArt(definition)}<span class="forge-choice-rank">${relic.rank}</span></button>`;
+    }).join('');
+  const resultRarityMarkup = preview.resultRarity
+    ? `<p class="fusion-result-rarity ${rarityClass(preview.resultRarity)}"><span>RAREZA RESULTANTE</span><b>${RARITIES[preview.resultRarity].label}</b><small>${preview.resultAffixes.length} EFECTO${preview.resultAffixes.length === 1 ? '' : 'S'} EXTRA${preview.resultAffixes.length === 1 ? '' : 'S'}</small></p>`
+    : '';
+  body.innerHTML = `${forgeModeTabs('fusion')}
+    <div class="forge-toolbar"><strong>FUSIONAR</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <section class="fusion-flow" aria-label="Receta de Fusión">
+      ${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}<b>→</b>${resultMarkup}
+    </section>
+    <p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>
+    ${resultRarityMarkup}
+    <div class="forge-cost fusion-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}${resourceValue('boss-blood', preview.bloodCost)}</div>
+    <button type="button" class="forge-attempt fusion-attempt" data-fuse-relics="${escapeHtml(leftId || '')}|${escapeHtml(rightId || '')}"${preview.ok ? '' : ' disabled'}>FUSIONAR</button>
+    <details class="forge-info fusion-info"><summary>¿CÓMO FUNCIONA? <span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>La Fusión es segura, pero consume permanentemente las dos reliquias base. Podrás recuperarlas después mediante la Tienda.</p><p>La rareza mayor está garantizada. Un efecto extra asegura Legendario y dos o más aseguran Mítico. Los efectos diferentes se conservan sin duplicarse.</p></div></details>
+    <section class="forge-collection" aria-label="Selecciona dos reliquias"><div class="forge-relic-grid">${choices || '<span class="forge-empty-copy">Necesitas dos reliquias base.</span>'}</div></section>`;
+  return { preview, leftId, rightId };
 }
 
 function shopTimeLabel(endsAt, nowTimestamp) {
@@ -275,7 +419,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now()) {
           <div class="shop-relic-copy">
             <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
             <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
-            <small>${escapeHtml(BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`)}</small>
+            <small>${offer.source === 'fusion-consumed' ? 'CONSUMIDA EN FUSIÓN · +25% ORO' : escapeHtml(BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`)}</small>
           </div>
           <div class="shop-price">
             ${resourceValue('coin', offer.coinPrice)}
@@ -361,4 +505,12 @@ export function forgeResultMarkup(result, relicName, relicId) {
     return `<div class="forge-result success"><span>FORJA COMPLETADA</span>${artMarkup}<h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
   }
   return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+}
+
+export function fusionResultMarkup(result) {
+  const definition = fusionDefinition(result.historyEntry?.recipeId);
+  if (!definition) return '';
+  const rarity = RARITIES[result.fusedRelic?.rarity] || RARITIES.rare;
+  const affixCount = result.fusedRelic?.affixes?.length || 0;
+  return `<div class="forge-result success fusion-result"><span>${result.newlyDiscovered ? 'NUEVA RELIQUIA DESCUBIERTA' : 'FUSIÓN COMPLETADA'}</span><div class="forge-result-art">${relicArt(definition)}</div><h3>${escapeHtml(definition.name)}</h3><b class="fusion-result-rarity-label ${rarityClass(result.fusedRelic?.rarity)}">${rarity.label} · ${affixCount} EFECTO${affixCount === 1 ? '' : 'S'} EXTRA${affixCount === 1 ? '' : 'S'}</b><p>Las dos reliquias base han sido consumidas.</p><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', result.spentCoins)}${resourceValue('boss-blood', result.spentBossBlood)}</div></div>`;
 }

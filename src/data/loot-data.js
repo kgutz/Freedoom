@@ -1,4 +1,4 @@
-export const LOOT_SCHEMA_VERSION = 2;
+export const LOOT_SCHEMA_VERSION = 4;
 export const MAX_INITIAL_RELICS = 6;
 export const MAX_EQUIPPED_RELICS = 2;
 
@@ -14,6 +14,8 @@ export const RELIC_DROP_RATE = 0.7;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
 export const SHOP_ROTATION_DAYS = 3;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
+export const FUSION_COIN_COST = 100;
+export const FUSION_BLOOD_COST = 1;
 
 export const RARITIES = {
   rare: { id: 'rare', label: 'RARO', rate: 0.6, affixCount: 0 },
@@ -76,6 +78,7 @@ export const RELIC_DEFINITIONS = [
     rewardId: 'boss_reward_01',
     bossIndex: 0,
     name: 'Corazón de Hollín',
+    equipmentType: 'heart',
     image: 'relics/relic_01_corazon_hollin.png',
     effectLabel: 'Reduce la primera fuente de daño del día.',
     affixPool: ['vitality', 'regeneration', 'fortune'],
@@ -85,6 +88,7 @@ export const RELIC_DEFINITIONS = [
     rewardId: 'boss_reward_02',
     bossIndex: 1,
     name: 'Lágrima de Espectro',
+    equipmentType: 'spirit',
     image: 'relics/relic_02_lagrima_espectro.png',
     effectLabel: 'El primer hábito completado del día recupera Maná.',
     affixPool: ['arcane', 'channeling', 'discipline'],
@@ -94,6 +98,7 @@ export const RELIC_DEFINITIONS = [
     rewardId: 'boss_reward_03',
     bossIndex: 2,
     name: 'Daga de Alquitrán',
+    equipmentType: 'dagger',
     image: 'relics/relic_03_daga_alquitran.png',
     effectLabel: 'El primer hábito completado del día concede XP adicional.',
     affixPool: ['discipline', 'fortune', 'arcane'],
@@ -102,9 +107,10 @@ export const RELIC_DEFINITIONS = [
     id: 'relic_04',
     rewardId: 'boss_reward_04',
     bossIndex: 3,
-    name: 'Escudo de la Última Brasa',
-    image: 'relics/relic_04_escudo_ultima_brasa.png',
-    effectLabel: 'Reduce el castigo de vida al perder un combate semanal.',
+    name: 'Yelmo de la Última Brasa',
+    equipmentType: 'helmet',
+    image: 'relics/relic_04_yelmo_ultima_brasa.png',
+    effectLabel: 'Constancia: completa 6 días consecutivos y derrota al jefe para ganar XP extraordinaria.',
     affixPool: ['vitality', 'regeneration', 'fortune'],
   },
   {
@@ -112,6 +118,7 @@ export const RELIC_DEFINITIONS = [
     rewardId: 'boss_reward_05',
     bossIndex: 4,
     name: 'Frasco del Antojo Roto',
+    equipmentType: 'vessel',
     image: 'relics/relic_05_frasco_antojo_roto.png',
     effectLabel: 'El primer hechizo activo del día cuesta menos Maná.',
     affixPool: ['arcane', 'channeling', 'fortune'],
@@ -121,10 +128,73 @@ export const RELIC_DEFINITIONS = [
     rewardId: 'boss_reward_06',
     bossIndex: 5,
     name: 'Colmillo de Nicotina',
+    equipmentType: 'fang',
     image: 'relics/relic_06_colmillo_nicotina.png',
     effectLabel: 'Cada día cumplido concede XP adicional.',
     affixPool: ['discipline', 'vitality', 'fortune'],
   },
+];
+
+export const FUSION_RELIC_DEFINITIONS = [
+  {
+    id: 'fusion_01',
+    recipeId: 'fusion_recipe_01',
+    ingredientIds: ['relic_01', 'relic_02'],
+    name: 'Corazón Espectral',
+    equipmentType: 'heart',
+    image: 'relics/fusion_01_corazon_espectral.png',
+    effectLabel: 'Reduce la primera fuente de daño del día. El primer hábito recupera Maná y recibe 3 Maná adicionales.',
+    synergy: { type: 'first-habit-mana', value: 3 },
+  },
+  {
+    id: 'fusion_02',
+    recipeId: 'fusion_recipe_02',
+    ingredientIds: ['relic_01', 'relic_04'],
+    name: 'Yelmo del Corazón Ardiente',
+    equipmentType: 'helmet',
+    image: 'relics/fusion_02_yelmo_corazon_ardiente.png',
+    effectLabel: 'Reduce la primera fuente de daño del día. La Constancia concede XP y seis días cumplidos otorgan 20 XP adicionales.',
+    synergy: { type: 'six-days-xp', value: 20 },
+  },
+  {
+    id: 'fusion_03',
+    recipeId: 'fusion_recipe_03',
+    ingredientIds: ['relic_02', 'relic_05'],
+    name: 'Ampolla del Alma',
+    equipmentType: 'vessel',
+    image: 'relics/fusion_03_ampolla_alma.png',
+    effectLabel: 'El primer hábito recupera Maná y el primer hechizo cuesta menos. Completar antes un hábito reduce otros 3 Maná.',
+    synergy: { type: 'habit-before-spell-discount', value: 3 },
+  },
+  {
+    id: 'fusion_04',
+    recipeId: 'fusion_recipe_04',
+    ingredientIds: ['relic_03', 'relic_05'],
+    name: 'Daga del Antojo',
+    equipmentType: 'dagger',
+    image: 'relics/fusion_04_daga_antojo.png',
+    effectLabel: 'El primer hábito concede XP y el primer hechizo cuesta menos. Completar todos los hábitos diarios otorga 5 XP adicionales.',
+    synergy: { type: 'all-daily-habits-xp', value: 5 },
+  },
+  {
+    id: 'fusion_05',
+    recipeId: 'fusion_recipe_05',
+    ingredientIds: ['relic_04', 'relic_06'],
+    name: 'Yelmo del Vencedor',
+    equipmentType: 'helmet',
+    image: 'relics/fusion_05_yelmo_vencedor.png',
+    effectLabel: 'La Constancia y cada día cumplido conceden XP. Alcanzar seis días cumplidos otorga 25 XP adicionales.',
+    synergy: { type: 'six-days-xp', value: 25 },
+  },
+];
+
+export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
+  ['relic_03', 'relic_06'],
+];
+
+export const ALL_RELIC_DEFINITIONS = [
+  ...RELIC_DEFINITIONS,
+  ...FUSION_RELIC_DEFINITIONS,
 ];
 
 // Rangos II y III son valores conservadores provisionales y están aislados aquí
@@ -133,7 +203,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_01: { 1: 5, 2: 7, 3: 10 },
   relic_02: { 1: 5, 2: 7, 3: 10 },
   relic_03: { 1: 2, 2: 3, 3: 4 },
-  relic_04: { 1: 5, 2: 7.5, 3: 10 },
+  relic_04: { 1: 15, 2: 25, 3: 40 },
   relic_05: { 1: 5, 2: 7, 3: 10 },
   relic_06: { 1: 10, 2: 15, 3: 20 },
 };
@@ -146,7 +216,16 @@ export const FORGE_PROBABILITIES = {
 };
 
 export function relicDefinition(relicId) {
-  return RELIC_DEFINITIONS.find((relic) => relic.id === relicId) || null;
+  return ALL_RELIC_DEFINITIONS.find((relic) => relic.id === relicId) || null;
+}
+
+export function fusionDefinition(recipeOrRelicId) {
+  return FUSION_RELIC_DEFINITIONS.find((recipe) =>
+    recipe.id === recipeOrRelicId || recipe.recipeId === recipeOrRelicId) || null;
+}
+
+export function isBaseRelic(relicId) {
+  return RELIC_DEFINITIONS.some((relic) => relic.id === relicId);
 }
 
 export function bossReward(bossIndex) {

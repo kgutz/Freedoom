@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { grantBossRewards } from '../domain/loot-rules.js';
+import { fuseRelics, grantBossRewards } from '../domain/loot-rules.js';
 import {
+  fusionResultMarkup,
   forgeResultMarkup,
+  closeForgeInfoOutside,
   inventoryReferenceOffset,
   inventoryAccessMarkup,
+  renderCollectionView,
   renderForgeView,
+  renderFusionView,
   renderInventoryView,
   renderLootNotice,
   renderRelicEffectInfo,
@@ -21,7 +25,7 @@ function lootWithBosses(count, source = 'retroactive') {
 
 function fakeDocument() {
   const elements = Object.fromEntries([
-    'inventoryBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
+    'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -29,6 +33,28 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('cierra la información de Forja al tocar fuera y conserva la tocada', () => {
+    const insideTarget = {};
+    const outsideTarget = {};
+    let keptRemovals = 0;
+    let closedRemovals = 0;
+    const kept = {
+      contains: (target) => target === insideTarget,
+      removeAttribute: () => { keptRemovals += 1; },
+    };
+    const closed = {
+      contains: () => false,
+      removeAttribute: () => { closedRemovals += 1; },
+    };
+    const document = { querySelectorAll: () => [kept, closed] };
+    expect(closeForgeInfoOutside(document, insideTarget)).toBe(1);
+    expect(keptRemovals).toBe(0);
+    expect(closedRemovals).toBe(1);
+    expect(closeForgeInfoOutside(document, outsideTarget)).toBe(2);
+    expect(keptRemovals).toBe(1);
+    expect(closedRemovals).toBe(2);
+  });
+
   it('centra todas las pestañas con la altura real de Forja y prioriza pantallas bajas', () => {
     expect(inventoryReferenceOffset(600, 400)).toBe(100);
     expect(inventoryReferenceOffset(400, 500)).toBe(0);
@@ -41,22 +67,25 @@ describe('interfaz de inventario y botín', () => {
     expect(resourceIcon('coin')).not.toContain('<img');
   });
 
-  it('muestra recursos y una colección de seis reliquias', () => {
+  it('muestra recursos y separa las seis reliquias poseídas de la colección', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     renderInventoryView(document, state);
+    renderCollectionView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('650');
-    expect(document.elements.inventoryBody.innerHTML).toContain('<small>6/?</small>');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('6 / 6');
+    expect(document.elements.inventoryBody.innerHTML).toContain('<span>INVENTARIO</span><small>6</small>');
     expect(document.elements.inventoryBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
+    expect(document.elements.collectionBody.innerHTML).toContain('<small>6/?</small>');
+    expect(document.elements.collectionBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
     expect(inventoryAccessMarkup(state)).toContain('INVENTARIO Y FORJA');
     expect(inventoryAccessMarkup(state)).not.toContain('6 reliquias');
     expect(document.elements.inventoryBody.innerHTML).toContain('Corazón de Hollín');
     expect(document.elements.inventoryBody.innerHTML).toContain('Lágrima de Espectro');
+    expect(document.elements.inventoryBody.innerHTML).toContain('relic_04_yelmo_ultima_brasa.png');
     expect(document.elements.inventoryBody.innerHTML).toContain('relic_06_colmillo_nicotina.png');
   });
 
-  it('distingue visual y semánticamente una reliquia equipada dentro de la colección', () => {
+  it('distingue visual y semánticamente una reliquia equipada dentro del inventario', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
     state.inventory.equipped = ['relic_02'];
@@ -65,7 +94,7 @@ describe('interfaz de inventario y botín', () => {
     const html = document.elements.inventoryBody.innerHTML;
     expect(html).toContain('aria-label="Lágrima de Espectro, MÍTICO, rango 1, Equipada"');
     expect(html).toContain('MÍTICO - RANGO 1');
-    expect(html).toContain('<small>3/?</small>');
+    expect(html).toContain('<span>INVENTARIO</span><small>3</small>');
     const collectionHtml = html.slice(html.indexOf('<div class="relic-grid">'));
     expect(collectionHtml).not.toContain('relic-card-copy');
     expect(collectionHtml).not.toContain('relic-card-meta');
@@ -80,6 +109,19 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('EFECTO PRINCIPAL');
     expect(html).toContain('EFECTOS EXTRAS');
     expect(html).not.toContain('data-forge-relic');
+  });
+
+  it('muestra el nombre, la XP y la carga actual del Yelmo', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(4);
+    state.inventory.relics.relic_04.rank = 2;
+    state.inventory.constancy = { cycleId: 'week-3:boss-3', charge: 4 };
+    expect(renderRelicDetail(document, state, 'relic_04')).toBe(true);
+    const html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('Yelmo de la Última Brasa');
+    expect(html).toContain('🔥 Carga: <b>4/6</b>');
+    expect(html).toContain('Valor actual: 25 XP');
+    expect(html).not.toContain('puntos porcentuales');
   });
 
   it('muestra selección, requisitos, pity y probabilidad en la vista de Forja', () => {
@@ -109,6 +151,60 @@ describe('interfaz de inventario y botín', () => {
     renderForgeView(document, state, 'relic_01');
     expect(state.economy.bossBlood).toBe(2);
     expect(JSON.stringify(state)).toBe(original);
+  });
+
+  it('oculta una receta nueva, muestra incompatibilidades y revela el resultado descubierto', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(6);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 5;
+    state.inventory.relics.relic_01.rarity = 'legendary';
+    state.inventory.relics.relic_01.affixes = ['vitality'];
+    state.inventory.relics.relic_02.rarity = 'legendary';
+    state.inventory.relics.relic_02.affixes = ['arcane'];
+    renderFusionView(document, state, 'relic_01', 'relic_02');
+    expect(document.elements.forgeBody.innerHTML).toContain('Receta desconocida');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('Corazón Espectral');
+    expect(document.elements.forgeBody.innerHTML).toContain('RAREZA RESULTANTE');
+    expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
+    expect(document.elements.forgeBody.innerHTML).toContain('2 EFECTOS EXTRAS');
+    renderFusionView(document, state, 'relic_03', 'relic_06');
+    expect(document.elements.forgeBody.innerHTML).toContain('Estas reliquias no pueden fusionarse');
+    expect(document.elements.forgeBody.innerHTML).toContain('data-fuse-relics="relic_03|relic_06" disabled');
+    const fused = fuseRelics({
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-fusion', nowTimestamp: 10,
+    });
+    renderFusionView(document, fused, 'relic_01', 'relic_02');
+    expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
+    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-art-part');
+    expect(fusionResultMarkup(fused)).toContain('NUEVA RELIQUIA DESCUBIERTA');
+  });
+
+  it('mantiene en la colección una reliquia sacrificada y distingue la fusionada', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 5;
+    const fused = fuseRelics({
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'collection', nowTimestamp: 10,
+    });
+    renderInventoryView(document, fused);
+    renderCollectionView(document, fused);
+    const inventoryHtml = document.elements.inventoryBody.innerHTML;
+    const html = document.elements.collectionBody.innerHTML;
+    expect(html).toContain('<small>3/?</small>');
+    expect(html).toContain('data-open-relic="relic_01"');
+    expect(html).toContain('not-owned');
+    expect(html).toContain('fusion-relic');
+    expect(html).toContain('relic-collection-unknown');
+    expect(inventoryHtml).not.toContain('data-open-relic="relic_01"');
+    expect(inventoryHtml).toContain('data-open-relic="fusion_01"');
+    expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
+    const detail = document.elements.relicDetailBody.innerHTML;
+    expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
+    expect(detail).not.toContain('Corazón de Hollín:');
+    expect(detail).not.toContain('Lágrima de Espectro:');
   });
 
   it('confirma el valor mejorado cuando la Forja tiene éxito', () => {
