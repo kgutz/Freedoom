@@ -4,8 +4,10 @@ import {
   fusionResultMarkup,
   forgeResultMarkup,
   closeForgeInfoOutside,
+  chargeIndicatorMarkup,
   inventoryReferenceOffset,
   inventoryAccessMarkup,
+  nextFusionSelection,
   renderCollectionView,
   renderForgeView,
   renderFusionView,
@@ -119,9 +121,45 @@ describe('interfaz de inventario y botín', () => {
     expect(renderRelicDetail(document, state, 'relic_04')).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('Yelmo de la Última Brasa');
-    expect(html).toContain('🔥 Carga: <b>4/6</b>');
+    expect(html).toContain('CONSTANCIA');
+    expect(html).toContain('Carga actual: 4/6');
     expect(html).toContain('Valor actual: 25 XP');
     expect(html).not.toContain('puntos porcentuales');
+  });
+
+  it.each([
+    [0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6],
+  ])('representa %i/6 cargas en el indicador reutilizable', (charge, activeCount) => {
+    const html = chargeIndicatorMarkup({
+      mechanicId: 'constancy',
+      chargeState: { charge, lastIncreaseAt: 0, lastIncreaseCharge: 0 },
+      rarity: 'rare',
+      nowTimestamp: 100,
+    });
+    expect(html.match(/relic-charge-dot/g)).toHaveLength(6);
+    expect(html.match(/relic-charge-dot active/g) || []).toHaveLength(activeCount);
+    expect(html).toContain(`Constancia: ${charge} de 6`);
+  });
+
+  it('deriva el color de la rareza real, anima solo el punto nuevo y no aparece en otras reliquias', () => {
+    const indicator = chargeIndicatorMarkup({
+      mechanicId: 'constancy',
+      chargeState: { charge: 2, lastIncreaseAt: 900, lastIncreaseCharge: 2 },
+      rarity: 'mythic',
+      nowTimestamp: 1000,
+    });
+    expect(indicator).toContain('rarity-mythic');
+    expect(indicator.match(/newly-charged/g)).toHaveLength(1);
+
+    const document = fakeDocument();
+    const state = lootWithBosses(4);
+    state.inventory.equipped = ['relic_04', 'relic_01'];
+    state.inventory.relics.relic_04.rarity = 'mythic';
+    state.inventory.constancy = { cycleId: 'week-3:boss-3', charge: 2 };
+    renderInventoryView(document, state);
+    const html = document.elements.inventoryBody.innerHTML;
+    expect(html.match(/relic-charge-indicator/g)).toHaveLength(1);
+    expect(html).toContain('rarity-mythic');
   });
 
   it('muestra selección, requisitos, pity y probabilidad en la vista de Forja', () => {
@@ -159,14 +197,16 @@ describe('interfaz de inventario y botín', () => {
     state.economy.coins = 500;
     state.economy.bossBlood = 5;
     state.inventory.relics.relic_01.rarity = 'legendary';
+    state.inventory.relics.relic_01.rank = 2;
     state.inventory.relics.relic_01.affixes = ['vitality'];
     state.inventory.relics.relic_02.rarity = 'legendary';
     state.inventory.relics.relic_02.affixes = ['arcane'];
     renderFusionView(document, state, 'relic_01', 'relic_02');
     expect(document.elements.forgeBody.innerHTML).toContain('Receta desconocida');
     expect(document.elements.forgeBody.innerHTML).not.toContain('Corazón Espectral');
-    expect(document.elements.forgeBody.innerHTML).toContain('RAREZA RESULTANTE');
+    expect(document.elements.forgeBody.innerHTML).toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
+    expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
     expect(document.elements.forgeBody.innerHTML).toContain('2 EFECTOS EXTRAS');
     renderFusionView(document, state, 'relic_03', 'relic_06');
     expect(document.elements.forgeBody.innerHTML).toContain('Estas reliquias no pueden fusionarse');
@@ -179,6 +219,39 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
     expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-art-part');
     expect(fusionResultMarkup(fused)).toContain('NUEVA RELIQUIA DESCUBIERTA');
+    expect(fusionResultMarkup(fused)).toContain('MÍTICO · RANGO 2');
+    expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
+    expect(document.elements.relicDetailBody.innerHTML).toContain('RANGO 2 · RELIQUIA FUSIONADA');
+  });
+
+  it('marca la primera reliquia, atenúa incompatibles y muestra feedback dentro de la Forja', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(6);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 5;
+    renderFusionView(document, state, 'relic_01', null, { errorId: 'relic_03' });
+    const html = document.elements.forgeBody.innerHTML;
+    expect(html).toContain('fusion-first-selected');
+    expect(html).toContain('fusion-choice-order');
+    expect(html).toContain('fusion-incompatible');
+    expect(html).toContain('fusion-choice-error');
+    expect(html).toContain('aria-disabled="true"');
+    expect(html).toContain('Estas reliquias no pueden fusionarse.');
+    expect(html).toContain('Selecciona otra reliquia compatible.');
+    expect(html).toContain('data-fuse-relics="relic_01|" disabled');
+  });
+
+  it('rechaza una segunda incompatible sin alterar la selección y limpia el error al continuar', () => {
+    const first = nextFusionSelection({}, 'relic_01');
+    expect(first).toEqual({ leftId: 'relic_01', rightId: null, errorId: null });
+    const rejected = nextFusionSelection(first, 'relic_03');
+    expect(rejected).toEqual({ leftId: 'relic_01', rightId: null, errorId: 'relic_03' });
+    const compatible = nextFusionSelection(rejected, 'relic_02');
+    expect(compatible).toEqual({ leftId: 'relic_01', rightId: 'relic_02', errorId: null });
+    const restarted = nextFusionSelection(compatible, 'relic_01');
+    expect(restarted).toEqual({ leftId: null, rightId: null, errorId: null });
+    const changedFirst = nextFusionSelection(compatible, 'relic_04');
+    expect(changedFirst).toEqual({ leftId: 'relic_04', rightId: null, errorId: null });
   });
 
   it('mantiene en la colección una reliquia sacrificada y distingue la fusionada', () => {

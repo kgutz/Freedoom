@@ -120,6 +120,7 @@ import {
   closeForgeInfoOutside,
   forgeResultMarkup,
   inventoryReferenceOffset,
+  nextFusionSelection,
   renderForgeView,
   fusionResultMarkup,
   renderCollectionView,
@@ -155,7 +156,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.57';
+const APP_VERSION='1.60';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const INVENTORY_DISCOVERY_KEY=`freedoom:inventory-discovery:v${APP_VERSION}:48-hours`;
 const INVENTORY_DISCOVERY_DURATION_MS=48*60*60*1000;
@@ -163,16 +164,21 @@ const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='loca
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoFusions')==='1';
+const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
+  ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoConstancy')||'0',10)||0))
+  : null;
 const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewLootNotice')==='1';
 const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_SHOP?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
+    : LOCAL_DEMO_CONSTANCY!==null
+    ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
     ? `${STORAGE_KEY}:demo-shop-${LOCAL_DEMO_SHOP}-v1`
     : LOCAL_DEMO_MIGRATION
@@ -416,9 +422,9 @@ async function requestPersistentStorage(){
 
 async function load(){
   try{
-    let r=LOCAL_DEMO_FUSIONS?null:await store.get(ACTIVE_STORAGE_KEY);
+    let r=LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null?null:await store.get(ACTIVE_STORAGE_KEY);
     if(!r&&LOCAL_DEMO_BOSSES){
-      if(!LOCAL_DEMO_FUSIONS) r=await store.get(STORAGE_KEY);
+      if(!LOCAL_DEMO_FUSIONS&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
       initializeLocalDemo=true;
     }
     if(r&&r.value){
@@ -729,7 +735,11 @@ function prepareLocalBossDemo(){
     state.economy.bossBlood=2;
     applyLootSlices(ensureShopRotation(state,Date.now()));
   }
-  state.inventory.equipped=(LOCAL_DEMO_FUSIONS?['fusion_01','fusion_04']:['relic_01','relic_03'])
+  state.inventory.equipped=(LOCAL_DEMO_FUSIONS
+    ? ['fusion_01','fusion_04']
+    : LOCAL_DEMO_CONSTANCY!==null
+    ? ['relic_04','relic_01']
+    : ['relic_01','relic_03'])
     .filter(id=>state.inventory.relics[id]);
   state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
   state.loot.migrationComplete=true;
@@ -1056,7 +1066,8 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   const activeCycleId=`week-${result.status.w}:boss-${result.status.bossIndex}`;
   applyLootSlices(syncRelicConstancy(state,{
     cycleId:activeCycleId,
-    outcomes:result.status.pips||[]
+    outcomes:result.status.pips||[],
+    nowTimestamp:actualTimestamp
   }));
   syncLootRewards(state.loot?.migrationComplete===true?'victory':'retroactive');
   for(const weekResult of result.weekResults){
@@ -1377,6 +1388,7 @@ let selectedForgeRelicId=null;
 let forgeMode='upgrade';
 let fusionLeftId=null;
 let fusionRightId=null;
+let fusionErrorId=null;
 let pendingFusion=null;
 const EQUIPMENT_TYPE_NAMES={
   heart:'corazones',spirit:'reliquias espirituales',dagger:'dagas',helmet:'yelmos',
@@ -1389,9 +1401,15 @@ function equipFailureMessage(result){
   if(result?.reason==='already-equipped') return 'Esa reliquia ya está equipada';
   return 'No hay un espacio libre para esa reliquia';
 }
-function forgeRenderOptions(){
-  return {mode:forgeMode,fusionLeftId,fusionRightId};
+function confirmConstancyLoss(result, action='Desequipar'){
+  const definition=relicDefinition(result?.relicId);
+  const name=definition?.name||'el Yelmo';
+  return confirm(`¿${action} ${name}?\n\nPerderás tu carga de Constancia actual (${result.charge}/${result.maxCharge||6}).`);
 }
+function forgeRenderOptions(){
+  return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId};
+}
+function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
   const sheet=overlay?.querySelector('.inventory-sheet');
@@ -1427,6 +1445,7 @@ function positionInventorySheetFromForge(){
   }
 }
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
+  if(panel!=='forge') clearFusionFeedback();
   const inventorySelected=panel==='inventory';
   const collectionSelected=panel==='collection';
   const forgeSelected=panel==='forge';
@@ -2705,6 +2724,9 @@ document.getElementById('view-hero').addEventListener('click',e=>{
 });
 
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
+  if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
+    clearFusionFeedback();
+  }
   if(event.target.closest('#inventoryTab')){ showInventoryPanel('inventory'); return; }
   if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
@@ -2756,6 +2778,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const forgeModeButton=event.target.closest('[data-forge-mode]');
   if(forgeModeButton){
     forgeMode=forgeModeButton.dataset.forgeMode==='fusion'?'fusion':'upgrade';
+    clearFusionFeedback();
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     scheduleInventorySheetPosition();
     return;
@@ -2763,11 +2786,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const fusionChoice=event.target.closest('[data-select-fusion-relic]');
   if(fusionChoice){
     const relicId=fusionChoice.dataset.selectFusionRelic;
-    if(fusionLeftId===relicId) fusionLeftId=null;
-    else if(fusionRightId===relicId) fusionRightId=null;
-    else if(!fusionLeftId) fusionLeftId=relicId;
-    else if(!fusionRightId) fusionRightId=relicId;
-    else { fusionLeftId=relicId; fusionRightId=null; }
+    const selection=nextFusionSelection({leftId:fusionLeftId,rightId:fusionRightId},relicId);
+    fusionLeftId=selection.leftId;
+    fusionRightId=selection.rightId;
+    fusionErrorId=selection.errorId;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
   }
@@ -2777,7 +2799,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const left=relicDefinition(leftId),right=relicDefinition(rightId);
     if(!left||!right) return;
     pendingFusion={leftId,rightId};
-    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Ambas reliquias desaparecerán de tu inventario. La operación cuesta <b>100 monedas</b> y <b>1 Sangre de Jefe</b>.</p>`;
+    const losesConstancy=state.inventory?.equipped?.some(id=>
+      (id===leftId||id===rightId)&&(id==='relic_04'||Number(state.inventory?.relics?.[id]?.inheritedEffects?.relic_04)>0)
+    )&&(Number(state.inventory?.constancy?.charge)||0)>0;
+    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Ambas reliquias desaparecerán de tu inventario. La operación cuesta <b>100 monedas</b> y <b>1 Sangre de Jefe</b>.</p>${losesConstancy?`<p><b>Perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
     document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }
@@ -2806,9 +2831,13 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const replace=Number.isInteger(Number(equip.dataset.replaceSlot))
       ? Number(equip.dataset.replaceSlot)
       : null;
-    const result=equipRelic(state,equip.dataset.equipRelic,replace);
+    let result=equipRelic(state,equip.dataset.equipRelic,replace);
+    if(result.reason==='constancy-confirmation-required'){
+      if(!confirmConstancyLoss(result,'Sustituir')) return;
+      result=equipRelic(state,equip.dataset.equipRelic,replace,{confirmConstancyReset:true});
+    }
     if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
-    applyLootSlices(result); capHeroAfterEquipmentChange();
+    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange();
     scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
     document.getElementById('sheetRelicDetail').classList.remove('show');
     document.getElementById('sheetInventory').classList.add('show');
@@ -2818,7 +2847,13 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   }
   const unequip=event.target.closest('[data-unequip-relic]');
   if(unequip){
-    applyLootSlices(unequipRelic(state,unequip.dataset.unequipRelic)); capHeroAfterEquipmentChange();
+    let result=unequipRelic(state,unequip.dataset.unequipRelic);
+    if(result.reason==='constancy-confirmation-required'){
+      if(!confirmConstancyLoss(result)) return;
+      result=unequipRelic(state,unequip.dataset.unequipRelic,{confirmConstancyReset:true});
+    }
+    if(!result.ok) return;
+    applyLootSlices(result); capHeroAfterEquipmentChange();
     scheduleSave({type:'loot:unequip',relicId:unequip.dataset.unequipRelic});
     renderRelicDetail(document,state,unequip.dataset.unequipRelic); renderInventoryView(document,state); renderHero();
     showToast('Reliquia desequipada','heal');
@@ -2914,6 +2949,7 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
   document.getElementById('forgeResultBody').innerHTML=fusionResultMarkup(result);
   document.getElementById('forgeResultBg').classList.add('show');
   fusionLeftId=null; fusionRightId=null;
+  clearFusionFeedback();
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   renderInventoryView(document,state); renderHero();
   forgeLocked=false;
@@ -2927,7 +2963,7 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); showInventoryPanel('shop'); return; }
   if(equip){
     const result=equipRelic(state,equip.dataset.lootEquip);
-    if(result.ok) applyLootSlices(result);
+    if(result.ok){ applyLootSlices(result); syncBossCombat(); }
     acknowledgeActiveLootNotice();
     switchView('view-hero','navHero'); renderHero(); openInventory();
     if(result.ok){ capHeroAfterEquipmentChange(); scheduleSave({type:'loot:equip',relicId:equip.dataset.lootEquip}); renderInventoryView(document,state); renderHero(); showToast('Reliquia equipada','heal'); }
@@ -3197,12 +3233,18 @@ resetGuardContinue.addEventListener('click',()=>{
     if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();
       await showPendingLootNotice();
-    }else if(LOCAL_DEMO_FUSIONS){
+    }else if(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null){
       await finishInitialReturnSplash();
       switchView('view-hero','navHero');
       renderHero();
+      if(LOCAL_DEMO_CONSTANCY!==null){
+        state.inventory.constancy={
+          cycleId:'demo-constancy',charge:LOCAL_DEMO_CONSTANCY,baselineOutcomes:[],
+          awaitingBaseline:false,lastIncreaseAt:Date.now(),lastIncreaseCharge:LOCAL_DEMO_CONSTANCY
+        };
+      }
       openInventory();
-      showInventoryPanel('collection');
+      showInventoryPanel(LOCAL_DEMO_FUSIONS?'collection':'inventory',true);
     }else finishInitialReturnSplash();
   }
 })();
