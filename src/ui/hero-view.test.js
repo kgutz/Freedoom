@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   activeSpellStatus,
   createHeroModel,
+  didHeroLevelUp,
+  heroEnergyModel,
   renderHeroView,
   renderSkillsView,
   spriteImage,
@@ -35,6 +37,39 @@ const base = (overrides = {}) => ({
 });
 
 describe('modelo de Héroe', () => {
+  it.each([
+    [0.1, 0],
+    [0.35, 1],
+    [0.6, 2],
+    [0.85, 3],
+    [0.98, 3],
+  ])('convierte %s de progreso real en el estado de energía %s', (progress, stage) => {
+    expect(heroEnergyModel({ progress, classId: 'paladin' })).toMatchObject({
+      progress,
+      percent: Math.round(progress * 100),
+      stage,
+      classId: 'paladin',
+      levelUp: false,
+    });
+  });
+
+  it('normaliza el progreso y comparte el modelo entre las cuatro clases', () => {
+    expect(['knight', 'paladin', 'sorcerer', 'druid'].map((classId) => (
+      heroEnergyModel({ progress: 2, classId }).classId
+    ))).toEqual(['knight', 'paladin', 'sorcerer', 'druid']);
+    expect(heroEnergyModel({ progress: -1, classId: 'unknown' })).toMatchObject({
+      progress: 0,
+      classId: 'paladin',
+    });
+  });
+
+  it('solo detecta una subida frente a un nivel anterior válido', () => {
+    expect(didHeroLevelUp(null, 2)).toBe(false);
+    expect(didHeroLevelUp(2, 2)).toBe(false);
+    expect(didHeroLevelUp(3, 2)).toBe(false);
+    expect(didHeroLevelUp(2, 3)).toBe(true);
+  });
+
   it('describe temporizadores, cargas y efectos diarios de las activas', () => {
     const now = new Date(2026, 6, 26, 12).getTime();
     expect(activeSpellStatus({
@@ -202,6 +237,12 @@ describe('modelo de Héroe', () => {
           name: 'Farenheil',
           buffs: { certeroUntil: new Date(2026, 6, 26, 12, 30).getTime() },
         },
+        stats: {
+          ...base().stats,
+          xp: 560,
+          prog: 0.85,
+          nextTh: 875,
+        },
         boss: {
           ...base().boss,
           name: 'Espectro',
@@ -230,6 +271,7 @@ describe('modelo de Héroe', () => {
         },
       }),
       intoxication: null,
+      levelUp: true,
     });
 
     expect(heroContent.innerHTML).toContain('id="bossInfoBtn"');
@@ -252,6 +294,11 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('class="skill-buff-icon"');
     expect(heroContent.innerHTML).toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
+    expect(heroContent.innerHTML).toContain('hero-energy--paladin');
+    expect(heroContent.innerHTML).toContain('hero-energy--stage-3');
+    expect(heroContent.innerHTML).toContain('data-xp-energy="85"');
+    expect(heroContent.innerHTML).toContain('is-leveling-up');
+    expect(heroContent.innerHTML).not.toContain('sprite-aura');
     expect(heroContent.innerHTML).toContain('<div class="nombre">Farenheil</div>');
     expect(heroContent.innerHTML).toContain('class="hero-summary"');
     expect(heroContent.innerHTML).not.toContain('Jefes:');
