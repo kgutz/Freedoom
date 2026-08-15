@@ -158,7 +158,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.64';
+const APP_VERSION='1.65';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -797,7 +797,7 @@ function totalBossesDown(){
     Math.max(0,combat?.defeated||0);
 }
 
-function syncLootRewards(source){
+function syncLootRewards(source,earlyVictoryBonuses=[]){
   if(!state.game?.cls) return [];
   const before=JSON.stringify({
     economy:state.economy,loot:state.loot,
@@ -808,6 +808,7 @@ function syncLootRewards(source){
     bossesDown:totalBossesDown(),
     source,
     seed:lootMigrationSeed(),
+    earlyVictoryBonuses,
     nowTimestamp:Date.now()
   });
   applyLootSlices(result);
@@ -1023,6 +1024,27 @@ function showPendingWeekResult(){
   }
 }
 
+let earlyVictoryNoticeOpening=false;
+async function showPendingEarlyVictoryNotice(){
+  const earlyVictory=state.game?.bossCombat?.earlyVictory;
+  if(earlyVictoryNoticeOpening||!earlyVictory?.noticePending) return;
+  if(document.getElementById('weekResultBg').classList.contains('show')) return;
+  if(document.getElementById('lootNoticeBg').classList.contains('show')) return;
+  earlyVictoryNoticeOpening=true;
+  earlyVictory.noticePending=false;
+  try{
+    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+    document.getElementById('earlyVictoryBg').classList.add('show');
+  }catch(error){
+    earlyVictory.noticePending=true;
+    console.error('No se pudo guardar la Victoria Anticipada antes del aviso',error);
+    showToast('No se pudo asegurar el aviso de Victoria Anticipada','dmg');
+  }finally{earlyVictoryNoticeOpening=false;}
+}
+function queueEarlyVictoryNotice(){
+  window.setTimeout(()=>void showPendingEarlyVictoryNotice(),0);
+}
+
 function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   const g=state.game;
   if(!g||!g.cls) return null;
@@ -1096,7 +1118,16 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     outcomes:result.status.pips||[],
     nowTimestamp:actualTimestamp
   }));
-  syncLootRewards(state.loot?.migrationComplete===true?'victory':'retroactive');
+  const earlyVictoryBonuses=[
+    ...result.weekResults
+      .filter(weekResult=>weekResult.won&&weekResult.earlyVictory)
+      .map(weekResult=>weekResult.earlyVictory),
+    ...(result.earlyVictory?[result.earlyVictory]:[])
+  ];
+  syncLootRewards(
+    state.loot?.migrationComplete===true?'victory':'retroactive',
+    earlyVictoryBonuses
+  );
   for(const weekResult of result.weekResults){
     if(!weekResult.won){
       const mx=heroMaxes();
@@ -1139,6 +1170,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
   if(constancyXp>0){
     showToast(`🔥 CONSTANCIA COMPLETADA · 6/6 · +${constancyXp} XP`,'heal');
   }
+  if(g.bossCombat.earlyVictory?.noticePending) queueEarlyVictoryNotice();
   return result.status;
 }
 
@@ -3095,6 +3127,13 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
     return;
   }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
+});
+function closeEarlyVictoryNotice(){
+  document.getElementById('earlyVictoryBg').classList.remove('show');
+}
+document.getElementById('earlyVictoryClose').addEventListener('click',closeEarlyVictoryNotice);
+document.getElementById('earlyVictoryBg').addEventListener('click',event=>{
+  if(event.target.id==='earlyVictoryBg') closeEarlyVictoryNotice();
 });
 
 let selectedBossMedal=null;

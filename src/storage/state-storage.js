@@ -37,6 +37,7 @@ export function stateInformationProfile(state) {
   const claimedRewardCount = Array.isArray(loot.claimedBossRewards)
     ? loot.claimedBossRewards.length
     : 0;
+  const earlyVictoryOutcomeCount = collectionSize(loot.earlyVictoryOutcomes);
   const economyValue = Math.max(0, Number(economy.coins) || 0) +
     Math.max(0, Number(economy.bossBlood) || 0) * 25;
   const forgeHistoryCount = Array.isArray(forge.history)
@@ -63,6 +64,7 @@ export function stateInformationProfile(state) {
     Math.min(180, relicCount * 30) +
     Math.min(180, discoveredRelicCount * 25) +
     Math.min(120, claimedRewardCount * 20) +
+    Math.min(60, earlyVictoryOutcomeCount * 10) +
     Math.min(80, Math.floor(economyValue / 10)) +
     Math.min(40, forgeHistoryCount * 5) +
     Math.min(80, fusionHistoryCount * 10);
@@ -79,6 +81,7 @@ export function stateInformationProfile(state) {
     relicCount,
     discoveredRelicCount,
     claimedRewardCount,
+    earlyVictoryOutcomeCount,
     economyValue,
     forgeHistoryCount,
     fusionHistoryCount,
@@ -91,6 +94,7 @@ export function stateInformationProfile(state) {
       relicCount > 0 ||
       discoveredRelicCount > 0 ||
       claimedRewardCount > 0 ||
+      earlyVictoryOutcomeCount > 0 ||
       economyValue > 0 ||
       forgeHistoryCount > 0 ||
       fusionHistoryCount > 0,
@@ -116,6 +120,7 @@ export function isCatastrophicStateRegression(candidateState, referenceState) {
     (reference.discoveredRelicCount >= 1 && candidate.discoveredRelicCount === 0) ||
     (reference.fusionHistoryCount >= 1 && candidate.fusionHistoryCount === 0) ||
     (reference.claimedRewardCount >= 1 && candidate.claimedRewardCount === 0) ||
+    (reference.earlyVictoryOutcomeCount >= 1 && candidate.earlyVictoryOutcomeCount === 0) ||
     (reference.economyValue >= 50 && candidate.economyValue === 0);
   const scoreCollapsed =
     reference.score >= 120 && candidate.score <= reference.score * 0.35;

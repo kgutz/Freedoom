@@ -318,6 +318,134 @@ describe('combate semanal', () => {
     expect(status.lockedByDays).toBe(true);
   });
 
+  it('registra y persiste una Victoria Anticipada solo por daño matemático suficiente', () => {
+    const combat = createBossCombat({ currentWeek: 0, legacyBossesDown: 0 });
+    const earlyDays = {
+      '2026-07-17': { c: 0, s: 3 },
+      '2026-07-18': { c: 0, s: 3 },
+      '2026-07-19': { c: 0, s: 3 },
+      '2026-07-20': { c: 0, s: 3 },
+      '2026-07-21': { c: 0, s: 3 },
+    };
+    const first = reconcileBossCombat({
+      combat, now: new Date(2026, 6, 22, 12), config, days: earlyDays,
+    });
+    const recalculated = reconcileBossCombat({
+      combat: first.combat, now: new Date(2026, 6, 22, 12), config, days: earlyDays,
+    });
+
+    expect(first).toMatchObject({ newlyEarlyVictory: true, newlyDefeated: false });
+    expect(first.status).toMatchObject({ hp: 1, won: false, lockedByDays: true });
+    expect(first.combat.earlyVictory).toMatchObject({
+      id: 'boss_reward_01:early-victory:week-0', week: 0, bossIndex: 0,
+    });
+    expect(recalculated.newlyEarlyVictory).toBe(false);
+    expect(recalculated.combat.earlyVictory).toEqual(first.combat.earlyVictory);
+  });
+
+  it('convierte la Victoria Anticipada en elegibilidad al cumplir el sexto día', () => {
+    const earlyDays = {
+      '2026-07-17': { c: 0, s: 3 },
+      '2026-07-18': { c: 0, s: 3 },
+      '2026-07-19': { c: 0, s: 3 },
+      '2026-07-20': { c: 0, s: 3 },
+      '2026-07-21': { c: 0, s: 3 },
+    };
+    const early = reconcileBossCombat({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 6, 22, 12), config, days: earlyDays,
+    });
+    const won = reconcileBossCombat({
+      combat: early.combat,
+      now: new Date(2026, 6, 23, 12),
+      config,
+      days: { ...earlyDays, '2026-07-22': { c: 20 } },
+    });
+
+    expect(won.newlyDefeated).toBe(true);
+    expect(won.status).toMatchObject({ won: true, hp: 0, completedDays: 6 });
+    expect(won.earlyVictory).toEqual(early.combat.earlyVictory);
+  });
+
+  it('no registra Victoria Anticipada por estar a 1 HP sin daño suficiente', () => {
+    const combat = { ...createBossCombat({ currentWeek: 0 }), hpAtWeekStart: 1 };
+    const result = reconcileBossCombat({
+      combat, now: new Date(2026, 6, 17, 12), config, days: {},
+    });
+    expect(result.status).toMatchObject({ hp: 1, rawHp: 1, lockedByDays: false });
+    expect(result.newlyEarlyVictory).toBe(false);
+    expect(result.combat.earlyVictory).toBeNull();
+  });
+
+  it('descarta la elegibilidad al fallar la semana y no la arrastra al siguiente combate', () => {
+    const earlyDays = {
+      '2026-07-17': { c: 0, s: 3 },
+      '2026-07-18': { c: 0, s: 3 },
+      '2026-07-19': { c: 0, s: 3 },
+      '2026-07-20': { c: 0, s: 3 },
+      '2026-07-21': { c: 0, s: 3 },
+    };
+    const early = reconcileBossCombat({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 6, 22, 12), config, days: earlyDays,
+    });
+    const nextWeek = reconcileBossCombat({
+      combat: early.combat,
+      now: new Date(2026, 6, 24, 12),
+      config,
+      days: { ...earlyDays, '2026-07-22': { c: 21 }, '2026-07-23': { c: 21 } },
+    });
+
+    expect(nextWeek.weekResults[0]).toMatchObject({ won: false, earlyVictory: null });
+    expect(nextWeek.combat).toMatchObject({ week: 1, bossIndex: 0, earlyVictory: null });
+  });
+
+  it('consume la elegibilidad ganada y empieza el siguiente jefe sin arrastrarla', () => {
+    const earlyDays = {
+      '2026-07-17': { c: 0, s: 3 }, '2026-07-18': { c: 0, s: 3 },
+      '2026-07-19': { c: 0, s: 3 }, '2026-07-20': { c: 0, s: 3 },
+      '2026-07-21': { c: 0, s: 3 },
+    };
+    const early = reconcileBossCombat({
+      combat: createBossCombat({ currentWeek: 0 }),
+      now: new Date(2026, 6, 22, 12), config, days: earlyDays,
+    });
+    const won = reconcileBossCombat({
+      combat: early.combat, now: new Date(2026, 6, 23, 12), config,
+      days: { ...earlyDays, '2026-07-22': { c: 20 } },
+    });
+    const nextBoss = reconcileBossCombat({
+      combat: won.combat, now: new Date(2026, 6, 24, 12), config,
+      days: { ...earlyDays, '2026-07-22': { c: 20 } },
+    });
+
+    expect(nextBoss.weekResults[0].earlyVictory).toEqual(early.combat.earlyVictory);
+    expect(nextBoss.combat).toMatchObject({ week: 1, bossIndex: 1, earlyVictory: null });
+    expect(nextBoss.status.earlyVictoryActive).toBe(false);
+  });
+
+  it('no concede retroactivamente elegibilidad a una victoria histórica', () => {
+    const historical = {
+      ...createBossCombat({ currentWeek: 0 }),
+      version: 2,
+      victoryRecorded: true,
+      defeated: 1,
+    };
+    const result = reconcileBossCombat({
+      combat: historical,
+      now: new Date(2026, 6, 23, 12),
+      config,
+      days: {
+        '2026-07-17': { c: 20 }, '2026-07-18': { c: 20 },
+        '2026-07-19': { c: 20 }, '2026-07-20': { c: 20 },
+        '2026-07-21': { c: 20 }, '2026-07-22': { c: 20 },
+      },
+    });
+    expect(result.newlyDefeated).toBe(false);
+    expect(result.newlyEarlyVictory).toBe(false);
+    expect(result.earlyVictory).toBeNull();
+  });
+
   it('recupera toda la vida si el jefe sobrevive', () => {
     const first = reconcileBossCombat({
       combat: createBossCombat({
@@ -405,7 +533,7 @@ describe('combate semanal', () => {
       days: {},
     });
 
-    expect(migrated.combat.version).toBe(2);
+    expect(migrated.combat.version).toBe(3);
     expect(migrated.combat.hpAtWeekStart).toBe(90);
   });
 

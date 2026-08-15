@@ -165,7 +165,7 @@ describe('modelo de Héroe', () => {
       },
       classId: 'paladin',
       level: 5,
-      intoxication: null,
+      intoxication: { level: 45, remainingMinutes: 52 },
       config: { journeyMode: 'reduction' },
       targetId: 'classChangeSkills',
     });
@@ -177,6 +177,8 @@ describe('modelo de Héroe', () => {
     expect(classChangeSkills.innerHTML.indexOf('Hechizos — Arquero Sagrado'))
       .toBeLessThan(classChangeSkills.innerHTML.indexOf('Pasivas — Arquero Sagrado'));
     expect(classChangeSkills.innerHTML).not.toContain('sprite-svg');
+    expect(classChangeSkills.innerHTML).not.toContain('Borrachera');
+    expect(classChangeSkills.innerHTML).not.toContain('45%');
   });
 
   it('mueve los últimos golpes al panel informativo del jefe', () => {

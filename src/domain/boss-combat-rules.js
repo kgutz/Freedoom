@@ -26,6 +26,10 @@ export const BOSS_PERFECT_DAMAGE = 1;
 export const BOSS_PERFECT_DAMAGE_CAP = 3;
 export const BOSS_ZERO_DAY_DAMAGE = 15;
 
+export function earlyVictoryId(week, bossIndex) {
+  return `boss_reward_${String(Math.max(0, bossIndex) + 1).padStart(2, '0')}:early-victory:week-${Math.max(0, week)}`;
+}
+
 const EMPTY_DAY = { c: 0, p: 0, s: 0 };
 
 function recordOf(days, key) {
@@ -123,7 +127,7 @@ export function createBossCombat({
 }) {
   const safeLegacy = Math.min(maxBosses, Math.max(0, legacyBossesDown || 0));
   return {
-    version: 2,
+    version: 3,
     startedWeek: currentWeek,
     legacyBossesDown: safeLegacy,
     defeated: 0,
@@ -131,6 +135,7 @@ export function createBossCombat({
     week: currentWeek,
     hpAtWeekStart: BOSS_MAX_HP,
     victoryRecorded: false,
+    earlyVictory: null,
     spellHits: [],
     history: [],
   };
@@ -349,6 +354,17 @@ export function calculateBossCombatStatus({
     fails: weekDamage.fails,
     won,
     lockedByDays,
+    rawHp,
+    earlyVictoryActive: Boolean(
+      combat.earlyVictory &&
+      combat.earlyVictory.week === combat.week &&
+      combat.earlyVictory.bossIndex === combat.bossIndex
+    ),
+    earlyVictoryNoticePending: Boolean(
+      combat.earlyVictory?.noticePending &&
+      combat.earlyVictory.week === combat.week &&
+      combat.earlyVictory.bossIndex === combat.bossIndex
+    ),
     completedDays: campaignComplete
       ? BOSS_REQUIRED_DAYS
       : weekDamage.hits,
@@ -414,6 +430,10 @@ export function reconcileBossCombat({
     );
     next.version = 2;
   }
+  if ((next.version || 2) < 3) {
+    next.earlyVictory = null;
+    next.version = 3;
+  }
   const weekResults = [];
 
   while (next.week < currentWeek && !next.completed) {
@@ -435,6 +455,12 @@ export function reconcileBossCombat({
       !damage.controlledBudgetExceeded;
     const remainingHp =
       rawRemainingHp <= 0 && !won ? 1 : rawRemainingHp;
+    const earlyVictory =
+      won &&
+      next.earlyVictory?.week === next.week &&
+      next.earlyVictory?.bossIndex === next.bossIndex
+        ? { ...next.earlyVictory }
+        : null;
 
     if (won && !next.victoryRecorded) {
       next.defeated = Math.min(
@@ -449,6 +475,7 @@ export function reconcileBossCombat({
       pips: [...damage.pips],
       damage: Math.min(next.hpAtWeekStart, damage.total),
       remainingHp,
+      earlyVictory,
     });
     next.history.push({
       week: next.week,
@@ -471,6 +498,7 @@ export function reconcileBossCombat({
     }
     next.week += 1;
     next.victoryRecorded = next.completed;
+    next.earlyVictory = null;
   }
 
   next.history = next.history.slice(-12);
@@ -486,6 +514,29 @@ export function reconcileBossCombat({
   });
   let newlyDefeated = false;
   let defeatRevoked = false;
+  let newlyEarlyVictory = false;
+
+  if (
+    status.lockedByDays &&
+    !(
+      next.earlyVictory?.week === next.week &&
+      next.earlyVictory?.bossIndex === next.bossIndex
+    )
+  ) {
+    next.earlyVictory = {
+      id: earlyVictoryId(next.week, next.bossIndex),
+      week: next.week,
+      bossIndex: next.bossIndex,
+      noticePending: true,
+    };
+    newlyEarlyVictory = true;
+    status = calculateBossCombatStatus({
+      combat: next,
+      now,
+      config,
+      days,
+    });
+  }
 
   if (status.won && !next.victoryRecorded) {
     next.defeated = Math.min(
@@ -513,5 +564,16 @@ export function reconcileBossCombat({
     weekResults,
     newlyDefeated,
     defeatRevoked,
+    newlyEarlyVictory,
+    earlyVictory: resultEarlyVictory(next, status, newlyDefeated),
   };
+}
+
+function resultEarlyVictory(combat, status, newlyDefeated) {
+  if (!newlyDefeated || !combat.earlyVictory) return null;
+  if (
+    combat.earlyVictory.week !== status.w ||
+    combat.earlyVictory.bossIndex !== status.bossIndex
+  ) return null;
+  return { ...combat.earlyVictory };
 }

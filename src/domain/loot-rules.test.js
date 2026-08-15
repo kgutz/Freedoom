@@ -24,6 +24,7 @@ import {
   shopPriceForRelic,
   unequipRelic,
 } from './loot-rules.js';
+import { exportBackup, importBackup } from '../storage/state-storage.js';
 
 function sequence(...values) {
   let index = 0;
@@ -251,6 +252,102 @@ describe('loot de bosses', () => {
     expect(bloodRolls).toBe(1);
     expect(second.economy.bossBlood).toBe(2);
     expect(second.rewards).toEqual([]);
+  });
+
+  it('entrega exactamente +25 monedas y resuelve una sola vez la tirada anticipada', () => {
+    const eligibility = {
+      id: 'boss_reward_01:early-victory:week-0', bossIndex: 0,
+    };
+    let earlyBloodRolls = 0;
+    const first = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.9, bloodRandom: () => 0.5,
+      earlyVictoryBonuses: [eligibility],
+      earlyVictoryBloodRandom: () => { earlyBloodRolls += 1; return 0.5; },
+      nowTimestamp: 10,
+    });
+    const second = grantBossRewards({
+      state: first, bossesDown: 1, source: 'victory',
+      earlyVictoryBonuses: [eligibility],
+      earlyVictoryBloodRandom: () => { earlyBloodRolls += 1; return 0; },
+      nowTimestamp: 20,
+    });
+
+    expect(first.economy.coins).toBe(100);
+    expect(first.earlyVictoryRewards).toEqual([
+      expect.objectContaining({ coins: 25, bossBlood: 0, bloodGranted: false }),
+    ]);
+    expect(first.economy.transactions.filter(
+      (entry) => entry.id === `${eligibility.id}:grant`,
+    )).toHaveLength(1);
+    expect(earlyBloodRolls).toBe(1);
+    expect(second.economy).toEqual(first.economy);
+    expect(second.earlyVictoryRewards).toEqual([]);
+  });
+
+  it('conserva el resultado anticipado al exportar/importar y no vuelve a tirar', () => {
+    const eligibility = {
+      id: 'boss_reward_01:early-victory:week-4', bossIndex: 0,
+    };
+    const won = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.9, bloodRandom: () => 0.5,
+      earlyVictoryBonuses: [eligibility], earlyVictoryBloodRandom: () => 0.05,
+      nowTimestamp: 10,
+    });
+    const saved = { ...won, config: { startDate: '2026-07-17' }, days: {}, game: {} };
+    const restored = importBackup(
+      { ...emptyLootState(), config: {}, days: {}, game: {} },
+      exportBackup(saved),
+    );
+    let rerolls = 0;
+    const retried = grantBossRewards({
+      state: restored, bossesDown: 1, source: 'victory',
+      earlyVictoryBonuses: [eligibility],
+      earlyVictoryBloodRandom: () => { rerolls += 1; return 0.9; },
+      nowTimestamp: 20,
+    });
+
+    expect(rerolls).toBe(0);
+    expect(retried.economy.coins).toBe(100);
+    expect(retried.economy.bossBlood).toBe(2);
+    expect(retried.loot.earlyVictoryOutcomes[eligibility.id]).toMatchObject({
+      coins: 25, bossBlood: 1, bloodGranted: true,
+    });
+  });
+
+  it('permite que el 10% anticipado y el 2% de duplicación tengan éxito a la vez', () => {
+    const result = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.9,
+      bloodRandom: () => 0.019,
+      earlyVictoryBonuses: [{
+        id: 'boss_reward_01:early-victory:week-2', bossIndex: 0,
+      }],
+      earlyVictoryBloodRandom: () => 0.099,
+      nowTimestamp: 10,
+    });
+
+    expect(result.economy).toMatchObject({ coins: 100, bossBlood: 3 });
+    expect(result.rewards[0].bonusBossBlood).toBe(1);
+    expect(result.earlyVictoryRewards[0].bossBlood).toBe(1);
+    expect(result.loot.notices[0]).toMatchObject({
+      bonusBossBlood: 1, earlyVictoryBonusCoins: 25, earlyVictoryBonusBossBlood: 1,
+    });
+  });
+
+  it('ignora el bonus anticipado en recompensas históricas', () => {
+    let rolls = 0;
+    const result = grantBossRewards({
+      state: emptyLootState(), bossesDown: 1, source: 'retroactive',
+      earlyVictoryBonuses: [{
+        id: 'boss_reward_01:early-victory:week-0', bossIndex: 0,
+      }],
+      earlyVictoryBloodRandom: () => { rolls += 1; return 0; },
+    });
+    expect(rolls).toBe(0);
+    expect(result.economy.coins).toBe(75);
+    expect(result.loot.earlyVictoryOutcomes).toEqual({});
   });
 
   it('migra conservadoramente reliquias antiguas y nunca las rerollea', () => {
