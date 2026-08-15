@@ -3,6 +3,7 @@ import {
   activeSpellStatus,
   createHeroModel,
   didHeroLevelUp,
+  heroEnergyBaseline,
   heroEnergyModel,
   renderHeroView,
   renderSkillsView,
@@ -61,6 +62,28 @@ describe('modelo de Héroe', () => {
       progress: 0,
       classId: 'paladin',
     });
+  });
+
+  it.each([
+    [1, 0],
+    [5, 0.18],
+    [10, 0.34],
+    [15, 0.5],
+    [20, 0.66],
+    [30, 0.66],
+  ])('mantiene una energía base permanente en el nivel %s', (level, baseline) => {
+    expect(heroEnergyBaseline(level)).toBe(baseline);
+    expect(heroEnergyModel({ progress: 0, level, classId: 'knight' }))
+      .toMatchObject({ baseline, energyProgress: baseline });
+  });
+
+  it('combina el hito permanente con la carga del nivel actual', () => {
+    expect(heroEnergyModel({ progress: 0, level: 10, classId: 'paladin' }))
+      .toMatchObject({ baseline: 0.34, energyPercent: 34, stage: 1 });
+    expect(heroEnergyModel({ progress: 0.5, level: 10, classId: 'paladin' }))
+      .toMatchObject({ baseline: 0.34, energyPercent: 67, stage: 2 });
+    expect(heroEnergyModel({ progress: 1, level: 10, classId: 'paladin' }))
+      .toMatchObject({ energyProgress: 1, energyPercent: 100, stage: 3 });
   });
 
   it('solo detecta una subida frente a un nivel anterior válido', () => {
@@ -296,7 +319,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('hero-energy--paladin');
     expect(heroContent.innerHTML).toContain('hero-energy--stage-3');
-    expect(heroContent.innerHTML).toContain('data-xp-energy="85"');
+    expect(heroContent.innerHTML).toContain('data-xp-progress="85"');
+    expect(heroContent.innerHTML).toContain('data-xp-energy="88"');
     expect(heroContent.innerHTML).toContain('is-leveling-up');
     expect(heroContent.innerHTML).not.toContain('sprite-aura');
     expect(heroContent.innerHTML).toContain('<div class="nombre">Farenheil</div>');

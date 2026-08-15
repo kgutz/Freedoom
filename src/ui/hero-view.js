@@ -36,27 +36,45 @@ export function spriteImage(classId, mood, extraClass = '') {
 }
 
 const HERO_ENERGY_CLASSES = new Set(['knight', 'paladin', 'sorcerer', 'druid']);
+const HERO_ENERGY_MILESTONES = [0, 0.18, 0.34, 0.5, 0.66];
 
-export function heroEnergyModel({ progress = 0, classId, levelUp = false } = {}) {
+export function heroEnergyBaseline(level = 1) {
+  const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const milestone = clamp(Math.floor(safeLevel / 5), 0, HERO_ENERGY_MILESTONES.length - 1);
+  return HERO_ENERGY_MILESTONES[milestone];
+}
+
+export function heroEnergyModel({
+  progress = 0,
+  level = 1,
+  classId,
+  levelUp = false,
+} = {}) {
   const normalizedProgress = clamp(Number(progress) || 0, 0, 1);
-  const stage = normalizedProgress < 0.25
+  const baseline = heroEnergyBaseline(level);
+  const energyProgress = baseline + normalizedProgress * (1 - baseline);
+  const stage = energyProgress < 0.25
     ? 0
-    : normalizedProgress < 0.5
+    : energyProgress < 0.5
       ? 1
-      : normalizedProgress < 0.75
+      : energyProgress < 0.75
         ? 2
         : 3;
 
   return {
     progress: normalizedProgress,
     percent: Math.round(normalizedProgress * 100),
-    glowOpacity: (0.02 + normalizedProgress * 0.58).toFixed(3),
-    glowScale: (0.82 + normalizedProgress * 0.18).toFixed(3),
-    particleOpacity: (0.18 + normalizedProgress * 0.82).toFixed(3),
-    breatheLowOpacity: (0.02 + normalizedProgress * 0.5).toFixed(3),
-    breatheHighOpacity: (0.08 + normalizedProgress * 0.62).toFixed(3),
-    breatheLowScale: (0.82 + normalizedProgress * 0.16).toFixed(3),
-    breatheHighScale: (0.86 + normalizedProgress * 0.18).toFixed(3),
+    level: Math.max(1, Math.floor(Number(level) || 1)),
+    baseline,
+    energyProgress,
+    energyPercent: Math.round(energyProgress * 100),
+    glowOpacity: (0.02 + energyProgress * 0.58).toFixed(3),
+    glowScale: (0.82 + energyProgress * 0.18).toFixed(3),
+    particleOpacity: (0.18 + energyProgress * 0.82).toFixed(3),
+    breatheLowOpacity: (0.02 + energyProgress * 0.5).toFixed(3),
+    breatheHighOpacity: (0.08 + energyProgress * 0.62).toFixed(3),
+    breatheLowScale: (0.82 + energyProgress * 0.16).toFixed(3),
+    breatheHighScale: (0.86 + energyProgress * 0.18).toFixed(3),
     stage,
     classId: HERO_ENERGY_CLASSES.has(classId) ? classId : 'paladin',
     levelUp: Boolean(levelUp),
@@ -84,7 +102,7 @@ function heroEnergyMarkup(energy) {
   return {
     classes,
     style: [
-      `--hero-energy-progress:${energy.progress.toFixed(3)}`,
+      `--hero-energy-progress:${energy.energyProgress.toFixed(3)}`,
       `--hero-energy-opacity:${energy.glowOpacity}`,
       `--hero-energy-scale:${energy.glowScale}`,
       `--hero-particle-opacity:${energy.particleOpacity}`,
@@ -346,6 +364,7 @@ export function renderHeroView({
     .join('');
   const energy = heroEnergyModel({
     progress: heroStats.prog,
+    level: heroStats.lvl,
     classId,
     levelUp,
   });
@@ -469,7 +488,7 @@ export function renderHeroView({
   box.innerHTML = `
     <div class="card">
       <div class="hero-top">
-        <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-xp-energy="${energy.percent}"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
+        <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
