@@ -53,6 +53,12 @@ function relicArt(definition, overlay = '') {
   </div>`;
 }
 
+function affixInfoLink(id, extraClass = '') {
+  const affix = AFFIX_DEFINITIONS[id];
+  if (!affix) return '';
+  return `<button type="button" class="relic-effect-link${extraClass ? ` ${extraClass}` : ''}" data-relic-effect="${escapeHtml(id)}">${escapeHtml(affix.name)}</button>`;
+}
+
 export function rarityClass(rarity) {
   return `rarity-${RARITIES[rarity] ? rarity : 'rare'}`;
 }
@@ -277,7 +283,7 @@ export function renderRelicDetail(document, lootState, relicId) {
   const affixes = relic.affixes.length
     ? relic.affixes.map((id) => {
         const affix = AFFIX_DEFINITIONS[id];
-        return `<li><b class="relic-affix-name">${escapeHtml(affix.name)}</b><p>${escapeHtml(affix.description)}</p></li>`;
+        return `<li>${affixInfoLink(id)}<p>${escapeHtml(affix.description)}</p></li>`;
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
   const fusion = Boolean(definition.recipeId);
@@ -411,6 +417,9 @@ function fusionResultPreviewMarkup(preview) {
     : 'NINGUNO';
   const rarityCopy = preview.qualityDeterministic ? rarity.label : '???';
   const extrasCopy = preview.qualityDeterministic ? extras : '???';
+  const extrasMarkup = preview.qualityDeterministic && relic.affixes.length
+    ? relic.affixes.map((id) => affixInfoLink(id, 'fusion-preview-effect-link')).filter(Boolean).join('<span aria-hidden="true"> · </span>')
+    : escapeHtml(extrasCopy);
   return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
     <div class="fusion-preview-art">${relicArt(definition)}</div>
     <div class="fusion-preview-copy">
@@ -419,7 +428,7 @@ function fusionResultPreviewMarkup(preview) {
       <b class="fusion-preview-quality">${escapeHtml(rarityCopy)} · RANGO ${relic.rank}</b>
       <p>${escapeHtml(fusionEffectDescription(definition, relic))}</p>
       ${fusionInheritedPowerMarkup(preview)}
-      <small>EFECTOS EXTRAS · ${escapeHtml(extrasCopy)}</small>
+      <small class="fusion-preview-affixes"><span>EFECTOS EXTRAS · </span>${extrasMarkup}</small>
     </div>
   </article>`;
 }

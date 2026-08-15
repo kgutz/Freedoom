@@ -212,7 +212,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
     expect(document.elements.forgeBody.innerHTML).toContain('POTENCIA HEREDADA');
     expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 5 MANÁ');
-    expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · Vitalidad · Arcano');
+    expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
+    expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
+    expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('100% ÉXITO');
     expect(document.elements.forgeBody.innerHTML).not.toContain('???');
     expect(JSON.stringify(state)).toBe(beforePreview);

@@ -1166,6 +1166,7 @@
   .relic-affixes li small{color:var(--muted);font:400 9px var(--font-display)}
   .relic-effect-link{appearance:none;border:0;padding:0;background:transparent;color:var(--kodak);font:400 11px var(--font-display);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;cursor:pointer}
   .relic-effect-link:focus-visible{outline:1px solid var(--kodak);outline-offset:4px;border-radius:2px}
+  .fusion-preview-affixes{display:flex!important;flex-wrap:wrap;align-items:center;gap:2px 3px}.fusion-preview-effect-link{font-size:8px;line-height:1.25;text-underline-offset:2px}
   .relic-effect-info-modal{text-align:center;max-width:330px}
   .relic-effect-info-kicker{display:block;color:var(--kodak);font:400 9px var(--font-display);letter-spacing:.13em}
   .relic-effect-info-modal h3{margin:7px 0 9px;color:var(--kodak)}
