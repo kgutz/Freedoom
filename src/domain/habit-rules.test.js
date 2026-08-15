@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   adjustHabitProgress,
   applyHabitCoinRewards,
+  calculateHabitXpCap,
   habitCoinReward,
   habitEntryFor,
   habitPeriodKey,
+  habitPotentialXp,
   habitReward,
+  habitXpCapForState,
   habitXpTotal,
   nextHabitOrder,
   normalizeHabitState,
@@ -109,6 +112,49 @@ describe('hábitos', () => {
     });
   });
 
+  it.each([
+    ['daily', 9, 25],
+    ['daily', 25, 25],
+    ['daily', 26, 26],
+    ['weekly', 34, 35],
+    ['weekly', 35, 35],
+    ['weekly', 36, 36],
+  ])('calcula el tope %s con %i XP potenciales', (frequency, potential, expected) => {
+    expect(calculateHabitXpCap(frequency, potential)).toBe(expected);
+  });
+
+  it('calcula 45 XP de tope para cinco hábitos diarios difíciles', () => {
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      ...habit, id: `hard-${index}`, difficulty: 'hard', target: 1, active: true,
+    }));
+    const state = { items, entries: {} };
+    expect(habitPotentialXp(state, 'daily')).toBe(50);
+    expect(habitXpCapForState(state, 'daily')).toBe(45);
+  });
+
+  it('aplica los hard caps diario y semanal', () => {
+    expect(calculateHabitXpCap('daily', 500)).toBe(100);
+    expect(calculateHabitXpCap('weekly', 500)).toBe(120);
+  });
+
+  it('suma dificultades activas por frecuencia sin multiplicar por repeticiones', () => {
+    const state = {
+      items: [
+        { ...habit, id: 'daily-easy', difficulty: 'easy', target: 20, active: true },
+        { ...habit, id: 'daily-medium', difficulty: 'medium', active: true },
+        { ...habit, id: 'daily-hard', difficulty: 'hard', active: true },
+        { ...habit, id: 'inactive-hard', difficulty: 'hard', active: false },
+        { ...habit, id: 'weekly-easy', difficulty: 'easy', frequency: 'weekly', active: true },
+        { ...habit, id: 'weekly-hard', difficulty: 'hard', frequency: 'weekly', active: true },
+      ],
+      entries: {},
+    };
+    expect(habitPotentialXp(state, 'daily')).toBe(19);
+    expect(habitPotentialXp(state, 'weekly')).toBe(39);
+    expect(habitXpCapForState(state, 'daily')).toBe(25);
+    expect(habitXpCapForState(state, 'weekly')).toBe(38);
+  });
+
   it('entrega XP una sola vez al alcanzar el objetivo y la retira al deshacer', () => {
     const first = adjustHabitProgress({
       habitState: null,
@@ -165,6 +211,45 @@ describe('hábitos', () => {
     }
 
     expect(habitXpTotal(habitState)).toBe(25);
+  });
+
+  it('concede solo la XP restante bajo el tope dinámico y la retira al deshacer', () => {
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      ...habit, id: `dynamic-${index}`, difficulty: 'hard', target: 1, active: true,
+    }));
+    let habitState = { items, entries: {} };
+    const results = [];
+    items.forEach((targetHabit) => {
+      const result = adjustHabitProgress({
+        habitState, habit: targetHabit, delta: 1, date, planStartDate: startDate,
+      });
+      habitState = result.habitState;
+      results.push(result);
+    });
+    expect(results.map((result) => result.xpDelta)).toEqual([10, 10, 10, 10, 5]);
+    expect(habitXpTotal(habitState)).toBe(45);
+
+    const undone = adjustHabitProgress({
+      habitState, habit: items[4], delta: -1, date, planStartDate: startDate,
+    });
+    expect(undone.xpDelta).toBe(-5);
+    expect(habitXpTotal(undone.habitState)).toBe(40);
+  });
+
+  it('mantiene la XP histórica al editar, desactivar o eliminar hábitos', () => {
+    const original = { ...habit, id: 'historical', difficulty: 'hard', target: 1, active: true };
+    const completed = adjustHabitProgress({
+      habitState: { items: [original], entries: {} },
+      habit: original, delta: 1, date, planStartDate: startDate,
+    });
+    const edited = {
+      ...completed.habitState,
+      items: [{ ...original, difficulty: 'easy', active: false }],
+    };
+    const removed = { ...completed.habitState, items: [] };
+    expect(habitXpTotal(edited)).toBe(10);
+    expect(habitXpTotal(removed)).toBe(10);
+    expect(removed.entries['historical|d:2026-08-01'].xpAwarded).toBe(10);
   });
 
   it('permite hasta 35 XP semanales para todas las clases', () => {
@@ -226,6 +311,41 @@ describe('hábitos', () => {
       habitState=result.habitState;
     }
     expect(habitXpTotal(habitState)).toBe(25);
+  });
+
+  it('limita bonus de clase y Disciplina con el nuevo tope dinámico', () => {
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      ...habit, id: `boosted-${index}`, difficulty: 'hard', target: 1, active: true,
+    }));
+    let habitState = { items, entries: {} };
+    const deltas = [];
+    items.forEach((targetHabit) => {
+      const result = adjustHabitProgress({
+        habitState,
+        habit: targetHabit,
+        delta: 1,
+        date,
+        planStartDate: startDate,
+        rewardMultiplier: 1.5,
+        flatRewardBonus: 1,
+      });
+      habitState = result.habitState;
+      deltas.push(result.xpDelta);
+    });
+    expect(deltas).toEqual([16, 16, 13, 0, 0]);
+    expect(habitXpTotal(habitState)).toBe(45);
+  });
+
+  it('calcula topes dinámicos en partidas antiguas sin guardar campos nuevos', () => {
+    const legacy = {
+      items: Array.from({ length: 5 }, (_, index) => ({
+        ...habit, id: `legacy-${index}`, difficulty: 'hard', active: true,
+      })),
+      entries: {},
+    };
+    const normalized = normalizeHabitState(legacy);
+    expect(normalized).not.toHaveProperty('xpCap');
+    expect(habitXpCapForState(normalized, 'daily')).toBe(45);
   });
 
   it('reinicia el progreso diario y alinea el semanal con el plan', () => {
@@ -392,9 +512,9 @@ describe('hábitos', () => {
       habitState = last.habitState;
       currentEconomy = last.economy;
     });
-    expect(last.progress.xpDelta).toBe(5);
+    expect(last.progress.xpDelta).toBe(9);
     expect(last.habitCoinDelta).toBe(3);
-    expect(habitXpTotal(habitState)).toBe(25);
+    expect(habitXpTotal(habitState)).toBe(29);
     expect(currentEconomy.coins).toBe(12);
   });
 

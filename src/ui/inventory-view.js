@@ -36,17 +36,19 @@ export function resourceValue(type, value, label = '') {
   return `<span class="resource-value">${resourceIcon(type)}<b>${Math.max(0, Number(value) || 0)}</b>${label ? `<small>${label}</small>` : ''}</span>`;
 }
 
-function relicArt(definition) {
+function relicArt(definition, overlay = '') {
   if (definition.ingredientIds?.length === 2 && !definition.image) {
     const ingredients = definition.ingredientIds.map((id) => relicDefinition(id));
     return `<div class="relic-art relic-art--fusion relic-art--${definition.id}">
       ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true">`).join('')}
       <span class="fusion-art-sigil" aria-hidden="true">✦</span>
+      ${overlay}
     </div>`;
   }
   return `<div class="relic-art relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${definition.bossIndex + 1}</span>
+    ${overlay}
   </div>`;
 }
 
@@ -154,12 +156,11 @@ export function relicCardMarkup({
       })
     : '';
   return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${chargeIndicator ? ' has-charge' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}"` : ''}>
-    ${relicArt(definition)}
+    ${relicArt(definition, chargeIndicator)}
     <span class="relic-card-copy">
       <b>${escapeHtml(definition.name)}</b>
       ${statusMarkup}
     </span>
-    ${chargeIndicator}
   </button>`;
 }
 

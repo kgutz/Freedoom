@@ -751,6 +751,11 @@
     font-size:11px;border:1px solid var(--kodak);color:var(--kodak);
     border-radius:6px;padding:3px 7px;font-family:'IBM Plex Mono',monospace;
   }
+  .skill-buff{display:inline-flex;align-items:center;gap:6px;color:#fff;font:700 11px 'IBM Plex Mono',monospace}
+  .skill-buff-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;overflow:visible;border:0;background:none;filter:drop-shadow(0 0 3px rgba(232,180,74,.5));animation:effectIconGlow 2.8s ease-in-out infinite}
+  .skill-buff-icon img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+  .skill-buff-icon .sk-fallback{font-size:12px;color:var(--kodak)}
+  .skill-buff>b{text-shadow:0 1px 2px #000;font-weight:700}
   .cast-btn{margin-top:8px;display:inline-block}
   .cast-btn[disabled]{opacity:.35;cursor:default}
 
@@ -865,14 +870,18 @@
   .ad-cost{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--pill);margin-top:6px}
   .abil.off{opacity:.4}
 
-  /* ---------- bloque compacto de habilidades ---------- */
-  .hero-skills-card{scroll-margin-top:14px}
-  .hero-skills-card.skills-jump-highlight{animation:skillsJumpGlow 1.15s ease-out}
-  @keyframes skillsJumpGlow{0%{border-color:var(--line);box-shadow:none}30%{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.2),0 0 24px rgba(232,180,74,.16)}100%{border-color:var(--line);box-shadow:none}}
+  /* ---------- panel compacto de habilidades ---------- */
+  #sheetHeroSkills{align-items:flex-start}
+  .hero-skills-sheet{display:flex;flex-direction:column;max-width:390px;max-height:calc(100dvh - 40px - env(safe-area-inset-top) - env(safe-area-inset-bottom));margin-top:clamp(8px,5dvh,48px);overflow:hidden}
+  .hero-skills-sheet>.sheet-head,.hero-skills-sheet>.skills-tabs{flex:0 0 auto}
+  .hero-skills-modal-card,.hero-skills-book{min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+  .hero-skills-modal-card{margin:0;padding:18px}
+  .hero-skills-book{margin:0}
+  .skills-tabs{margin-top:0}
   .skills-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   .skills-head h2{font-size:15px}
   .sk-row-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 9px 1px}
-  .sk-row-label.acts{margin-top:18px}
+  .sk-row-label.secondary{margin-top:18px}
   .sk-info-btn{
     width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);
     color:var(--kodak);font-size:16px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
@@ -880,7 +889,6 @@
   .sk-info-btn:active{background:rgba(232,180,74,.15)}
   .skill-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px}
   .skill-row:last-child{margin-bottom:0}
-  @media (prefers-reduced-motion:reduce){.hero-skills-card.skills-jump-highlight{animation:none;border-color:var(--kodak)}}
   .skill-box{
     position:relative;aspect-ratio:1;width:85%;margin:0 auto;border-radius:12px;overflow:hidden;cursor:pointer;
     border:1px solid var(--line);
@@ -898,6 +906,35 @@
     width:100%;height:100%;align-items:center;justify-content:center;
   }
   .skill-box.on .sk-fallback{color:var(--kodak)}
+  .skill-box.spell-effect-active,.skill-box.passive-effect-active{
+    border-color:var(--kodak);
+    box-shadow:0 0 0 1px rgba(232,180,74,.34),0 0 13px rgba(232,180,74,.22);
+  }
+  .skill-box.spell-effect-active{
+    animation:activeSpellGlow 2.8s ease-in-out infinite;
+  }
+  .skill-box.passive-effect-active{
+    animation:passiveBorderGlow 2.8s ease-in-out infinite;
+  }
+  .skill-active-timer{
+    position:absolute;right:5px;bottom:4px;z-index:3;
+    color:#fff;font:700 11px 'IBM Plex Mono',monospace;line-height:1;
+    text-shadow:0 1px 2px #000,0 0 4px #000;
+    letter-spacing:.01em;
+  }
+  @keyframes activeSpellGlow{
+    0%,100%{transform:translateY(0);filter:brightness(1);box-shadow:0 0 0 1px rgba(232,180,74,.28),0 0 8px rgba(232,180,74,.16)}
+    50%{transform:translateY(-1px);filter:brightness(1.08);box-shadow:0 0 0 1px rgba(242,202,103,.62),0 0 18px rgba(232,180,74,.34)}
+  }
+  @keyframes passiveBorderGlow{
+    0%,100%{border-color:rgba(232,180,74,.72);box-shadow:0 0 0 1px rgba(232,180,74,.22),0 0 7px rgba(232,180,74,.13)}
+    50%{border-color:#f2ca67;box-shadow:0 0 0 1px rgba(242,202,103,.6),0 0 16px rgba(232,180,74,.3)}
+  }
+  @keyframes effectIconGlow{
+    0%,100%{filter:drop-shadow(0 0 2px rgba(232,180,74,.42)) drop-shadow(0 0 4px rgba(232,180,74,.18))}
+    50%{filter:drop-shadow(0 0 3px rgba(242,202,103,.78)) drop-shadow(0 0 8px rgba(232,180,74,.46))}
+  }
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon{animation:none}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}
@@ -943,6 +980,11 @@
   .relic-card,.relic-detail-frame,.loot-reward-item{border-color:var(--rarity-rare)}.relic-card.rarity-legendary,.relic-detail-frame.rarity-legendary,.loot-reward-item.rarity-legendary{border-color:var(--rarity-legendary)}.relic-card.rarity-mythic,.relic-detail-frame.rarity-mythic,.loot-reward-item.rarity-mythic{border-color:var(--rarity-mythic)}
   .equipped-relics .relic-card{aspect-ratio:1;flex-direction:column;justify-content:center;gap:7px;padding:12px;text-align:center}.equipped-relics .relic-art{width:min(96px,72%);height:auto;aspect-ratio:1;flex:0 0 auto}.equipped-relics .relic-card-copy{align-items:center}.equipped-relics .relic-card-copy>b{font-size:10px}.equipped-relics .relic-slot-empty{aspect-ratio:1;min-height:0}
   .equipped-relics .relic-card.has-charge{gap:4px;padding:8px 10px 26px}.equipped-relics .relic-card.has-charge .relic-art{width:min(88px,58%)}.relic-charge-indicator{position:absolute;z-index:3;left:50%;bottom:9px;display:flex;align-items:center;justify-content:center;gap:5px;transform:translateX(-50%);color:var(--relic-border-color);white-space:nowrap}.relic-charge-dot{display:block;width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:.42;box-shadow:inset 0 0 0 1px rgba(0,0,0,.32)}.relic-charge-dot.active{background:currentColor;opacity:1;box-shadow:0 0 4px currentColor}.relic-charge-dot.newly-charged{animation:relic-charge-pulse .75s steps(4,end) 1}.relic-charge-indicator.complete .relic-charge-dot{box-shadow:0 0 5px currentColor}@keyframes relic-charge-pulse{0%{transform:scale(.65);filter:brightness(.7)}45%{transform:scale(1.55);filter:brightness(1.8)}100%{transform:scale(1);filter:brightness(1)}}
+  .relic-art{position:relative}
+  .equipped-relics .relic-card.has-charge{gap:7px;padding:12px}
+  .equipped-relics .relic-card.has-charge .relic-art{width:min(96px,72%)}
+  .relic-art>.relic-charge-indicator{bottom:5px;gap:3px;padding:3px 4px;border-radius:999px;background:rgba(14,11,9,.72)}
+  .relic-art>.relic-charge-indicator .relic-charge-dot{width:5px;height:5px;opacity:.5}
   .relic-art--relic_01 img{width:calc(100% + 6px);height:calc(100% + 6px);max-width:none}
   .relic-art--fusion_01 img{transform:translateY(-4px)}
   .relic-art--fusion{position:relative;background:radial-gradient(circle at 50% 42%,#4b3928 0%,var(--relic-surface) 56%,#17110d 100%)}

@@ -160,6 +160,7 @@ describe('interfaz de inventario y botín', () => {
     const html = document.elements.inventoryBody.innerHTML;
     expect(html.match(/relic-charge-indicator/g)).toHaveLength(1);
     expect(html).toContain('rarity-mythic');
+    expect(html.indexOf('relic-charge-indicator')).toBeLessThan(html.indexOf('relic-card-copy'));
   });
 
   it('muestra selección, requisitos, pity y probabilidad en la vista de Forja', () => {

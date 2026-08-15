@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activeSpellStatus,
   createHeroModel,
   renderHeroView,
   renderSkillsView,
@@ -34,6 +35,34 @@ const base = (overrides = {}) => ({
 });
 
 describe('modelo de Héroe', () => {
+  it('describe temporizadores, cargas y efectos diarios de las activas', () => {
+    const now = new Date(2026, 6, 26, 12).getTime();
+    expect(activeSpellStatus({
+      spellId: 'regen',
+      game: { buffs: { regenUntil: now + 61 * 60_000 } },
+      nowTimestamp: now,
+      today: '2026-07-26',
+    })).toBe('61m');
+    expect(activeSpellStatus({
+      spellId: 'muro',
+      game: { buffs: { shield: 2 } },
+      nowTimestamp: now,
+      today: '2026-07-26',
+    })).toBe('×2');
+    expect(activeSpellStatus({
+      spellId: 'juicio',
+      game: { buffs: {}, judgmentDays: ['2026-07-26'] },
+      nowTimestamp: now,
+      today: '2026-07-26',
+    })).toBe('HOY');
+    expect(activeSpellStatus({
+      spellId: 'balsamo',
+      game: { buffs: {} },
+      nowTimestamp: now,
+      today: '2026-07-26',
+    })).toBeNull();
+  });
+
   it('incluye una sinopsis para cada jefe de la campaña', () => {
     expect(BOSS_LORE).toHaveLength(BOSSES.length);
     expect(BOSS_LORE.every((synopsis) => synopsis.length > 60)).toBe(true);
@@ -68,7 +97,13 @@ describe('modelo de Héroe', () => {
       perfectToday: 1,
       boss: { hp: 62, maxHp: 100, hpPercent: 62 },
     });
-    expect(model.chips).toEqual(['🛡×2', '🎯 2m', '🍺 25% · 41m']);
+    expect(model.chips).toEqual(['🍺 25% · 41m']);
+    expect(model.skillEffects).toEqual([{
+      spellId: 'certero',
+      icon: 'certero',
+      name: 'Ojo Certero',
+      remaining: '2m',
+    }]);
   });
 
   it('muestra el pack de habilidades sin fumar y sus efectos activos',()=>{
@@ -83,8 +118,7 @@ describe('modelo de Héroe', () => {
 
     expect(model.classData.pas[0].d).toContain('55 XP');
     expect(model.classData.pas[0].d).not.toContain('disparos perfectos');
-    expect(model.chips).toContain('🎯×2 hábitos');
-    expect(model.chips).toContain('☠ +20 XP hoy');
+    expect(model.skillEffects).toEqual([]);
   });
 
   it('mantiene dormido al héroe antes de levantarse', () => {
@@ -140,16 +174,20 @@ describe('modelo de Héroe', () => {
     expect(classChangeSkills.innerHTML).toContain('Ojo del Halcón');
     expect(classChangeSkills.innerHTML).toContain('Hechizos — Arquero Sagrado');
     expect(classChangeSkills.innerHTML).toContain('Ojo Certero');
+    expect(classChangeSkills.innerHTML.indexOf('Hechizos — Arquero Sagrado'))
+      .toBeLessThan(classChangeSkills.innerHTML.indexOf('Pasivas — Arquero Sagrado'));
     expect(classChangeSkills.innerHTML).not.toContain('sprite-svg');
   });
 
   it('mueve los últimos golpes al panel informativo del jefe', () => {
     const heroContent = { innerHTML: '' };
     const bossHistoryBody = { innerHTML: '' };
+    const heroSkillsModalBody = { innerHTML: '' };
     const document = {
       getElementById(id) {
         if (id === 'heroContent') return heroContent;
         if (id === 'bossHistoryBody') return bossHistoryBody;
+        if (id === 'heroSkillsModalBody') return heroSkillsModalBody;
         return null;
       },
     };
@@ -157,7 +195,11 @@ describe('modelo de Héroe', () => {
     renderHeroView({
       document,
       ...base({
-        game: { ...base().game, name: 'Farenheil' },
+        game: {
+          ...base().game,
+          name: 'Farenheil',
+          buffs: { certeroUntil: new Date(2026, 6, 26, 12, 30).getTime() },
+        },
         boss: {
           ...base().boss,
           name: 'Espectro',
@@ -192,11 +234,22 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('data-open-current-boss-medal="1"');
     expect(heroContent.innerHTML).toContain('aria-label="Abrir medallón de Espectro"');
     expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
-    expect(heroContent.innerHTML).toContain('data-scroll-skills');
+    expect(heroContent.innerHTML).toContain('data-open-hero-skills');
     expect(heroContent.innerHTML.indexOf('data-open-inventory'))
-      .toBeLessThan(heroContent.innerHTML.indexOf('data-scroll-skills'));
-    expect(heroContent.innerHTML).toContain('id="heroSkillsCard"');
-    expect(heroContent.innerHTML).toContain('aria-label="Ir a habilidades"');
+      .toBeLessThan(heroContent.innerHTML.indexOf('data-open-hero-skills'));
+    expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
+    expect(heroContent.innerHTML).toContain('aria-label="Abrir habilidades"');
+    expect(heroContent.innerHTML).not.toContain('data-cast=');
+    expect(heroSkillsModalBody.innerHTML).not.toContain('id="skInfoBtn"');
+    expect(heroSkillsModalBody.innerHTML).toContain('data-cast=');
+    expect(heroSkillsModalBody.innerHTML.indexOf('Activas'))
+      .toBeLessThan(heroSkillsModalBody.innerHTML.indexOf('Pasivas'));
+    expect(heroSkillsModalBody.innerHTML).toContain('spell-effect-active');
+    expect(heroSkillsModalBody.innerHTML).toContain('>30m</span>');
+    expect((heroSkillsModalBody.innerHTML.match(/passive-effect-active/g) || []).length).toBe(2);
+    expect(heroContent.innerHTML).toContain('class="skill-buff-icon"');
+    expect(heroContent.innerHTML).toContain('Ojo Certero: 30m restantes');
+    expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('<div class="nombre">Farenheil</div>');
     expect(heroContent.innerHTML).toContain('class="hero-summary"');
     expect(heroContent.innerHTML).not.toContain('Jefes:');
@@ -204,7 +257,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');
-    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1 / 20');
+    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
+    expect(bossHistoryBody.innerHTML).not.toContain('1 / 20');
     expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');
     expect(bossHistoryBody.innerHTML).not.toContain('data-share-boss="1"');
     expect(bossHistoryBody.innerHTML).toContain('data-open-boss-medal="0"');
@@ -213,9 +267,11 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.png');
     expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.png');
     expect(bossHistoryBody.innerHTML).toContain('EN COMBATE');
+    expect(heroContent.innerHTML).toContain('Jefes derrotados: <b>1</b> de <b>?</b> · ¡Aún quedan jefes por derrotar!');
+    expect(heroContent.innerHTML).not.toContain('de <b>20</b>');
   });
 
-  it('muestra tantos medallones como semanas tenga el plan', () => {
+  it('oculta el total futuro y muestra una sola incógnita', () => {
     const heroContent = { innerHTML: '' };
     const bossHistoryBody = { innerHTML: '' };
     const document = {
@@ -244,7 +300,9 @@ describe('modelo de Héroe', () => {
       intoxication: null,
     });
 
-    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1 / 6');
-    expect((bossHistoryBody.innerHTML.match(/class="boss-medal /g) || []).length).toBe(6);
+    expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
+    expect(bossHistoryBody.innerHTML).not.toContain('1 / 6');
+    expect((bossHistoryBody.innerHTML.match(/class="boss-medal /g) || []).length).toBe(3);
+    expect((bossHistoryBody.innerHTML.match(/boss_medal_locked.png/g) || []).length).toBe(1);
   });
 });

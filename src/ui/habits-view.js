@@ -1,11 +1,9 @@
 import { CLASSES } from '../data/game-data.js';
 import {
-  HABIT_DAILY_XP_CAP,
-  HABIT_WEEKLY_XP_CAP,
   HABIT_DIFFICULTIES,
-  habitCoinReward,
   habitEntryFor,
   habitReward,
+  habitXpCapForState,
   habitXpForCurrentPeriods,
   normalizeHabitState,
   sortHabits,
@@ -25,15 +23,14 @@ function habitRow(habit, entry) {
   const difficulty = HABIT_DIFFICULTIES[habit.difficulty] || HABIT_DIFFICULTIES.easy;
   const frequency = habit.frequency === 'weekly' ? 'Semanal' : 'Diario';
   const reward = habitReward(habit);
-  const coinReward = habitCoinReward(habit);
   return `<article class="habit-row${completed ? ' completed' : ''}" data-habit-id="${escapeHtml(habit.id)}">
     <button class="habit-adjust habit-minus" type="button" data-habit-delta="-1" aria-label="Restar progreso"${entry.count <= 0 ? ' disabled' : ''}>−</button>
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${frequency} · +${reward} XP · +${coinReward} 🪙</span>
+      <span class="habit-meta">${difficulty.label} · ${frequency} · +${reward} XP</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
-      <span class="habit-count">${entry.count} / ${habit.target}${completed ? ` · +${entry.xpAwarded} XP${entry.coinsAwarded ? ` · +${entry.coinsAwarded} 🪙` : ''}` : ''}</span>
+      <span class="habit-count">${entry.count} / ${habit.target}${completed ? ` · +${entry.xpAwarded} XP` : ''}</span>
     </button>
     <button class="habit-grip" type="button" data-habit-drag aria-label="Mantener pulsado para mover ${escapeHtml(habit.title)}" title="Mantén pulsado y arrastra para ordenar">⠿</button>
     <button class="habit-adjust habit-plus" type="button" data-habit-delta="1" aria-label="Sumar progreso"${completed ? ' disabled' : ''}>+</button>
@@ -77,6 +74,8 @@ export function renderHabitsView({
     date,
     planStartDate,
   );
+  const dailyXpCap = habitXpCapForState(normalized, 'daily');
+  const weeklyXpCap = habitXpCapForState(normalized, 'weekly');
   const classId = game?.cls || 'knight';
   const className = CLASSES[classId]?.name || 'Héroe';
   const level = stats?.lvl || 1;
@@ -132,7 +131,7 @@ export function renderHabitsView({
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
-        <div class="habit-xp-label"><span>${xp} / ${nextXp} XP</span><span>Topes ${HABIT_DAILY_XP_CAP}/día · ${HABIT_WEEKLY_XP_CAP}/sem.</span></div>
+        <div class="habit-xp-label"><span>${xp} / ${nextXp} XP</span><span>Topes ${dailyXpCap}/día · ${weeklyXpCap}/sem.</span></div>
       </div>
     </div>
     <div class="habit-filter" role="group" aria-label="Filtrar hábitos">
