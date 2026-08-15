@@ -192,7 +192,7 @@ describe('interfaz de inventario y botín', () => {
     expect(JSON.stringify(state)).toBe(original);
   });
 
-  it('oculta una receta nueva, muestra incompatibilidades y revela el resultado descubierto', () => {
+  it('previsualiza una receta nueva completa, muestra incompatibilidades y conserva el resultado real', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     state.economy.coins = 500;
@@ -202,15 +202,23 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.relics.relic_01.affixes = ['vitality'];
     state.inventory.relics.relic_02.rarity = 'legendary';
     state.inventory.relics.relic_02.affixes = ['arcane'];
+    const beforePreview = JSON.stringify(state);
     renderFusionView(document, state, 'relic_01', 'relic_02');
-    expect(document.elements.forgeBody.innerHTML).toContain('Receta desconocida');
-    expect(document.elements.forgeBody.innerHTML).not.toContain('Corazón Espectral');
+    expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
+    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
     expect(document.elements.forgeBody.innerHTML).toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
-    expect(document.elements.forgeBody.innerHTML).toContain('2 EFECTOS EXTRAS');
+    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
+    expect(document.elements.forgeBody.innerHTML).toContain('POTENCIA HEREDADA');
+    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 5 MANÁ');
+    expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · Vitalidad · Arcano');
+    expect(document.elements.forgeBody.innerHTML).toContain('100% ÉXITO');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('???');
+    expect(JSON.stringify(state)).toBe(beforePreview);
     renderFusionView(document, state, 'relic_03', 'relic_06');
     expect(document.elements.forgeBody.innerHTML).toContain('Estas reliquias no pueden fusionarse');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-result-preview');
     expect(document.elements.forgeBody.innerHTML).toContain('data-fuse-relics="relic_03|relic_06" disabled');
     const fused = fuseRelics({
       state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-fusion', nowTimestamp: 10,

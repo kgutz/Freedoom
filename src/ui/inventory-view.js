@@ -11,7 +11,7 @@ import {
 } from '../data/loot-data.js';
 import {
   forgePreview,
-  fusionPreview,
+  getForgeFusionPreview,
   fusionRecipeStatus,
   ensureShopRotation,
   normalizeLootState,
@@ -47,7 +47,7 @@ function relicArt(definition, overlay = '') {
   }
   return `<div class="relic-art relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-    <span class="relic-art-fallback" style="display:none">${definition.bossIndex + 1}</span>
+    <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
     ${overlay}
   </div>`;
 }
@@ -392,17 +392,45 @@ function fusionSlotMarkup(definition, label) {
     : `<div class="fusion-slot"><span>?</span><small>${label}</small></div>`;
 }
 
+function fusionInheritedPowerMarkup(preview) {
+  const inherited = Object.entries(preview.inheritedEffects || {})
+    .map(([relicId, value]) => relicEffectValue(relicId, value));
+  return inherited.length
+    ? `<p class="fusion-preview-inherited"><span>POTENCIA HEREDADA</span><b>${inherited.map(escapeHtml).join(' · ')}</b></p>`
+    : '';
+}
+
+function fusionResultPreviewMarkup(preview) {
+  const definition = preview.definition;
+  const relic = preview.resultRelic;
+  if (!definition || !relic) return '';
+  const rarity = RARITIES[relic.rarity] || RARITIES.rare;
+  const extras = relic.affixes.length
+    ? relic.affixes.map((id) => AFFIX_DEFINITIONS[id]?.name).filter(Boolean).join(' · ')
+    : 'NINGUNO';
+  const rarityCopy = preview.qualityDeterministic ? rarity.label : '???';
+  const extrasCopy = preview.qualityDeterministic ? extras : '???';
+  return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
+    <div class="fusion-preview-art">${relicArt(definition)}</div>
+    <div class="fusion-preview-copy">
+      <span>RESULTADO</span>
+      <h3>${escapeHtml(definition.name)}</h3>
+      <b class="fusion-preview-quality">${escapeHtml(rarityCopy)} · RANGO ${relic.rank}</b>
+      <p>${escapeHtml(fusionEffectDescription(definition, relic))}</p>
+      ${fusionInheritedPowerMarkup(preview)}
+      <small>EFECTOS EXTRAS · ${escapeHtml(extrasCopy)}</small>
+    </div>
+  </article>`;
+}
+
 export function renderFusionView(document, lootState, leftId = null, rightId = null, options = {}) {
   const normalized = normalizeLootState(lootState);
   const body = document.getElementById('forgeBody');
   if (!body) return null;
   const left = relicDefinition(leftId);
   const right = relicDefinition(rightId);
-  const preview = fusionPreview(normalized, leftId, rightId);
-  const resultKnown = preview.definition && preview.discovered;
-  const resultMarkup = preview.definition && resultKnown
-    ? fusionSlotMarkup(preview.definition, 'RESULTADO')
-    : `<div class="fusion-slot fusion-result-unknown"><span>?</span><small>${preview.status === 'incompatible' ? 'INCOMPATIBLE' : 'RESULTADO'}</small></div>`;
+  const preview = getForgeFusionPreview(normalized, leftId, rightId);
+  const resultMarkup = fusionResultPreviewMarkup(preview);
   const statusCopy = preview.reason === 'same-relic'
     ? 'Selecciona dos reliquias diferentes.'
     : preview.status === 'incompatible'
@@ -415,9 +443,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
             ? 'No tienes suficientes monedas.'
             : preview.reason === 'blood'
               ? 'No tienes suficiente Sangre de Jefe.'
-              : preview.definition && !preview.discovered
-                ? 'Receta desconocida · el resultado se revelará al fusionar.'
-                : preview.definition ? 'Fusión conocida y 100% segura.' : 'Elige dos reliquias base.';
+              : preview.definition ? 'Resultado listo · fusión 100% segura.' : 'Elige dos reliquias base.';
   const choices = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
     .map((definition) => {
@@ -429,20 +455,17 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
       const rejected = options.errorId === definition.id;
       return `<button type="button" class="forge-relic-choice ${rarityClass(relic.rarity)}${selected ? ' selected' : ''}${position === 1 ? ' fusion-first-selected' : ''}${incompatible ? ' fusion-incompatible' : ''}${rejected ? ' fusion-choice-error' : ''}" data-select-fusion-relic="${definition.id}" aria-label="Seleccionar ${escapeHtml(definition.name)}${incompatible ? ', incompatible con la primera reliquia' : ''}"${incompatible ? ' aria-disabled="true"' : ''}>${relicArt(definition)}<span class="forge-choice-rank">${relic.rank}</span>${position ? `<span class="fusion-choice-order" aria-hidden="true">${position}</span>` : ''}</button>`;
     }).join('');
-  const resultRarityMarkup = preview.resultRarity
-    ? `<p class="fusion-result-rarity ${rarityClass(preview.resultRarity)}"><span>RESULTADO</span><b>${RARITIES[preview.resultRarity].label} · RANGO ${preview.resultRank}</b><small>${preview.resultAffixes.length} EFECTO${preview.resultAffixes.length === 1 ? '' : 'S'} EXTRA${preview.resultAffixes.length === 1 ? '' : 'S'}</small></p>`
-    : '';
   const selectionFeedback = options.errorId
     ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible.</small></p>'
     : `<p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
     <div class="forge-toolbar"><strong>FUSIONAR</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="fusion-flow" aria-label="Receta de Fusión">
-      ${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}<b>→</b>${resultMarkup}
+      <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
+      ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
     </section>
     ${selectionFeedback}
-    ${resultRarityMarkup}
-    <div class="forge-cost fusion-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}${resourceValue('boss-blood', preview.bloodCost)}</div>
+    <div class="forge-cost fusion-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}${resourceValue('boss-blood', preview.bloodCost)}${preview.successProbability ? `<b>${preview.successProbability}% ÉXITO</b>` : ''}</div>
     <button type="button" class="forge-attempt fusion-attempt" data-fuse-relics="${escapeHtml(leftId || '')}|${escapeHtml(rightId || '')}"${preview.ok ? '' : ' disabled'}>FUSIONAR</button>
     <details class="forge-info fusion-info"><summary>¿CÓMO FUNCIONA? <span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>La Fusión es segura, pero consume permanentemente las dos reliquias base. Podrás recuperarlas después mediante la Tienda.</p><p>La rareza y el rango más altos están garantizados. Cada efecto conserva la potencia exacta que tenía en su reliquia de origen: fusionar no lo mejora gratis.</p><p>Un efecto extra asegura Legendario y dos o más aseguran Mítico. Los efectos diferentes se conservan sin duplicarse.</p></div></details>
     <section class="forge-collection" aria-label="Selecciona dos reliquias"><div class="forge-relic-grid">${choices || '<span class="forge-empty-copy">Necesitas dos reliquias base.</span>'}</div></section>`;

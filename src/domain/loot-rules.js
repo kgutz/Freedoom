@@ -872,7 +872,7 @@ export function fusionRecipeStatus(leftId, rightId) {
   return { status: incompatible ? 'incompatible' : 'not-designed', definition: null };
 }
 
-export function fusionPreview(lootState, leftId, rightId) {
+export function getForgeFusionPreview(lootState, leftId, rightId) {
   const normalized = normalizeLootState(lootState);
   const recipe = fusionRecipeStatus(leftId, rightId);
   const ownsLeft = Boolean(normalized.inventory.relics[leftId]);
@@ -884,15 +884,45 @@ export function fusionPreview(lootState, leftId, rightId) {
         [rightId]: normalized.inventory.relics[rightId],
       }
     : null;
-  const resultAffixes = previewIngredients
+  const computedAffixes = previewIngredients
     ? [...new Set(Object.values(previewIngredients).flatMap((relic) => relic.affixes))]
     : [];
-  const resultRarity = previewIngredients
-    ? rarityForFusion(previewIngredients, resultAffixes)
+  const computedRarity = previewIngredients
+    ? rarityForFusion(previewIngredients, computedAffixes)
     : null;
-  const resultRank = previewIngredients
+  const computedRank = previewIngredients
     ? Math.max(...Object.values(previewIngredients).map((relic) => relic.rank))
     : null;
+  const existingResult = recipe.definition
+    ? normalized.inventory.relics[recipe.definition.id] || null
+    : null;
+  const ingredientSnapshots = previewIngredients
+    ? Object.fromEntries(
+        Object.entries(previewIngredients).map(([id, relic]) => [id, ingredientSnapshot(id, relic)]),
+      )
+    : existingResult?.ingredientSnapshots || {};
+  const inheritedEffects = previewIngredients
+    ? Object.fromEntries(
+        Object.entries(ingredientSnapshots).map(([id, snapshot]) => [id, snapshot.effectValue]),
+      )
+    : existingResult?.inheritedEffects || {};
+  const resultRelic = recipe.definition
+    ? previewIngredients
+      ? normalizeRelicRecord(recipe.definition.id, {
+        unlocked: false,
+        kind: 'fusion',
+        recipeId: recipe.definition.recipeId,
+        rarity: computedRarity,
+        rank: computedRank,
+        affixes: computedAffixes,
+        ingredientSnapshots,
+        inheritedEffects,
+      })
+      : existingResult
+    : null;
+  const resultRarity = resultRelic?.rarity || computedRarity;
+  const resultRank = resultRelic?.rank || computedRank;
+  const resultAffixes = resultRelic?.affixes || computedAffixes;
   const discovered = Boolean(recipe.definition &&
     normalized.forge.fusion.discoveredRecipes.includes(recipe.definition.recipeId));
   let reason = null;
@@ -913,10 +943,19 @@ export function fusionPreview(lootState, leftId, rightId) {
     bloodCost: FUSION_BLOOD_COST,
     coinsAvailable: normalized.economy.coins,
     bloodAvailable: normalized.economy.bossBlood,
+    successProbability: recipe.status === 'available' ? 100 : null,
+    qualityDeterministic: Boolean(resultRelic),
     resultRarity,
     resultRank,
     resultAffixes,
+    ingredientSnapshots,
+    inheritedEffects,
+    resultRelic,
   };
+}
+
+export function fusionPreview(lootState, leftId, rightId) {
+  return getForgeFusionPreview(lootState, leftId, rightId);
 }
 
 export function fuseRelics({
@@ -932,7 +971,7 @@ export function fuseRelics({
       normalized.economy.transactions.some((entry) => entry.id === `fusion:${operationId}`)) {
     return { ...normalized, ok: false, reason: 'duplicate-operation' };
   }
-  const preview = fusionPreview(normalized, leftId, rightId);
+  const preview = getForgeFusionPreview(normalized, leftId, rightId);
   if (!preview.ok) return { ...normalized, ok: false, ...preview };
   const definition = preview.definition;
   const ingredients = Object.fromEntries(definition.ingredientIds.map((id) => [

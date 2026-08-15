@@ -8,9 +8,11 @@ import {
   emptyLootState,
   ensureShopRotation,
   equipRelic,
+  fuseRelics,
   equippedRelicBonuses,
   forgePreview,
   forgeAttemptRoll,
+  getForgeFusionPreview,
   grantBossRewards,
   markDailyRelicActivation,
   initializeForgeSeed,
@@ -576,6 +578,83 @@ describe('equipamiento y bonus derivados', () => {
     state = unequipRelic(state, 'relic_01');
     state = equipRelic(state, 'relic_01');
     expect(canActivateDailyRelic(state, 'relic_01', '2026-08-12')).toBe(false);
+  });
+});
+
+describe('preview puro de Fusión', () => {
+  function fusionState() {
+    const state = unlockedState(2);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 4;
+    Object.assign(state.inventory.relics.relic_01, {
+      rarity: 'legendary', rank: 2, affixes: ['vitality'],
+    });
+    Object.assign(state.inventory.relics.relic_02, {
+      rarity: 'legendary', rank: 1, affixes: ['arcane'],
+    });
+    return state;
+  }
+
+  it('calcula nombre, rango, efectos heredados y calidad sin RNG ni efectos secundarios', () => {
+    const state = fusionState();
+    const before = JSON.stringify(state);
+    const originalRandom = Math.random;
+    Math.random = () => { throw new Error('El preview no debe ejecutar RNG'); };
+    let preview;
+    try {
+      preview = getForgeFusionPreview(state, 'relic_01', 'relic_02');
+    } finally {
+      Math.random = originalRandom;
+    }
+    expect(preview).toMatchObject({
+      ok: true,
+      successProbability: 100,
+      qualityDeterministic: true,
+      resultRank: 2,
+      resultRarity: 'mythic',
+      resultAffixes: ['vitality', 'arcane'],
+      inheritedEffects: { relic_01: 7, relic_02: 5 },
+    });
+    expect(preview.definition.name).toBe('Corazón Espectral');
+    expect(preview.resultRelic).toMatchObject({
+      rank: 2, rarity: 'mythic',
+      inheritedEffects: { relic_01: 7, relic_02: 5 },
+    });
+    expect(JSON.stringify(state)).toBe(before);
+    expect(state.economy).toMatchObject({ coins: 500, bossBlood: 4 });
+    expect(state.forge.attempts).toEqual({});
+    expect(state.forge.history).toEqual([]);
+    expect(state.forge.fusion.history).toEqual([]);
+    expect(state.economy.transactions).toHaveLength(2);
+  });
+
+  it('devuelve incompatible sin inventar un resultado ni modificar la partida', () => {
+    const state = unlockedState(6);
+    const before = JSON.stringify(state);
+    const preview = getForgeFusionPreview(state, 'relic_03', 'relic_06');
+    expect(preview).toMatchObject({
+      ok: false, reason: 'incompatible', status: 'incompatible', resultRelic: null,
+    });
+    expect(preview.definition).toBeNull();
+    expect(JSON.stringify(state)).toBe(before);
+  });
+
+  it('la operación real posterior conserva exactamente el resultado conocido', () => {
+    const state = fusionState();
+    const preview = getForgeFusionPreview(state, 'relic_01', 'relic_02');
+    const result = fuseRelics({
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'after-preview', nowTimestamp: 20,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.fusedRelic).toMatchObject({
+      rank: preview.resultRank,
+      rarity: preview.resultRarity,
+      affixes: preview.resultAffixes,
+      inheritedEffects: preview.inheritedEffects,
+    });
+    expect(result.economy).toMatchObject({ coins: 400, bossBlood: 3 });
+    expect(result.forge.fusion.history).toHaveLength(1);
+    expect(result.economy.transactions.at(-1).id).toBe('fusion:after-preview');
   });
 });
 
