@@ -112,6 +112,7 @@ import {
 import { renderChartView } from './ui/chart-view.js';
 import { renderTodayView } from './ui/today-view.js';
 import {
+  didHeroLevelUp,
   renderHeroView,
   renderSkillsView,
   spriteImage
@@ -158,7 +159,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.65';
+const APP_VERSION='1.66';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -213,6 +214,8 @@ let classChangeReturn=null;
 let pendingClassChange=null;
 let selectedClassChange=null;
 let initializeLocalDemo=false;
+let observedHeroLevel=null;
+let pendingHeroLevelUp=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -1405,6 +1408,11 @@ function renderHero(){
   const dayKey=todayKey(now);
   const dailyConfig={...state.config,wakeTime:wakeTimeForDay(dayKey)};
   const stats=gameStats();
+  if(didHeroLevelUp(observedHeroLevel,stats.lvl)) pendingHeroLevelUp=true;
+  observedHeroLevel=stats.lvl;
+  const heroViewActive=document.getElementById('view-hero')?.classList.contains('active');
+  const levelUp=pendingHeroLevelUp&&heroViewActive;
+  if(levelUp) pendingHeroLevelUp=false;
   const intoxication=currentIntoxication(now.getTime());
   const boss=calculateBossCombatStatus({
     combat:state.game.bossCombat,
@@ -1423,7 +1431,8 @@ function renderHero(){
     armor:heroArmor(),
     intoxication,
     dayKey,
-    lootState:state
+    lootState:state,
+    levelUp
   });
 }
 

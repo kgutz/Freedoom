@@ -35,6 +35,72 @@ export function spriteImage(classId, mood, extraClass = '') {
   return `<img class="sprite-svg${hurt} ${extraClass}" src="sprites/${classId}_${file}.png" alt="${classId}" draggable="false">`;
 }
 
+const HERO_ENERGY_CLASSES = new Set(['knight', 'paladin', 'sorcerer', 'druid']);
+
+export function heroEnergyModel({ progress = 0, classId, levelUp = false } = {}) {
+  const normalizedProgress = clamp(Number(progress) || 0, 0, 1);
+  const stage = normalizedProgress < 0.25
+    ? 0
+    : normalizedProgress < 0.5
+      ? 1
+      : normalizedProgress < 0.75
+        ? 2
+        : 3;
+
+  return {
+    progress: normalizedProgress,
+    percent: Math.round(normalizedProgress * 100),
+    glowOpacity: (0.02 + normalizedProgress * 0.58).toFixed(3),
+    glowScale: (0.82 + normalizedProgress * 0.18).toFixed(3),
+    particleOpacity: (0.18 + normalizedProgress * 0.82).toFixed(3),
+    breatheLowOpacity: (0.02 + normalizedProgress * 0.5).toFixed(3),
+    breatheHighOpacity: (0.08 + normalizedProgress * 0.62).toFixed(3),
+    breatheLowScale: (0.82 + normalizedProgress * 0.16).toFixed(3),
+    breatheHighScale: (0.86 + normalizedProgress * 0.18).toFixed(3),
+    stage,
+    classId: HERO_ENERGY_CLASSES.has(classId) ? classId : 'paladin',
+    levelUp: Boolean(levelUp),
+  };
+}
+
+export function didHeroLevelUp(previousLevel, currentLevel) {
+  return Number.isFinite(previousLevel)
+    && Number.isFinite(currentLevel)
+    && currentLevel > previousLevel;
+}
+
+function heroEnergyMarkup(energy) {
+  const particles = Array.from(
+    { length: 8 },
+    (_, index) => `<i class="hero-energy-particle p${index + 1}"></i>`,
+  ).join('');
+  const classes = [
+    'hero-energy',
+    `hero-energy--${energy.classId}`,
+    `hero-energy--stage-${energy.stage}`,
+    energy.levelUp ? 'is-leveling-up' : '',
+  ].filter(Boolean).join(' ');
+
+  return {
+    classes,
+    style: [
+      `--hero-energy-progress:${energy.progress.toFixed(3)}`,
+      `--hero-energy-opacity:${energy.glowOpacity}`,
+      `--hero-energy-scale:${energy.glowScale}`,
+      `--hero-particle-opacity:${energy.particleOpacity}`,
+      `--hero-breathe-low-opacity:${energy.breatheLowOpacity}`,
+      `--hero-breathe-high-opacity:${energy.breatheHighOpacity}`,
+      `--hero-breathe-low-scale:${energy.breatheLowScale}`,
+      `--hero-breathe-high-scale:${energy.breatheHighScale}`,
+    ].join(';'),
+    markup: `<div class="hero-energy-field" aria-hidden="true">
+      <span class="hero-energy-glow"></span>
+      <span class="hero-energy-particles">${particles}</span>
+      <span class="hero-level-up-burst"></span>
+    </div>`,
+  };
+}
+
 export function createHeroModel({
   now,
   config,
@@ -188,6 +254,7 @@ export function renderHeroView({
   lootState,
   classChange = false,
   currentClass = null,
+  levelUp = false,
 }) {
   const box = document.getElementById('heroContent');
   if (!box) return;
@@ -277,7 +344,12 @@ export function renderHeroView({
       }),
     ))
     .join('');
-  const auraClass = heroStats.tier > 0 ? `t${heroStats.tier + 1}` : '';
+  const energy = heroEnergyModel({
+    progress: heroStats.prog,
+    classId,
+    levelUp,
+  });
+  const energyView = heroEnergyMarkup(energy);
   const sleeping = model.mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
   const todayBreakdown = [
     ['Día', bossState.breakdownToday.completion],
@@ -397,7 +469,7 @@ export function renderHeroView({
   box.innerHTML = `
     <div class="card">
       <div class="hero-top">
-        <div class="sprite-box"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt=""><div class="sprite-aura ${auraClass}"></div>${spriteImage(classId, model.mood)}${sleeping}</div>
+        <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-xp-energy="${energy.percent}"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>

@@ -706,10 +706,54 @@
     filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));
   }
   .sprite-svg.hurt{filter:saturate(.55) drop-shadow(0 0 7px rgba(196,85,62,.6));animation:none}
-  .sprite-aura{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:70%;height:70%;border-radius:50%;pointer-events:none;z-index:1}
-  .sprite-aura.t2{box-shadow:0 0 18px 4px rgba(232,180,74,.22)}
-  .sprite-aura.t3{box-shadow:0 0 22px 7px rgba(232,180,74,.4)}
-  .sprite-aura.t4{box-shadow:0 0 28px 10px rgba(232,180,74,.55)}
+  .hero-energy{
+    --hero-energy:#f0c35f;--hero-energy-bright:#fff0a8;
+    --hero-energy-soft:rgba(232,180,74,.34);
+  }
+  .hero-energy--knight{--hero-energy:#c9d1ce;--hero-energy-bright:#fff7dc;--hero-energy-soft:rgba(185,202,201,.3)}
+  .hero-energy--paladin{--hero-energy:#efbd4f;--hero-energy-bright:#fff2a4;--hero-energy-soft:rgba(232,180,74,.34)}
+  .hero-energy--sorcerer{--hero-energy:#9b76dc;--hero-energy-bright:#82d9e7;--hero-energy-soft:rgba(119,79,187,.34)}
+  .hero-energy--druid{--hero-energy:#84ad62;--hero-energy-bright:#d2d884;--hero-energy-soft:rgba(100,145,73,.34)}
+  .hero-energy-field{position:absolute;inset:5px;z-index:1;overflow:hidden;pointer-events:none;contain:paint}
+  .hero-energy-glow{
+    position:absolute;left:15%;right:15%;top:19%;bottom:10%;opacity:var(--hero-energy-opacity);
+    background:linear-gradient(135deg,transparent 8%,var(--hero-energy-soft) 28%,transparent 45%,var(--hero-energy-soft) 70%,transparent 91%);
+    clip-path:polygon(18% 92%,7% 68%,20% 53%,12% 34%,37% 42%,50% 9%,62% 41%,87% 28%,78% 55%,95% 69%,79% 94%);
+    filter:drop-shadow(0 0 4px var(--hero-energy));transform:scale(var(--hero-energy-scale));transform-origin:50% 80%;
+  }
+  .hero-energy--stage-2 .hero-energy-glow,.hero-energy--stage-3 .hero-energy-glow{animation:hero-energy-breathe 2.4s steps(4,end) infinite}
+  .hero-energy-particles{position:absolute;inset:5% 7% 7%;color:var(--hero-energy);opacity:var(--hero-particle-opacity)}
+  .hero-energy-particle{position:absolute;display:none;width:3px;height:3px;background:currentColor;box-shadow:0 0 3px var(--hero-energy-soft);animation:hero-energy-rise 3.2s steps(7,end) infinite}
+  .hero-energy--stage-0 .hero-energy-particle.p1{display:block;opacity:.26;animation-duration:5.2s}
+  .hero-energy--stage-1 .hero-energy-particle:nth-child(-n+3),
+  .hero-energy--stage-2 .hero-energy-particle:nth-child(-n+5),
+  .hero-energy--stage-3 .hero-energy-particle{display:block}
+  .hero-energy--stage-1 .hero-energy-particle{animation-duration:4.2s}
+  .hero-energy--stage-3 .hero-energy-particle{animation-duration:2.45s;box-shadow:0 0 4px var(--hero-energy-bright)}
+  .hero-energy-particle.p1{left:14%;bottom:15%;animation-delay:-.4s}
+  .hero-energy-particle.p2{left:78%;bottom:20%;animation-delay:-1.7s}
+  .hero-energy-particle.p3{left:35%;bottom:7%;animation-delay:-2.6s}
+  .hero-energy-particle.p4{left:64%;bottom:10%;animation-delay:-.9s}
+  .hero-energy-particle.p5{left:22%;bottom:42%;animation-delay:-2.1s}
+  .hero-energy-particle.p6{left:85%;bottom:46%;animation-delay:-1.2s}
+  .hero-energy-particle.p7{left:47%;bottom:28%;animation-delay:-2.9s}
+  .hero-energy-particle.p8{left:69%;bottom:56%;animation-delay:-.2s}
+  .hero-energy--knight .hero-energy-particle{width:5px;height:2px;transform:rotate(-28deg)}
+  .hero-energy--paladin .hero-energy-particle{box-shadow:0 0 2px var(--hero-energy-bright),0 0 5px var(--hero-energy-soft)}
+  .hero-energy--sorcerer .hero-energy-particle{width:4px;height:4px;transform:rotate(45deg);background:var(--hero-energy-bright)}
+  .hero-energy--druid .hero-energy-particle{width:3px;height:5px;border-radius:3px 0;transform:rotate(28deg)}
+  .hero-level-up-burst{
+    position:absolute;left:21%;right:21%;top:21%;bottom:15%;opacity:0;border:3px solid var(--hero-energy-bright);
+    clip-path:polygon(50% 0,60% 35%,88% 15%,71% 44%,100% 50%,70% 58%,88% 86%,59% 68%,50% 100%,41% 68%,12% 86%,30% 58%,0 50%,29% 43%,12% 15%,40% 35%);
+    filter:drop-shadow(0 0 5px var(--hero-energy));pointer-events:none;
+  }
+  .hero-energy.is-leveling-up .hero-level-up-burst{animation:hero-level-up-pulse .78s steps(7,end) 1}
+  .hero-energy.is-leveling-up .hero-energy-glow{animation:hero-level-up-flash .78s steps(6,end) 1}
+  .hero-energy.is-leveling-up .hero-energy-particle{display:block;animation-duration:.78s;animation-iteration-count:1}
+  @keyframes hero-energy-breathe{0%,100%{opacity:var(--hero-breathe-low-opacity);transform:scale(var(--hero-breathe-low-scale))}50%{opacity:var(--hero-breathe-high-opacity);transform:scale(var(--hero-breathe-high-scale))}}
+  @keyframes hero-energy-rise{0%{opacity:0;translate:0 7px}20%{opacity:.9}75%{opacity:.55}100%{opacity:0;translate:var(--energy-drift,2px) -34px}}
+  @keyframes hero-level-up-pulse{0%{opacity:0;transform:scale(.55)}24%{opacity:1}100%{opacity:0;transform:scale(1.62)}}
+  @keyframes hero-level-up-flash{0%,100%{opacity:var(--hero-energy-opacity)}35%{opacity:1;filter:brightness(1.8) drop-shadow(0 0 7px var(--hero-energy-bright))}}
   .sprite-zzz{position:absolute;top:8px;right:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#fff;z-index:3;text-shadow:0 1px 3px #000}
   .sprite-svg.hurt{filter:saturate(.55) drop-shadow(0 0 7px rgba(196,85,62,.6));animation:none}
   @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
@@ -933,7 +977,7 @@
     0%,100%{filter:drop-shadow(0 0 2px rgba(232,180,74,.42)) drop-shadow(0 0 4px rgba(232,180,74,.18))}
     50%{filter:drop-shadow(0 0 3px rgba(242,202,103,.78)) drop-shadow(0 0 8px rgba(232,180,74,.46))}
   }
-  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon{animation:none}}
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}
