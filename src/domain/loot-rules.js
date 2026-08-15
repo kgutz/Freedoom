@@ -1,6 +1,8 @@
 import {
   AFFIX_DEFINITIONS,
   BOSS_BLOOD_DOUBLE_RATE,
+  EARLY_VICTORY_BLOOD_RATE,
+  EARLY_VICTORY_COIN_BONUS,
   FORTUNE_CAP,
   FUSION_BLOOD_COST,
   FUSION_COIN_COST,
@@ -58,6 +60,7 @@ export function emptyLootState() {
       schemaVersion: LOOT_SCHEMA_VERSION,
       claimedBossRewards: [],
       bossRelicOutcomes: {},
+      earlyVictoryOutcomes: {},
       notices: [],
       migrationComplete: false,
     },
@@ -189,6 +192,21 @@ export function normalizeLootState(state = {}) {
       ...(outcome.operationId ? { operationId: String(outcome.operationId) } : {}),
     };
   }
+  const earlyVictoryOutcomes = Object.fromEntries(
+    Object.entries(objectOf(loot.earlyVictoryOutcomes))
+      .filter(([id, outcome]) =>
+        id.includes(':early-victory:week-') &&
+        outcome && typeof outcome === 'object')
+      .map(([id, outcome]) => [id, {
+        id,
+        bossIndex: Math.max(0, Math.trunc(Number(outcome.bossIndex) || 0)),
+        rewardId: typeof outcome.rewardId === 'string' ? outcome.rewardId : '',
+        coins: Math.max(0, Math.trunc(Number(outcome.coins) || 0)),
+        bossBlood: Math.max(0, Math.trunc(Number(outcome.bossBlood) || 0)),
+        bloodGranted: outcome.bloodGranted === true,
+        resolvedAt: Math.max(0, Number(outcome.resolvedAt) || 0),
+      }]),
+  );
   for (const definition of RELIC_DEFINITIONS) {
     if (relics[definition.id]) {
       claimedBossRewards.add(definition.rewardId);
@@ -228,6 +246,7 @@ export function normalizeLootState(state = {}) {
       ),
       claimedBossRewards: [...claimedBossRewards],
       bossRelicOutcomes,
+      earlyVictoryOutcomes,
       notices: arrayOf(loot.notices).map((notice) => ({
         ...notice,
         relicIds: arrayOf(notice?.relicIds).filter((id) => Boolean(relicDefinition(id))),
@@ -425,9 +444,17 @@ export function deterministicRelicRoll(relicId, seed, obtainedAt = 0) {
   );
 }
 
-function noticeForRewards(rewards, source, nowTimestamp) {
+function noticeForRewards(rewards, earlyVictoryRewards, source, nowTimestamp) {
+  const earlyVictoryBonusCoins = earlyVictoryRewards.reduce(
+    (total, reward) => total + reward.coins,
+    0,
+  );
+  const earlyVictoryBonusBossBlood = earlyVictoryRewards.reduce(
+    (total, reward) => total + reward.bossBlood,
+    0,
+  );
   return {
-    id: `${source}:${rewards.map((reward) => reward.rewardId).join(',')}`,
+    id: `${source}:${rewards.map((reward) => reward.rewardId).join(',')}:${earlyVictoryRewards.map((reward) => reward.id).join(',')}`,
     source,
     rewardIds: rewards.map((reward) => reward.rewardId),
     relicIds: rewards.filter((reward) => reward.obtained).map((reward) => reward.relicId),
@@ -438,9 +465,12 @@ function noticeForRewards(rewards, source, nowTimestamp) {
       obtained: reward.obtained,
       rarity: reward.rarity,
     })),
-    coins: rewards.reduce((total, reward) => total + reward.coins, 0),
-    bossBlood: rewards.reduce((total, reward) => total + reward.bossBlood, 0),
+    coins: rewards.reduce((total, reward) => total + reward.coins, 0) + earlyVictoryBonusCoins,
+    bossBlood: rewards.reduce((total, reward) => total + reward.bossBlood, 0) + earlyVictoryBonusBossBlood,
     bonusBossBlood: rewards.reduce((total, reward) => total + reward.bonusBossBlood, 0),
+    earlyVictoryIds: earlyVictoryRewards.map((reward) => reward.id),
+    earlyVictoryBonusCoins,
+    earlyVictoryBonusBossBlood,
     acknowledged: false,
     createdAt: nowTimestamp,
   };
@@ -455,11 +485,14 @@ export function grantBossRewards({
   dropRandom = random,
   relicRandom = random,
   bloodRandom = random,
+  earlyVictoryBloodRandom = random,
+  earlyVictoryBonuses = [],
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
   const claimed = new Set(normalized.loot.claimedBossRewards);
   const rewards = [];
+  const earlyVictoryRewards = [];
   const maximum = Math.min(
     MAX_INITIAL_RELICS,
     Math.max(0, Math.trunc(Number(bossesDown) || 0)),
@@ -530,6 +563,7 @@ export function grantBossRewards({
     };
     claimed.add(definition.rewardId);
     rewards.push({
+      bossIndex,
       rewardId: definition.rewardId,
       relicId: definition.id,
       rarity: relic.rarity,
@@ -541,12 +575,56 @@ export function grantBossRewards({
       bonusBossBlood,
     });
   }
-  if (rewards.length) {
-    normalized.loot.notices.push(noticeForRewards(rewards, source, nowTimestamp));
+  if (source === 'victory') {
+    for (const rawBonus of arrayOf(earlyVictoryBonuses)) {
+      const bonus = objectOf(rawBonus);
+      const id = typeof bonus.id === 'string' ? bonus.id : '';
+      const bossIndex = Math.max(0, Math.trunc(Number(bonus.bossIndex) || 0));
+      const definition = RELIC_DEFINITIONS[bossIndex];
+      if (
+        !id.includes(':early-victory:week-') ||
+        !definition ||
+        normalized.loot.earlyVictoryOutcomes[id]
+      ) continue;
+      const bloodRoll = typeof earlyVictoryBloodRandom === 'function'
+        ? earlyVictoryBloodRandom()
+        : deterministicRandom(`${seed}:${id}:blood`);
+      const bloodGranted =
+        Math.max(0, Math.min(0.999999999, bloodRoll)) < EARLY_VICTORY_BLOOD_RATE;
+      const bossBlood = bloodGranted ? 1 : 0;
+      const outcome = {
+        id,
+        bossIndex,
+        rewardId: definition.rewardId,
+        coins: EARLY_VICTORY_COIN_BONUS,
+        bossBlood,
+        bloodGranted,
+        resolvedAt: nowTimestamp,
+      };
+      normalized.loot.earlyVictoryOutcomes[id] = outcome;
+      normalized.economy.coins += EARLY_VICTORY_COIN_BONUS;
+      normalized.economy.bossBlood += bossBlood;
+      normalized.economy.transactions.push({
+        id: `${id}:grant`,
+        type: 'boss-early-victory',
+        rewardId: definition.rewardId,
+        earlyVictoryId: id,
+        coins: EARLY_VICTORY_COIN_BONUS,
+        bossBlood,
+        bloodGranted,
+        at: nowTimestamp,
+      });
+      earlyVictoryRewards.push(outcome);
+    }
+  }
+  if (rewards.length || earlyVictoryRewards.length) {
+    normalized.loot.notices.push(
+      noticeForRewards(rewards, earlyVictoryRewards, source, nowTimestamp),
+    );
   }
   if (source === 'retroactive') normalized.loot.migrationComplete = true;
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
-  return { ...normalized, rewards };
+  return { ...normalized, rewards, earlyVictoryRewards };
 }
 
 export function acknowledgeLootNotice(lootState, noticeId) {

@@ -1,4 +1,4 @@
-export const LOOT_SCHEMA_VERSION = 4;
+export const LOOT_SCHEMA_VERSION = 5;
 export const MAX_INITIAL_RELICS = 6;
 export const MAX_EQUIPPED_RELICS = 2;
 
@@ -12,6 +12,8 @@ export const BOSS_REWARDS = [
 ];
 export const RELIC_DROP_RATE = 0.7;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
+export const EARLY_VICTORY_COIN_BONUS = 25;
+export const EARLY_VICTORY_BLOOD_RATE = 0.1;
 export const SHOP_ROTATION_DAYS = 3;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
 export const FUSION_COIN_COST = 100;

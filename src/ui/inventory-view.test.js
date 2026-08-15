@@ -376,4 +376,21 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.lootNoticeRewards.innerHTML).toContain('SANGRE DOBLE (+1)');
     expect(document.elements.lootNoticeSummary.innerHTML).toContain('<b>2</b>');
   });
+
+  it('muestra el Bonus Victoria Anticipada sin mensaje negativo si no sale Sangre', () => {
+    const document = fakeDocument();
+    const state = grantBossRewards({
+      state: {}, bossesDown: 1, source: 'victory',
+      dropRandom: () => 0.9, bloodRandom: () => 0.5,
+      earlyVictoryBonuses: [{
+        id: 'boss_reward_01:early-victory:week-0', bossIndex: 0,
+      }],
+      earlyVictoryBloodRandom: () => 0.5,
+    });
+    renderLootNotice(document, state, state.loot.notices[0]);
+    const html = document.elements.lootNoticeRewards.innerHTML;
+    expect(html).toContain('BONUS VICTORIA ANTICIPADA');
+    expect(html).toContain('+25 monedas');
+    expect(html).not.toContain('+1 Sangre de Jefe');
+  });
 });

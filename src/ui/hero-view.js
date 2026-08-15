@@ -366,6 +366,9 @@ export function renderHeroView({
         <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
         <span>Daño hoy <b>${bossState.damageToday}</b></span>
       </div>
+      ${bossState.earlyVictoryActive && !bossState.won
+        ? '<div class="boss-early-victory-badge">VICTORIA ANTICIPADA · BONUS PENDIENTE</div>'
+        : ''}
       ${
         todayBreakdown
           ? `<div class="boss-hit-chips">${todayBreakdown}</div>`
@@ -479,7 +482,6 @@ export function renderSkillsView({
   document,
   classId,
   level,
-  intoxication,
   config,
   targetId = 'skillsBody',
 }) {
@@ -517,11 +519,6 @@ export function renderSkillsView({
   const target=document.getElementById(targetId);
   if(!target) return;
   target.innerHTML = `
-    ${
-      intoxication?.level > 0
-        ? `<div class="drunk-warning">🍺 Borrachera ${intoxication.level}% · las pasivas tienen −${intoxication.level}% de potencia y las activas ${intoxication.level}% de fallo.</div>`
-        : ''
-    }
     <div class="grim-cls-tag" style="margin-top:0">Hechizos — ${classData.es}</div>
     ${activeHtml}
     <div class="grim-cls-tag">Pasivas — ${classData.es}</div>

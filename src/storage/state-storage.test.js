@@ -323,6 +323,22 @@ describe('adaptador del navegador', () => {
     expect(isCatastrophicStateRegression(richState, defaultState())).toBe(false);
   });
 
+  it('protege un resultado persistido de Victoria Anticipada frente a su desaparición', () => {
+    const resolved = defaultState();
+    resolved.loot = {
+      ...resolved.loot,
+      earlyVictoryOutcomes: {
+        'boss_reward_01:early-victory:week-0': {
+          coins: 25, bossBlood: 0, bloodGranted: false,
+        },
+      },
+    };
+    const missing = { ...resolved, loot: { ...resolved.loot, earlyVictoryOutcomes: {} } };
+
+    expect(stateInformationProfile(resolved).earlyVictoryOutcomeCount).toBe(1);
+    expect(isCatastrophicStateRegression(missing, resolved)).toBe(true);
+  });
+
   it('mantiene una copia diaria y otra semanal fuera de la rotación', async () => {
     vi.useFakeTimers();
     try {
