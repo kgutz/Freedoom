@@ -159,7 +159,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.69';
+const APP_VERSION='1.70';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -178,7 +178,7 @@ const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
-    ? `${STORAGE_KEY}:demo-paladin-effects-v2`
+    ? `${STORAGE_KEY}:demo-paladin-effects-v3`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -765,6 +765,12 @@ function prepareLocalBossDemo(){
       hp:100,
       mp:100,
       bonusXp:100000,
+      intoxication:[{
+        id:'demo-beer-curse',
+        potency:25,
+        startedAt:now,
+        expiresAt:now+41*60_000
+      }],
       buffs:{certeroUntil:now+60*60_000},
       judgmentDays:[]
     };

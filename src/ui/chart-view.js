@@ -241,7 +241,7 @@ export function renderChartView({
           mode === 'semana'
             ? `${DAY_NAMES[point.date.getDay()].slice(0, 2).toUpperCase()} ${point.date.getDate()}`
             : point.date.getDate();
-        content += `<text x="${centerX}" y="${xLabels - 12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Sora">${label}</text>`;
+        content += `<text x="${centerX}" y="${xLabels - 12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Pixelify Sans">${label}</text>`;
       }
     });
     svg.innerHTML = content;
@@ -260,7 +260,7 @@ export function renderChartView({
   const stepY = model.yMax > 12 ? 5 : model.yMax > 6 ? 2 : 1;
   for (let value = 0; value <= model.yMax; value += stepY) {
     content += `<line x1="${left}" y1="${yOf(value)}" x2="${right}" y2="${yOf(value)}" stroke="#3A3229" stroke-width="0.6"/>`;
-    content += `<text x="${left - 5}" y="${yOf(value) + 3}" font-size="8" fill="#9C8F7C" text-anchor="end" font-family="IBM Plex Mono">${value}</text>`;
+    content += `<text x="${left - 5}" y="${yOf(value) + 3}" font-size="8" fill="#9C8F7C" text-anchor="end" font-family="Pixelify Sans">${value}</text>`;
   }
 
   if (!model.controlledMode) {
@@ -298,7 +298,7 @@ export function renderChartView({
       if (height > 0) {
         content += `<rect x="${centerX - barWidth / 2}" y="${bottom - height}" width="${barWidth}" height="${height}" rx="2" fill="${color}"/>`;
         if (mode === 'semana' || slots <= 15) {
-          content += `<text x="${centerX}" y="${bottom - height - 4}" font-size="9" fill="#EDE3D2" text-anchor="middle" font-family="IBM Plex Mono">${point.cigarettes}</text>`;
+          content += `<text x="${centerX}" y="${bottom - height - 4}" font-size="9" fill="#EDE3D2" text-anchor="middle" font-family="Pixelify Sans">${point.cigarettes}</text>`;
         }
       }
     }
@@ -312,7 +312,7 @@ export function renderChartView({
         mode === 'semana'
           ? `${DAY_NAMES[point.date.getDay()].slice(0, 2).toUpperCase()} ${point.date.getDate()}`
           : point.date.getDate();
-      content += `<text x="${centerX}" y="${xLabels - 12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Sora">${label}</text>`;
+      content += `<text x="${centerX}" y="${xLabels - 12}" font-size="8" fill="#9C8F7C" text-anchor="middle" font-family="Pixelify Sans">${label}</text>`;
     }
   });
   svg.innerHTML = content;

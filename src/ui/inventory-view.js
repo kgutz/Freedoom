@@ -45,7 +45,8 @@ function relicArt(definition, overlay = '') {
       ${overlay}
     </div>`;
   }
-  return `<div class="relic-art relic-art--${definition.id}">
+  const fusionClass = definition.ingredientIds?.length === 2 ? ' relic-art--fusion' : '';
+  return `<div class="relic-art${fusionClass} relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
     ${overlay}

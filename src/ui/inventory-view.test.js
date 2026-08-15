@@ -279,6 +279,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('data-open-relic="relic_01"');
     expect(html).toContain('not-owned');
     expect(html).toContain('fusion-relic');
+    expect(html).toContain('relic-art--fusion');
     expect(html).toContain('relic-collection-unknown');
     expect(inventoryHtml).not.toContain('data-open-relic="relic_01"');
     expect(inventoryHtml).toContain('data-open-relic="fusion_01"');

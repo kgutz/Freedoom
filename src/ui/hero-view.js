@@ -164,7 +164,6 @@ export function createHeroModel({
 
   const buffs = game.buffs || {};
   const nowTimestamp = now.getTime();
-  const chips = [];
   const skillEffects = classData.act
     .map((ability) => ({
       spellId: ability.id,
@@ -180,9 +179,13 @@ export function createHeroModel({
     }))
     .filter((effect) => /^\d+m$/.test(effect.remaining || ''));
   if (intoxication?.level > 0) {
-    chips.push(
-      `🍺 ${intoxication.level}% · ${intoxication.remainingMinutes}m`,
-    );
+    skillEffects.push({
+      kind: 'intoxication',
+      spellId: 'intoxication',
+      name: 'Borrachera',
+      level: intoxication.level,
+      remaining: `${intoxication.remainingMinutes}m`,
+    });
   }
 
   return {
@@ -195,7 +198,6 @@ export function createHeroModel({
     manaPercent,
     hpClass,
     mood,
-    chips,
     skillEffects,
     stats,
     boss,
@@ -324,9 +326,19 @@ export function renderHeroView({
   } = model;
   const skillEffectsHtml = model.skillEffects
     .map((effect) => {
-      const source = `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
-      return `<span class="skill-buff" aria-label="${effect.name}: ${effect.remaining} restantes">
-      <span class="skill-buff-icon">
+      const intoxicationEffect = effect.kind === 'intoxication';
+      const source = intoxicationEffect
+        ? 'spells/effect_icons/beer_effect_intoxication.png'
+        : `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
+      const effectLabel = intoxicationEffect
+        ? `${effect.name} ${effect.level}%: ${effect.remaining} restantes`
+        : `${effect.name}: ${effect.remaining} restantes`;
+      const modifier = intoxicationEffect ? ' skill-buff--intoxication' : '';
+      const iconModifier = intoxicationEffect
+        ? ' skill-buff-icon--intoxication'
+        : '';
+      return `<span class="skill-buff${modifier}" aria-label="${effectLabel}">
+      <span class="skill-buff-icon${iconModifier}">
         <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="sk-fallback" style="display:none">${effect.name.charAt(0)}</span>
       </span>
@@ -334,8 +346,8 @@ export function renderHeroView({
     </span>`;
     })
     .join('');
-  const chipsHtml = model.chips.length || skillEffectsHtml
-    ? `<div class="buff-row">${skillEffectsHtml}${model.chips.map((chip) => `<span class="buff">${chip}</span>`).join('')}</div>`
+  const chipsHtml = skillEffectsHtml
+    ? `<div class="buff-row">${skillEffectsHtml}</div>`
     : '';
   const pips = bossState.pips
     .map((pip) => {

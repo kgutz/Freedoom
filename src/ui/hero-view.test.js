@@ -155,13 +155,21 @@ describe('modelo de Héroe', () => {
       perfectToday: 1,
       boss: { hp: 62, maxHp: 100, hpPercent: 62 },
     });
-    expect(model.chips).toEqual(['🍺 25% · 41m']);
-    expect(model.skillEffects).toEqual([{
-      spellId: 'certero',
-      icon: 'certero',
-      name: 'Ojo Certero',
-      remaining: '2m',
-    }]);
+    expect(model.skillEffects).toEqual([
+      {
+        spellId: 'certero',
+        icon: 'certero',
+        name: 'Ojo Certero',
+        remaining: '2m',
+      },
+      {
+        kind: 'intoxication',
+        spellId: 'intoxication',
+        name: 'Borrachera',
+        level: 25,
+        remaining: '41m',
+      },
+    ]);
   });
 
   it('muestra el pack de habilidades sin fumar y sus efectos activos',()=>{
@@ -293,7 +301,7 @@ describe('modelo de Héroe', () => {
           ],
         },
       }),
-      intoxication: null,
+      intoxication: { level: 25, remainingMinutes: 41 },
       levelUp: true,
     });
 
@@ -317,6 +325,10 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('class="skill-buff-icon"');
     expect(heroContent.innerHTML).toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
+    expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');
+    expect(heroContent.innerHTML).toContain('skill-buff--intoxication');
+    expect(heroContent.innerHTML).toContain('Borrachera 25%: 41m restantes');
+    expect(heroContent.innerHTML).not.toContain('🍺');
     expect(heroContent.innerHTML).toContain('hero-energy--paladin');
     expect(heroContent.innerHTML).toContain('hero-energy--stage-3');
     expect(heroContent.innerHTML).toContain('data-xp-progress="85"');

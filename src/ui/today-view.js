@@ -95,7 +95,7 @@ export function createPaceModel({ now, smoked, limit, config, record }) {
   if (nowMinutes >= wake && nowMinutes <= sleep && limit > 0) {
     const difference = smoked - roundedExpected;
     if (difference < 0) {
-      differenceText = ` · vas <b>${-difference}</b> por debajo ✓`;
+      differenceText = ` · vas <b>${-difference}</b> por debajo <span class="pace-check">✓</span>`;
     } else if (difference === 0) {
       differenceText = ' · justo en el ritmo';
     } else {
@@ -134,8 +134,8 @@ export function createPaceModel({ now, smoked, limit, config, record }) {
     statusClass,
     status,
     info:
-      `Ritmo objetivo: <b>1</b> cada <b>~${minutesPerCigarette} min</b>` +
-      `<br>A esta hora tocarían <b>~${roundedExpected}</b>${differenceText}` +
+      `Ritmo objetivo: <b>1</b> cada <b><span class="pace-approx">~</span>&nbsp;${minutesPerCigarette} min</b>` +
+      `<br>A esta hora tocarían <b><span class="pace-approx">~</span>&nbsp;${roundedExpected}</b>${differenceText}` +
       (nextLine ? `<br>${nextLine}` : ''),
   };
 }
