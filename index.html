@@ -479,7 +479,7 @@
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">✓</span><span>Hábitos</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">Crea hábitos positivos desde su pestaña y elige cuántas veces debes realizarlos. Puedes corregir el contador con los botones + y −. La XP se concede al alcanzar el objetivo completo, y se retira si lo deshaces durante ese mismo periodo.</p>
-          <div class="hint"><span class="faq-lead">Recompensas:</span><ul class="faq-bullets"><li>Diario fácil → <b style="color:var(--kodak)">3 XP</b>; medio → <b style="color:var(--kodak)">6 XP</b>; difícil → <b style="color:var(--kodak)">10 XP</b>.</li><li>Semanal fácil → <b style="color:var(--kodak)">9 XP</b>; medio → <b style="color:var(--kodak)">18 XP</b>; difícil → <b style="color:var(--kodak)">30 XP</b>.</li><li>Máximo conjunto → <b style="color:var(--kodak)">25 XP diarios</b> y <b style="color:var(--kodak)">35 XP semanales</b>.</li></ul></div>
+          <div class="hint"><span class="faq-lead">Recompensas:</span><ul class="faq-bullets"><li>Diario fácil → <b style="color:var(--kodak)">3 XP</b>; medio → <b style="color:var(--kodak)">6 XP</b>; difícil → <b style="color:var(--kodak)">10 XP</b>.</li><li>Semanal fácil → <b style="color:var(--kodak)">9 XP</b>; medio → <b style="color:var(--kodak)">18 XP</b>; difícil → <b style="color:var(--kodak)">30 XP</b>.</li><li>El tope base es de <b style="color:var(--kodak)">25 XP diarios</b> y <b style="color:var(--kodak)">35 XP semanales</b>. Si configuras más hábitos activos, el tope aumenta automáticamente según su XP potencial, hasta un máximo de <b style="color:var(--kodak)">100 al día</b> y <b style="color:var(--kodak)">120 a la semana</b>.</li></ul></div>
           <div class="hint"><span class="faq-lead">Monedas por completar:</span><ul class="faq-bullets"><li>Hábitos diarios → <b style="color:var(--resource-coin)">1, 2 o 3 monedas</b> según sean fáciles, medios o difíciles.</li><li>Hábitos semanales → <b style="color:var(--resource-coin)">3, 5 u 8 monedas</b>.</li><li>Completar todos los hábitos diarios activos concede un bonus de <b style="color:var(--resource-coin)">+3 monedas</b>.</li></ul></div>
           <p class="hint">Los hábitos aumentan la experiencia del héroe, pero no curan, no dan maná y no dañan al jefe. El progreso diario cambia junto al día de Freedoom; el semanal se reinicia el mismo día que tu semana del plan.</p>
         </div>
@@ -574,10 +574,15 @@
   </div>
 </div>
 
-<div class="sheet-bg" id="sheetSkills">
-  <div class="sheet">
-    <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetSkills">✕</button></div>
-    <div class="card" id="skillsBody"></div>
+<div class="sheet-bg" id="sheetHeroSkills" style="z-index:26">
+  <div class="sheet hero-skills-sheet">
+    <div class="sheet-head sk-head-center"><h3>Habilidades</h3><button class="sheet-close" data-sheet="sheetHeroSkills">✕</button></div>
+    <div class="inventory-tabs skills-tabs" role="tablist" aria-label="Habilidades y libro de habilidades">
+      <button type="button" class="active" id="heroSkillsTab" role="tab" aria-selected="true">Habilidades</button>
+      <button type="button" id="heroSkillsBookTab" role="tab" aria-selected="false">Libro</button>
+    </div>
+    <div class="card hero-skills-modal-card" id="heroSkillsModalBody"></div>
+    <div class="card hero-skills-book" id="skillsBody" hidden></div>
   </div>
 </div>
 
@@ -834,7 +839,7 @@
         <button type="button" id="habitTargetAdd">+</button>
       </div>
     </div>
-    <div class="habit-reward-preview">Recompensa: <b id="habitRewardPreview">+3 XP</b></div>
+    <div class="habit-reward-preview">Recompensa: <b id="habitRewardPreview">+3 XP · +1 moneda</b></div>
     <button type="button" class="habit-delete" id="habitDelete" style="display:none">Eliminar hábito</button>
   </div>
 </div>

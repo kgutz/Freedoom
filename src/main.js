@@ -158,10 +158,11 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.63';
+const APP_VERSION='1.64';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoFusions')==='1';
 const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
@@ -172,10 +173,12 @@ const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
-  ? LOCAL_DEMO_FUSIONS
+  ? LOCAL_DEMO_PALADIN_EFFECTS
+    ? `${STORAGE_KEY}:demo-paladin-effects-v2`
+    : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
@@ -423,7 +426,12 @@ async function requestPersistentStorage(){
 
 async function load(){
   try{
-    let r=LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null?null:await store.get(ACTIVE_STORAGE_KEY);
+    let r=LOCAL_DEMO_PALADIN_EFFECTS
+      ? await store.get(STORAGE_KEY)
+      : LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null
+        ? null
+        : await store.get(ACTIVE_STORAGE_KEY);
+    if(LOCAL_DEMO_PALADIN_EFFECTS) initializeLocalDemo=true;
     if(!r&&LOCAL_DEMO_BOSSES){
       if(!LOCAL_DEMO_FUSIONS&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
       initializeLocalDemo=true;
@@ -744,6 +752,24 @@ function prepareLocalBossDemo(){
     .filter(id=>state.inventory.relics[id]);
   state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
   state.loot.migrationComplete=true;
+  if(LOCAL_DEMO_PALADIN_EFFECTS){
+    const now=Date.now();
+    state.config={...state.config,journeyMode:JOURNEY_MODE_REDUCTION};
+    state.game={
+      ...state.game,
+      cls:'paladin',
+      name:'Paladín de prueba',
+      hp:100,
+      mp:100,
+      bonusXp:100000,
+      buffs:{certeroUntil:now+60*60_000},
+      judgmentDays:[]
+    };
+    const demoMaxes=heroMaxes();
+    state.game.hp=demoMaxes.maxHp;
+    state.game.mp=demoMaxes.maxMp;
+    state.economy={...state.economy,bossBlood:99,coins:999};
+  }
   scheduleSave({type:'demo:bosses',count:LOCAL_DEMO_BOSSES});
 }
 
@@ -1537,6 +1563,22 @@ function renderSkillsSheet(){
   });
 }
 
+function showHeroSkillsPanel(panel='skills'){
+  const skillsSelected=panel==='skills';
+  const skillsBody=document.getElementById('heroSkillsModalBody');
+  const bookBody=document.getElementById('skillsBody');
+  const skillsTab=document.getElementById('heroSkillsTab');
+  const bookTab=document.getElementById('heroSkillsBookTab');
+  skillsBody.hidden=!skillsSelected;
+  bookBody.hidden=skillsSelected;
+  skillsTab.classList.toggle('active',skillsSelected);
+  bookTab.classList.toggle('active',!skillsSelected);
+  skillsTab.setAttribute('aria-selected',String(skillsSelected));
+  bookTab.setAttribute('aria-selected',String(!skillsSelected));
+  if(!skillsSelected) renderSkillsSheet();
+  (skillsSelected?skillsBody:bookBody).scrollTop=0;
+}
+
 /* ==================== fin RPG ==================== */
 
 /* ---------- modal ---------- */
@@ -2251,8 +2293,9 @@ function updateHabitEditor(){
   });
   document.getElementById('habitTargetValue').textContent=habitDraftTarget;
   const previewHabit={difficulty:habitDraftDifficulty,frequency:habitDraftFrequency};
+  const coinReward=habitCoinReward(previewHabit);
   document.getElementById('habitRewardPreview').textContent='+'+habitReward(previewHabit)+
-    ' XP · +'+habitCoinReward(previewHabit)+' 🪙';
+    ' XP · +'+coinReward+' '+(coinReward===1?'moneda':'monedas');
 }
 function finishHabitEditorClose(){
   const modal=document.getElementById('habitModalBg');
@@ -2686,39 +2729,13 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     openInventory();
     return;
   }
-  if(e.target.closest('[data-scroll-skills]')){
-    const skillsCard=document.getElementById('heroSkillsCard');
-    const skillsTitle=document.getElementById('heroSkillsTitle');
-    if(!skillsCard) return;
-    skillsCard.classList.remove('skills-jump-highlight');
-    void skillsCard.offsetWidth;
-    skillsCard.classList.add('skills-jump-highlight');
-    skillsCard.scrollIntoView({behavior:'smooth',block:'start'});
-    window.setTimeout(()=>skillsTitle?.focus({preventScroll:true}),350);
-    window.setTimeout(()=>skillsCard.classList.remove('skills-jump-highlight'),1200);
+  if(e.target.closest('[data-open-hero-skills]')){
+    showHeroSkillsPanel('skills');
+    document.getElementById('sheetHeroSkills').classList.add('show');
     return;
   }
   if(e.target.closest('.sprite-box')){
     openAjustes();
-    return;
-  }
-  const cast=e.target.closest('[data-cast]');
-  if(cast&&!cast.disabled){
-    castSpell(cast.dataset.cast);
-    return;
-  }
-  const pasTap=e.target.closest('[data-pas-name]');
-  if(pasTap){
-    const lvl=parseInt(pasTap.dataset.pasLvl,10);
-    const name=pasTap.dataset.pasName;
-    const curLvl=gameStats().lvl;
-    if(curLvl>=lvl) showToast(name+' · activa','heal');
-    else showToast('Nivel '+lvl+' necesario','dmg');
-    return;
-  }
-  if(e.target.closest('#skInfoBtn')){
-    renderSkillsSheet();
-    document.getElementById('sheetSkills').classList.add('show');
     return;
   }
   if(e.target.closest('#bossInfoBtn')){
@@ -2759,6 +2776,31 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
 });
 
+document.getElementById('sheetHeroSkills').addEventListener('click',e=>{
+  if(e.target.closest('#heroSkillsTab')){
+    showHeroSkillsPanel('skills');
+    return;
+  }
+  if(e.target.closest('#heroSkillsBookTab')){
+    showHeroSkillsPanel('book');
+    return;
+  }
+  const cast=e.target.closest('[data-cast]');
+  if(cast&&!cast.disabled){
+    castSpell(cast.dataset.cast);
+    return;
+  }
+  const pasTap=e.target.closest('[data-pas-name]');
+  if(pasTap){
+    const lvl=parseInt(pasTap.dataset.pasLvl,10);
+    const name=pasTap.dataset.pasName;
+    const curLvl=gameStats().lvl;
+    if(curLvl>=lvl) showToast(name+' · activa','heal');
+    else showToast('Nivel '+lvl+' necesario','dmg');
+    return;
+  }
+});
+
 document.getElementById('classChangeConfirmCancel').addEventListener('click',closeClassChangeConfirmation);
 document.getElementById('classChangeConfirmBg').addEventListener('click',event=>{
   if(event.target===event.currentTarget) closeClassChangeConfirmation();
@@ -2786,6 +2828,11 @@ document.getElementById('classChangeConfirmAccept').addEventListener('click',()=
     state.game.buffs={};
     state.game.hp=capHp(state.game.hp);
     state.game.mp=capMp(state.game.mp);
+  }
+  if(LOCAL_DEMO_PALADIN_EFFECTS){
+    const demoMaxes=heroMaxes();
+    state.game.hp=demoMaxes.maxHp;
+    state.game.mp=demoMaxes.maxMp;
   }
   pendingClassChange=null;
   closeClassChangeConfirmation();
@@ -3306,7 +3353,7 @@ resetGuardContinue.addEventListener('click',()=>{
     if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();
       await showPendingLootNotice();
-    }else if(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null){
+    }else if(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null||LOCAL_DEMO_PALADIN_EFFECTS){
       await finishInitialReturnSplash();
       switchView('view-hero','navHero');
       renderHero();
@@ -3316,8 +3363,10 @@ resetGuardContinue.addEventListener('click',()=>{
           awaitingBaseline:false,lastIncreaseAt:Date.now(),lastIncreaseCharge:LOCAL_DEMO_CONSTANCY
         };
       }
-      openInventory();
-      showInventoryPanel(LOCAL_DEMO_FUSIONS?'collection':'inventory',true);
+      if(!LOCAL_DEMO_PALADIN_EFFECTS){
+        openInventory();
+        showInventoryPanel(LOCAL_DEMO_FUSIONS?'collection':'inventory',true);
+      }
     }else finishInitialReturnSplash();
   }
 })();

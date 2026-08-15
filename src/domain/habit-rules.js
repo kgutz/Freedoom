@@ -1,8 +1,15 @@
 import { keyOf } from './date-utils.js';
 import { weekIndexFor, weekRangeFor } from './plan-rules.js';
 
-export const HABIT_DAILY_XP_CAP = 25;
-export const HABIT_WEEKLY_XP_CAP = 35;
+export const HABIT_XP_CAP_RULES = Object.freeze({
+  daily: Object.freeze({ base: 25, scaling: 0.8, hard: 100 }),
+  weekly: Object.freeze({ base: 35, scaling: 0.7, hard: 120 }),
+});
+
+// Alias conservados para integraciones antiguas que interpretaban estos valores
+// como el tope base. Los límites efectivos se calculan dinámicamente.
+export const HABIT_DAILY_XP_CAP = HABIT_XP_CAP_RULES.daily.base;
+export const HABIT_WEEKLY_XP_CAP = HABIT_XP_CAP_RULES.weekly.base;
 
 export const HABIT_COIN_REWARDS = Object.freeze({
   daily: Object.freeze({ easy: 1, medium: 2, hard: 3 }),
@@ -115,6 +122,38 @@ export function habitReward(habit) {
     : HABIT_DIFFICULTIES[difficulty].dailyXp;
 }
 
+function normalizedFrequency(frequency) {
+  return frequency === 'weekly' ? 'weekly' : 'daily';
+}
+
+export function calculateHabitXpCap(frequency, potentialXp) {
+  const rules = HABIT_XP_CAP_RULES[normalizedFrequency(frequency)];
+  const potential = Math.max(0, Number(potentialXp) || 0);
+  if (potential <= rules.base) return rules.base;
+  return Math.min(
+    rules.hard,
+    Math.round(rules.base + (potential - rules.base) * rules.scaling),
+  );
+}
+
+export function habitPotentialXp(habitState, frequency) {
+  const normalized = normalizeHabitState(habitState);
+  const targetFrequency = normalizedFrequency(frequency);
+  return normalized.items.reduce((total, habit) => {
+    if (habit?.active === false || normalizedFrequency(habit?.frequency) !== targetFrequency) {
+      return total;
+    }
+    return total + habitReward(habit);
+  }, 0);
+}
+
+export function habitXpCapForState(habitState, frequency) {
+  return calculateHabitXpCap(
+    frequency,
+    habitPotentialXp(habitState, frequency),
+  );
+}
+
 export function habitCoinReward(habit) {
   const difficulty = HABIT_DIFFICULTIES[habit?.difficulty]
     ? habit.difficulty
@@ -181,10 +220,7 @@ export function adjustHabitProgress({
     Math.max(0, previous.count + Math.trunc(Number(delta) || 0)),
   );
   const completed = count >= habit.target;
-  const cap =
-    habit.frequency === 'weekly'
-      ? HABIT_WEEKLY_XP_CAP
-      : HABIT_DAILY_XP_CAP;
+  const cap = habitXpCapForState(normalized, habit.frequency);
   const used = xpUsedInPeriod(
     normalized.entries,
     periodKey,

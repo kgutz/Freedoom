@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   acknowledgeLootNotice,
   attemptForge,
+  awardFusionAllHabitsXp,
   canActivateDailyRelic,
   deterministicRelicRoll,
   emptyLootState,
@@ -40,6 +41,39 @@ function unlockedState(count = 3) {
 }
 
 describe('loot de bosses', () => {
+  it('usa el tope dinámico al premiar todos los hábitos de una fusión', () => {
+    const state = emptyLootState();
+    state.inventory.relics.fusion_04 = {
+      id: 'fusion_04', unlocked: true, rarity: 'rare', rank: 1, affixes: [],
+    };
+    state.inventory.equipped = ['fusion_04'];
+    const items = Array.from({ length: 5 }, (_, index) => ({
+      id: `hard-${index}`,
+      difficulty: 'hard',
+      frequency: 'daily',
+      target: 1,
+      active: true,
+    }));
+    const entries = Object.fromEntries(items.map((habit, index) => [
+      `${habit.id}|d:2026-08-15`,
+      {
+        habitId: habit.id,
+        periodKey: 'd:2026-08-15',
+        frequency: 'daily',
+        count: 1,
+        xpAwarded: index < 4 ? 10 : 0,
+      },
+    ]));
+    const result = awardFusionAllHabitsXp({
+      state,
+      habitState: { items, entries },
+      dayKey: '2026-08-15',
+    });
+    expect(result.activated).toBe(true);
+    expect(result.xp).toBe(5);
+    expect(result.habitState.entries['fusion_04|d:2026-08-15'].xpAwarded).toBe(5);
+  });
+
   it('delimita 60/30/10', () => {
     expect(rarityFromRoll(0)).toBe('rare');
     expect(rarityFromRoll(0.599999)).toBe('rare');

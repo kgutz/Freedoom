@@ -49,6 +49,7 @@ describe('vista de hábitos', () => {
     expect(html).toContain('data-open-settings');
     expect(html).toContain('Media · Diario · +6 XP');
     expect(html).toContain('2 / 2 · +6 XP');
+    expect(html).not.toContain('🪙');
     expect(html).toContain('completed');
     expect(html).toContain('data-habit-drag');
     expect(html).toContain('Mantener pulsado para mover Beber agua');
@@ -94,5 +95,24 @@ describe('vista de hábitos', () => {
     expect(html.indexOf('Caminar')).toBeLessThan(html.indexOf('Leer'));
     expect(html.indexOf('Leer')).toBeLessThan(html.indexOf('Beber agua'));
     expect(html).toContain('Mantén pulsado');
+  });
+
+  it('muestra los topes dinámicos calculados desde los hábitos activos', () => {
+    const html = render({
+      items: [
+        ...Array.from({ length: 5 }, (_, index) => ({
+          id: `daily-hard-${index}`,
+          title: `Diario ${index}`,
+          difficulty: 'hard',
+          frequency: 'daily',
+          target: 1,
+          active: true,
+        })),
+        { id: 'weekly-hard-1', title: 'Semanal 1', difficulty: 'hard', frequency: 'weekly', target: 1, active: true },
+        { id: 'weekly-hard-2', title: 'Semanal 2', difficulty: 'hard', frequency: 'weekly', target: 1, active: true },
+      ],
+      entries: {},
+    });
+    expect(html).toContain('Topes 45/día · 53/sem.');
   });
 });

@@ -81,24 +81,20 @@ export function createHeroModel({
   const buffs = game.buffs || {};
   const nowTimestamp = now.getTime();
   const chips = [];
-  if (buffs.shield > 0) chips.push(`🛡×${buffs.shield}`);
-  if (buffs.certeroUntil > nowTimestamp) {
-    chips.push(`🎯 ${Math.ceil((buffs.certeroUntil - nowTimestamp) / 60_000)}m`);
-  }
-  if (buffs.habitFocusCharges > 0) {
-    chips.push(`🎯×${buffs.habitFocusCharges} hábitos`);
-  }
-  if (buffs.cenizaUntil > nowTimestamp) {
-    chips.push(`☠ ${Math.ceil((buffs.cenizaUntil - nowTimestamp) / 60_000)}m`);
-  }
-  if (buffs.regenUntil > nowTimestamp) {
-    chips.push(`🌿 ${Math.ceil((buffs.regenUntil - nowTimestamp) / 60_000)}m`);
-  }
-  if (buffs.pesteDay === today) chips.push('☠🍺 hoy');
-  if ((game.pestXpDays || []).includes(today)) chips.push('☠ +20 XP hoy');
-  if (buffs.bastion) chips.push('🏰 armado');
-  if (buffs.renacer) chips.push('🌅 esta noche');
-  if ((game.judgmentDays || []).includes(today)) chips.push('⚖️ hoy');
+  const skillEffects = classData.act
+    .map((ability) => ({
+      spellId: ability.id,
+      icon: ability.icon,
+      name: ability.name,
+      remaining: activeSpellStatus({
+        spellId: ability.id,
+        game,
+        nowTimestamp,
+        today,
+        smokeFreeMode: usesSmokeFreeSkills(config),
+      }),
+    }))
+    .filter((effect) => /^\d+m$/.test(effect.remaining || ''));
   if (intoxication?.level > 0) {
     chips.push(
       `🍺 ${intoxication.level}% · ${intoxication.remainingMinutes}m`,
@@ -116,6 +112,7 @@ export function createHeroModel({
     hpClass,
     mood,
     chips,
+    skillEffects,
     stats,
     boss,
     armor,
@@ -124,9 +121,43 @@ export function createHeroModel({
   };
 }
 
-function skillIcon(classId, level, ability, type) {
+function remainingMinutesLabel(until, nowTimestamp) {
+  if (!Number.isFinite(until) || until <= nowTimestamp) return null;
+  return `${Math.max(1, Math.ceil((until - nowTimestamp) / 60_000))}m`;
+}
+
+export function activeSpellStatus({
+  spellId,
+  game,
+  nowTimestamp,
+  today,
+  smokeFreeMode = false,
+}) {
+  const buffs = game?.buffs || {};
+  if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
+  if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
+  if (spellId === 'certero') {
+    if (smokeFreeMode) return buffs.habitFocusCharges > 0 ? `×${buffs.habitFocusCharges}` : null;
+    return remainingMinutesLabel(buffs.certeroUntil, nowTimestamp);
+  }
+  if (spellId === 'muro') return buffs.shield > 0 ? `×${buffs.shield}` : null;
+  if (spellId === 'bastion') return buffs.bastion ? 'LISTO' : null;
+  if (spellId === 'renacer') return buffs.renacer ? 'HOY' : null;
+  if (spellId === 'juicio') return (game?.judgmentDays || []).includes(today) ? 'HOY' : null;
+  if (spellId === 'peste') {
+    const active = smokeFreeMode
+      ? (game?.pestXpDays || []).includes(today)
+      : buffs.pesteDay === today;
+    return active ? 'HOY' : null;
+  }
+  return null;
+}
+
+function skillIcon(classId, level, ability, type, status = null) {
   const active = level >= ability.lvl;
   const ultimateClass = ability.ulti ? ' ulti' : '';
+  const statusClass = status ? ' spell-effect-active' : '';
+  const passiveActiveClass = type === 'pas' && active ? ' passive-effect-active' : '';
   const source =
     `spells/${classId}_spells/` +
     `${classId}_${type}_${ability.icon}.png`;
@@ -135,10 +166,11 @@ function skillIcon(classId, level, ability, type) {
     type === 'act'
       ? `data-cast="${ability.id}"`
       : `data-pas-name="${ability.name}" data-pas-lvl="${ability.lvl}"`;
-  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}" ${attributes}>
+  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${passiveActiveClass}" ${attributes}>
       <span class="sk-lv">Nv ${ability.lvl}</span>
       <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="sk-fallback" style="display:none">${fallback}</span>
+      ${status ? `<span class="skill-active-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
     </div>`;
 }
 
@@ -205,8 +237,20 @@ export function renderHeroView({
     stats: heroStats,
     boss: bossState,
   } = model;
-  const chipsHtml = model.chips.length
-    ? `<div class="buff-row">${model.chips.map((chip) => `<span class="buff">${chip}</span>`).join('')}</div>`
+  const skillEffectsHtml = model.skillEffects
+    .map((effect) => {
+      const source = `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
+      return `<span class="skill-buff" aria-label="${effect.name}: ${effect.remaining} restantes">
+      <span class="skill-buff-icon">
+        <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <span class="sk-fallback" style="display:none">${effect.name.charAt(0)}</span>
+      </span>
+      <b>${effect.remaining}</b>
+    </span>`;
+    })
+    .join('');
+  const chipsHtml = model.chips.length || skillEffectsHtml
+    ? `<div class="buff-row">${skillEffectsHtml}${model.chips.map((chip) => `<span class="buff">${chip}</span>`).join('')}</div>`
     : '';
   const pips = bossState.pips
     .map((pip) => {
@@ -219,7 +263,19 @@ export function renderHeroView({
     .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'pas'))
     .join('');
   const activeIcons = classData.act
-    .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'act'))
+    .map((ability) => skillIcon(
+      classId,
+      heroStats.lvl,
+      ability,
+      'act',
+      activeSpellStatus({
+        spellId: ability.id,
+        game,
+        nowTimestamp: now.getTime(),
+        today: dayKey || keyOf(now),
+        smokeFreeMode: usesSmokeFreeSkills(config),
+      }),
+    ))
     .join('');
   const auraClass = heroStats.tier > 0 ? `t${heroStats.tier + 1}` : '';
   const sleeping = model.mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
@@ -241,7 +297,15 @@ export function renderHeroView({
   const defeatedBosses = Math.min(totalBosses, heroStats.bossesDown);
   const currentBossIndex = Math.min(totalBosses - 1, bossState.bossNum - 1);
   const remainingBosses = Math.max(0, totalBosses - defeatedBosses);
-  const bossMedals = Array.from({ length: totalBosses }, (_, index) => {
+  const revealedBossCount = Math.min(
+    totalBosses,
+    Math.max(defeatedBosses, currentBossIndex + 1),
+  );
+  const visibleBossMedalCount = Math.min(
+    totalBosses,
+    revealedBossCount + (revealedBossCount < totalBosses ? 1 : 0),
+  );
+  const bossMedals = Array.from({ length: visibleBossMedalCount }, (_, index) => {
     const defeated = index < defeatedBosses;
     const fighting = !defeated && index === currentBossIndex;
     if (!defeated && !fighting) {
@@ -286,8 +350,8 @@ export function renderHeroView({
     bossHistoryBody.innerHTML = `
       <section class="boss-medals">
         <div class="boss-medals-head">
-          <h4>Medallones de victoria · ${defeatedBosses} / ${totalBosses}</h4>
-          <p>Cada jefe derrotado revela su medallón. Los rivales que todavía te esperan permanecen ocultos.</p>
+          <h4>Medallones de victoria · ${defeatedBosses}</h4>
+          <p>Cada jefe derrotado revela su medallón. La incógnita representa los rivales que aún permanecen ocultos.</p>
         </div>
         <div class="boss-medals-grid">${bossMedals}</div>
       </section>
@@ -339,7 +403,7 @@ export function renderHeroView({
             <button class="hero-quick-action hero-inventory-jump" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
             </button>
-            <button class="hero-quick-action" type="button" data-scroll-skills aria-label="Ir a habilidades" title="Ir a habilidades">
+            <button class="hero-quick-action" type="button" data-open-hero-skills aria-label="Abrir habilidades" title="Abrir habilidades">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
             </button>
           </div>
@@ -391,19 +455,17 @@ export function renderHeroView({
         <b>${bossState.hp} / ${bossState.maxHp} HP</b>
       </div>
       <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
-      <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b> de <b>${totalBosses}</b> · quedan <b>${remainingBosses}</b> por delante</div>
-    </div>
-
-    <div class="card hero-skills-card" id="heroSkillsCard">
-      <div class="skills-head">
-        <h2 id="heroSkillsTitle" tabindex="-1" style="margin:0">Habilidades</h2>
-        <button class="sk-info-btn" id="skInfoBtn" aria-label="Ver libro de habilidades">ⓘ</button>
-      </div>
-      <div class="sk-row-label">Pasivas</div>
-      <div class="skill-row">${passiveIcons}</div>
-      <div class="sk-row-label acts">Activas</div>
-      <div class="skill-row">${activeIcons}</div>
+      <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b>${remainingBosses > 0 ? ' de <b>?</b> · ¡Aún quedan jefes por derrotar!' : ' · campaña completada'}</div>
     </div>`;
+
+  const skillsModalBody = document.getElementById('heroSkillsModalBody');
+  if (skillsModalBody) {
+    skillsModalBody.innerHTML = `
+      <div class="sk-row-label">Activas</div>
+      <div class="skill-row">${activeIcons}</div>
+      <div class="sk-row-label secondary">Pasivas</div>
+      <div class="skill-row">${passiveIcons}</div>`;
+  }
 }
 
 function detailedIcon(classId, ability, type) {
@@ -460,8 +522,8 @@ export function renderSkillsView({
         ? `<div class="drunk-warning">🍺 Borrachera ${intoxication.level}% · las pasivas tienen −${intoxication.level}% de potencia y las activas ${intoxication.level}% de fallo.</div>`
         : ''
     }
-    <div class="grim-cls-tag" style="margin-top:0">Pasivas — ${classData.es}</div>
-    ${passiveHtml}
-    <div class="grim-cls-tag">Hechizos — ${classData.es}</div>
-    ${activeHtml}`;
+    <div class="grim-cls-tag" style="margin-top:0">Hechizos — ${classData.es}</div>
+    ${activeHtml}
+    <div class="grim-cls-tag">Pasivas — ${classData.es}</div>
+    ${passiveHtml}`;
 }

@@ -24,7 +24,7 @@ import {
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
-import { HABIT_DAILY_XP_CAP } from './habit-rules.js';
+import { habitXpCapForState } from './habit-rules.js';
 
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -1266,7 +1266,7 @@ export function awardFusionAllHabitsXp({
   state,
   habitState,
   dayKey,
-  cap = HABIT_DAILY_XP_CAP,
+  cap,
 }) {
   const normalized = normalizeLootState(state);
   const habits = objectOf(habitState);
@@ -1287,7 +1287,10 @@ export function awardFusionAllHabitsXp({
     entry?.frequency === 'daily' && entry?.periodKey === periodKey
       ? total + Math.max(0, Number(entry.xpAwarded) || 0)
       : total, 0);
-  const xp = Math.min(5, Math.max(0, Math.trunc(Number(cap) || 0) - used));
+  const effectiveCap = cap === undefined
+    ? habitXpCapForState({ ...habits, items, entries }, 'daily')
+    : Math.max(0, Math.trunc(Number(cap) || 0));
+  const xp = Math.min(5, Math.max(0, effectiveCap - used));
   if (xp <= 0) {
     return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
   }
