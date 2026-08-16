@@ -245,7 +245,7 @@
     width:100%;max-width:440px;display:none;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
-    padding-bottom:max(0px,calc(var(--safe-bottom) - 8px));
+    padding-bottom:max(0px,calc(var(--safe-bottom) - 12px));
   }
   nav.show{display:flex}
   body.habit-editor-open #mainNav{visibility:hidden;opacity:0;pointer-events:none}
