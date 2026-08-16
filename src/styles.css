@@ -484,13 +484,18 @@
   .habit-frequency{display:flex;border:1px solid var(--line);border-radius:10px;padding:3px;background:var(--panel2)}
   .habit-frequency button{flex:1;border:0;border-radius:7px;padding:9px;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer}
   .habit-frequency button.active{background:var(--kodak);color:#241C0E;font-weight:400}
+  .habit-repeat-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .habit-repeat-row[hidden]{display:none}
+  .habit-repeat-row>div>small{display:block;max-width:240px;color:var(--muted);font-size:9px;line-height:1.35;margin-top:-3px}
+  .habit-repeat-row>button{min-width:54px;height:34px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--muted);font:400 12px var(--font-display)}
+  .habit-repeat-row>button.active{border-color:var(--kodak);background:rgba(232,180,74,.14);color:var(--kodak)}
   .habit-target-row{display:flex;align-items:center;justify-content:space-between;gap:14px}
   .habit-target-row>div>small{display:block;color:var(--muted);font-size:9px;margin-top:-3px}
   .habit-target-stepper{display:flex;align-items:center;gap:10px}
   .habit-target-stepper button{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:19px;cursor:pointer}
   .habit-target-stepper b{min-width:24px;text-align:center;font-family:var(--font-display)}
-  .habit-reward-preview{margin-top:18px;padding:11px 13px;border-radius:10px;background:#17130D;border:1px solid #59451F;color:var(--muted);font-size:11px}
-  .habit-reward-preview b{float:right;color:var(--kodak);font-family:var(--font-display)}
+  .habit-reward-preview{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:18px;padding:11px 13px;border-radius:10px;background:#17130D;border:1px solid #59451F;color:var(--muted);font-size:11px}
+  .habit-reward-preview b{color:var(--kodak);font-family:var(--font-display);font-size:9px;line-height:1.45;text-align:right}
   .habit-delete{width:100%;margin-top:20px;padding:12px;border-radius:10px;border:1px solid rgba(196,85,62,.6);background:rgba(196,85,62,.09);color:var(--warn);font-family:var(--font-display);font-size:13px;font-weight:400;cursor:pointer}
 
   .view{display:none}
@@ -835,6 +840,12 @@
   .hero-skill-slot:active:not(.future){transform:scale(.95)}
   .hero-skill-slot:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-skill-slot.spell-effect-active{border-color:var(--kodak);box-shadow:0 0 10px rgba(232,180,74,.32);animation:activeSpellGlow 2.8s ease-in-out infinite}
+  .hero-skill-slot.cast-confirm{z-index:2;animation:heroCastConfirm .9s ease-out 1}
+  .stat-bar.stat-cast-feedback .stat-track{animation:heroStatFeedback .9s ease-out 1}
+  .stat-bar.hp-feedback .stat-track{--stat-feedback:#8fae6b}
+  .stat-bar.mana-feedback .stat-track{--stat-feedback:#7fa0b8}
+  @keyframes heroCastConfirm{0%{transform:scale(.88);filter:brightness(1)}28%{transform:scale(1.08);filter:brightness(1.55);box-shadow:0 0 0 2px rgba(232,180,74,.72),0 0 18px rgba(232,180,74,.58)}100%{transform:scale(1);filter:brightness(1)}}
+  @keyframes heroStatFeedback{0%,100%{box-shadow:none;filter:brightness(1)}32%{box-shadow:0 0 0 1px var(--stat-feedback),0 0 13px var(--stat-feedback);filter:brightness(1.45)}}
   .hero-skill-fallback{width:100%;height:100%;align-items:center;justify-content:center}
   .cast-btn{margin-top:8px;display:inline-block}
   .cast-btn[disabled]{opacity:.35;cursor:default}
@@ -1027,7 +1038,7 @@
     52%{filter:brightness(.84) saturate(1.1) drop-shadow(0 0 2px rgba(59,0,22,.86)) drop-shadow(0 0 5px rgba(29,0,12,.72))}
     68%{filter:brightness(1.04) saturate(1.12) drop-shadow(0 0 3px rgba(151,19,54,.88)) drop-shadow(0 0 7px rgba(78,3,30,.66))}
   }
-  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst,.hero-skill-slot.cast-confirm,.stat-bar.stat-cast-feedback .stat-track{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}

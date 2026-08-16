@@ -7,6 +7,8 @@ import {
   habitEntryFor,
   habitPeriodKey,
   habitPotentialXp,
+  habitProgressCoinSchedule,
+  habitProgressXpSchedule,
   habitReward,
   habitXpCapForState,
   habitXpTotal,
@@ -54,6 +56,7 @@ function progressWithCoins({
     planStartDate: startDate,
     becameCompleted: progress.becameCompleted,
     becameIncomplete: progress.becameIncomplete,
+    progressChanged: progress.countChanged,
     nowTimestamp: 100,
   });
   return { progress, ...coins };
@@ -109,7 +112,72 @@ describe('hábitos', () => {
       difficulty: 'hard',
       frequency: 'weekly',
       target: 20,
+      repeatable: false,
     });
+  });
+
+  it('solo permite repetición explícita en hábitos diarios', () => {
+    expect(normalizeHabitInput({ frequency: 'daily', repeatable: true }).repeatable).toBe(true);
+    expect(normalizeHabitInput({ frequency: 'weekly', repeatable: true }).repeatable).toBe(false);
+  });
+
+  it('define recompensas decrecientes para hábitos diarios repetibles', () => {
+    expect(habitProgressXpSchedule({ frequency: 'daily', difficulty: 'easy', target: 4, repeatable: true }))
+      .toEqual([3, 2, 1, 0]);
+    expect(habitProgressCoinSchedule({ frequency: 'daily', difficulty: 'easy', target: 4, repeatable: true }))
+      .toEqual([2, 1, 0, 0]);
+    expect(habitProgressXpSchedule({ frequency: 'daily', difficulty: 'medium', target: 3, repeatable: true }))
+      .toEqual([6, 4, 2]);
+    expect(habitProgressCoinSchedule({ frequency: 'daily', difficulty: 'medium', target: 3, repeatable: true }))
+      .toEqual([3, 2, 1]);
+    expect(habitProgressXpSchedule({ frequency: 'daily', difficulty: 'hard', target: 3, repeatable: true }))
+      .toEqual([10, 5, 3]);
+    expect(habitProgressCoinSchedule({ frequency: 'daily', difficulty: 'hard', target: 3, repeatable: true }))
+      .toEqual([5, 3, 2]);
+  });
+
+  it('reparte la recompensa semanal total entre avances', () => {
+    const weeklyMedium = { ...habit, frequency: 'weekly', target: 3 };
+    expect(habitProgressXpSchedule(weeklyMedium)).toEqual([7, 6, 5]);
+    expect(habitProgressCoinSchedule(weeklyMedium)).toEqual([2, 2, 1]);
+    expect(habitProgressXpSchedule(weeklyMedium).reduce((sum, value) => sum + value, 0)).toBe(18);
+    expect(habitProgressCoinSchedule(weeklyMedium).reduce((sum, value) => sum + value, 0)).toBe(5);
+  });
+
+  it('premia cada repetición diaria y revierte únicamente el último avance', () => {
+    const repeatable = { ...habit, repeatable: true, target: 3 };
+    let habitState = { items: [repeatable], entries: {} };
+    let currentEconomy = economy();
+    const deltas = [];
+    for (let index = 0; index < 3; index += 1) {
+      const result = progressWithCoins({ habitState, currentEconomy, targetHabit: repeatable, delta: 1 });
+      habitState = result.habitState;
+      currentEconomy = result.economy;
+      deltas.push([result.progress.xpDelta, result.habitCoinDelta, result.bonusCoinDelta]);
+    }
+    expect(deltas).toEqual([[6, 3, 0], [4, 2, 0], [2, 1, 3]]);
+    expect(currentEconomy.coins).toBe(9);
+    const undone = progressWithCoins({ habitState, currentEconomy, targetHabit: repeatable, delta: -1 });
+    expect(undone.progress.xpDelta).toBe(-2);
+    expect(undone.habitCoinDelta).toBe(-1);
+    expect(undone.bonusCoinDelta).toBe(-3);
+    expect(undone.progress.entry.xpAwarded).toBe(10);
+  });
+
+  it('entrega al momento cada tramo semanal y conserva el total original', () => {
+    const weekly = { ...habit, frequency: 'weekly', target: 3 };
+    let habitState = { items: [weekly], entries: {} };
+    let currentEconomy = economy();
+    const deltas = [];
+    for (let index = 0; index < 3; index += 1) {
+      const result = progressWithCoins({ habitState, currentEconomy, targetHabit: weekly, delta: 1 });
+      habitState = result.habitState;
+      currentEconomy = result.economy;
+      deltas.push([result.progress.xpDelta, result.habitCoinDelta]);
+    }
+    expect(deltas).toEqual([[7, 2], [6, 2], [5, 1]]);
+    expect(habitXpTotal(habitState)).toBe(18);
+    expect(currentEconomy.coins).toBe(5);
   });
 
   it.each([

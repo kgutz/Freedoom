@@ -319,6 +319,8 @@ describe('modelo de Héroe', () => {
     expect((heroContent.innerHTML.match(/data-cast=/g) || []).length).toBe(3);
     expect((heroContent.innerHTML.match(/data-future-skill/g) || []).length).toBe(3);
     expect(heroContent.innerHTML).toContain('aria-label="Habilidades activas rápidas"');
+    expect(heroContent.innerHTML).toContain('data-hero-stat="hp"');
+    expect(heroContent.innerHTML).toContain('data-hero-stat="mana"');
     expect(heroContent.innerHTML.indexOf('hero-skill-hotbar'))
       .toBeLessThan(heroContent.innerHTML.indexOf('boss-top'));
     expect(heroSkillsModalBody.innerHTML).not.toContain('id="skInfoBtn"');

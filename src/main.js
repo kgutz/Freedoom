@@ -86,6 +86,8 @@ import {
   adjustHabitProgress,
   applyHabitCoinRewards,
   habitCoinReward,
+  habitProgressCoinSchedule,
+  habitProgressXpSchedule,
   habitReward,
   nextHabitOrder,
   normalizeHabitInput,
@@ -162,7 +164,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.78';
+const APP_VERSION='1.79';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -1457,6 +1459,21 @@ function castSpell(id){
   }
   scheduleSave();
   renderHero();
+  requestAnimationFrame(()=>{
+    const slot=document.querySelector(`#view-hero .hero-skill-hotbar [data-cast="${id}"]`);
+    slot?.classList.add('cast-confirm');
+    const manaBar=document.querySelector('#view-hero [data-hero-stat="mana"]');
+    manaBar?.classList.add('stat-cast-feedback','mana-feedback');
+    const hpBar=result.healing>0
+      ? document.querySelector('#view-hero [data-hero-stat="hp"]')
+      : null;
+    hpBar?.classList.add('stat-cast-feedback','hp-feedback');
+    setTimeout(()=>{
+      slot?.classList.remove('cast-confirm');
+      manaBar?.classList.remove('stat-cast-feedback','mana-feedback');
+      hpBar?.classList.remove('stat-cast-feedback','hp-feedback');
+    },950);
+  });
 }
 
 function showToast(txt,type){
@@ -2356,6 +2373,7 @@ let habitViewFilter='all';
 let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
+let habitDraftRepeatable=false;
 let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
@@ -2410,10 +2428,35 @@ function updateHabitEditor(){
     button.classList.toggle('active',button.dataset.habitFrequency===habitDraftFrequency);
   });
   document.getElementById('habitTargetValue').textContent=habitDraftTarget;
-  const previewHabit={difficulty:habitDraftDifficulty,frequency:habitDraftFrequency};
-  const coinReward=habitCoinReward(previewHabit);
-  document.getElementById('habitRewardPreview').textContent='+'+habitReward(previewHabit)+
-    ' XP · +'+coinReward+' '+(coinReward===1?'moneda':'monedas');
+  const repeatRow=document.getElementById('habitRepeatRow');
+  const repeatToggle=document.getElementById('habitRepeatToggle');
+  const isWeekly=habitDraftFrequency==='weekly';
+  repeatRow.hidden=isWeekly;
+  repeatToggle.classList.toggle('active',habitDraftRepeatable&&!isWeekly);
+  repeatToggle.setAttribute('aria-pressed',String(habitDraftRepeatable&&!isWeekly));
+  repeatToggle.textContent=habitDraftRepeatable&&!isWeekly?'Sí':'No';
+  document.getElementById('habitTargetLabel').textContent=isWeekly
+    ? 'Objetivo semanal'
+    : habitDraftRepeatable?'Repeticiones':'Objetivo';
+  document.getElementById('habitTargetHelp').textContent=isWeekly
+    ? 'Cada avance concede una parte de la recompensa semanal'
+    : habitDraftRepeatable
+      ? 'Las tres primeras repeticiones conceden recompensas decrecientes'
+      : 'Veces necesarias para completarlo';
+  const previewHabit={
+    difficulty:habitDraftDifficulty,
+    frequency:habitDraftFrequency,
+    target:habitDraftTarget,
+    repeatable:habitDraftRepeatable&&!isWeekly,
+  };
+  const xpSchedule=habitProgressXpSchedule(previewHabit);
+  const coinSchedule=habitProgressCoinSchedule(previewHabit);
+  const preview=isWeekly
+    ? `Primer avance: +${xpSchedule[0]||0} XP · +${coinSchedule[0]||0} 🪙 · total: +${xpSchedule.reduce((sum,value)=>sum+value,0)} XP · +${coinSchedule.reduce((sum,value)=>sum+value,0)} 🪙`
+    : previewHabit.repeatable
+      ? `${xpSchedule.slice(0,3).map((xp,index)=>`${xp} XP · ${coinSchedule[index]||0} 🪙`).join('  /  ')}${habitDraftTarget>3?'  /  después 0':''}`
+      : `+${habitReward(previewHabit)} XP · +${habitCoinReward(previewHabit)} ${habitCoinReward(previewHabit)===1?'moneda':'monedas'}`;
+  document.getElementById('habitRewardPreview').textContent=preview;
 }
 function finishHabitEditorClose(){
   const modal=document.getElementById('habitModalBg');
@@ -2458,6 +2501,7 @@ function openHabitEditor(id=null){
   habitDraftDifficulty=habit?.difficulty||'easy';
   habitDraftFrequency=habit?.frequency||'daily';
   habitDraftTarget=habit?.target||1;
+  habitDraftRepeatable=habit?.repeatable===true&&habitDraftFrequency==='daily';
   document.getElementById('habitModalTitle').textContent=habit?'Editar hábito':'Nuevo hábito';
   document.getElementById('habitTitle').value=habit?.title||'';
   document.getElementById('habitNotes').value=habit?.notes||'';
@@ -2474,7 +2518,8 @@ function saveHabitEditor(){
     notes:document.getElementById('habitNotes').value,
     difficulty:habitDraftDifficulty,
     frequency:habitDraftFrequency,
-    target:habitDraftTarget
+    target:habitDraftTarget,
+    repeatable:habitDraftRepeatable,
   });
   if(!input.title){
     showToast('Escribe un nombre para el hábito','dmg');
@@ -2609,6 +2654,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       planStartDate:state.config.startDate,
       becameCompleted:result.becameCompleted,
       becameIncomplete:result.becameIncomplete,
+      progressChanged:result.countChanged,
       nowTimestamp:Date.now()
     });
     state.habits=coinResult.habitState;
@@ -2668,6 +2714,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         ? ' · +'+(result.xpDelta+fusionListXp+newRelicRewards.xp)+' XP'
         : ' · límite de XP alcanzado';
       showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+extraMessage+relicHabitNotice+newRelicRewards.notice+habitRewardNotice,'heal');
+    }
+    else if(result.xpDelta>0||coinResult.habitCoinDelta>0){
+      const xpNotice=result.xpDelta>0?' · +'+result.xpDelta+' XP':' · límite de XP alcanzado';
+      showToast('Progreso registrado'+xpNotice+habitCoinNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
     }
     else if(result.xpDelta<0||coinResult.coinDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice,'dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
@@ -2813,6 +2863,13 @@ document.getElementById('habitFrequency').addEventListener('click',event=>{
   const button=event.target.closest('[data-habit-frequency]');
   if(!button) return;
   habitDraftFrequency=button.dataset.habitFrequency;
+  if(habitDraftFrequency==='weekly') habitDraftRepeatable=false;
+  updateHabitEditor();
+});
+document.getElementById('habitRepeatToggle').addEventListener('click',()=>{
+  if(habitDraftFrequency==='weekly') return;
+  habitDraftRepeatable=!habitDraftRepeatable;
+  if(habitDraftRepeatable&&habitDraftTarget<2) habitDraftTarget=3;
   updateHabitEditor();
 });
 document.getElementById('habitTargetSub').addEventListener('click',()=>{

@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.78</div>
+  <div class="ob-version" id="obVersion">v1.79</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.78</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.79</span></p>
       </div>
     </div>
   </div>
@@ -842,15 +842,19 @@
         <button type="button" data-habit-frequency="weekly">Semanal</button>
       </div>
     </div>
+    <div class="habit-editor-section habit-repeat-row" id="habitRepeatRow">
+      <div><span class="habit-editor-label">Repetible</span><small>Premia cada repetición, cada vez un poco menos</small></div>
+      <button type="button" id="habitRepeatToggle" aria-pressed="false">No</button>
+    </div>
     <div class="habit-editor-section habit-target-row">
-      <div><span class="habit-editor-label">Objetivo</span><small>Veces necesarias para completarlo</small></div>
+      <div><span class="habit-editor-label" id="habitTargetLabel">Objetivo</span><small id="habitTargetHelp">Veces necesarias para completarlo</small></div>
       <div class="habit-target-stepper">
         <button type="button" id="habitTargetSub">−</button>
         <b id="habitTargetValue">1</b>
         <button type="button" id="habitTargetAdd">+</button>
       </div>
     </div>
-    <div class="habit-reward-preview">Recompensa: <b id="habitRewardPreview">+3 XP · +1 moneda</b></div>
+    <div class="habit-reward-preview">Recompensa: <b id="habitRewardPreview">+3 XP · +2 monedas</b></div>
     <button type="button" class="habit-delete" id="habitDelete" style="display:none">Eliminar hábito</button>
   </div>
 </div>

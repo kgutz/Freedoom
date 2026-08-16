@@ -23,6 +23,18 @@ export const HABIT_DIFFICULTIES = {
   hard: { label: 'Difícil', dailyXp: 10, weeklyXp: 30 },
 };
 
+const DAILY_REPEATABLE_XP = Object.freeze({
+  easy: Object.freeze([3, 2, 1]),
+  medium: Object.freeze([6, 4, 2]),
+  hard: Object.freeze([10, 5, 3]),
+});
+
+const DAILY_REPEATABLE_COINS = Object.freeze({
+  easy: Object.freeze([2, 1, 0]),
+  medium: Object.freeze([3, 2, 1]),
+  hard: Object.freeze([5, 3, 2]),
+});
+
 export function emptyHabitState() {
   return { items: [], entries: {}, dailyCoinBonuses: {} };
 }
@@ -61,6 +73,7 @@ export function normalizeHabitInput(input = {}) {
     difficulty,
     frequency,
     target: Math.min(20, Math.max(1, Math.trunc(Number(input.target) || 1))),
+    repeatable: frequency === 'daily' && input.repeatable === true,
   };
 }
 
@@ -122,6 +135,65 @@ export function habitReward(habit) {
     : HABIT_DIFFICULTIES[difficulty].dailyXp;
 }
 
+function progressiveSchedule(totalReward, target) {
+  const total = Math.max(0, Math.trunc(Number(totalReward) || 0));
+  const count = Math.min(20, Math.max(1, Math.trunc(Number(target) || 1)));
+  const base = Math.floor(total / count);
+  const remainder = total % count;
+  const schedule = Array.from(
+    { length: count },
+    (_, index) => base + (index < remainder ? 1 : 0),
+  );
+  if (count > 1 && schedule[0] === schedule[count - 1] && schedule[count - 1] > 0) {
+    schedule[0] += 1;
+    schedule[count - 1] -= 1;
+  }
+  return schedule;
+}
+
+function paddedSchedule(values, target) {
+  const count = Math.min(20, Math.max(1, Math.trunc(Number(target) || 1)));
+  return Array.from({ length: count }, (_, index) => values[index] || 0);
+}
+
+export function habitProgressXpSchedule(habit) {
+  const difficulty = HABIT_DIFFICULTIES[habit?.difficulty]
+    ? habit.difficulty
+    : 'easy';
+  const target = Math.min(20, Math.max(1, Math.trunc(Number(habit?.target) || 1)));
+  if (habit?.frequency === 'weekly') {
+    return progressiveSchedule(HABIT_DIFFICULTIES[difficulty].weeklyXp, target);
+  }
+  if (habit?.repeatable === true) {
+    return paddedSchedule(DAILY_REPEATABLE_XP[difficulty], target);
+  }
+  return [...Array(Math.max(0, target - 1)).fill(0), HABIT_DIFFICULTIES[difficulty].dailyXp];
+}
+
+export function habitProgressCoinSchedule(habit) {
+  const difficulty = HABIT_DIFFICULTIES[habit?.difficulty]
+    ? habit.difficulty
+    : 'easy';
+  const target = Math.min(20, Math.max(1, Math.trunc(Number(habit?.target) || 1)));
+  if (habit?.frequency === 'weekly') {
+    return progressiveSchedule(HABIT_COIN_REWARDS.weekly[difficulty], target);
+  }
+  if (habit?.repeatable === true) {
+    return paddedSchedule(DAILY_REPEATABLE_COINS[difficulty], target);
+  }
+  return [...Array(Math.max(0, target - 1)).fill(0), HABIT_COIN_REWARDS.daily[difficulty]];
+}
+
+export function habitProgressReward(habit, progressNumber) {
+  const index = Math.max(0, Math.trunc(Number(progressNumber) || 1) - 1);
+  return habitProgressXpSchedule(habit)[index] || 0;
+}
+
+export function habitProgressCoinReward(habit, progressNumber) {
+  const index = Math.max(0, Math.trunc(Number(progressNumber) || 1) - 1);
+  return habitProgressCoinSchedule(habit)[index] || 0;
+}
+
 function normalizedFrequency(frequency) {
   return frequency === 'weekly' ? 'weekly' : 'daily';
 }
@@ -143,7 +215,7 @@ export function habitPotentialXp(habitState, frequency) {
     if (habit?.active === false || normalizedFrequency(habit?.frequency) !== targetFrequency) {
       return total;
     }
-    return total + habitReward(habit);
+    return total + habitProgressXpSchedule(habit).reduce((sum, reward) => sum + reward, 0);
   }, 0);
 }
 
@@ -188,6 +260,31 @@ export function habitEntryFor(habitState, habit, date, planStartDate) {
   );
 }
 
+function existingXpAwards(entry, habit) {
+  const count = Math.max(0, Math.trunc(Number(entry?.count) || 0));
+  if (Array.isArray(entry?.xpAwards)) {
+    return Array.from(
+      { length: count },
+      (_, index) => Math.max(0, Number(entry.xpAwards[index]) || 0),
+    );
+  }
+  const legacyTotal = Math.max(0, Number(entry?.xpAwarded) || 0);
+  if (habit?.frequency === "weekly" && count > 0 && legacyTotal > 0) {
+    const schedule = habitProgressXpSchedule(habit).slice(0, count);
+    let remaining = legacyTotal;
+    return schedule.map((reward) => {
+      const awarded = Math.min(reward, remaining);
+      remaining -= awarded;
+      return awarded;
+    }).map((reward, index, awards) => (
+      index === awards.length - 1 ? reward + remaining : reward
+    ));
+  }
+  const legacy = Array(count).fill(0);
+  if (count > 0) legacy[count - 1] = legacyTotal;
+  return legacy;
+}
+
 function xpUsedInPeriod(entries, periodKey, frequency, excludedKey) {
   return Object.entries(entries).reduce((total, [entryKey, entry]) => {
     if (
@@ -227,19 +324,27 @@ export function adjustHabitProgress({
     habit.frequency,
     entryKey,
   );
-  const xpAwarded = completed
-    ? Math.min(
-        Math.round(habitReward(habit)*Math.max(1,Number(rewardMultiplier)||1)) +
-          Math.max(0, Math.round(Number(flatRewardBonus) || 0)),
-        Math.max(0, cap - used),
-      )
-    : 0;
+  const previousAwards = existingXpAwards(previous, habit);
+  let xpAwards = previousAwards.slice(0, count);
+  const rewardSchedule = habitProgressXpSchedule(habit);
+  while (xpAwards.length < count) {
+    const baseReward = rewardSchedule[xpAwards.length] || 0;
+    const requested = baseReward > 0
+      ? Math.round(baseReward * Math.max(1, Number(rewardMultiplier) || 1)) +
+        Math.max(0, Math.round(Number(flatRewardBonus) || 0))
+      : 0;
+    const awardedSoFar = xpAwards.reduce((sum, reward) => sum + reward, 0);
+    xpAwards.push(Math.min(requested, Math.max(0, cap - used - awardedSoFar)));
+  }
+  const xpAwarded = xpAwards.reduce((sum, reward) => sum + reward, 0);
   const entry = {
     habitId: habit.id,
     periodKey,
     frequency: habit.frequency,
     count,
     xpAwarded,
+    xpAwards,
+    coinsAwarded: Math.max(0, Math.trunc(Number(previous.coinsAwarded) || 0)),
   };
   return {
     habitState: {
@@ -252,6 +357,7 @@ export function adjustHabitProgress({
     wasCompleted,
     becameCompleted: !wasCompleted && completed,
     becameIncomplete: wasCompleted && !completed,
+    countChanged: count !== previous.count,
   };
 }
 
@@ -319,6 +425,7 @@ export function applyHabitCoinRewards({
   planStartDate,
   becameCompleted = false,
   becameIncomplete = false,
+  progressChanged = false,
   nowTimestamp = Date.now(),
 }) {
   let normalized = normalizeHabitState(habitState);
@@ -331,11 +438,12 @@ export function applyHabitCoinRewards({
     Math.max(0, Math.trunc(Number(entry.coinsAwarded) || 0)),
     transactionAward(nextEconomy, habitTransactionId),
   );
-  const targetHabitAward = becameCompleted
-    ? habitCoinReward(habit)
-    : becameIncomplete
-      ? 0
-      : recordedHabitAward;
+  const shouldReconcile = progressChanged || becameCompleted || becameIncomplete;
+  const targetHabitAward = shouldReconcile
+    ? habitProgressCoinSchedule(habit)
+      .slice(0, Math.max(0, Math.trunc(Number(entry.count) || 0)))
+      .reduce((sum, reward) => sum + reward, 0)
+    : recordedHabitAward;
   const habitResult = setCoinEntitlement({
     economy: nextEconomy,
     transactionId: habitTransactionId,
@@ -360,7 +468,7 @@ export function applyHabitCoinRewards({
 
   let bonusCoinDelta = 0;
   const dailyPeriodKey = `d:${keyOf(date)}`;
-  if (habit?.frequency !== 'weekly' && (becameCompleted || becameIncomplete || normalized.dailyCoinBonuses[dailyPeriodKey])) {
+  if (habit?.frequency !== 'weekly' && (shouldReconcile || normalized.dailyCoinBonuses[dailyPeriodKey])) {
     const previousBonus = normalized.dailyCoinBonuses[dailyPeriodKey] || {};
     const bonusTransactionId = `habit-coin-bonus:${dailyPeriodKey}`;
     const recordedBonusAward = Math.max(

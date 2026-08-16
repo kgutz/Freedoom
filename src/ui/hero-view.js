@@ -555,15 +555,15 @@ export function renderHeroView({
           </div>
         </div>
       </div>
-      <div class="stat-bar">
+      <div class="stat-bar" data-hero-stat="hp">
         <div class="lbl"><span>SALUD</span><b>${model.hp} / ${heroStats.maxHp}</b></div>
         <div class="stat-track"><div class="stat-fill ${model.hpClass}" style="width:${model.hpPercent}%"></div></div>
       </div>
-      <div class="stat-bar">
+      <div class="stat-bar" data-hero-stat="mana">
         <div class="lbl"><span>MANÁ</span><b>${model.mana} / ${heroStats.maxMp}</b></div>
         <div class="stat-track"><div class="stat-fill mp" style="width:${model.manaPercent}%"></div></div>
       </div>
-      <div class="stat-bar">
+      <div class="stat-bar" data-hero-stat="xp">
         <div class="lbl"><span>EXPERIENCIA</span><b>${heroStats.xp} / ${heroStats.nextTh} XP</b></div>
         <div class="stat-track"><div class="stat-fill xp" style="width:${Math.round(heroStats.prog * 100)}%"></div></div>
       </div>
