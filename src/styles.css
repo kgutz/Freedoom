@@ -344,10 +344,10 @@
   .settings-content .set-static{font-family:var(--font-copy)!important}
   .set-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:11px 0;border:none;font-size:14px}
   .set-row label{color:var(--muted);font-size:15px}
-  .set-static{max-width:170px;text-align:right;color:var(--text);font-size:13px}
+  .set-static{max-width:170px;text-align:right;color:var(--text);font-size:12px}
   .set-row input{
     background:var(--panel2);border:1px solid var(--line);color:var(--text);
-    border-radius:8px;padding:8px 10px;font-family:var(--font-display);font-size:15px;
+    border-radius:8px;padding:8px 10px;font-family:var(--font-display);font-size:14px;
     width:150px;color-scheme:dark;
   }
   .hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
@@ -445,7 +445,7 @@
   .habit-row.dragging{z-index:3;opacity:.58;transform:scale(.985);border-color:var(--kodak);box-shadow:0 4px 18px rgba(0,0,0,.45);pointer-events:none}
   .habit-group-list.drag-active{cursor:grabbing}
   body.habit-dragging{user-select:none}
-  .habit-title{display:block;font-family:var(--font-display);font-size:14px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .habit-title{display:block;font-family:var(--font-copy);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .habit-notes{display:none}
   .habit-meta{display:block;margin-top:2px;color:var(--muted);font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .habit-progress{display:block;height:3px;background:#0E0B09;border-radius:99px;overflow:hidden;margin-top:4px}
@@ -675,7 +675,7 @@
   .faq-item{border-bottom:1px solid var(--line)}
   .faq-item summary{
     min-height:58px;padding:16px 2px;display:flex;align-items:center;justify-content:space-between;gap:16px;
-    color:var(--text);font-size:14px;font-weight:400;letter-spacing:.04em;cursor:pointer;list-style:none;
+    color:var(--text);font-size:15px;font-weight:400;letter-spacing:.04em;cursor:pointer;list-style:none;
   }
   .faq-item summary::-webkit-details-marker{display:none}
   .faq-item summary::marker{content:''}
@@ -1090,11 +1090,11 @@
   .inventory-sheet>.sheet-head,.inventory-sheet>.inventory-tabs{flex:0 0 auto}
   .inventory-sheet>#inventoryBody,.inventory-sheet>#collectionBody,.inventory-sheet>#forgeBody,.inventory-sheet>#shopBody{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding-bottom:6px}
   .inventory-tabs{display:flex;gap:6px;margin:2px 0 16px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
-  .inventory-tabs button{flex:1;min-width:0;border:0;border-radius:8px;padding:10px 3px;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:clamp(10px,2.8vw,13px);font-weight:400;cursor:pointer}
+  .inventory-tabs button{flex:1;min-width:0;border:0;border-radius:8px;padding:10px 3px;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:14px;font-weight:400;cursor:pointer}
   .inventory-tabs button.active{background:var(--kodak);color:#241c0e}
   .collection-hint{margin:0 0 11px;color:var(--muted);font-size:10px;line-height:1.45}
   .forge-mode-tabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--panel);flex:0 0 auto}
-  .forge-mode-tabs button{min-height:29px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:400 11px var(--font-display);letter-spacing:.08em}
+  .forge-mode-tabs button{min-height:29px;border:0;border-radius:7px;background:transparent;color:var(--muted);font:400 13px var(--font-display);letter-spacing:.08em}
   .forge-mode-tabs button.active{background:#3a2c1c;color:var(--kodak);box-shadow:inset 0 0 0 1px rgba(232,180,74,.42)}
   .forge-focus{max-width:330px;margin:0 auto;border:2px solid #567a8e;border-radius:15px;padding:14px;background:var(--panel2);text-align:center}
   .forge-focus.rarity-legendary,.forge-relic-choice.rarity-legendary{border-color:#d39435;box-shadow:0 0 13px rgba(211,148,53,.18),inset 0 0 0 1px #75501c}
@@ -1219,7 +1219,7 @@
   .relic-detail-frame h3{font-size:20px}
   .forge-result h3,.early-victory-modal h3{font-size:18px}
   .inventory-section-head span,.forge-title,.shop-heading span,
-  .relic-effect>span,.relic-affixes>span{font-size:11px}
+  .relic-effect>span,.relic-affixes>span{font-size:12px}
   .forge-toolbar>strong{font-size:11px}
   .relic-affix-name,.relic-effect-link{font-size:12px}
   .boss-medal-detail-state,.boss-early-victory-badge,.relic-effect-info-kicker{font-size:10px}
