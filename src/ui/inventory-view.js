@@ -374,7 +374,9 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     ${forgeModeTabs('upgrade')}
     <div class="forge-toolbar"><strong>MEJORAR</strong><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="forge-collection" aria-label="Selecciona una reliquia">
+      <button type="button" class="forge-scroll-button" data-forge-scroll="-1" aria-label="Ver reliquias anteriores">‹</button>
       <div class="forge-relic-grid">${choices}</div>
+      <button type="button" class="forge-scroll-button" data-forge-scroll="1" aria-label="Ver más reliquias">›</button>
     </section>
     <section class="forge-focus ${rarityClass(relic.rarity)}">
       <div class="forge-focus-art">${relicArt(selectedDefinition)}</div>
@@ -388,8 +390,8 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
 
 function forgeModeTabs(active) {
   return `<div class="forge-mode-tabs" role="tablist" aria-label="Modo de Forja">
-    <button type="button" data-forge-mode="upgrade" class="${active === 'upgrade' ? 'active' : ''}" aria-selected="${active === 'upgrade'}">MEJORAR</button>
-    <button type="button" data-forge-mode="fusion" class="${active === 'fusion' ? 'active' : ''}" aria-selected="${active === 'fusion'}">FUSIONAR</button>
+    <button type="button" data-forge-mode="upgrade" class="${active === 'upgrade' ? 'active' : ''}" aria-selected="${active === 'upgrade'}">Mejorar</button>
+    <button type="button" data-forge-mode="fusion" class="${active === 'fusion' ? 'active' : ''}" aria-selected="${active === 'fusion'}">Fusionar</button>
   </div>`;
 }
 
@@ -478,7 +480,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
     <div class="forge-cost fusion-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}${resourceValue('boss-blood', preview.bloodCost)}${preview.successProbability ? `<b>${preview.successProbability}% ÉXITO</b>` : ''}</div>
     <button type="button" class="forge-attempt fusion-attempt" data-fuse-relics="${escapeHtml(leftId || '')}|${escapeHtml(rightId || '')}"${preview.ok ? '' : ' disabled'}>FUSIONAR</button>
     <details class="forge-info fusion-info"><summary>¿CÓMO FUNCIONA? <span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>La Fusión es segura, pero consume permanentemente las dos reliquias base. Podrás recuperarlas después mediante la Tienda.</p><p>La rareza y el rango más altos están garantizados. Cada efecto conserva la potencia exacta que tenía en su reliquia de origen: fusionar no lo mejora gratis.</p><p>Un efecto extra asegura Legendario y dos o más aseguran Mítico. Los efectos diferentes se conservan sin duplicarse.</p></div></details>
-    <section class="forge-collection" aria-label="Selecciona dos reliquias"><div class="forge-relic-grid">${choices || '<span class="forge-empty-copy">Necesitas dos reliquias base.</span>'}</div></section>`;
+    <section class="forge-collection" aria-label="Selecciona dos reliquias"><button type="button" class="forge-scroll-button" data-forge-scroll="-1" aria-label="Ver reliquias anteriores">‹</button><div class="forge-relic-grid">${choices || '<span class="forge-empty-copy">Necesitas dos reliquias base.</span>'}</div><button type="button" class="forge-scroll-button" data-forge-scroll="1" aria-label="Ver más reliquias">›</button></section>`;
   return { preview, leftId, rightId };
 }
 

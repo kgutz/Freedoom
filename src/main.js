@@ -159,7 +159,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.71';
+const APP_VERSION='1.72';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -2899,6 +2899,15 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
+  const forgeScrollButton=event.target.closest('[data-forge-scroll]');
+  if(forgeScrollButton){
+    const relicStrip=forgeScrollButton.closest('.forge-collection')?.querySelector('.forge-relic-grid');
+    if(relicStrip){
+      const direction=Number(forgeScrollButton.dataset.forgeScroll)||1;
+      relicStrip.scrollBy({left:direction*Math.max(138,relicStrip.clientWidth*.7),behavior:'smooth'});
+    }
+    return;
+  }
   const effectInfo=event.target.closest('[data-relic-effect]');
   if(effectInfo){
     if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
