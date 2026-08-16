@@ -245,7 +245,7 @@
     width:100%;max-width:440px;display:none;
     background:rgba(23,19,16,.96);border-top:1px solid var(--line);
     backdrop-filter:blur(8px);z-index:10;
-    padding-bottom:var(--safe-bottom);
+    padding-bottom:max(0px,calc(var(--safe-bottom) - 8px));
   }
   nav.show{display:flex}
   body.habit-editor-open #mainNav{visibility:hidden;opacity:0;pointer-events:none}
@@ -849,6 +849,7 @@
   .boss-count{font-size:12px;color:var(--muted);margin-top:10px;text-align:left}
   .boss-count b{color:var(--kodak);font-family:var(--font-copy)}
   .boss-hp-label{display:flex;justify-content:space-between;align-items:center;font-family:var(--font-display);font-size:13px;color:var(--muted);margin-top:4px}
+  .boss-hp-label>span{font-size:12px;line-height:1;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
   .boss-hp-label b{color:var(--warn);font-size:12px}
   .boss-hp-track{height:13px;margin-top:6px;border-radius:999px;overflow:hidden;background:#211713;border:1px solid #4B2920}
   .boss-hp-fill{height:100%;background:linear-gradient(90deg,#8F2F20,var(--warn));transition:width .35s ease}
