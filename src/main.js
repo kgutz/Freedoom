@@ -159,7 +159,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.74';
+const APP_VERSION='1.75';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
