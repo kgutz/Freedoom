@@ -48,7 +48,7 @@
 
   /* ---------- header ---------- */
   header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;position:relative;z-index:2}
-  .top-logo{display:block;width:min(220px,62%);height:auto;margin:-34px auto 14px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));position:relative;z-index:1;pointer-events:none}
+  .top-logo{display:block;width:min(220px,62%);height:auto;margin:-34px auto 8px;image-rendering:pixelated;filter:drop-shadow(0 3px 8px rgba(0,0,0,.45));position:relative;z-index:1;pointer-events:none}
   .fecha{font-size:15px;color:var(--muted);text-transform:capitalize}
   .fecha b{display:block;color:var(--text);font-weight:400;font-size:19px;margin-top:2px}
   .semana-tag{
@@ -495,6 +495,8 @@
 
   .view{display:none}
   .view.active{display:block}
+  #view-habits{margin-top:-7px}
+  #view-hero,#view-cal{margin-top:-3px}
   .loading{
     position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;
     min-height:100vh;min-height:100dvh;background:var(--bg);text-align:center;overflow:hidden;
@@ -706,7 +708,7 @@
   .hero-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px}
   .hero-visual-column{width:120px;flex:0 0 120px;display:flex;flex-direction:column;align-items:center}
   .hero-visual-effects{width:100%}
-  .hero-visual-effects .buff-row{justify-content:flex-start;gap:7px;margin-top:6px;transform:translateX(-2px)}
+  .hero-visual-effects .buff-row{justify-content:flex-start;gap:7px;margin-top:8px;transform:translateX(-2px)}
   .hero-visual-effects .skill-buff-icon{width:26px;height:26px}
   .hero-visual-effects .skill-buff-icon--intoxication{width:28px;height:28px}
   .hero-visual-effects .skill-buff>b{font-size:10px}
@@ -785,9 +787,6 @@
   .hero-quick-actions{position:absolute;right:0;top:0;display:grid;gap:9px}
   .hero-quick-action{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--kodak);cursor:pointer}
   .hero-quick-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-  .hero-boss-jump{animation:heroBossHintGlow 4s ease-in-out infinite}
-  .hero-boss-jump svg{width:17px;height:17px}
-  @keyframes heroBossHintGlow{0%,28%,100%{border-color:var(--line);box-shadow:none}8%,18%{border-color:var(--kodak);box-shadow:0 0 0 1px rgba(232,180,74,.28),0 0 11px rgba(232,180,74,.5)}}
   .hero-quick-action:active{background:rgba(232,180,74,.15);transform:scale(.96)}
   .hero-quick-action:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-id .nombre{font-size:21px;font-weight:400;letter-spacing:-.02em;margin:7px 0 4px}
@@ -1014,8 +1013,8 @@
     50%{border-color:#f2ca67;box-shadow:0 0 0 1px rgba(242,202,103,.6),0 0 16px rgba(232,180,74,.3)}
   }
   @keyframes effectIconGlow{
-    0%,100%{filter:drop-shadow(0 0 2px rgba(232,180,74,.42)) drop-shadow(0 0 4px rgba(232,180,74,.18))}
-    50%{filter:drop-shadow(0 0 3px rgba(242,202,103,.78)) drop-shadow(0 0 8px rgba(232,180,74,.46))}
+    0%,100%{filter:drop-shadow(0 0 2px rgba(232,180,74,.42)) drop-shadow(0 0 3px rgba(232,180,74,.18))}
+    50%{filter:drop-shadow(0 0 2px rgba(242,202,103,.72)) drop-shadow(0 0 6px rgba(232,180,74,.4))}
   }
   p,small,.hint,.ob-sub,.cd,.habit-meta,.habit-order-hint,.collection-hint,
   .class-change-description,.class-change-preview p,.class-change-abilities li span,
@@ -1023,12 +1022,12 @@
   .inventory-empty,.forge-empty-copy,.fusion-preview-copy>p,.fusion-preview-copy>small,
   .fusion-status{font-family:var(--font-copy)!important}
   @keyframes intoxicationCurseGlow{
-    0%,100%{filter:brightness(.88) saturate(.9) drop-shadow(0 0 2px rgba(68,2,25,.78)) drop-shadow(0 0 5px rgba(32,0,12,.68))}
-    38%{filter:brightness(.98) saturate(1.04) drop-shadow(0 0 4px rgba(121,10,43,.88)) drop-shadow(0 0 9px rgba(70,2,27,.68))}
-    52%{filter:brightness(.84) saturate(1.1) drop-shadow(0 0 2px rgba(59,0,22,.86)) drop-shadow(0 0 6px rgba(29,0,12,.78))}
-    68%{filter:brightness(1.04) saturate(1.12) drop-shadow(0 0 4px rgba(151,19,54,.92)) drop-shadow(0 0 10px rgba(78,3,30,.72))}
+    0%,100%{filter:brightness(.88) saturate(.9) drop-shadow(0 0 2px rgba(68,2,25,.78)) drop-shadow(0 0 4px rgba(32,0,12,.64))}
+    38%{filter:brightness(.98) saturate(1.04) drop-shadow(0 0 3px rgba(121,10,43,.84)) drop-shadow(0 0 7px rgba(70,2,27,.62))}
+    52%{filter:brightness(.84) saturate(1.1) drop-shadow(0 0 2px rgba(59,0,22,.86)) drop-shadow(0 0 5px rgba(29,0,12,.72))}
+    68%{filter:brightness(1.04) saturate(1.12) drop-shadow(0 0 3px rgba(151,19,54,.88)) drop-shadow(0 0 7px rgba(78,3,30,.66))}
   }
-  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst,.hero-boss-jump{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}

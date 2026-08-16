@@ -314,7 +314,7 @@ describe('modelo de Héroe', () => {
       .toBeLessThan(heroContent.innerHTML.indexOf('data-open-hero-skills'));
     expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
     expect(heroContent.innerHTML).toContain('aria-label="Abrir libro de habilidades"');
-    expect(heroContent.innerHTML).toContain('data-jump-to-boss');
+    expect(heroContent.innerHTML).not.toContain('data-jump-to-boss');
     expect(heroContent.innerHTML).toContain('id="heroBossCard"');
     expect((heroContent.innerHTML.match(/data-cast=/g) || []).length).toBe(3);
     expect((heroContent.innerHTML.match(/data-future-skill/g) || []).length).toBe(3);

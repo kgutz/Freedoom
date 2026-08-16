@@ -541,9 +541,6 @@ export function renderHeroView({
             <button class="hero-quick-action" type="button" data-open-hero-skills aria-label="Abrir libro de habilidades" title="Abrir libro de habilidades">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
             </button>
-            <button class="hero-quick-action hero-boss-jump" type="button" data-jump-to-boss aria-label="Ir al jefe" title="Ir al jefe">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2M12.5 17l-.5-1-.5 1h1ZM16 20a2 2 0 0 0 1.56-3.25A8 8 0 1 0 6.44 16.75 2 2 0 0 0 8 20"/></svg>
-            </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>

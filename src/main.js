@@ -162,7 +162,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.77';
+const APP_VERSION='1.78';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -2891,10 +2891,6 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   if(e.target.closest('[data-future-skill]')){
     showToast('Próximamente','heal');
-    return;
-  }
-  if(e.target.closest('[data-jump-to-boss]')){
-    document.getElementById('heroBossCard')?.scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
   if(e.target.closest('[data-open-inventory]')){
