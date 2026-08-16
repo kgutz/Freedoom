@@ -86,6 +86,11 @@ describe('Fusión de reliquias', () => {
   it('trata A+B igual que B+A y diferencia incompatibles de combinaciones futuras', () => {
     expect(fusionRecipeStatus('relic_01', 'relic_02').definition.id).toBe('fusion_01');
     expect(fusionRecipeStatus('relic_02', 'relic_01').definition.id).toBe('fusion_01');
+    expect(fusionRecipeStatus('relic_01', 'relic_07').definition.id).toBe('fusion_06');
+    expect(fusionRecipeStatus('relic_02', 'relic_07').definition.id).toBe('fusion_07');
+    expect(fusionRecipeStatus('relic_05', 'relic_07').definition.id).toBe('fusion_08');
+    expect(fusionRecipeStatus('relic_02', 'relic_05').status).toBe('incompatible');
+    expect(fusionRecipeStatus('relic_04', 'relic_06').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_03', 'relic_06').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_01', 'relic_03').status).toBe('not-designed');
     expect(fusionRecipeStatus('relic_01', 'relic_01').status).toBe('same-relic');
@@ -256,21 +261,18 @@ describe('Tienda tras una Fusión', () => {
 });
 
 describe('Sinergias de Fusión', () => {
-  it('impide equipar dos reliquias del mismo tipo y permite sustituir la del mismo slot', () => {
-    let state = fuse(fusionState(6), 'relic_04', 'relic_06');
-    state.inventory.relics.relic_04 = {
-      unlocked: true, kind: 'base', rarity: 'rare', rank: 1, affixes: [],
-    };
-    state = equipRelic(state, 'relic_04');
-    state = equipRelic(state, 'relic_01');
-    const rejected = equipRelic(state, 'fusion_05', 1);
+  it('permite poseer varias fusionadas pero solo equipar una a la vez', () => {
+    let state = fuse(fusionState(5), 'relic_01', 'relic_02');
+    state = fuse(state, 'relic_03', 'relic_05', 'fusion-op-2');
+    state = equipRelic(state, 'fusion_01');
+    const rejected = equipRelic(state, 'fusion_04');
     expect(rejected.ok).toBe(false);
     expect(rejected).toMatchObject({
-      reason: 'equipment-type-conflict', equipmentType: 'helmet', conflictingRelicId: 'relic_04',
+      reason: 'fusion-equipped-conflict', conflictingRelicId: 'fusion_01',
     });
-    const replaced = equipRelic(state, 'fusion_05', 0);
+    const replaced = equipRelic(state, 'fusion_04', 0);
     expect(replaced.ok).toBe(true);
-    expect(replaced.inventory.equipped).toEqual(['fusion_05', 'relic_01']);
+    expect(replaced.inventory.equipped).toEqual(['fusion_04']);
   });
 
   it('persiste activaciones diarias y no permite repetirlas al recargar', () => {
@@ -324,7 +326,6 @@ describe('Sinergias de Fusión', () => {
 
   it.each([
     ['fusion_02', 'relic_01', 'relic_04', 20, 35],
-    ['fusion_05', 'relic_04', 'relic_06', 25, 40],
   ])('concede una sola recompensa semanal para %s además de Constancia',
     (_fusionId, leftId, rightId, synergyXp, expectedTotal) => {
       let state = fuse(fusionState(6), leftId, rightId);

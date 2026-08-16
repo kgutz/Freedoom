@@ -485,6 +485,7 @@ export function grantBossRewards({
   dropRandom = random,
   relicRandom = random,
   bloodRandom = random,
+  relicBloodRandom = random,
   earlyVictoryBloodRandom = random,
   earlyVictoryBonuses = [],
   nowTimestamp = Date.now(),
@@ -530,7 +531,21 @@ export function grantBossRewards({
     const bloodDoubled = source === 'victory' &&
       Math.max(0, Math.min(0.999999999, bloodRoll)) < BOSS_BLOOD_DOUBLE_RATE;
     const bonusBossBlood = bloodDoubled ? reward.bossBlood : 0;
-    const bossBlood = reward.bossBlood + bonusBossBlood;
+    const relicBloodSources = source === 'victory'
+      ? equippedRelicEffectSources(normalized, 'relic_10')
+      : [];
+    const relicBloodChance = Math.min(100, relicBloodSources.reduce(
+      (total, relicSource) => total + relicSource.value,
+      0,
+    ));
+    const relicBloodRoll = typeof relicBloodRandom === 'function'
+      ? relicBloodRandom()
+      : deterministicRandom(`${seed}:${definition.rewardId}:relic-blood`);
+    const relicBonusBossBlood = relicBloodChance > 0 &&
+      Math.max(0, Math.min(0.999999999, relicBloodRoll)) < relicBloodChance / 100
+      ? 1
+      : 0;
+    const bossBlood = reward.bossBlood + bonusBossBlood + relicBonusBossBlood;
     if (obtained) {
       normalized.inventory.relics[definition.id] = relic;
       normalized.inventory.collection[definition.id] = collectionEntry(
@@ -550,6 +565,7 @@ export function grantBossRewards({
       bossBlood,
       baseBossBlood: reward.bossBlood,
       bonusBossBlood,
+      relicBonusBossBlood,
       relicOutcome: obtained ? 'obtained' : 'failed',
       at: nowTimestamp,
     });
@@ -573,6 +589,7 @@ export function grantBossRewards({
       bossBlood,
       baseBossBlood: reward.bossBlood,
       bonusBossBlood,
+      relicBonusBossBlood,
     });
   }
   if (source === 'victory') {
@@ -1066,6 +1083,15 @@ function relicProvidesConstancy(normalized, relicId) {
   return Boolean(relic && (relicId === 'relic_04' || Number(relic.inheritedEffects?.relic_04) > 0));
 }
 
+function relicEffectFamilies(relicId) {
+  const definition = relicDefinition(relicId);
+  if (!definition) return [];
+  if (definition.ingredientIds?.length) {
+    return [...new Set(definition.ingredientIds.flatMap((id) => relicEffectFamilies(id)))];
+  }
+  return definition.effectFamily ? [definition.effectFamily] : [];
+}
+
 function clearedConstancy(cycleId = '') {
   return {
     cycleId, charge: 0, baselineOutcomes: [], awaitingBaseline: false,
@@ -1083,7 +1109,37 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const validReplaceIndex = Number.isInteger(replaceIndex) &&
     replaceIndex >= 0 && replaceIndex < MAX_EQUIPPED_RELICS;
-  const equipmentType = relicDefinition(relicId)?.equipmentType || '';
+  const definition = relicDefinition(relicId);
+  if (definition?.recipeId) {
+    const equippedFusionId = normalized.inventory.equipped.find((equippedId, index) =>
+      (!validReplaceIndex || index !== replaceIndex) && relicDefinition(equippedId)?.recipeId);
+    if (equippedFusionId) {
+      return {
+        ...normalized,
+        ok: false,
+        reason: 'fusion-equipped-conflict',
+        conflictingRelicId: equippedFusionId,
+      };
+    }
+  }
+  const effectFamilies = relicEffectFamilies(relicId);
+  let conflictingEffectFamily = '';
+  const conflictingFamilyRelicId = normalized.inventory.equipped.find((equippedId, index) => {
+    if (validReplaceIndex && index === replaceIndex) return false;
+    const equippedFamilies = relicEffectFamilies(equippedId);
+    conflictingEffectFamily = effectFamilies.find((family) => equippedFamilies.includes(family)) || '';
+    return Boolean(conflictingEffectFamily);
+  });
+  if (conflictingFamilyRelicId) {
+    return {
+      ...normalized,
+      ok: false,
+      reason: 'effect-family-conflict',
+      effectFamily: conflictingEffectFamily,
+      conflictingRelicId: conflictingFamilyRelicId,
+    };
+  }
+  const equipmentType = definition?.equipmentType || '';
   const conflictingRelicId = normalized.inventory.equipped.find((equippedId, index) =>
     (!validReplaceIndex || index !== replaceIndex) &&
     equipmentType && relicDefinition(equippedId)?.equipmentType === equipmentType);
@@ -1115,10 +1171,10 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const hadConstancySource = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
-  if (normalized.inventory.equipped.length < MAX_EQUIPPED_RELICS) {
-    normalized.inventory.equipped.push(relicId);
-  } else if (validReplaceIndex) {
+  if (validReplaceIndex && normalized.inventory.equipped[replaceIndex]) {
     normalized.inventory.equipped[replaceIndex] = relicId;
+  } else if (normalized.inventory.equipped.length < MAX_EQUIPPED_RELICS) {
+    normalized.inventory.equipped.push(relicId);
   } else {
     return { ...normalized, ok: false, reason: 'slots-full' };
   }
@@ -1485,6 +1541,11 @@ export function attemptForge({
   const success = Math.max(0, Math.min(0.999999999, resolvedRandomValue)) <
     preview.finalProbability / 100;
   const bossBloodSpent = success ? preview.bloodRequired : 0;
+  const refundRate = success ? 0 : Math.min(100, equippedRelicEffectSources(
+    normalized,
+    'relic_09',
+  ).reduce((total, source) => total + source.value, 0));
+  const coinsRefunded = success ? 0 : Math.floor(preview.cost * refundRate / 100);
   if (success) {
     normalized.economy.bossBlood = Math.max(
       0,
@@ -1497,6 +1558,7 @@ export function attemptForge({
     delete normalized.forge.attempts[preview.attemptKey];
   } else {
     normalized.forge.attempts[preview.attemptKey] = preview.failures + 1;
+    normalized.economy.coins += coinsRefunded;
   }
   const nextPreview = success ? null : forgePreview(normalized, relicId);
   const historyEntry = {
@@ -1513,6 +1575,8 @@ export function attemptForge({
     cost: preview.cost,
     bloodRequired: preview.bloodRequired,
     bossBloodSpent,
+    coinsRefunded,
+    refundRate,
     bloodConsumed: bossBloodSpent,
     probability: preview.finalProbability,
     success,
@@ -1533,12 +1597,24 @@ export function attemptForge({
     success,
     at: nowTimestamp,
   });
+  if (coinsRefunded > 0) {
+    normalized.economy.transactions.push({
+      id: `forge:${operationId}:relic-refund`,
+      type: 'forge_relic_refund',
+      relicId,
+      sourceRelicId: 'relic_09',
+      coins: coinsRefunded,
+      refundRate,
+      at: nowTimestamp,
+    });
+  }
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   return {
     ...normalized,
     ok: true,
     success,
     spentCoins: preview.cost,
+    coinsRefunded,
     spentBossBlood: bossBloodSpent,
     preview,
     nextProbability: nextPreview?.finalProbability || null,

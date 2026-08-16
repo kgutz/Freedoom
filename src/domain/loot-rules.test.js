@@ -541,6 +541,25 @@ describe('equipamiento y bonus derivados', () => {
     expect(state.inventory.equipped).toEqual(['relic_03']);
   });
 
+  it('impide equipar dos reliquias nuevas de la misma familia de efecto', () => {
+    const raw = emptyLootState();
+    for (const relicId of ['relic_07', 'relic_08', 'relic_11', 'relic_12']) {
+      raw.inventory.relics[relicId] = {
+        unlocked: true, rarity: 'rare', rank: 1, affixes: [],
+      };
+    }
+    let state = equipRelic(raw, 'relic_07');
+    const experienceConflict = equipRelic(state, 'relic_11');
+    expect(experienceConflict.reason).toBe('effect-family-conflict');
+    expect(experienceConflict.effectFamily).toBe('experience');
+
+    state = equipRelic(state, 'relic_12');
+    expect(state.ok).toBe(true);
+    const coinsConflict = equipRelic(state, 'relic_08', 0);
+    expect(coinsConflict.reason).toBe('effect-family-conflict');
+    expect(coinsConflict.effectFamily).toBe('coins');
+  });
+
   it('calcula Vitalidad, Arcano, Regeneración, Canalización, Disciplina y Fortuna', () => {
     const raw = emptyLootState();
     raw.inventory.relics = {
@@ -569,6 +588,47 @@ describe('equipamiento y bonus derivados', () => {
       regenerationMinutesReduction: 0.5,
       fortune: 1,
     });
+  });
+
+  it('la Malla devuelve monedas únicamente cuando falla una mejora', () => {
+    const raw = emptyLootState();
+    raw.economy.coins = 100;
+    raw.economy.bossBlood = 5;
+    raw.inventory.relics.relic_01 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [],
+    };
+    raw.inventory.relics.relic_09 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [],
+    };
+    raw.inventory.equipped = ['relic_09'];
+    const failed = attemptForge({
+      state: raw, relicId: 'relic_01', operationId: 'malla-fallo', randomValue: 0.99,
+    });
+    expect(failed.success).toBe(false);
+    expect(failed.spentCoins).toBe(50);
+    expect(failed.coinsRefunded).toBe(10);
+    expect(failed.economy.coins).toBe(60);
+  });
+
+  it('la Calavera puede conceder una Sangre adicional en la recompensa semanal', () => {
+    const raw = emptyLootState();
+    raw.inventory.relics.relic_10 = {
+      unlocked: true, rarity: 'rare', rank: 1, affixes: [],
+    };
+    raw.inventory.equipped = ['relic_10'];
+    const rewarded = grantBossRewards({
+      state: raw,
+      bossesDown: 1,
+      source: 'victory',
+      dropRandom: () => 0,
+      relicRandom: sequence(0.2),
+      bloodRandom: () => 0.5,
+      relicBloodRandom: () => 0.05,
+      nowTimestamp: 10,
+    });
+    expect(rewarded.rewards[0].baseBossBlood).toBe(1);
+    expect(rewarded.rewards[0].relicBonusBossBlood).toBe(1);
+    expect(rewarded.rewards[0].bossBlood).toBe(2);
   });
 
   it('recuerda una activación diaria aunque se desequipe', () => {

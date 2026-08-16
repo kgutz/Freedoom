@@ -10,6 +10,7 @@ import {
   nextFusionSelection,
   renderCollectionView,
   renderForgeView,
+  renderForgeRelicPicker,
   renderFusionView,
   renderInventoryView,
   renderLootNotice,
@@ -28,6 +29,7 @@ function lootWithBosses(count, source = 'retroactive') {
 function fakeDocument() {
   const elements = Object.fromEntries([
     'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
+    'forgeRelicPickerTitle', 'forgeRelicPickerBody',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -78,6 +80,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('<span>INVENTARIO</span><small>6</small>');
     expect(document.elements.inventoryBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
     expect(document.elements.collectionBody.innerHTML).toContain('<small>6/?</small>');
+    expect(document.elements.collectionBody.innerHTML).toContain('aria-label="Filtrar colección"');
+    expect(document.elements.collectionBody.innerHTML).toContain('FUSIONADAS');
     expect(document.elements.collectionBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
     expect(inventoryAccessMarkup(state)).toContain('INVENTARIO Y FORJA');
     expect(inventoryAccessMarkup(state)).not.toContain('6 reliquias');
@@ -169,9 +173,9 @@ describe('interfaz de inventario y botín', () => {
     expect(renderForgeView(document, state, 'relic_02')).toBe('relic_02');
     const html = document.elements.forgeBody.innerHTML;
     expect(html).toContain('Lágrima de Espectro');
-    expect(html.match(/data-select-forge-relic=/g)).toHaveLength(3);
+    expect(html).toContain('data-open-forge-picker="upgrade"');
     expect(html).toContain('Pity');
-    expect(html).toContain('PROBABILIDAD 70%');
+    expect(html).toContain('Probabilidad <b>70%</b>');
     expect(html).toContain('RANGO 1 <i aria-hidden="true">→</i> RANGO 2');
     expect(html).toContain('5 MANÁ');
     expect(html).toContain('7 MANÁ');
@@ -206,7 +210,7 @@ describe('interfaz de inventario y botín', () => {
     renderFusionView(document, state, 'relic_01', 'relic_02');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
     expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
-    expect(document.elements.forgeBody.innerHTML).toContain('<span>RESULTADO</span>');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
     expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
@@ -235,21 +239,23 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('RANGO 2 · RELIQUIA FUSIONADA');
   });
 
-  it('marca la primera reliquia, atenúa incompatibles y muestra feedback dentro de la Forja', () => {
+  it('abre cada slot mediante el selector y muestra feedback dentro de la Forja', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     state.economy.coins = 500;
     state.economy.bossBlood = 5;
     renderFusionView(document, state, 'relic_01', null, { errorId: 'relic_03' });
     const html = document.elements.forgeBody.innerHTML;
-    expect(html).toContain('fusion-first-selected');
-    expect(html).toContain('fusion-choice-order');
-    expect(html).toContain('fusion-incompatible');
-    expect(html).toContain('fusion-choice-error');
-    expect(html).toContain('aria-disabled="true"');
+    expect(html).toContain('data-fusion-slot="left"');
+    expect(html).toContain('data-fusion-slot="right"');
     expect(html).toContain('Estas reliquias no pueden fusionarse.');
     expect(html).toContain('Selecciona otra reliquia compatible.');
     expect(html).toContain('data-fuse-relics="relic_01|" disabled');
+    renderForgeRelicPicker(document, state, { mode: 'fusion', slot: 'right', leftId: 'relic_01' });
+    expect(document.elements.forgeRelicPickerTitle.textContent).toContain('Slot B');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('data-picker-filter="normal"');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('INCOMPATIBLE');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('disabled aria-disabled="true"');
   });
 
   it('rechaza una segunda incompatible sin alterar la selección y limpia el error al continuar', () => {
@@ -260,7 +266,9 @@ describe('interfaz de inventario y botín', () => {
     const compatible = nextFusionSelection(rejected, 'relic_02');
     expect(compatible).toEqual({ leftId: 'relic_01', rightId: 'relic_02', errorId: null });
     const restarted = nextFusionSelection(compatible, 'relic_01');
-    expect(restarted).toEqual({ leftId: null, rightId: null, errorId: null });
+    expect(restarted).toEqual({ leftId: 'relic_02', rightId: null, errorId: null });
+    const removedSecond = nextFusionSelection(compatible, 'relic_02');
+    expect(removedSecond).toEqual({ leftId: 'relic_01', rightId: null, errorId: null });
     const changedFirst = nextFusionSelection(compatible, 'relic_04');
     expect(changedFirst).toEqual({ leftId: 'relic_04', rightId: null, errorId: null });
   });

@@ -19,6 +19,7 @@ import {
 import {
   JOURNEY_MODE_REDUCTION,
   SMOKE_FREE_STATUS_PENDING,
+  SMOKE_FREE_STATUS_SMOKED,
   SMOKE_FREE_STATUS_SUCCESS,
   bossCountForJourney,
   controlledWeeklyLimitOf,
@@ -73,6 +74,7 @@ import {
 } from './domain/loot-rules.js';
 import {
   FUSION_RELIC_DEFINITIONS,
+  RELIC_DEFINITIONS,
   relicDefinition,
   relicRankEffect
 } from './data/loot-data.js';
@@ -125,6 +127,7 @@ import {
   inventoryReferenceOffset,
   nextFusionSelection,
   renderForgeView,
+  renderForgeRelicPicker,
   fusionResultMarkup,
   renderCollectionView,
   renderInventoryView,
@@ -174,7 +177,7 @@ const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?6:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
@@ -187,7 +190,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     ? `${STORAGE_KEY}:demo-shop-${LOCAL_DEMO_SHOP}-v1`
     : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
-    : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v1`
+    : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v3`
   : STORAGE_KEY;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -682,6 +685,19 @@ function prepareLocalBossDemo(){
     nowTimestamp:Date.now()
   }));
   const demoRelics=state.inventory.relics;
+  if(LOCAL_DEMO_FUSIONS){
+    const nowTimestamp=Date.now();
+    RELIC_DEFINITIONS.filter(definition=>definition.bossIndex>=6).forEach((definition,index)=>{
+      const record={
+        unlocked:true,rarity:'rare',rank:1,affixes:[],
+        obtainedAt:nowTimestamp+index,bossIndex:definition.bossIndex,rewardId:definition.rewardId
+      };
+      demoRelics[definition.id]=record;
+      state.inventory.collection[definition.id]={
+        discoveredAt:nowTimestamp+index,kind:'base',lastOwnedRecord:{...record}
+      };
+    });
+  }
   if(demoRelics.relic_01) Object.assign(demoRelics.relic_01,{rarity:'rare',affixes:[]});
   if(demoRelics.relic_02) Object.assign(demoRelics.relic_02,{rarity:'legendary',affixes:['arcane']});
   if(demoRelics.relic_03) Object.assign(demoRelics.relic_03,{rarity:'mythic',affixes:['discipline','fortune']});
@@ -691,9 +707,10 @@ function prepareLocalBossDemo(){
     const demoFusionStyles={
       fusion_01:{rarity:'rare',affixes:[]},
       fusion_02:{rarity:'legendary',affixes:['vitality']},
-      fusion_03:{rarity:'mythic',affixes:['arcane','discipline']},
       fusion_04:{rarity:'legendary',affixes:['fortune']},
-      fusion_05:{rarity:'mythic',affixes:['vitality','fortune']}
+      fusion_06:{rarity:'legendary',affixes:['vitality']},
+      fusion_07:{rarity:'legendary',affixes:['arcane']},
+      fusion_08:{rarity:'mythic',affixes:['arcane','discipline']}
     };
     FUSION_RELIC_DEFINITIONS.forEach((definition,index)=>{
       const ingredientSnapshots=Object.fromEntries(definition.ingredientIds.map(id=>[
@@ -728,14 +745,6 @@ function prepareLocalBossDemo(){
     applyLootSlices(normalizeLootState(state));
     state.economy.coins=999;
     state.economy.bossBlood=20;
-    state.game.bossCombat={
-      ...state.game.bossCombat,
-      legacyBossesDown:2,
-      bossIndex:2,
-      history:Array.from({length:2},(_,index)=>(
-        {week:index,bossIndex:index,won:true,damage:150,remainingHp:0}
-      ))
-    };
   }
   if(LOCAL_DEMO_SHOP==='failed'&&demoRelics.relic_01){
     const failedRelic={...demoRelics.relic_01,affixes:[...demoRelics.relic_01.affixes]};
@@ -748,7 +757,7 @@ function prepareLocalBossDemo(){
     applyLootSlices(ensureShopRotation(state,Date.now()));
   }
   state.inventory.equipped=(LOCAL_DEMO_FUSIONS
-    ? ['fusion_01','fusion_04']
+    ? ['fusion_06','relic_02']
     : LOCAL_DEMO_CONSTANCY!==null
     ? ['relic_04','relic_01']
     : ['relic_01','relic_03'])
@@ -788,7 +797,10 @@ function relicBonuses(){
 
 function storedRelicXp(){
   return Object.entries(state.inventory?.dailyActivations||{})
-    .filter(([key,value])=>(key.startsWith('relic_06:')||key.includes(':relic_06:'))&&Number(value)>0)
+    .filter(([key,value])=>(
+      key.startsWith('relic_06:')||key.includes(':relic_06:')||
+      key.startsWith('relic_07:')||key.includes(':relic_07:')
+    )&&Number(value)>0)
     .reduce((total,[,value])=>total+Number(value),0);
 }
 
@@ -849,7 +861,34 @@ function applyFirstDamageRelic(damage,key=todayKey()){
   }
   const reduction=Math.min(damage,sources.reduce((total,source)=>total+source.value,0));
   applyLootSlices(markDailyEffectSources(state,'relic_01',key,sources,true));
+  if(reduction>0&&sources.some(source=>source.relicId==='fusion_06')&&
+      collarRecoverySourcesForKey(key).some(source=>source.relicId==='fusion_06')){
+    state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]=true;
+  }
   return {damage:Math.max(0,damage-reduction),reduction,activationKey:sources.map(source=>source.relicId)};
+}
+
+function previousDayFailedForKey(key){
+  const previousDate=parseKey(key);
+  previousDate.setDate(previousDate.getDate()-1);
+  return smokeFreeStatusOf(getDay(keyOf(previousDate)))===SMOKE_FREE_STATUS_SMOKED;
+}
+
+function collarRecoveryWeekKey(key){
+  return `week-${Math.max(0,weekIndexOf(parseKey(key)))}`;
+}
+
+function collarRecoverySourcesForKey(key){
+  return previousDayFailedForKey(key)
+    ? availableDailyEffectSources(state,'relic_07',collarRecoveryWeekKey(key))
+    : [];
+}
+
+function fusionSynergyXp(fusionId){
+  const relic=state.inventory?.relics?.[fusionId];
+  const values=relicDefinition(fusionId)?.synergy?.values||{};
+  const rank=Math.max(1,Math.min(3,Number(relic?.rank)||1));
+  return Math.max(0,Number(values[rank])||0);
 }
 
 function restoreRelicActivation(activationKey){
@@ -858,6 +897,7 @@ function restoreRelicActivation(activationKey){
     activationKey.forEach(sourceId=>{
       const key=sourceId==='relic_01'?`relic_01:${todayKey()}`:`${sourceId}:relic_01:${todayKey()}`;
       delete state.inventory.dailyActivations[key];
+      if(sourceId==='fusion_06') delete state.inventory.dailyActivations[`fusion_06:shield-used:${todayKey()}`];
     });
     return;
   }
@@ -866,11 +906,26 @@ function restoreRelicActivation(activationKey){
 
 function awardRelicDayXp(key){
   const sources=availableDailyEffectSources(state,'relic_06',key);
-  if(!sources.length) return 0;
-  const amount=sources.reduce((total,source)=>total+source.value,0);
+  let amount=sources.reduce((total,source)=>total+source.value,0);
   sources.forEach(source=>{
     applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],source.value));
   });
+  if(previousDayFailedForKey(key)){
+    const weekKey=collarRecoveryWeekKey(key);
+    const recoverySources=availableDailyEffectSources(state,'relic_07',weekKey);
+    recoverySources.forEach(source=>{
+      amount+=source.value;
+      let synergyXp=0;
+      if(source.relicId==='fusion_06'&&state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]) synergyXp=fusionSynergyXp('fusion_06');
+      if(source.relicId==='fusion_07'&&state.inventory.dailyActivations[`fusion_07:mana-used:${key}`]) synergyXp=fusionSynergyXp('fusion_07');
+      if(source.relicId==='fusion_08'&&state.inventory.dailyActivations[`fusion_08:discount-used:${key}`]) synergyXp=fusionSynergyXp('fusion_08');
+      if(synergyXp>0){
+        amount+=synergyXp;
+        state.inventory.dailyActivations[`${source.relicId}:synergy-xp:${key}`]=synergyXp;
+      }
+      applyLootSlices(markDailyEffectSources(state,'relic_07',weekKey,[source],source.value));
+    });
+  }
   return amount;
 }
 
@@ -882,6 +937,18 @@ function revokeRelicDayXp(key){
       delete state.inventory.dailyActivations[activationKey];
     }
   });
+  const weekKey=`week-${Math.max(0,weekIndexOf(parseKey(key)))}`;
+  Object.keys(state.inventory?.dailyActivations||{}).forEach(activationKey=>{
+    if(activationKey===`relic_07:${weekKey}`||activationKey.endsWith(`:relic_07:${weekKey}`)){
+      amount+=Number(state.inventory.dailyActivations[activationKey])||0;
+      delete state.inventory.dailyActivations[activationKey];
+    }
+  });
+  for(const fusionId of ['fusion_06','fusion_07','fusion_08']){
+    const synergyKey=`${fusionId}:synergy-xp:${key}`;
+    amount+=Number(state.inventory?.dailyActivations?.[synergyKey])||0;
+    delete state.inventory.dailyActivations[synergyKey];
+  }
   return amount;
 }
 
@@ -1329,11 +1396,7 @@ function castSpell(id){
   const intoxication=currentIntoxication(now);
   const spellDayKey=todayKey();
   const discountSources=availableDailyEffectSources(state,'relic_05',spellDayKey);
-  const soulAmpouleReady=canActivateFusionDaily(
-    state,'fusion_03','spell-discount',spellDayKey
-  )&&Boolean(state.forge?.fusion?.dailyActivations?.[`fusion_03:habit-ready:${spellDayKey}`]);
-  const manaDiscount=discountSources.reduce((total,source)=>total+source.value,0)+
-    (soulAmpouleReady?3:0);
+  const manaDiscount=discountSources.reduce((total,source)=>total+source.value,0);
   const result=castSpellEffect({
     game:g,
     spell:sp,
@@ -1349,8 +1412,9 @@ function castSpell(id){
   });
   if(manaDiscount>0&&(result.ok||result.reason==='intoxicated')){
     applyLootSlices(markDailyEffectSources(state,'relic_05',spellDayKey,discountSources,true));
-    if(soulAmpouleReady){
-      applyLootSlices(markFusionDaily(state,'fusion_03','spell-discount',spellDayKey,true));
+    if(discountSources.some(source=>source.relicId==='fusion_08')&&
+        collarRecoverySourcesForKey(spellDayKey).some(source=>source.relicId==='fusion_08')){
+      state.inventory.dailyActivations[`fusion_08:discount-used:${spellDayKey}`]=true;
     }
   }
   if(!result.ok){
@@ -1451,12 +1515,20 @@ let forgeMode='upgrade';
 let fusionLeftId=null;
 let fusionRightId=null;
 let fusionErrorId=null;
+let forgePickerTarget=null;
 let pendingFusion=null;
 const EQUIPMENT_TYPE_NAMES={
   heart:'corazones',spirit:'reliquias espirituales',dagger:'dagas',helmet:'yelmos',
   vessel:'recipientes mágicos',fang:'colmillos'
 };
+const EFFECT_FAMILY_NAMES={experience:'de Experiencia',coins:'de Monedas',forge:'de Forja',bosses:'de Jefes'};
 function equipFailureMessage(result){
+  if(result?.reason==='fusion-equipped-conflict'){
+    return 'Solo puedes equipar una reliquia fusionada a la vez.';
+  }
+  if(result?.reason==='effect-family-conflict'){
+    return `No puedes equipar dos reliquias ${EFFECT_FAMILY_NAMES[result.effectFamily]||'de la misma familia'}`;
+  }
   if(result?.reason==='equipment-type-conflict'){
     return `No puedes equipar dos ${EQUIPMENT_TYPE_NAMES[result.equipmentType]||'reliquias del mismo tipo'}`;
   }
@@ -2451,6 +2523,47 @@ function awardFusionDailyHabitListXp(dayKey){
   return result.xp;
 }
 
+function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
+  if(!becameCompleted) return {xp:0,coins:0,notice:''};
+  let xp=0,coins=0;
+  const notices=[];
+  const grantCoins=(baseRelicId,sources,label)=>{
+    if(!sources.length) return;
+    const amount=sources.reduce((total,source)=>total+source.value,0);
+    state.economy.coins+=amount;
+    state.economy.transactions.push({
+      id:`${baseRelicId}:${dayKey}:${Date.now()}`,type:'relic_habit_coins',
+      relicId:baseRelicId,coins:amount,at:Date.now()
+    });
+    state.economy.transactions=state.economy.transactions.slice(-200);
+    applyLootSlices(markDailyEffectSources(state,baseRelicId,dayKey,sources,amount));
+    coins+=amount;
+    notices.push(`+${amount} 🪙 ${label}`);
+  };
+  if(habit.difficulty==='hard'){
+    grantCoins('relic_08',availableDailyEffectSources(state,'relic_08',dayKey),'Ojo de la Duda');
+  }
+  const daily=state.habits.items.filter(item=>item.active!==false&&item.frequency==='daily');
+  const periodKey=`d:${dayKey}`;
+  const completed=daily.filter(item=>(Number(state.habits.entries[`${item.id}|${periodKey}`]?.count)||0)>=Math.max(1,Number(item.target)||1));
+  if(completed.length>=3){
+    const sources=availableDailyEffectSources(state,'relic_11',dayKey);
+    if(sources.length){
+      const amount=sources.reduce((total,source)=>total+source.value,0);
+      state.habits.entries[`relic_11|${periodKey}`]={
+        habitId:'relic_11',periodKey,frequency:'daily',count:1,xpAwarded:amount,source:'relic'
+      };
+      applyLootSlices(markDailyEffectSources(state,'relic_11',dayKey,sources,amount));
+      xp+=amount;
+      notices.push(`+${amount} XP Gargantilla`);
+    }
+  }
+  if(daily.length>0&&completed.length===daily.length){
+    grantCoins('relic_12',availableDailyEffectSources(state,'relic_12',dayKey),'Puño de Papel');
+  }
+  return {xp,coins,notice:notices.length?` · ${notices.join(' · ')}`:''};
+}
+
 document.getElementById('view-habits').addEventListener('click',event=>{
   const filter=event.target.closest('[data-habit-filter]');
   if(filter){
@@ -2504,6 +2617,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     });
     state.habits=coinResult.habitState;
     state.economy=coinResult.economy;
+    const newRelicRewards=applyHabitRelicRewards({
+      habit,dayKey,becameCompleted:result.becameCompleted
+    });
     let extraMessage='';
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
@@ -2526,10 +2642,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       const recovered=recoverMana(mana);
       applyLootSlices(markDailyEffectSources(state,'relic_02',dayKey,manaSources,true));
       if(recovered>0) relicHabitNotice+=' · +'+recovered+' 💧 Lágrima';
-    }
-    if(result.xpDelta>0&&state.inventory?.equipped?.includes('fusion_03')&&
-        canActivateFusionDaily(state,'fusion_03','spell-discount',dayKey)){
-      applyLootSlices(markFusionDaily(state,'fusion_03','habit-ready',dayKey,true));
+      if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_07')&&
+          collarRecoverySourcesForKey(dayKey).some(source=>source.relicId==='fusion_07')){
+        state.inventory.dailyActivations[`fusion_07:mana-used:${dayKey}`]=true;
+      }
     }
     const fusionListXp=result.xpDelta>0?awardFusionDailyHabitListXp(dayKey):0;
     if(fusionListXp>0) relicHabitNotice+=' · +'+fusionListXp+' XP Daga del Antojo';
@@ -2538,7 +2654,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       : '';
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
-      period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta
+      period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins
     });
     renderAll();
     const habitCoinNotice=coinResult.habitCoinDelta>0
@@ -2553,9 +2669,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         : '';
     if(result.becameCompleted){
       const xpNotice=result.xpDelta>0
-        ? ' · +'+(result.xpDelta+fusionListXp)+' XP'
+        ? ' · +'+(result.xpDelta+fusionListXp+newRelicRewards.xp)+' XP'
         : ' · límite de XP alcanzado';
-      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
+      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+extraMessage+relicHabitNotice+newRelicRewards.notice+habitRewardNotice,'heal');
     }
     else if(result.xpDelta<0||coinResult.coinDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice,'dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
@@ -2977,6 +3093,13 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
   }
+  const openForgePicker=event.target.closest('[data-open-forge-picker]');
+  if(openForgePicker){
+    forgePickerTarget={mode:openForgePicker.dataset.openForgePicker,slot:openForgePicker.dataset.fusionSlot||'left'};
+    renderForgeRelicPicker(document,state,{...forgePickerTarget,leftId:fusionLeftId,rightId:fusionRightId});
+    document.getElementById('forgeRelicPickerBg').classList.add('show');
+    return;
+  }
   const fusionButton=event.target.closest('[data-fuse-relics]');
   if(fusionButton&&!fusionButton.disabled){
     const [leftId,rightId]=fusionButton.dataset.fuseRelics.split('|');
@@ -2992,7 +3115,40 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
   const relic=event.target.closest('[data-open-relic]');
   if(relic) openRelicDetail(relic.dataset.openRelic);
+  const relicFilter=event.target.closest('[data-relic-filter]');
+  if(relicFilter){
+    const filter=relicFilter.dataset.relicFilter;
+    const filterPanel=relicFilter.closest('#inventoryBody, #collectionBody');
+    filterPanel?.querySelectorAll('[data-relic-filter]').forEach(button=>{
+      const active=button===relicFilter;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-pressed',String(active));
+    });
+    filterPanel?.querySelectorAll('[data-relic-kind]').forEach(item=>{
+      item.hidden=filter!=='all'&&item.dataset.relicKind!==filter;
+    });
+  }
 });
+document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
+  if(event.target.id==='forgeRelicPickerBg'){event.currentTarget.classList.remove('show');return;}
+  const filter=event.target.closest('[data-picker-filter]');
+  if(filter){
+    const kind=filter.dataset.pickerFilter;
+    document.querySelectorAll('[data-picker-filter]').forEach(button=>button.classList.toggle('active',button===filter));
+    document.querySelectorAll('[data-picker-kind]').forEach(item=>{item.hidden=kind!=='all'&&item.dataset.pickerKind!==kind;});
+    return;
+  }
+  const choice=event.target.closest('[data-pick-forge-relic]');
+  if(!choice||choice.disabled||!forgePickerTarget) return;
+  const relicId=choice.dataset.pickForgeRelic;
+  if(forgePickerTarget.mode==='upgrade') selectedForgeRelicId=relicId;
+  else if(forgePickerTarget.slot==='right') fusionRightId=relicId===fusionLeftId?null:relicId;
+  else fusionLeftId=relicId===fusionRightId?null:relicId;
+  clearFusionFeedback();
+  event.currentTarget.classList.remove('show');
+  renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+});
+document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>document.getElementById('forgeRelicPickerBg').classList.remove('show'));
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
   const forgeShortcut=event.target.closest('[data-open-forge-relic]');
   if(forgeShortcut){

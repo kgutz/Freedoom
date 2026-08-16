@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.75</div>
+  <div class="ob-version" id="obVersion">v1.76</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.75</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.76</span></p>
       </div>
     </div>
   </div>
@@ -662,6 +662,13 @@
       <button type="button" id="fusionConfirmCancel">CANCELAR</button>
       <button type="button" id="fusionConfirmAccept">FUSIONAR</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="forgeRelicPickerBg" style="z-index:43">
+  <div class="modal forge-relic-picker-modal" role="dialog" aria-modal="true" aria-labelledby="forgeRelicPickerTitle">
+    <div class="forge-picker-head"><h3 id="forgeRelicPickerTitle">Elegir reliquia</h3><button type="button" id="forgeRelicPickerClose" aria-label="Cerrar">✕</button></div>
+    <div id="forgeRelicPickerBody"></div>
   </div>
 </div>
 
