@@ -365,9 +365,9 @@ describe('hábitos', () => {
   });
 
   it.each([
-    ['daily', 'easy', 1],
-    ['daily', 'medium', 2],
-    ['daily', 'hard', 3],
+    ['daily', 'easy', 2],
+    ['daily', 'medium', 3],
+    ['daily', 'hard', 5],
     ['weekly', 'easy', 3],
     ['weekly', 'medium', 5],
     ['weekly', 'hard', 8],
@@ -398,10 +398,10 @@ describe('hábitos', () => {
       delta: 1,
     });
     expect(first.coinDelta).toBe(0);
-    expect(completed.habitCoinDelta).toBe(2);
+    expect(completed.habitCoinDelta).toBe(3);
     expect(completed.bonusCoinDelta).toBe(3);
     expect(repeated.coinDelta).toBe(0);
-    expect(repeated.economy.coins).toBe(5);
+    expect(repeated.economy.coins).toBe(6);
   });
 
   it('retira monedas al deshacer y permite recuperarlas sin duplicarlas', () => {
@@ -418,11 +418,11 @@ describe('hábitos', () => {
       habitState: undone.habitState,
       currentEconomy: undone.economy, targetHabit, delta: 1,
     });
-    expect(completed.economy.coins).toBe(5);
-    expect(undone.habitCoinDelta).toBe(-2);
+    expect(completed.economy.coins).toBe(6);
+    expect(undone.habitCoinDelta).toBe(-3);
     expect(undone.bonusCoinDelta).toBe(-3);
     expect(undone.economy.coins).toBe(0);
-    expect(recompleted.economy.coins).toBe(5);
+    expect(recompleted.economy.coins).toBe(6);
     expect(recompleted.economy.transactions).toHaveLength(2);
   });
 
@@ -455,9 +455,28 @@ describe('hábitos', () => {
     habitState = first.habitState; currentEconomy = first.economy;
     expect(first.bonusCoinDelta).toBe(0);
     const second = progressWithCoins({ habitState, currentEconomy, targetHabit: dailyHard, delta: 1 });
-    expect(second.habitCoinDelta).toBe(3);
+    expect(second.habitCoinDelta).toBe(5);
     expect(second.bonusCoinDelta).toBe(3);
-    expect(second.economy.coins).toBe(7);
+    expect(second.economy.coins).toBe(10);
+  });
+
+  it('suma 2 + 3 + 5 y mantiene el bonus diario adicional de 3', () => {
+    const habits = [
+      { ...habit, id: 'easy', difficulty: 'easy', target: 1 },
+      { ...habit, id: 'medium', difficulty: 'medium', target: 1 },
+      { ...habit, id: 'hard', difficulty: 'hard', target: 1 },
+    ];
+    let habitState = { items: habits, entries: {} };
+    let currentEconomy = economy();
+    let result;
+    habits.forEach((targetHabit) => {
+      result = progressWithCoins({ habitState, currentEconomy, targetHabit, delta: 1 });
+      habitState = result.habitState;
+      currentEconomy = result.economy;
+    });
+    expect(result.habitCoinDelta).toBe(5);
+    expect(result.bonusCoinDelta).toBe(3);
+    expect(currentEconomy.coins).toBe(13);
   });
 
   it('retira el bonus cuando un hábito diario deja de estar completo', () => {
@@ -469,7 +488,7 @@ describe('hábitos', () => {
     const second = progressWithCoins({ habitState: first.habitState, currentEconomy: first.economy, targetHabit: secondHabit, delta: 1 });
     const undone = progressWithCoins({ habitState: second.habitState, currentEconomy: second.economy, targetHabit: secondHabit, delta: -1 });
     expect(undone.bonusCoinDelta).toBe(-3);
-    expect(undone.economy.coins).toBe(2);
+    expect(undone.economy.coins).toBe(3);
   });
 
   it('no concede bonus cuando no existen hábitos diarios activos', () => {
@@ -497,7 +516,7 @@ describe('hábitos', () => {
     });
     expect(before.progress.entry.periodKey).toBe('d:2026-08-01');
     expect(after.progress.entry.periodKey).toBe('d:2026-08-02');
-    expect(after.coinDelta).toBe(5);
+    expect(after.coinDelta).toBe(6);
   });
 
   it('entrega monedas aunque el tope de XP diaria ya esté completo', () => {
@@ -513,9 +532,9 @@ describe('hábitos', () => {
       currentEconomy = last.economy;
     });
     expect(last.progress.xpDelta).toBe(9);
-    expect(last.habitCoinDelta).toBe(3);
+    expect(last.habitCoinDelta).toBe(5);
     expect(habitXpTotal(habitState)).toBe(29);
-    expect(currentEconomy.coins).toBe(12);
+    expect(currentEconomy.coins).toBe(18);
   });
 
   it('normaliza partidas anteriores e impide duplicar tras recargar', () => {
@@ -531,6 +550,41 @@ describe('hábitos', () => {
     });
     expect(normalizeHabitState({ items: [], entries: {} }).dailyCoinBonuses).toEqual({});
     expect(reloaded.coinDelta).toBe(0);
-    expect(reloaded.economy.coins).toBe(5);
+    expect(reloaded.economy.coins).toBe(6);
+  });
+
+  it('conserva recompensas históricas persistidas sin recalcularlas con la tabla nueva', () => {
+    const targetHabit = { ...habit, id: 'legacy-easy', difficulty: 'easy', target: 1 };
+    const periodKey = 'd:2026-08-01';
+    const transactionId = `habit-coin:${targetHabit.id}|${periodKey}`;
+    const historicalState = {
+      items: [targetHabit],
+      entries: {
+        [`${targetHabit.id}|${periodKey}`]: {
+          habitId: targetHabit.id,
+          periodKey,
+          frequency: 'daily',
+          count: 1,
+          xpAwarded: 3,
+          coinsAwarded: 1,
+        },
+      },
+      dailyCoinBonuses: {},
+    };
+    const historicalEconomy = economy(1);
+    historicalEconomy.transactions.push({ id: transactionId, coins: 1 });
+    const result = applyHabitCoinRewards({
+      habitState: historicalState,
+      economy: historicalEconomy,
+      habit: targetHabit,
+      date,
+      planStartDate: startDate,
+      becameCompleted: false,
+      becameIncomplete: false,
+      nowTimestamp: 200,
+    });
+    expect(result.coinDelta).toBe(0);
+    expect(result.economy.coins).toBe(1);
+    expect(result.habitState.entries[`${targetHabit.id}|${periodKey}`].coinsAwarded).toBe(1);
   });
 });

@@ -12,7 +12,7 @@ export const HABIT_DAILY_XP_CAP = HABIT_XP_CAP_RULES.daily.base;
 export const HABIT_WEEKLY_XP_CAP = HABIT_XP_CAP_RULES.weekly.base;
 
 export const HABIT_COIN_REWARDS = Object.freeze({
-  daily: Object.freeze({ easy: 1, medium: 2, hard: 3 }),
+  daily: Object.freeze({ easy: 2, medium: 3, hard: 5 }),
   weekly: Object.freeze({ easy: 3, medium: 5, hard: 8 }),
   allDailyCompletedBonus: 3,
 });

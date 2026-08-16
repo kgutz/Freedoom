@@ -260,6 +260,15 @@ function skillIcon(classId, level, ability, type, status = null) {
     </div>`;
 }
 
+function quickSkillIcon(classId, level, ability, status = null) {
+  const unlocked = level >= ability.lvl;
+  const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.png`;
+  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}" title="${ability.name}">
+    <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
+  </button>`;
+}
+
 export function renderHeroView({
   document,
   now,
@@ -374,6 +383,23 @@ export function renderHeroView({
       }),
     ))
     .join('');
+  const quickActiveIcons = classData.act
+    .map((ability) => quickSkillIcon(
+      classId,
+      heroStats.lvl,
+      ability,
+      activeSpellStatus({
+        spellId: ability.id,
+        game,
+        nowTimestamp: now.getTime(),
+        today: dayKey || keyOf(now),
+        smokeFreeMode: usesSmokeFreeSkills(config),
+      }),
+    ))
+    .join('');
+  const futureActiveIcons = Array.from({ length: Math.max(0, 6 - classData.act.length) }, (_, index) =>
+    `<button type="button" class="hero-skill-slot future" data-future-skill aria-label="Habilidad futura ${index + 1}" title="Próximamente">?</button>`,
+  ).join('');
   const energy = heroEnergyModel({
     progress: heroStats.prog,
     level: heroStats.lvl,
@@ -500,7 +526,10 @@ export function renderHeroView({
   box.innerHTML = `
     <div class="card">
       <div class="hero-top">
-        <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
+        <div class="hero-visual-column">
+          <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
+          ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
+        </div>
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
@@ -509,8 +538,11 @@ export function renderHeroView({
             <button class="hero-quick-action hero-inventory-jump" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
             </button>
-            <button class="hero-quick-action" type="button" data-open-hero-skills aria-label="Abrir habilidades" title="Abrir habilidades">
+            <button class="hero-quick-action" type="button" data-open-hero-skills aria-label="Abrir libro de habilidades" title="Abrir libro de habilidades">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
+            </button>
+            <button class="hero-quick-action hero-boss-jump" type="button" data-jump-to-boss aria-label="Ir al jefe" title="Ir al jefe">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><path d="M8 20v2h8v-2M12.5 17l-.5-1-.5 1h1ZM16 20a2 2 0 0 0 1.56-3.25A8 8 0 1 0 6.44 16.75 2 2 0 0 0 8 20"/></svg>
             </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>
@@ -526,7 +558,6 @@ export function renderHeroView({
           </div>
         </div>
       </div>
-      ${chipsHtml}
       <div class="stat-bar">
         <div class="lbl"><span>SALUD</span><b>${model.hp} / ${heroStats.maxHp}</b></div>
         <div class="stat-track"><div class="stat-fill ${model.hpClass}" style="width:${model.hpPercent}%"></div></div>
@@ -541,7 +572,11 @@ export function renderHeroView({
       </div>
     </div>
 
-    <div class="card">
+    <div class="hero-skill-hotbar" aria-label="Habilidades activas rápidas">
+      ${quickActiveIcons}${futureActiveIcons}
+    </div>
+
+    <div class="card" id="heroBossCard">
       <div class="boss-top">
         <button type="button" class="boss-box boss-box-open" data-open-current-boss-medal="${currentBossIndex}" data-boss-file="boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" aria-label="Abrir medallón de ${bossState.name}">
           <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" alt="${bossState.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">

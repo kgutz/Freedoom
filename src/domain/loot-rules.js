@@ -26,7 +26,6 @@ import {
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
-import { habitXpCapForState } from './habit-rules.js';
 
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -1439,7 +1438,6 @@ export function awardFusionAllHabitsXp({
   state,
   habitState,
   dayKey,
-  cap,
 }) {
   const normalized = normalizeLootState(state);
   const habits = objectOf(habitState);
@@ -1456,20 +1454,10 @@ export function awardFusionAllHabitsXp({
   if (!complete) {
     return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
   }
-  const used = Object.values(entries).reduce((total, entry) =>
-    entry?.frequency === 'daily' && entry?.periodKey === periodKey
-      ? total + Math.max(0, Number(entry.xpAwarded) || 0)
-      : total, 0);
-  const effectiveCap = cap === undefined
-    ? habitXpCapForState({ ...habits, items, entries }, 'daily')
-    : Math.max(0, Math.trunc(Number(cap) || 0));
-  const xp = Math.min(5, Math.max(0, effectiveCap - used));
-  if (xp <= 0) {
-    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
-  }
-  entries[`fusion_04|${periodKey}`] = {
-    habitId: 'fusion_04', periodKey, frequency: 'daily', count: 1, xpAwarded: xp, source: 'fusion',
-  };
+  // Es una recompensa independiente por completar la lista, no una mejora de
+  // la XP de un hábito concreto. Se persiste en las activaciones de la fusión
+  // para que no consuma el presupuesto diario de XP de hábitos.
+  const xp = 5;
   const marked = markFusionDaily(normalized, 'fusion_04', 'all-habits', dayKey, xp);
   return {
     ...marked,

@@ -284,7 +284,7 @@ describe('Sinergias de Fusión', () => {
     expect(canActivateFusionDaily(restored, 'fusion_01', 'first-habit-mana', '2026-08-14')).toBe(false);
   });
 
-  it('concede la XP de todos los hábitos una vez, respeta el cap y no permite farming con undo', () => {
+  it('concede la XP extraordinaria de lista completa una vez y no permite farming con undo', () => {
     let state = fuse(fusionState(5), 'relic_03', 'relic_05');
     state = equipRelic(state, 'fusion_04');
     const habits = {
@@ -298,8 +298,11 @@ describe('Sinergias de Fusión', () => {
       },
     };
     const first = awardFusionAllHabitsXp({ state, habitState: habits, dayKey: '2026-08-14' });
-    expect(first.xp).toBe(2);
-    expect(first.habitState.entries['fusion_04|d:2026-08-14'].xpAwarded).toBe(2);
+    expect(first.xp).toBe(5);
+    expect(first.habitState.entries['fusion_04|d:2026-08-14']).toBeUndefined();
+    expect(first.forge.fusion.dailyActivations[
+      'fusion_04:all-habits:2026-08-14'
+    ]).toBe(5);
     const undone = JSON.parse(JSON.stringify(first.habitState));
     undone.entries['b|d:2026-08-14'].count = 0;
     const retry = awardFusionAllHabitsXp({ state: first, habitState: undone, dayKey: '2026-08-14' });

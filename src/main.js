@@ -162,7 +162,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.76';
+const APP_VERSION='1.77';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -796,12 +796,21 @@ function relicBonuses(){
 }
 
 function storedRelicXp(){
-  return Object.entries(state.inventory?.dailyActivations||{})
+  const legacyEntries=state.habits?.entries||{};
+  const relicXp=Object.entries(state.inventory?.dailyActivations||{})
     .filter(([key,value])=>(
       key.startsWith('relic_06:')||key.includes(':relic_06:')||
-      key.startsWith('relic_07:')||key.includes(':relic_07:')
+      key.startsWith('relic_07:')||key.includes(':relic_07:')||
+      key.includes(':synergy-xp:')||
+      ((key.startsWith('relic_11:')||key.includes(':relic_11:'))&&
+        !legacyEntries[`relic_11|d:${key.split(':').pop()}`])
     )&&Number(value)>0)
     .reduce((total,[,value])=>total+Number(value),0);
+  const fusionXp=Object.entries(state.forge?.fusion?.dailyActivations||{})
+    .filter(([key,value])=>key.startsWith('fusion_04:all-habits:')&&
+      !legacyEntries[`fusion_04|d:${key.split(':').pop()}`]&&Number(value)>0)
+    .reduce((total,[,value])=>total+Number(value),0);
+  return relicXp+fusionXp;
 }
 
 function lootMigrationSeed(){
@@ -1682,20 +1691,10 @@ function renderSkillsSheet(){
   });
 }
 
-function showHeroSkillsPanel(panel='skills'){
-  const skillsSelected=panel==='skills';
-  const skillsBody=document.getElementById('heroSkillsModalBody');
+function showHeroSkillsPanel(){
   const bookBody=document.getElementById('skillsBody');
-  const skillsTab=document.getElementById('heroSkillsTab');
-  const bookTab=document.getElementById('heroSkillsBookTab');
-  skillsBody.hidden=!skillsSelected;
-  bookBody.hidden=skillsSelected;
-  skillsTab.classList.toggle('active',skillsSelected);
-  bookTab.classList.toggle('active',!skillsSelected);
-  skillsTab.setAttribute('aria-selected',String(skillsSelected));
-  bookTab.setAttribute('aria-selected',String(!skillsSelected));
-  if(!skillsSelected) renderSkillsSheet();
-  (skillsSelected?skillsBody:bookBody).scrollTop=0;
+  renderSkillsSheet();
+  bookBody.scrollTop=0;
 }
 
 /* ==================== fin RPG ==================== */
@@ -2550,9 +2549,6 @@ function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
     const sources=availableDailyEffectSources(state,'relic_11',dayKey);
     if(sources.length){
       const amount=sources.reduce((total,source)=>total+source.value,0);
-      state.habits.entries[`relic_11|${periodKey}`]={
-        habitId:'relic_11',periodKey,frequency:'daily',count:1,xpAwarded:amount,source:'relic'
-      };
       applyLootSlices(markDailyEffectSources(state,'relic_11',dayKey,sources,amount));
       xp+=amount;
       notices.push(`+${amount} XP Gargantilla`);
@@ -2888,12 +2884,25 @@ function openClassChangeConfirmation(selectedClass){
 }
 
 document.getElementById('view-hero').addEventListener('click',e=>{
+  const quickCast=e.target.closest('.hero-skill-hotbar [data-cast]');
+  if(quickCast){
+    castSpell(quickCast.dataset.cast);
+    return;
+  }
+  if(e.target.closest('[data-future-skill]')){
+    showToast('Próximamente','heal');
+    return;
+  }
+  if(e.target.closest('[data-jump-to-boss]')){
+    document.getElementById('heroBossCard')?.scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
   if(e.target.closest('[data-open-inventory]')){
     openInventory();
     return;
   }
   if(e.target.closest('[data-open-hero-skills]')){
-    showHeroSkillsPanel('skills');
+    showHeroSkillsPanel();
     document.getElementById('sheetHeroSkills').classList.add('show');
     return;
   }
@@ -2940,19 +2949,6 @@ document.getElementById('view-hero').addEventListener('click',e=>{
 });
 
 document.getElementById('sheetHeroSkills').addEventListener('click',e=>{
-  if(e.target.closest('#heroSkillsTab')){
-    showHeroSkillsPanel('skills');
-    return;
-  }
-  if(e.target.closest('#heroSkillsBookTab')){
-    showHeroSkillsPanel('book');
-    return;
-  }
-  const cast=e.target.closest('[data-cast]');
-  if(cast&&!cast.disabled){
-    castSpell(cast.dataset.cast);
-    return;
-  }
   const pasTap=e.target.closest('[data-pas-name]');
   if(pasTap){
     const lvl=parseInt(pasTap.dataset.pasLvl,10);

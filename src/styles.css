@@ -85,7 +85,7 @@
   .hoy-hp-lbl{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
   .hoy-hp-lbl b{font-family:var(--font-display);color:var(--text);font-size:14px}
   .daily-wake{
-    display:flex;align-items:center;justify-content:flex-start;gap:5px;
+    display:flex;align-items:center;justify-content:flex-start;gap:4px;
     min-height:24px;margin:-18px 4px 8px;padding:0 2px;
     background:transparent;border:0;
   }
@@ -93,8 +93,8 @@
   .daily-wake-copy>span{font-size:11px;font-weight:400;color:var(--muted)}
   .daily-wake-editor{display:flex;align-items:center;gap:0;flex-shrink:0;cursor:pointer}
   .daily-wake input{
-    width:47px;min-width:0;padding:2px 0;border:0;border-radius:0;outline:0;
-    background:transparent;color:var(--text);font-family:var(--font-display);font-size:13px;
+    width:45px;min-width:0;padding:2px 0;border:0;border-radius:0;outline:0;
+    background:transparent;color:var(--text);font-family:var(--font-display);font-size:12px;
     appearance:none;-webkit-appearance:none;
   }
   .daily-wake input::-webkit-calendar-picker-indicator{display:none;opacity:0;width:0;margin:0;padding:0;-webkit-appearance:none}
@@ -289,7 +289,8 @@
   .cal-day .n{font-weight:400;color:var(--text);line-height:1.1}
   .cal-day .c{font-family:var(--font-display);font-size:12px;color:var(--kodak);line-height:1.1}
   .cal-day .c.over{color:var(--warn)}
-  .cal-day .p{font-size:8.5px;color:var(--pill);white-space:nowrap;line-height:1.2}
+  .cal-day .p{display:flex;align-items:center;gap:3px;font-size:8.5px;color:var(--pill);white-space:nowrap;line-height:1.2}
+  .cal-day .cal-extra{display:inline-flex;align-items:center;gap:1px}
   .cal-day .sf{font-family:var(--font-display);font-size:19px;font-weight:400;line-height:1}
   .cal-day .sf.success{color:var(--ok)}
   .cal-day .sf.smoked{color:var(--warn)}
@@ -394,12 +395,14 @@
   }
   .seg button.active{background:transparent;color:var(--kodak);border-color:var(--kodak)}
   .graf-svg{width:100%;height:auto;display:block;margin-top:4px}
+  .graf-svg text{font-family:var(--font-copy)}
   .graf-sum{
     display:flex;justify-content:space-around;gap:8px;margin-top:16px;
     border-top:1px solid var(--line);padding-top:14px;text-align:center;
   }
   .graf-sum div{font-size:11px;color:var(--muted);line-height:1.6}
-  .graf-sum b{display:block;font-family:var(--font-display);font-size:19px;font-weight:400}
+  .graf-sum span{position:relative;top:-1px}
+  .graf-sum b{display:block;font-family:var(--font-copy);font-size:19px;font-weight:500}
   .graf-sum .pk b{color:var(--warn)}
   .graf-sum .mn b{color:var(--ok)}
   .graf-sum .md b{color:var(--kodak)}
@@ -465,12 +468,12 @@
   .habit-editor{max-height:92dvh;overflow-y:auto;padding-bottom:calc(28px + var(--safe-bottom))}
   .habit-editor-head{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:20px}
   .habit-editor-head h3{font-size:18px;text-align:center;margin:0;text-transform:none}
-  .habit-editor-head button{border:0;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:13px;cursor:pointer;padding:8px 0}
+  .habit-editor-head button{border:0;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:14px;cursor:pointer;padding:8px 0}
   .habit-editor-head button:last-child{text-align:right;color:var(--kodak);font-weight:400}
   .habit-editor-head button:first-child{text-align:left}
   .habit-field{display:block;margin-bottom:16px}
   .habit-field span,.habit-editor-label{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-bottom:7px}
-  .habit-field input,.habit-field textarea{width:100%;border:1px solid var(--line);border-radius:11px;background:var(--panel2);color:var(--text);padding:12px;font-family:var(--font-display);font-size:15px;outline:none}
+  .habit-field input,.habit-field textarea{width:100%;border:1px solid var(--line);border-radius:11px;background:var(--panel2);color:var(--text);padding:12px;font-family:var(--font-display);font-size:13px;outline:none}
   .habit-field textarea{height:70px;resize:none;line-height:1.4}
   .habit-field input:focus,.habit-field textarea:focus{border-color:var(--kodak)}
   .habit-editor-section{margin-top:18px}
@@ -701,6 +704,12 @@
 
   /* ---------- héroe RPG ---------- */
   .hero-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px}
+  .hero-visual-column{width:120px;flex:0 0 120px;display:flex;flex-direction:column;align-items:center}
+  .hero-visual-effects{width:100%}
+  .hero-visual-effects .buff-row{justify-content:flex-start;gap:7px;margin-top:6px;transform:translateX(-2px)}
+  .hero-visual-effects .skill-buff-icon{width:26px;height:26px}
+  .hero-visual-effects .skill-buff-icon--intoxication{width:28px;height:28px}
+  .hero-visual-effects .skill-buff>b{font-size:10px}
   .sprite-box{
     width:120px;height:120px;flex-shrink:0;position:relative;overflow:hidden;
     display:flex;align-items:center;justify-content:center;
@@ -776,6 +785,9 @@
   .hero-quick-actions{position:absolute;right:0;top:0;display:grid;gap:9px}
   .hero-quick-action{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--kodak);cursor:pointer}
   .hero-quick-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .hero-boss-jump{animation:heroBossHintGlow 4s ease-in-out infinite}
+  .hero-boss-jump svg{width:17px;height:17px}
+  @keyframes heroBossHintGlow{0%,28%,100%{border-color:var(--line);box-shadow:none}8%,18%{border-color:var(--kodak);box-shadow:0 0 0 1px rgba(232,180,74,.28),0 0 11px rgba(232,180,74,.5)}}
   .hero-quick-action:active{background:rgba(232,180,74,.15);transform:scale(.96)}
   .hero-quick-action:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-id .nombre{font-size:21px;font-weight:400;letter-spacing:-.02em;margin:7px 0 4px}
@@ -791,10 +803,10 @@
   .hero-summary b{color:var(--text);font-family:var(--font-display)}
   .hero-summary,.hero-summary b,.boss-count,.boss-count b{font-family:var(--font-copy)}
 
-  .stat-bar{margin-top:12px}
+  .stat-bar{margin-top:10px}
   .stat-bar .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
   .stat-bar .lbl b{font-family:var(--font-display);color:var(--text);font-size:11px;letter-spacing:0}
-  .stat-track{height:12px;border-radius:6px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}
+  .stat-track{height:9px;border-radius:6px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}
   .stat-fill{height:100%;border-radius:6px;transition:width .4s}
   .stat-fill.xp{background:var(--kodak)}
   .stat-fill.mp{background:var(--pill)}
@@ -816,6 +828,15 @@
   .skill-buff--intoxication>b{margin-left:-1px;color:#dc7890;text-shadow:0 1px 2px #100008,0 0 5px rgba(118,9,42,.72)}
   .skill-buff-icon--intoxication{filter:drop-shadow(0 0 3px rgba(76,3,28,.78));animation:intoxicationCurseGlow 3.4s ease-in-out infinite}
   .skill-buff-icon--intoxication img{width:69%;height:69%}
+  .hero-skill-hotbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0 0 14px;padding:8px;border:1px solid var(--line);border-radius:12px;background:rgba(20,16,12,.72)}
+  .hero-skill-slot{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;aspect-ratio:1;padding:0;overflow:hidden;border:1px solid #59451f;border-radius:8px;background:#0e0b09;color:var(--kodak);font:400 18px var(--font-display);cursor:pointer}
+  .hero-skill-slot img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+  .hero-skill-slot.off{opacity:.38;filter:grayscale(1)}
+  .hero-skill-slot.future{border-style:dashed;color:#77684f;background:rgba(14,11,9,.65);cursor:default}
+  .hero-skill-slot:active:not(.future){transform:scale(.95)}
+  .hero-skill-slot:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
+  .hero-skill-slot.spell-effect-active{border-color:var(--kodak);box-shadow:0 0 10px rgba(232,180,74,.32);animation:activeSpellGlow 2.8s ease-in-out infinite}
+  .hero-skill-fallback{width:100%;height:100%;align-items:center;justify-content:center}
   .cast-btn{margin-top:8px;display:inline-block}
   .cast-btn[disabled]{opacity:.35;cursor:default}
 
@@ -1007,7 +1028,7 @@
     52%{filter:brightness(.84) saturate(1.1) drop-shadow(0 0 2px rgba(59,0,22,.86)) drop-shadow(0 0 6px rgba(29,0,12,.78))}
     68%{filter:brightness(1.04) saturate(1.12) drop-shadow(0 0 4px rgba(151,19,54,.92)) drop-shadow(0 0 10px rgba(78,3,30,.72))}
   }
-  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst,.hero-boss-jump{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}

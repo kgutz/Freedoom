@@ -313,8 +313,14 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML.indexOf('data-open-inventory'))
       .toBeLessThan(heroContent.innerHTML.indexOf('data-open-hero-skills'));
     expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
-    expect(heroContent.innerHTML).toContain('aria-label="Abrir habilidades"');
-    expect(heroContent.innerHTML).not.toContain('data-cast=');
+    expect(heroContent.innerHTML).toContain('aria-label="Abrir libro de habilidades"');
+    expect(heroContent.innerHTML).toContain('data-jump-to-boss');
+    expect(heroContent.innerHTML).toContain('id="heroBossCard"');
+    expect((heroContent.innerHTML.match(/data-cast=/g) || []).length).toBe(3);
+    expect((heroContent.innerHTML.match(/data-future-skill/g) || []).length).toBe(3);
+    expect(heroContent.innerHTML).toContain('aria-label="Habilidades activas rápidas"');
+    expect(heroContent.innerHTML.indexOf('hero-skill-hotbar'))
+      .toBeLessThan(heroContent.innerHTML.indexOf('boss-top'));
     expect(heroSkillsModalBody.innerHTML).not.toContain('id="skInfoBtn"');
     expect(heroSkillsModalBody.innerHTML).toContain('data-cast=');
     expect(heroSkillsModalBody.innerHTML.indexOf('Activas'))
@@ -323,6 +329,7 @@ describe('modelo de Héroe', () => {
     expect(heroSkillsModalBody.innerHTML).toContain('>30m</span>');
     expect((heroSkillsModalBody.innerHTML.match(/passive-effect-active/g) || []).length).toBe(2);
     expect(heroContent.innerHTML).toContain('class="skill-buff-icon"');
+    expect(heroContent.innerHTML).toContain('class="hero-visual-effects"');
     expect(heroContent.innerHTML).toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');

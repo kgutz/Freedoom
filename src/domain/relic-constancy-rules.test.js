@@ -11,6 +11,7 @@ import {
   unequipRelic,
 } from './loot-rules.js';
 import { weeklyBossPenalty } from './hero-rules.js';
+import { calculateGameStats } from './progression-rules.js';
 
 const SIX_HITS = ['hit', 'hit', 'hit', 'hit', 'hit', 'hit', 'pend'];
 
@@ -90,6 +91,26 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
       expect(result.activated).toBe(true);
       expect(result.xp).toBe(expectedXp);
       expect(result.inventory.constancy.charge).toBe(0);
+      const fullHabitCap = {
+        items: [],
+        entries: {
+          'daily|d:2026-08-09': {
+            habitId: 'daily', periodKey: 'd:2026-08-09', frequency: 'daily',
+            count: 1, xpAwarded: 25,
+          },
+        },
+      };
+      const base = calculateGameStats({
+        now: new Date(2026, 7, 9, 12),
+        config: { startDate: '2026-08-03', startLimit: 20 }, days: {},
+        game: { cls: 'knight' }, habits: fullHabitCap,
+      });
+      const rewarded = calculateGameStats({
+        now: new Date(2026, 7, 9, 12),
+        config: { startDate: '2026-08-03', startLimit: 20 }, days: {},
+        game: { cls: 'knight', bonusXp: result.xp }, habits: fullHabitCap,
+      });
+      expect(rewarded.xp - base.xp).toBe(expectedXp);
     },
   );
 

@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.76</div>
+  <div class="ob-version" id="obVersion">v1.77</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.76</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.77</span></p>
       </div>
     </div>
   </div>
@@ -576,13 +576,8 @@
 
 <div class="sheet-bg" id="sheetHeroSkills" style="z-index:26">
   <div class="sheet hero-skills-sheet">
-    <div class="sheet-head sk-head-center"><h3>Habilidades</h3><button class="sheet-close" data-sheet="sheetHeroSkills">✕</button></div>
-    <div class="inventory-tabs skills-tabs" role="tablist" aria-label="Habilidades y libro de habilidades">
-      <button type="button" class="active" id="heroSkillsTab" role="tab" aria-selected="true">Habilidades</button>
-      <button type="button" id="heroSkillsBookTab" role="tab" aria-selected="false">Libro</button>
-    </div>
-    <div class="card hero-skills-modal-card" id="heroSkillsModalBody"></div>
-    <div class="card hero-skills-book" id="skillsBody" hidden></div>
+    <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetHeroSkills">✕</button></div>
+    <div class="card hero-skills-book" id="skillsBody"></div>
   </div>
 </div>
 

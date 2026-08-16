@@ -44,7 +44,7 @@ function unlockedState(count = 3) {
 }
 
 describe('loot de bosses', () => {
-  it('usa el tope dinámico al premiar todos los hábitos de una fusión', () => {
+  it('premia la lista completa como XP extraordinaria fuera del tope de hábitos', () => {
     const state = emptyLootState();
     state.inventory.relics.fusion_04 = {
       id: 'fusion_04', unlocked: true, rarity: 'rare', rank: 1, affixes: [],
@@ -74,7 +74,10 @@ describe('loot de bosses', () => {
     });
     expect(result.activated).toBe(true);
     expect(result.xp).toBe(5);
-    expect(result.habitState.entries['fusion_04|d:2026-08-15'].xpAwarded).toBe(5);
+    expect(result.habitState.entries['fusion_04|d:2026-08-15']).toBeUndefined();
+    expect(result.forge.fusion.dailyActivations[
+      'fusion_04:all-habits:2026-08-15'
+    ]).toBe(5);
   });
 
   it('delimita 60/30/10', () => {

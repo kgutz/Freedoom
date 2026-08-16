@@ -276,8 +276,8 @@ export function renderCalendarView({
       (entry.isToday ? ' today' : '') +
       (entry.isFuture ? ' future' : '');
     const extras = [];
-    if (entry.pills > 0) extras.push(`💊${entry.pills}`);
-    if (entry.beers > 0) extras.push(`🍺${entry.beers}`);
+    if (entry.pills > 0) extras.push(`<span class="cal-extra"><span aria-hidden="true">💊</span><span>${entry.pills}</span></span>`);
+    if (entry.beers > 0) extras.push(`<span class="cal-extra"><span aria-hidden="true">🍺</span><span>${entry.beers}</span></span>`);
     const smokeFreeMark = {
       success: '<span class="sf success" aria-label="Día sin fumar">✓</span>',
       smoked: '<span class="sf smoked" aria-label="Día fumado">×</span>',
@@ -300,7 +300,7 @@ export function renderCalendarView({
         : entry.cigarettes > 0
           ? `<span class="c${entry.overLimit ? ' over' : ''}">${entry.cigarettes}</span>`
           : '') +
-      (extras.length ? `<span class="p">${extras.join(' ')}</span>` : '');
+      (extras.length ? `<span class="p">${extras.join('')}</span>` : '');
     if (!entry.isFuture) {
       cell.addEventListener('click', () => onDayClick(entry.key));
     }
