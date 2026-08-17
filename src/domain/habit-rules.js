@@ -515,7 +515,8 @@ export function applyHabitCoinRewards({
 export function habitXpTotal(habitState) {
   const normalized = normalizeHabitState(habitState);
   return Object.values(normalized.entries).reduce(
-    (total, entry) => total + Math.max(0, Number(entry?.xpAwarded) || 0),
+    (total, entry) => total + Math.max(0, Number(entry?.xpAwarded) || 0) +
+      Math.max(0, Number(entry?.potionXpAwarded) || 0),
     0,
   );
 }

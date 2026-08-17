@@ -60,6 +60,7 @@ import {
   equipRelic,
   ensureShopRotation,
   equippedRelicBonuses,
+  forgePreview,
   grantBossRewards,
   fuseRelics,
   initializeForgeSeed,
@@ -94,6 +95,14 @@ import {
   normalizeHabitState,
   reorderHabits
 } from './domain/habit-rules.js';
+import {
+  consumePreparedBlood,
+  potionBloodChance,
+  purchasePotion,
+  reconcilePotionHabitBonus,
+  usePotion
+} from './domain/potion-rules.js';
+import { POTION_BY_ID } from './data/potion-data.js';
 import {
   addBeerIntoxication,
   beerUndoEffects,
@@ -134,6 +143,7 @@ import {
   renderCollectionView,
   renderInventoryView,
   renderLootNotice,
+  renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
   renderShopView
@@ -164,7 +174,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.79';
+const APP_VERSION='1.80';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -835,15 +845,22 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
     economy:state.economy,loot:state.loot,
     inventory:state.inventory,forge:state.forge
   });
+  const potionBloodChanceByRewardId=Object.fromEntries(RELIC_DEFINITIONS.map(definition=>[
+    definition.rewardId,potionBloodChance(state.inventory?.potions,definition.rewardId)
+  ]));
   const result=grantBossRewards({
     state,
     bossesDown:totalBossesDown(),
     source,
     seed:lootMigrationSeed(),
     earlyVictoryBonuses,
+    potionBloodChanceByRewardId,
     nowTimestamp:Date.now()
   });
   applyLootSlices(result);
+  if(source==='victory'&&result.rewards.length){
+    state.inventory=consumePreparedBlood(state.inventory,result.rewards.map(reward=>reward.rewardId));
+  }
   const after=JSON.stringify({
     economy:state.economy,loot:state.loot,
     inventory:state.inventory,forge:state.forge
@@ -1480,6 +1497,16 @@ function showToast(txt,type){
   renderToast(document,txt,type);
 }
 
+function flashHeroStatFeedback(stat){
+  requestAnimationFrame(()=>{
+    const key=stat==='hp'?'hp':'mana';
+    const className=stat==='hp'?'hp-feedback':'mana-feedback';
+    const bar=document.querySelector(`#view-hero [data-hero-stat="${key}"]`);
+    bar?.classList.add('stat-cast-feedback',className);
+    setTimeout(()=>bar?.classList.remove('stat-cast-feedback',className),950);
+  });
+}
+
 function renderHero(){
   const cls=state.game&&state.game.cls;
   if(!cls||!CLASSES[cls]){
@@ -1535,7 +1562,9 @@ function renderHero(){
 let lootNoticeOpening=false;
 let activeLootNoticeId=null;
 let forgeLocked=false;
+let pendingForgeAttempt=null;
 let shopLocked=false;
+let pendingShopPurchase=null;
 let selectedForgeRelicId=null;
 let forgeMode='upgrade';
 let fusionLeftId=null;
@@ -1631,7 +1660,7 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   forgeTab.setAttribute('aria-selected',String(forgeSelected));
   shopTab.setAttribute('aria-selected',String(shopSelected));
   if(inventorySelected){
-    renderInventoryView(document,state);
+    renderInventoryView(document,state,potionViewOptions());
     if(scrollToEquipped) requestAnimationFrame(()=>document.getElementById('inventoryEquippedSection')?.scrollIntoView({block:'start'}));
   }else if(collectionSelected){
     renderCollectionView(document,state);
@@ -1641,7 +1670,7 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
     const before=JSON.stringify(state.shop);
     applyLootSlices(ensureShopRotation(state,Date.now()));
     if(before!==JSON.stringify(state.shop)) scheduleSave({type:'shop:rotation'});
-    renderShopView(document,state,Date.now());
+    renderShopView(document,state,Date.now(),potionViewOptions());
   }
   positionInventorySheetFromForge();
 }
@@ -2566,6 +2595,10 @@ function awardFusionDailyHabitListXp(dayKey){
   applyLootSlices(result);
   return result.xp;
 }
+function potionViewOptions(){
+  const bossIndex=Math.max(0,Number(state.game?.bossCombat?.bossIndex)||0);
+  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||''};
+}
 
 function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
   if(!becameCompleted) return {xp:0,coins:0,notice:''};
@@ -2637,6 +2670,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         ? habitXpSources.reduce((total,source)=>total+source.value,0)
         : 0);
     const habitDate=currentDayDate();
+    const previousHabitEntry=state.habits?.entries?.[`${habit.id}|${habit.frequency==='weekly'
+      ? `w:${keyOf(weekRangeFor(state.config.startDate,weekIndexFor(state.config.startDate,habitDate))[0])}`
+      : `d:${keyOf(habitDate)}`}`];
     const result=adjustHabitProgress({
       habitState:state.habits,
       habit,
@@ -2659,6 +2695,14 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     });
     state.habits=coinResult.habitState;
     state.economy=coinResult.economy;
+    const potionResult=reconcilePotionHabitBonus({
+      inventory:state.inventory,habitState:state.habits,economy:state.economy,
+      habit,date:habitDate,planStartDate:state.config.startDate,
+      previousCount:Number(previousHabitEntry?.count)||0,nowTimestamp:Date.now()
+    });
+    state.inventory=potionResult.inventory;
+    state.habits=potionResult.habitState;
+    state.economy=potionResult.economy;
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
@@ -2696,7 +2740,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       : '';
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
-      period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins
+      period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins+potionResult.coinDelta,
+      potionXpDelta:potionResult.xpDelta
     });
     renderAll();
     const habitCoinNotice=coinResult.habitCoinDelta>0
@@ -2709,17 +2754,22 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       : coinResult.bonusCoinDelta<0
         ? ' · Bonus diario retirado · '+coinResult.bonusCoinDelta+' 🪙'
         : '';
+    const potionNotice=potionResult.coinDelta
+      ? ` · ${potionResult.coinDelta>0?'+':''}${potionResult.coinDelta} 🪙 Poción`
+      : potionResult.xpDelta
+        ? ` · ${potionResult.xpDelta>0?'+':''}${potionResult.xpDelta} XP Poción`
+        : '';
     if(result.becameCompleted){
       const xpNotice=result.xpDelta>0
         ? ' · +'+(result.xpDelta+fusionListXp+newRelicRewards.xp)+' XP'
         : ' · límite de XP alcanzado';
-      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+extraMessage+relicHabitNotice+newRelicRewards.notice+habitRewardNotice,'heal');
+      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+potionNotice+extraMessage+relicHabitNotice+newRelicRewards.notice+habitRewardNotice,'heal');
     }
     else if(result.xpDelta>0||coinResult.habitCoinDelta>0){
       const xpNotice=result.xpDelta>0?' · +'+result.xpDelta+' XP':' · límite de XP alcanzado';
-      showToast('Progreso registrado'+xpNotice+habitCoinNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
+      showToast('Progreso registrado'+xpNotice+habitCoinNotice+potionNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
     }
-    else if(result.xpDelta<0||coinResult.coinDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice,'dmg');
+    else if(result.xpDelta<0||coinResult.coinDelta<0||potionResult.coinDelta<0||potionResult.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice+potionNotice,'dmg');
     else if(result.completed) showToast('Límite de XP alcanzado','heal');
     return;
   }
@@ -3056,6 +3106,99 @@ document.getElementById('classChangeConfirmAccept').addEventListener('click',()=
   showToast('Clase cambiada · −1 Sangre de Jefe','heal');
 });
 
+function handlePotionUse(potionId){
+  const maxes=heroMaxes();
+  if(potionId==='life'&&(state.game.hp||0)>=maxes.maxHp){ showToast('La Salud ya está completa','dmg'); return false; }
+  if(potionId==='mana'&&(state.game.mp||0)>=maxes.maxMp){ showToast('El Maná ya está completo','dmg'); return false; }
+  const options=potionViewOptions();
+  const result=usePotion({
+    inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp:Date.now()
+  });
+  if(!result.ok){
+    const message=result.reason==='active'?'Ya hay una poción temporal activa'
+      : result.reason==='limit'?'Has alcanzado el límite de esta poción'
+      : result.reason==='empty'?'No tienes esa poción':'No se puede usar ahora';
+    showToast(message,'dmg'); return false;
+  }
+  state.inventory=result.inventory;
+  let notice='Poción utilizada';
+  if(potionId==='life'){
+    const before=state.game.hp||0; state.game.hp=capHp(before+20); notice=`+${state.game.hp-before} Salud`;
+    flashHeroStatFeedback('hp');
+  }else if(potionId==='mana'){
+    const before=state.game.mp||0; state.game.mp=capMp(before+25); notice=`+${state.game.mp-before} Maná`;
+    flashHeroStatFeedback('mp');
+  }else if(potionId==='blood') notice=`Sangre preparada · +${potionBloodChance(state.inventory.potions,options.bossKey)}%`;
+  else notice=`${potionId==='fortune'?'Fortuna':'Experiencia'} activa durante 30 minutos`;
+  scheduleSave({type:'potion:use',potionId});
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
+  renderInventoryView(document,state,potionViewOptions()); renderHero();
+  showToast(notice,'heal');
+  return true;
+}
+
+function openShopPurchaseConfirmation(purchase){
+  pendingShopPurchase=purchase;
+  const body=document.getElementById('shopPurchaseConfirmBody');
+  const accept=document.getElementById('shopPurchaseConfirmAccept');
+  if(purchase.type==='potion'){
+    body.innerHTML=`<p><b>${purchase.name}</b> × ${purchase.quantity}</p><p>Se descontarán <b>${purchase.coinCost} monedas</b>.</p>`;
+  }else{
+    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.coinCost} monedas</b>${purchase.bloodCost?` y <b>${purchase.bloodCost} Sangre de Jefe</b>`:''}.</p>`;
+  }
+  accept.disabled=false;
+  accept.textContent='COMPRAR';
+  document.getElementById('shopPurchaseConfirmBg').classList.add('show');
+}
+
+async function handleRelicPurchase(relicId){
+  if(shopLocked) return false;
+  shopLocked=true;
+  const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const previousLootState=normalizeLootState(state);
+  const result=purchaseShopRelic({state,relicId,operationId,nowTimestamp:Date.now()});
+  if(result.ok){
+    applyLootSlices(result);
+    let purchaseSaved=true;
+    try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
+    catch(error){
+      purchaseSaved=false;
+      applyLootSlices(previousLootState);
+      console.error('No se pudo guardar la compra de la Tienda',error);
+      showToast('No se pudo confirmar el guardado de la compra','dmg');
+    }
+    renderShopView(document,state,Date.now(),potionViewOptions());
+    renderInventoryView(document,state,potionViewOptions());
+    renderHero();
+    if(purchaseSaved) showToast('Reliquia recuperada','heal');
+  }else{
+    const message=result.reason==='coins'?'No tienes suficientes monedas'
+      :result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'Esta reliquia ya no está disponible';
+    showToast(message,'dmg');
+    renderShopView(document,state,Date.now(),potionViewOptions());
+  }
+  shopLocked=false;
+  return result.ok;
+}
+
+function handlePotionPurchase(potionId,quantity=1){
+  const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const result=purchasePotion({inventory:state.inventory,economy:state.economy,potionId,operationId,quantity,nowTimestamp:Date.now()});
+  if(!result.ok){
+    showToast(result.reason==='coins'?'No tienes suficientes monedas':'No se pudo comprar la poción','dmg');
+    return false;
+  }
+  state.inventory=result.inventory;
+  state.economy=result.economy;
+  scheduleSave({type:'potion:purchase',potionId});
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
+  renderShopView(document,state,Date.now(),potionViewOptions());
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  showToast(quantity>1?`${quantity} pociones añadidas al Inventario`:'Poción añadida al Inventario','heal');
+  return true;
+}
+
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
@@ -3083,36 +3226,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const purchase=event.target.closest('[data-buy-relic]');
   if(purchase){
     if(purchase.disabled||shopLocked) return;
-    shopLocked=true;
-    purchase.disabled=true;
     const relicId=purchase.dataset.buyRelic;
-    const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const previousLootState=normalizeLootState(state);
-    const result=purchaseShopRelic({state,relicId,operationId,nowTimestamp:Date.now()});
-    if(result.ok){
-      applyLootSlices(result);
-      let purchaseSaved=true;
-      try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
-      catch(error){
-        purchaseSaved=false;
-        applyLootSlices(previousLootState);
-        console.error('No se pudo guardar la compra de la Tienda',error);
-        showToast('No se pudo confirmar el guardado de la compra','dmg');
-      }
-      renderShopView(document,state,Date.now());
-      renderInventoryView(document,state);
-      renderHero();
-      if(purchaseSaved) showToast('Reliquia recuperada','heal');
-    }else{
-      const message=result.reason==='coins'
-        ? 'No tienes suficientes monedas'
-        : result.reason==='blood'
-          ? 'No tienes suficiente Sangre de Jefe'
-          : 'Esta reliquia ya no está disponible';
-      showToast(message,'dmg');
-      renderShopView(document,state,Date.now());
-    }
-    shopLocked=false;
+    const offer=shopOffers(normalizeLootState(state),Date.now()).find(item=>item.relicId===relicId);
+    if(!offer) return;
+    openShopPurchaseConfirmation({type:'relic',relicId,name:offer.definition.name,coinCost:offer.coinPrice,bloodCost:offer.bloodPrice});
     return;
   }
   const forgeChoice=event.target.closest('[data-select-forge-relic]');
@@ -3139,6 +3256,42 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     fusionLeftId=selection.leftId;
     fusionRightId=selection.rightId;
     fusionErrorId=selection.errorId;
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  const potionPurchase=event.target.closest('[data-buy-potion]');
+  if(potionPurchase){
+    const potionId=potionPurchase.dataset.buyPotion;
+    const quantity=Number(event.currentTarget.querySelector('[data-potion-quantity]')?.textContent)||1;
+    const definition=POTION_BY_ID[potionId];
+    if(!definition) return;
+    openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
+    return;
+  }
+  const shopPotionOpen=event.target.closest('[data-open-shop-potion]');
+  if(shopPotionOpen){
+    if(renderPotionDetail(document,state,shopPotionOpen.dataset.openShopPotion,{...potionViewOptions(),mode:'shop',nowTimestamp:Date.now()})){
+      document.getElementById('sheetRelicDetail').classList.add('show');
+    }
+    return;
+  }
+  const potionUse=event.target.closest('[data-use-potion]');
+  if(potionUse){
+    handlePotionUse(potionUse.dataset.usePotion);
+    return;
+  }
+  const potionOpen=event.target.closest('[data-open-potion]');
+  if(potionOpen){
+    if(renderPotionDetail(document,state,potionOpen.dataset.openPotion,{...potionViewOptions(),nowTimestamp:Date.now()})){
+      document.getElementById('sheetRelicDetail').classList.add('show');
+    }
+    return;
+  }
+  const removeFusionSlot=event.target.closest('[data-remove-fusion-slot]');
+  if(removeFusionSlot){
+    if(removeFusionSlot.dataset.removeFusionSlot==='right') fusionRightId=null;
+    else fusionLeftId=null;
+    clearFusionFeedback();
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
   }
@@ -3191,14 +3344,40 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   if(!choice||choice.disabled||!forgePickerTarget) return;
   const relicId=choice.dataset.pickForgeRelic;
   if(forgePickerTarget.mode==='upgrade') selectedForgeRelicId=relicId;
-  else if(forgePickerTarget.slot==='right') fusionRightId=relicId===fusionLeftId?null:relicId;
-  else fusionLeftId=relicId===fusionRightId?null:relicId;
+  else if(forgePickerTarget.slot==='right') fusionRightId=relicId===fusionRightId?null:relicId;
+  else fusionLeftId=relicId===fusionLeftId?null:relicId;
   clearFusionFeedback();
   event.currentTarget.classList.remove('show');
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
 });
 document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>document.getElementById('forgeRelicPickerBg').classList.remove('show'));
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const quantityStep=event.target.closest('[data-potion-quantity-step]');
+  if(quantityStep){
+    const output=event.currentTarget.querySelector('[data-potion-quantity]');
+    const buyButton=event.currentTarget.querySelector('[data-buy-potion]');
+    if(!output||!buyButton) return;
+    const next=Math.min(99,Math.max(1,(Number(output.textContent)||1)+Number(quantityStep.dataset.potionQuantityStep)));
+    output.textContent=String(next);
+    const total=next*(Number(buyButton.dataset.unitPrice)||0);
+    buyButton.textContent=`COMPRAR · ${total}`;
+    buyButton.disabled=total>(Number(state.economy?.coins)||0);
+    return;
+  }
+  const potionPurchase=event.target.closest('[data-buy-potion]');
+  if(potionPurchase){
+    const quantity=Number(event.currentTarget.querySelector('[data-potion-quantity]')?.textContent)||1;
+    const potionId=potionPurchase.dataset.buyPotion;
+    const definition=POTION_BY_ID[potionId];
+    if(!definition) return;
+    openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
+    return;
+  }
+  const potionUse=event.target.closest('[data-use-potion]');
+  if(potionUse){
+    handlePotionUse(potionUse.dataset.usePotion);
+    return;
+  }
   const forgeShortcut=event.target.closest('[data-open-forge-relic]');
   if(forgeShortcut){
     selectedForgeRelicId=forgeShortcut.dataset.openForgeRelic;
@@ -3255,11 +3434,9 @@ document.getElementById('relicEffectInfoClose').addEventListener('click',()=>{
 document.getElementById('relicEffectInfoBg').addEventListener('click',event=>{
   if(event.target.id==='relicEffectInfoBg') event.currentTarget.classList.remove('show');
 });
-async function handleForgeAttempt(forge){
-  if(!forge||forge.disabled||forgeLocked) return;
+async function handleForgeAttempt(relicId){
+  if(!relicId||forgeLocked) return;
   forgeLocked=true;
-  forge.disabled=true;
-  const relicId=forge.dataset.forgeRelic;
   const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const previousLootState=normalizeLootState(state);
   const result=attemptForge({state,relicId,operationId});
@@ -3288,15 +3465,61 @@ async function handleForgeAttempt(forge){
 }
 document.getElementById('forgeBody').addEventListener('click',event=>{
   const forge=event.target.closest('[data-forge-relic]');
-  if(forge) handleForgeAttempt(forge);
+  if(!forge||forge.disabled) return;
+  const relicId=forge.dataset.forgeRelic;
+  const preview=forgePreview(normalizeLootState(state),relicId);
+  const definition=relicDefinition(relicId);
+  if(!preview.ok||!definition) return;
+  pendingForgeAttempt=relicId;
+  document.getElementById('forgeAttemptConfirmTitle').textContent='¿Quieres forjar esta reliquia?';
+  document.getElementById('forgeAttemptConfirmBody').replaceChildren();
+  document.getElementById('forgeAttemptConfirmAccept').disabled=false;
+  document.getElementById('forgeAttemptConfirmBg').classList.add('show');
 });
 document.addEventListener('click',event=>closeForgeInfoOutside(document,event.target));
 document.getElementById('forgeResultClose').addEventListener('click',()=>{
   document.getElementById('forgeResultBg').classList.remove('show');
 });
+document.getElementById('forgeAttemptConfirmCancel').addEventListener('click',()=>{
+  pendingForgeAttempt=null;
+  document.getElementById('forgeAttemptConfirmBg').classList.remove('show');
+});
+document.getElementById('forgeAttemptConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='forgeAttemptConfirmBg'){
+    pendingForgeAttempt=null;
+    event.currentTarget.classList.remove('show');
+  }
+});
+document.getElementById('forgeAttemptConfirmAccept').addEventListener('click',async event=>{
+  if(!pendingForgeAttempt||forgeLocked||event.currentTarget.disabled) return;
+  const relicId=pendingForgeAttempt;
+  pendingForgeAttempt=null;
+  event.currentTarget.disabled=true;
+  document.getElementById('forgeAttemptConfirmBg').classList.remove('show');
+  await handleForgeAttempt(relicId);
+});
 document.getElementById('fusionConfirmCancel').addEventListener('click',()=>{
   pendingFusion=null;
   document.getElementById('fusionConfirmBg').classList.remove('show');
+});
+document.getElementById('shopPurchaseConfirmCancel').addEventListener('click',()=>{
+  pendingShopPurchase=null;
+  document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
+});
+document.getElementById('shopPurchaseConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='shopPurchaseConfirmBg'){
+    pendingShopPurchase=null;
+    event.currentTarget.classList.remove('show');
+  }
+});
+document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',async event=>{
+  if(!pendingShopPurchase||event.currentTarget.disabled) return;
+  const purchase=pendingShopPurchase;
+  pendingShopPurchase=null;
+  event.currentTarget.disabled=true;
+  document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
+  if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  else await handleRelicPurchase(purchase.relicId);
 });
 document.getElementById('fusionConfirmBg').addEventListener('click',event=>{
   if(event.target.id==='fusionConfirmBg'){

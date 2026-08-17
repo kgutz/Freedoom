@@ -239,14 +239,14 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('RANGO 2 · RELIQUIA FUSIONADA');
   });
 
-  it('abre cada slot mediante el selector y muestra feedback dentro de la Forja', () => {
+  it('permite quitar el slot ocupado, abre el vacío y muestra feedback dentro de la Forja', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     state.economy.coins = 500;
     state.economy.bossBlood = 5;
     renderFusionView(document, state, 'relic_01', null, { errorId: 'relic_03' });
     const html = document.elements.forgeBody.innerHTML;
-    expect(html).toContain('data-fusion-slot="left"');
+    expect(html).toContain('data-remove-fusion-slot="left"');
     expect(html).toContain('data-fusion-slot="right"');
     expect(html).toContain('Estas reliquias no pueden fusionarse.');
     expect(html).toContain('Selecciona otra reliquia compatible.');

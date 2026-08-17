@@ -26,6 +26,7 @@ import {
   relicDefinition,
   relicRankEffect,
 } from '../data/loot-data.js';
+import { emptyPotionState, normalizePotionState } from './potion-rules.js';
 
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -73,6 +74,7 @@ export function emptyLootState() {
         cycleId: '', charge: 0, baselineOutcomes: [], awaitingBaseline: false,
         lastIncreaseAt: 0, lastIncreaseCharge: 0,
       },
+      potions: emptyPotionState(),
     },
     forge: {
       seed: '',
@@ -261,6 +263,7 @@ export function normalizeLootState(state = {}) {
       equipped,
       dailyActivations: { ...objectOf(inventory.dailyActivations) },
       weeklyActivations: { ...objectOf(inventory.weeklyActivations) },
+      potions: normalizePotionState(inventory.potions),
       constancy: {
         cycleId: typeof inventory.constancy?.cycleId === 'string'
           ? inventory.constancy.cycleId
@@ -487,6 +490,7 @@ export function grantBossRewards({
   relicBloodRandom = random,
   earlyVictoryBloodRandom = random,
   earlyVictoryBonuses = [],
+  potionBloodChanceByRewardId = {},
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
@@ -533,10 +537,11 @@ export function grantBossRewards({
     const relicBloodSources = source === 'victory'
       ? equippedRelicEffectSources(normalized, 'relic_10')
       : [];
+    const potionBloodChance = Math.max(0, Number(potionBloodChanceByRewardId?.[definition.rewardId]) || 0);
     const relicBloodChance = Math.min(100, relicBloodSources.reduce(
       (total, relicSource) => total + relicSource.value,
       0,
-    ));
+    ) + potionBloodChance);
     const relicBloodRoll = typeof relicBloodRandom === 'function'
       ? relicBloodRandom()
       : deterministicRandom(`${seed}:${definition.rewardId}:relic-blood`);
@@ -565,6 +570,7 @@ export function grantBossRewards({
       baseBossBlood: reward.bossBlood,
       bonusBossBlood,
       relicBonusBossBlood,
+      potionBloodChance,
       relicOutcome: obtained ? 'obtained' : 'failed',
       at: nowTimestamp,
     });
@@ -589,6 +595,7 @@ export function grantBossRewards({
       baseBossBlood: reward.bossBlood,
       bonusBossBlood,
       relicBonusBossBlood,
+      potionBloodChance,
     });
   }
   if (source === 'victory') {

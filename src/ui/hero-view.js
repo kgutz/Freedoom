@@ -355,8 +355,16 @@ export function renderHeroView({
     </span>`;
     })
     .join('');
-  const chipsHtml = skillEffectsHtml
-    ? `<div class="buff-row">${skillEffectsHtml}</div>`
+  const potionActive=lootState?.inventory?.potions?.active;
+  const potionRemaining=potionActive?.endsAt>now.getTime()
+    ? `${Math.max(1,Math.ceil((potionActive.endsAt-now.getTime())/60000))}m`
+    : '';
+  const potionEffectHtml=potionRemaining&&['fortune','experience'].includes(potionActive.id)
+    ? `<span class="skill-buff skill-buff--potion" aria-label="Poción de ${potionActive.id==='fortune'?'Fortuna':'Experiencia'}: ${potionRemaining} restantes"><span class="skill-buff-icon skill-buff-icon--potion"><img src="potions/potion_${potionActive.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${potionActive.id==='fortune'?'¤':'✦'}</span></span><b>${potionRemaining}</b></span>`
+    : '';
+  const visibleEffectCount=model.skillEffects.length+(potionEffectHtml?1:0);
+  const chipsHtml = skillEffectsHtml||potionEffectHtml
+    ? `<div class="buff-row${visibleEffectCount>2?' buff-row--compact':''}">${skillEffectsHtml}${potionEffectHtml}</div>`
     : '';
   const pips = bossState.pips
     .map((pip) => {

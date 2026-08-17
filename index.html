@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.79</div>
+  <div class="ob-version" id="obVersion">v1.80</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.79</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.80</span></p>
       </div>
     </div>
   </div>
@@ -560,7 +560,7 @@
 
 <div class="sheet-bg" id="sheetRelicDetail" style="z-index:30">
   <div class="sheet relic-detail-sheet">
-    <div class="sheet-head sk-head-center"><h3>Reliquia</h3><button class="sheet-close" data-sheet="sheetRelicDetail">✕</button></div>
+    <div class="sheet-head sk-head-center"><h3 id="relicDetailTitle">Reliquia</h3><button class="sheet-close" data-sheet="sheetRelicDetail">✕</button></div>
     <div id="relicDetailBody"></div>
   </div>
 </div>
@@ -648,6 +648,18 @@
   </div>
 </div>
 
+<div class="modal-bg center" id="forgeAttemptConfirmBg" style="z-index:42">
+  <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="forgeAttemptConfirmTitle">
+    <span class="relic-effect-info-kicker">CONFIRMAR MEJORA</span>
+    <h3 id="forgeAttemptConfirmTitle">¿Quieres forjar esta reliquia?</h3>
+    <div id="forgeAttemptConfirmBody"></div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="forgeAttemptConfirmCancel">CANCELAR</button>
+      <button type="button" id="forgeAttemptConfirmAccept">FORJAR</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg center" id="fusionConfirmBg" style="z-index:42">
   <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="fusionConfirmTitle">
     <span class="relic-effect-info-kicker">FUSIÓN IRREVERSIBLE</span>
@@ -656,6 +668,18 @@
     <div class="fusion-confirm-actions">
       <button type="button" id="fusionConfirmCancel">CANCELAR</button>
       <button type="button" id="fusionConfirmAccept">FUSIONAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="shopPurchaseConfirmBg" style="z-index:44">
+  <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="shopPurchaseConfirmTitle">
+    <span class="relic-effect-info-kicker">CONFIRMAR COMPRA</span>
+    <h3 id="shopPurchaseConfirmTitle">¿Quieres comprarlo?</h3>
+    <div id="shopPurchaseConfirmBody"></div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="shopPurchaseConfirmCancel">CANCELAR</button>
+      <button type="button" id="shopPurchaseConfirmAccept">COMPRAR</button>
     </div>
   </div>
 </div>

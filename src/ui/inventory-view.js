@@ -18,6 +18,8 @@ import {
   shopOffers,
 } from '../domain/loot-rules.js';
 import { BOSSES } from '../data/game-data.js';
+import { POTION_DEFINITIONS, POTION_FUTURE_SLOTS, POTION_DAILY_LIMITS } from '../data/potion-data.js';
+import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -51,6 +53,95 @@ function relicArt(definition, overlay = '') {
     <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
     ${overlay}
   </div>`;
+}
+
+function potionArt(definition) {
+  return `<span class="potion-art potion-art--${definition.tone}" aria-hidden="true">
+    <img src="potions/potion_${definition.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+    <i style="display:none">${definition.symbol}</i>
+  </span>`;
+}
+
+function potionFutureSlots() {
+  return Array.from({ length: POTION_FUTURE_SLOTS }, (_, index) =>
+    `<div class="potion-card potion-card--future" aria-label="Próxima poción ${index + 1}"><span>?</span></div>`).join('');
+}
+
+function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey = '', nowTimestamp = Date.now() } = {}) {
+  const potions = normalizePotionState(normalized.inventory.potions);
+  const active = potions.active?.endsAt > nowTimestamp ? potions.active : null;
+  const dailyUses = potions.dailyUses[dayKey] || {};
+  const definitions=mode==='shop'
+    ? POTION_DEFINITIONS
+    : POTION_DEFINITIONS.filter((definition)=>(potions.owned[definition.id]||0)>0);
+  if(mode!=='shop'&&!definitions.length) return '';
+  return `<div class="potion-grid">${definitions.map((definition) => {
+    const owned = potions.owned[definition.id] || 0;
+    if (mode === 'shop') {
+      const lacksCoins = normalized.economy.coins < definition.price;
+      return `<button type="button" class="potion-card potion-card--shop potion-tone--${definition.tone}${lacksCoins ? ' is-disabled' : ''}" data-open-shop-potion="${definition.id}" aria-label="Ver ${escapeHtml(definition.name)} · ${definition.price} monedas">
+        ${potionArt(definition)}
+      </button>`;
+    }
+    const used = Math.max(0, Number(dailyUses[definition.id]) || 0);
+    const dailyLimit = POTION_DAILY_LIMITS[definition.id];
+    const bloodUsed = definition.id === 'blood' ? Math.max(0, potions.bloodPrepared[bossKey] || 0) : 0;
+    const temporalBlocked = ['fortune', 'experience'].includes(definition.id) && Boolean(active);
+    const exhausted = definition.id === 'blood' ? bloodUsed >= 3 : dailyLimit && used >= dailyLimit;
+    const disabled = owned < 1 || temporalBlocked || exhausted;
+    const status = definition.id === 'blood'
+      ? `${bloodUsed}/3 · +${potionBloodChance(potions, bossKey)}%`
+      : dailyLimit ? `${used}/${dailyLimit}` : '';
+    const activeCopy = active?.id === definition.id
+      ? `ACTIVA · ${Math.max(1, Math.ceil((active.endsAt - nowTimestamp) / 60000))} MIN`
+      : status;
+    return `<article class="potion-card potion-card--inventory potion-tone--${definition.tone}${disabled ? ' is-disabled' : ''}">
+      ${potionArt(definition)}
+      <b>${escapeHtml(definition.name.replace('Poción de ', ''))}</b>
+      <small>${escapeHtml(definition.shortEffect)}</small>
+      <span class="potion-owned">x${owned}</span>
+      <span class="potion-use-status">${activeCopy}</span>
+      <button type="button" data-use-potion="${definition.id}"${disabled ? ' disabled' : ''}>${active?.id===definition.id?'ACTIVA':'USAR'}</button>
+    </article>`;
+  }).join('')}${mode==='shop'?potionFutureSlots():''}</div>`;
+}
+
+function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', nowTimestamp = Date.now() } = {}) {
+  const potions=normalizePotionState(normalized.inventory.potions);
+  const active=potions.active?.endsAt>nowTimestamp?potions.active:null;
+  const dailyUses=potions.dailyUses[dayKey]||{};
+  return POTION_DEFINITIONS.filter((definition)=>(potions.owned[definition.id]||0)>0).map((definition)=>{
+    const owned=potions.owned[definition.id]||0;
+    const used=Math.max(0,Number(dailyUses[definition.id])||0);
+    const bloodUsed=definition.id==='blood'?Math.max(0,potions.bloodPrepared[bossKey]||0):0;
+    const exhausted=definition.id==='blood'?bloodUsed>=3:used>=(POTION_DAILY_LIMITS[definition.id]||Infinity);
+    const temporalBlocked=['fortune','experience'].includes(definition.id)&&Boolean(active);
+    const disabled=exhausted||temporalBlocked;
+    return `<button type="button" class="relic-collection-item potion-inventory-item potion-tone--${definition.tone}${disabled?' is-disabled':''}" data-relic-kind="potion" data-open-potion="${definition.id}" aria-label="Abrir ${escapeHtml(definition.name)} · ${owned} disponible${owned===1?'':'s'}" title="${escapeHtml(definition.name)}">${potionArt(definition)}<span class="potion-inventory-quantity">x${owned}</span></button>`;
+  }).join('');
+}
+
+export function renderPotionDetail(document, lootState, potionId, options = {}) {
+  const normalized=normalizeLootState(lootState);
+  const definition=POTION_DEFINITIONS.find((item)=>item.id===potionId);
+  const body=document.getElementById('relicDetailBody');
+  if(!body||!definition) return false;
+  const title=document.getElementById('relicDetailTitle');
+  if(title) title.textContent='Poción';
+  const potions=normalizePotionState(normalized.inventory.potions);
+  const owned=potions.owned[potionId]||0;
+  const dayUses=potions.dailyUses[options.dayKey]||{};
+  const used=potionId==='blood'?potions.bloodPrepared[options.bossKey]||0:dayUses[potionId]||0;
+  const limit=potionId==='blood'?3:POTION_DAILY_LIMITS[potionId]||1;
+  const active=potions.active?.endsAt>(options.nowTimestamp||Date.now());
+  const blocked=owned<1||used>=limit||(['fortune','experience'].includes(potionId)&&active);
+  const shopMode=options.mode==='shop';
+  const lacksCoins=normalized.economy.coins<definition.price;
+  const action=shopMode
+    ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins?' disabled':''}>${lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
+    : `<button type="button" data-use-potion="${potionId}"${blocked?' disabled':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
+  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} MONEDAS`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p></div><div class="relic-affixes potion-detail-rules"><span>REGLAS</span><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
+  return true;
 }
 
 function affixInfoLink(id, extraClass = '') {
@@ -208,7 +299,7 @@ export function inventoryAccessMarkup(lootState) {
   </div>`;
 }
 
-export function renderInventoryView(document, lootState) {
+export function renderInventoryView(document, lootState, options = {}) {
   const normalized = normalizeLootState(lootState);
   const equipped = normalized.inventory.equipped;
   const equippedSlots = [0, 1].map((slot) => {
@@ -251,7 +342,7 @@ export function renderInventoryView(document, lootState) {
         <button type="button" data-relic-filter="normal" aria-pressed="false">NORMALES</button>
         <button type="button" data-relic-filter="fusion" aria-pressed="false">FUSIONADAS</button>
       </div>
-      <div class="relic-grid">${inventory || '<div class="inventory-empty">No tienes reliquias disponibles.</div>'}</div>
+      <div class="relic-grid">${inventoryPotionItemsMarkup(normalized, options)}${inventory || '<div class="inventory-empty">No tienes reliquias disponibles.</div>'}</div>
     </section>`;
 }
 
@@ -291,6 +382,8 @@ export function renderRelicDetail(document, lootState, relicId) {
   const definition = relicDefinition(relicId);
   const body = document.getElementById('relicDetailBody');
   if (!body || !relic || !definition) return false;
+  const title = document.getElementById('relicDetailTitle');
+  if (title) title.textContent = 'Reliquia';
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const owned = Boolean(normalized.inventory.relics[relicId]);
   const equipped = owned && normalized.inventory.equipped.includes(relicId);
@@ -418,7 +511,7 @@ function forgeModeTabs(active) {
 function fusionSlotMarkup(definition, label) {
   const slot = label === 'SLOT A' ? 'left' : 'right';
   return definition
-    ? `<button type="button" class="fusion-slot filled" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Cambiar ${escapeHtml(definition.name)}">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></button>`
+    ? `<button type="button" class="fusion-slot filled" data-remove-fusion-slot="${slot}" aria-label="Quitar ${escapeHtml(definition.name)} de la Fusión">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></button>`
     : `<button type="button" class="fusion-slot" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Elegir reliquia para ${label}"><span>?</span><small>${label}</small></button>`;
 }
 
@@ -429,13 +522,14 @@ export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', 
   if (!title || !body) return;
   title.textContent = mode === 'fusion' ? `Elegir reliquia · Slot ${slot === 'right' ? 'B' : 'A'}` : 'Elegir reliquia para mejorar';
   const otherSlotId = mode === 'fusion' ? (slot === 'right' ? leftId : rightId) : null;
+  const currentSlotId = mode === 'fusion' ? (slot === 'right' ? rightId : leftId) : null;
   const cards = ALL_RELIC_DEFINITIONS.filter((definition) => normalized.inventory.relics[definition.id]).map((definition) => {
     const relic = normalized.inventory.relics[definition.id];
     const fusion = Boolean(definition.recipeId);
-    const selected = definition.id === leftId || definition.id === rightId;
+    const selected = definition.id === currentSlotId;
     const incompatible = Boolean(otherSlotId && (definition.id === otherSlotId || fusionRecipeStatus(otherSlotId, definition.id).status !== 'available'));
     const unavailable = fusion || incompatible;
-    const unavailableCopy = fusion ? 'FUSIONADA' : incompatible ? 'INCOMPATIBLE' : '';
+    const unavailableCopy = fusion ? 'FUSIONADA' : incompatible ? 'INCOMPATIBLE' : selected ? 'TOCA PARA QUITAR' : '';
     return `<button type="button" class="forge-picker-relic ${rarityClass(relic.rarity)}${selected ? ' selected' : ''}${incompatible ? ' incompatible' : ''}" data-picker-kind="${fusion ? 'fusion' : 'normal'}" data-pick-forge-relic="${definition.id}"${unavailable ? ' disabled aria-disabled="true"' : ''}>${relicArt(definition)}<b>${escapeHtml(definition.name)}</b><small>RANGO ${relic.rank}${unavailableCopy ? ` · ${unavailableCopy}` : ''}</small></button>`;
   }).join('');
   body.innerHTML = `<div class="relic-kind-filters forge-picker-filters" role="group" aria-label="Filtrar reliquias"><button type="button" class="active" data-picker-filter="all">TODAS</button><button type="button" data-picker-filter="normal">NORMALES</button><button type="button" data-picker-filter="fusion">FUSIONADAS</button></div><div class="forge-picker-grid">${cards || '<p>No tienes reliquias disponibles.</p>'}</div>`;
@@ -529,7 +623,7 @@ function shopTimeLabel(endsAt, nowTimestamp) {
   return `${Math.max(1, hours)} H`;
 }
 
-export function renderShopView(document, lootState, nowTimestamp = Date.now()) {
+export function renderShopView(document, lootState, nowTimestamp = Date.now(), options = {}) {
   const normalized = ensureShopRotation(lootState, nowTimestamp);
   const body = document.getElementById('shopBody');
   if (!body) return;
@@ -566,7 +660,9 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now()) {
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
     </section>
     <div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
-    ${content}`;
+    ${content}
+    <div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
+    ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
 }
 
 export function renderLootNotice(document, lootState, notice) {
