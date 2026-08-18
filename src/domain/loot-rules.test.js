@@ -671,7 +671,7 @@ describe('preview puro de Fusión', () => {
     }
     expect(preview).toMatchObject({
       ok: true,
-      successProbability: 100,
+      successProbability: 70,
       qualityDeterministic: true,
       resultRank: 2,
       resultRarity: 'mythic',
@@ -706,7 +706,7 @@ describe('preview puro de Fusión', () => {
     const state = fusionState();
     const preview = getForgeFusionPreview(state, 'relic_01', 'relic_02');
     const result = fuseRelics({
-      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'after-preview', nowTimestamp: 20,
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'after-preview', randomValue: 0, nowTimestamp: 20,
     });
     expect(result.ok).toBe(true);
     expect(result.fusedRelic).toMatchObject({

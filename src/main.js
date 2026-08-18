@@ -61,6 +61,7 @@ import {
   ensureShopRotation,
   equippedRelicBonuses,
   forgePreview,
+  getForgeFusionPreview,
   grantBossRewards,
   fuseRelics,
   initializeForgeSeed,
@@ -174,7 +175,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.80';
+const APP_VERSION='1.81';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -3311,7 +3312,8 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const losesConstancy=state.inventory?.equipped?.some(id=>
       (id===leftId||id===rightId)&&(id==='relic_04'||Number(state.inventory?.relics?.[id]?.inheritedEffects?.relic_04)>0)
     )&&(Number(state.inventory?.constancy?.charge)||0)>0;
-    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Ambas reliquias desaparecerán de tu inventario. La operación cuesta <b>100 monedas</b> y <b>1 Sangre de Jefe</b>.</p>${losesConstancy?`<p><b>Perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
+    const preview=getForgeFusionPreview(state,leftId,rightId);
+    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Probabilidad de éxito: <b>${preview.successProbability}%</b>. El intento cuesta <b>100 monedas</b>.</p><p>Las reliquias y <b>1 Sangre de Jefe</b> solo se consumirán si tiene éxito.</p>${losesConstancy?`<p><b>Si tiene éxito, perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
     document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }
@@ -3557,11 +3559,13 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
     return;
   }
   handleSaveResult(commit.saveResult);
-  capHeroAfterEquipmentChange();
   document.getElementById('forgeResultBody').innerHTML=fusionResultMarkup(result);
   document.getElementById('forgeResultBg').classList.add('show');
-  fusionLeftId=null; fusionRightId=null;
-  clearFusionFeedback();
+  if(result.success){
+    capHeroAfterEquipmentChange();
+    fusionLeftId=null; fusionRightId=null;
+    clearFusionFeedback();
+  }
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   renderInventoryView(document,state); renderHero();
   forgeLocked=false;

@@ -6,6 +6,7 @@ import {
   FORTUNE_CAP,
   FUSION_BLOOD_COST,
   FUSION_COIN_COST,
+  FUSION_SUCCESS_PROBABILITIES,
   FUSION_RELIC_DEFINITIONS,
   FORGE_BLOOD_REQUIREMENTS,
   FORGE_COSTS,
@@ -313,6 +314,12 @@ export function normalizeLootState(state = {}) {
           discoveredRecipes: [...new Set(arrayOf(fusion.discoveredRecipes))]
             .filter((id) => validRecipeIds.has(id)),
           history,
+          attempts: Object.fromEntries(Object.entries(objectOf(fusion.attempts))
+            .filter(([recipeId]) => validRecipeIds.has(recipeId))
+            .map(([recipeId, failures]) => [
+              recipeId,
+              Math.min(2, Math.max(0, Math.trunc(Number(failures) || 0))),
+            ])),
           dailyActivations: { ...objectOf(fusion.dailyActivations) },
           weeklyActivations: { ...objectOf(fusion.weeklyActivations) },
         };
@@ -948,6 +955,9 @@ export function getForgeFusionPreview(lootState, leftId, rightId) {
   const resultAffixes = resultRelic?.affixes || computedAffixes;
   const discovered = Boolean(recipe.definition &&
     normalized.forge.fusion.discoveredRecipes.includes(recipe.definition.recipeId));
+  const failures = recipe.definition
+    ? Math.min(2, Math.max(0, Number(normalized.forge.fusion.attempts?.[recipe.definition.recipeId]) || 0))
+    : 0;
   let reason = null;
   if (recipe.status !== 'available') reason = recipe.status;
   else if (!baseIngredients) reason = 'base-only';
@@ -966,7 +976,10 @@ export function getForgeFusionPreview(lootState, leftId, rightId) {
     bloodCost: FUSION_BLOOD_COST,
     coinsAvailable: normalized.economy.coins,
     bloodAvailable: normalized.economy.bossBlood,
-    successProbability: recipe.status === 'available' ? 100 : null,
+    failures,
+    successProbability: recipe.status === 'available'
+      ? FUSION_SUCCESS_PROBABILITIES[failures]
+      : null,
     qualityDeterministic: Boolean(resultRelic),
     resultRarity,
     resultRank,
@@ -986,6 +999,7 @@ export function fuseRelics({
   leftId,
   rightId,
   operationId,
+  randomValue = null,
   nowTimestamp = Date.now(),
 }) {
   const normalized = normalizeLootState(state);
@@ -996,6 +1010,37 @@ export function fuseRelics({
   }
   const preview = getForgeFusionPreview(normalized, leftId, rightId);
   if (!preview.ok) return { ...normalized, ok: false, ...preview };
+  if (!normalized.forge.seed) normalized.forge.seed = legacyForgeSeed(state);
+  const resolvedRandomValue = Number.isFinite(randomValue)
+    ? randomValue
+    : deterministicRandom(`fusion:v1:${normalized.forge.seed}:${preview.definition.recipeId}:attempt-${preview.failures + 1}`);
+  const success = Math.max(0, Math.min(0.999999999, resolvedRandomValue)) <
+    preview.successProbability / 100;
+  normalized.economy.coins -= FUSION_COIN_COST;
+  if (!success) {
+    normalized.forge.fusion.attempts[preview.definition.recipeId] = preview.failures + 1;
+    normalized.economy.transactions.push({
+      id: `fusion:${operationId}`,
+      operationId,
+      type: 'relic_fusion_failure',
+      recipeId: preview.definition.recipeId,
+      coins: -FUSION_COIN_COST,
+      bossBlood: 0,
+      probability: preview.successProbability,
+      success: false,
+      at: nowTimestamp,
+    });
+    normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+    return {
+      ...normalized,
+      ok: true,
+      success: false,
+      preview,
+      spentCoins: FUSION_COIN_COST,
+      spentBossBlood: 0,
+      nextProbability: FUSION_SUCCESS_PROBABILITIES[Math.min(2, preview.failures + 1)],
+    };
+  }
   const definition = preview.definition;
   const ingredients = Object.fromEntries(definition.ingredientIds.map((id) => [
     id,
@@ -1043,8 +1088,8 @@ export function fuseRelics({
     { discoveredAt: nowTimestamp, lastOwnedRecord: fusedRelic },
     fusedRelic,
   );
-  normalized.economy.coins -= FUSION_COIN_COST;
   normalized.economy.bossBlood -= FUSION_BLOOD_COST;
+  delete normalized.forge.fusion.attempts[definition.recipeId];
   if (newlyDiscovered) normalized.forge.fusion.discoveredRecipes.push(definition.recipeId);
   const historyEntry = {
     id: `fusion:${operationId}`,
@@ -1064,7 +1109,7 @@ export function fuseRelics({
   normalized.economy.transactions.push({
     id: `fusion:${operationId}`,
     operationId,
-    type: 'relic_fusion',
+    type: 'relic_fusion_success',
     recipeId: definition.recipeId,
     resultRelicId: definition.id,
     coins: -FUSION_COIN_COST,
@@ -1075,6 +1120,7 @@ export function fuseRelics({
   return {
     ...normalized,
     ok: true,
+    success: true,
     preview,
     fusedRelic,
     historyEntry,

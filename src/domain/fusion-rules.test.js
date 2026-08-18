@@ -37,7 +37,7 @@ function fusionState(count = 6) {
 }
 
 function fuse(state, leftId, rightId, operationId = 'fusion-op') {
-  return fuseRelics({ state, leftId, rightId, operationId, nowTimestamp: 10 });
+  return fuseRelics({ state, leftId, rightId, operationId, randomValue: 0, nowTimestamp: 10 });
 }
 
 describe('Fusión de reliquias', () => {
@@ -167,6 +167,41 @@ describe('Fusión de reliquias', () => {
     expect(missing.reason).toBe('missing-ingredients');
     expect(missing.economy.coins).toBe(1000);
     expect(missing.inventory.relics.relic_01).toBeDefined();
+  });
+
+  it('aumenta de 70 a 85 y 100 por ciento sin consumir reliquias ni Sangre al fallar', () => {
+    const initial = fusionState(2);
+    const first = fuseRelics({
+      state: initial, leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-fail-1', randomValue: 0.99, nowTimestamp: 10,
+    });
+    expect(first).toMatchObject({
+      ok: true, success: false, spentCoins: 100, spentBossBlood: 0, nextProbability: 85,
+    });
+    expect(first.inventory.relics.relic_01).toBeDefined();
+    expect(first.inventory.relics.relic_02).toBeDefined();
+    expect(first.inventory.relics.fusion_01).toBeUndefined();
+    expect(first.economy).toMatchObject({ coins: 900, bossBlood: 20 });
+    expect(fusionPreview(first, 'relic_01', 'relic_02').successProbability).toBe(85);
+
+    const second = fuseRelics({
+      state: first, leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-fail-2', randomValue: 0.99, nowTimestamp: 11,
+    });
+    expect(second).toMatchObject({ success: false, nextProbability: 100 });
+    expect(second.economy).toMatchObject({ coins: 800, bossBlood: 20 });
+    expect(fusionPreview(second, 'relic_01', 'relic_02').successProbability).toBe(100);
+
+    const third = fuseRelics({
+      state: second, leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-success-3', randomValue: 0.99, nowTimestamp: 12,
+    });
+    expect(third).toMatchObject({ ok: true, success: true, spentBossBlood: 1 });
+    expect(third.inventory.relics.relic_01).toBeUndefined();
+    expect(third.inventory.relics.relic_02).toBeUndefined();
+    expect(third.inventory.relics.fusion_01).toBeDefined();
+    expect(third.economy).toMatchObject({ coins: 700, bossBlood: 19 });
+    expect(third.forge.fusion.attempts).not.toHaveProperty('fusion_01');
   });
 
   it('exportar, importar y restaurar conserva rango global y potencias individuales', () => {
@@ -388,7 +423,7 @@ describe('compatibilidad de partidas antiguas', () => {
     expect(normalized.inventory.relics).toEqual(legacy.inventory.relics);
     expect(Object.keys(normalized.inventory.collection)).toEqual(['relic_01', 'relic_02']);
     expect(normalized.forge.fusion).toEqual({
-      discoveredRecipes: [], history: [], dailyActivations: {}, weeklyActivations: {},
+      discoveredRecipes: [], history: [], attempts: {}, dailyActivations: {}, weeklyActivations: {},
     });
   });
 });

@@ -219,7 +219,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
-    expect(document.elements.forgeBody.innerHTML).toContain('100% ÉXITO');
+    expect(document.elements.forgeBody.innerHTML).toContain('70% ÉXITO');
     expect(document.elements.forgeBody.innerHTML).not.toContain('???');
     expect(JSON.stringify(state)).toBe(beforePreview);
     renderFusionView(document, state, 'relic_03', 'relic_06');
@@ -227,7 +227,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-result-preview');
     expect(document.elements.forgeBody.innerHTML).toContain('data-fuse-relics="relic_03|relic_06" disabled');
     const fused = fuseRelics({
-      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-fusion', nowTimestamp: 10,
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-fusion', randomValue: 0, nowTimestamp: 10,
     });
     renderFusionView(document, fused, 'relic_01', 'relic_02');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
@@ -279,7 +279,7 @@ describe('interfaz de inventario y botín', () => {
     state.economy.coins = 500;
     state.economy.bossBlood = 5;
     const fused = fuseRelics({
-      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'collection', nowTimestamp: 10,
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'collection', randomValue: 0, nowTimestamp: 10,
     });
     renderInventoryView(document, fused);
     renderCollectionView(document, fused);

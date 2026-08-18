@@ -45,6 +45,7 @@ describe('persistencia atómica de operaciones de loot', () => {
       leftId: 'relic_01',
       rightId: 'relic_02',
       operationId: 'rollback-fusion',
+      randomValue: 0,
       nowTimestamp: 2,
     });
     let applied = previousState;

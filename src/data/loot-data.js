@@ -24,6 +24,7 @@ export const SHOP_ROTATION_DAYS = 3;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
 export const FUSION_COIN_COST = 100;
 export const FUSION_BLOOD_COST = 1;
+export const FUSION_SUCCESS_PROBABILITIES = Object.freeze([70, 85, 100]);
 
 export const CHARGE_MECHANICS = {
   constancy: { id: 'constancy', label: 'Constancia', max: 6 },

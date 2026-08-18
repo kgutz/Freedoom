@@ -588,7 +588,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
             ? 'No tienes suficientes monedas.'
             : preview.reason === 'blood'
               ? 'No tienes suficiente Sangre de Jefe.'
-              : preview.definition ? 'Resultado listo · fusión 100% segura.' : 'Elige dos reliquias base.';
+              : preview.definition ? `Resultado listo · ${preview.successProbability}% de éxito.` : 'Elige dos reliquias base.';
   const choices = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
     .map((definition) => {
@@ -604,7 +604,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
     ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible.</small></p>'
     : `<p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
-    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>La Fusión es segura, pero consume permanentemente las dos reliquias base. Podrás recuperarlas después mediante la Tienda.</p><p>La rareza y el rango más altos están garantizados. Cada efecto conserva la potencia exacta que tenía en su reliquia de origen: fusionar no lo mejora gratis.</p><p>Un efecto extra asegura Legendario y dos o más aseguran Mítico. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Cada intento cuesta monedas. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. La rareza y el rango más altos están garantizados.</p><p>Cada efecto conserva la potencia exacta que tenía en su reliquia de origen. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="fusion-flow" aria-label="Receta de Fusión">
       <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
       ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
@@ -738,8 +738,11 @@ export function forgeResultMarkup(result, relicName, relicId) {
 }
 
 export function fusionResultMarkup(result) {
-  const definition = fusionDefinition(result.historyEntry?.recipeId);
+  const definition = fusionDefinition(result.historyEntry?.recipeId || result.preview?.definition?.recipeId);
   if (!definition) return '';
+  if (!result.success) {
+    return `<div class="forge-result failure fusion-result"><span>FUSIÓN FALLIDA</span><div class="forge-result-art">${relicArt(definition)}</div><h3>Las reliquias rechazan la unión.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>Las dos reliquias y la Sangre de Jefe se conservan.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+  }
   const rarity = RARITIES[result.fusedRelic?.rarity] || RARITIES.rare;
   const affixCount = result.fusedRelic?.affixes?.length || 0;
   return `<div class="forge-result success fusion-result"><span>${result.newlyDiscovered ? 'NUEVA RELIQUIA DESCUBIERTA' : 'FUSIÓN COMPLETADA'}</span><div class="forge-result-art">${relicArt(definition)}</div><h3>${escapeHtml(definition.name)}</h3><b class="fusion-result-rarity-label ${rarityClass(result.fusedRelic?.rarity)}">${rarity.label} · RANGO ${result.fusedRelic?.rank || 1} · ${affixCount} EFECTO${affixCount === 1 ? '' : 'S'} EXTRA${affixCount === 1 ? '' : 'S'}</b><p>Las dos reliquias base han sido consumidas.</p><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', result.spentCoins)}${resourceValue('boss-blood', result.spentBossBlood)}</div></div>`;
