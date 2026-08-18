@@ -115,7 +115,13 @@ describe('modelo de Héroe', () => {
     })).toBe('HOY');
     expect(activeSpellStatus({
       spellId: 'balsamo',
-      game: { buffs: {} },
+      game: { buffs: { balm: { until: now + 30 * 60_000 } } },
+      nowTimestamp: now,
+      today: '2026-07-26',
+    })).toBe('30m');
+    expect(activeSpellStatus({
+      spellId: 'peste',
+      game: { buffs: { pesteDay: '2026-07-26' } },
       nowTimestamp: now,
       today: '2026-07-26',
     })).toBeNull();
@@ -156,12 +162,6 @@ describe('modelo de Héroe', () => {
       boss: { hp: 62, maxHp: 100, hpPercent: 62 },
     });
     expect(model.skillEffects).toEqual([
-      {
-        spellId: 'certero',
-        icon: 'certero',
-        name: 'Ojo Certero',
-        remaining: '2m',
-      },
       {
         kind: 'intoxication',
         spellId: 'intoxication',
@@ -330,10 +330,10 @@ describe('modelo de Héroe', () => {
     expect(heroSkillsModalBody.innerHTML).toContain('spell-effect-active');
     expect(heroSkillsModalBody.innerHTML).toContain('>30m</span>');
     expect((heroSkillsModalBody.innerHTML.match(/passive-effect-active/g) || []).length).toBe(2);
-    expect(heroContent.innerHTML).toContain('class="skill-buff-icon"');
+    expect(heroContent.innerHTML).toContain('skill-buff-icon--intoxication');
     expect(heroContent.innerHTML).toContain('class="hero-visual-effects"');
-    expect(heroContent.innerHTML).toContain('Ojo Certero: 30m restantes');
-    expect(heroContent.innerHTML).toContain('effect_icons/paladin_effect_certero.png');
+    expect(heroContent.innerHTML).not.toContain('Ojo Certero: 30m restantes');
+    expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');
     expect(heroContent.innerHTML).toContain('skill-buff--intoxication');
     expect(heroContent.innerHTML).toContain('Borrachera 25%: 41m restantes');

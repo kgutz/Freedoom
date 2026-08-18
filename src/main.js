@@ -1493,7 +1493,7 @@ function closeSkillConfirmation(){
 }
 
 function skillSelectionLimit(spell){
-  if(spell.id==='renacer') return {min:1,max:1};
+  if(spell.id==='renacer'||spell.id==='alma') return {min:1,max:1};
   if(spell.id==='juicio') return {min:2,max:3};
   return {min:2,max:2};
 }
@@ -1537,16 +1537,9 @@ function openSkillHabitPicker(spell){
 }
 
 function openSkillConfirmation(spell,selectedHabitIds=[],targetHabitId=null){
-  const all=normalizeHabitState(state.habits).items;
-  const selected=all.filter(habit=>selectedHabitIds.includes(habit.id)||habit.id===targetHabitId);
-  const hpCost=spell.hpCost?` + ${spell.hpCost}% de vida máxima`:'';
   document.getElementById('skillConfirmTitle').textContent=`¿Activar ${spell.name}?`;
   document.getElementById('skillConfirmBody').innerHTML=`
-    <div class="skill-confirm-summary">
-      ${selected.length?`<b>${selected.map(habit=>habit.title).join(' · ')}</b><br>`:''}
-      <span>${spell.d}</span>
-    </div>
-    <div class="skill-confirm-cost"><span>Coste al confirmar</span><b>${spell.cost} 💧${hpCost}</b></div>`;
+    <div class="skill-confirm-cost"><span>Coste de maná</span><b>${spell.cost} 💧</b></div>`;
   pendingSkillCast={spell,selectedHabitIds,targetHabitId,confirmed:true};
   document.getElementById('skillConfirmBg').classList.add('show');
 }
@@ -1599,12 +1592,7 @@ function castSpell(id,options={}){
     return;
   }
   if(sp.modern&&sp.id==='alma'&&!options.confirmed){
-    const target=weakestPendingHabit();
-    if(!target){
-      showToast('No puedes usar esta habilidad · no hay hábitos diarios pendientes','dmg');
-      return;
-    }
-    openSkillConfirmation(sp,[],target.id);
+    openSkillHabitPicker(sp);
     return;
   }
   const w=Math.max(0,weekIndexOf(currentDayDate()));
@@ -3431,7 +3419,12 @@ document.getElementById('skillHabitPickerContinue').addEventListener('click',()=
   const limit=skillSelectionLimit(spell);
   if(selected.length<limit.min) return;
   closeSkillHabitPicker();
-  openSkillConfirmation(spell,selected,spell.id==='renacer'?selected[0]:null);
+  pendingSkillCast=null;
+  castSpell(spell.id,{
+    confirmed:true,
+    selectedHabitIds:selected,
+    targetHabitId:spell.id==='renacer'||spell.id==='alma'?selected[0]:null,
+  });
 });
 document.getElementById('skillConfirmCancel').addEventListener('click',()=>{
   closeSkillConfirmation();

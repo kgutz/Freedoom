@@ -164,20 +164,7 @@ export function createHeroModel({
 
   const buffs = game.buffs || {};
   const nowTimestamp = now.getTime();
-  const skillEffects = classData.act
-    .map((ability) => ({
-      spellId: ability.id,
-      icon: ability.icon,
-      name: ability.name,
-      remaining: activeSpellStatus({
-        spellId: ability.id,
-        game,
-        nowTimestamp,
-        today,
-        smokeFreeMode: usesSmokeFreeSkills(config),
-      }),
-    }))
-    .filter((effect) => /^\d+m$/.test(effect.remaining || ''));
+  const skillEffects = [];
   if (intoxication?.level > 0) {
     skillEffects.push({
       kind: 'intoxication',
@@ -227,6 +214,7 @@ export function activeSpellStatus({
   }
   if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
   if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
+  if (spellId === 'balsamo') return remainingMinutesLabel(buffs.balm?.until, nowTimestamp);
   if (spellId === 'certero') {
     if (smokeFreeMode) return buffs.habitFocusCharges > 0 ? `×${buffs.habitFocusCharges}` : null;
     return remainingMinutesLabel(buffs.certeroUntil, nowTimestamp);
@@ -246,12 +234,6 @@ export function activeSpellStatus({
     return (game?.judgmentDays || []).includes(today) ? 'HOY' : null;
   }
   if (spellId === 'alma' && powers.soulWager && !powers.soulWager.completed) return '24H';
-  if (spellId === 'peste') {
-    const active = smokeFreeMode
-      ? (game?.pestXpDays || []).includes(today)
-      : buffs.pesteDay === today;
-    return active ? 'HOY' : null;
-  }
   return null;
 }
 
@@ -282,6 +264,7 @@ function quickSkillIcon(classId, level, ability, status = null) {
   return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}" title="${ability.name}">
     <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
+    ${status ? `<span class="skill-active-timer hero-skill-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
   </button>`;
 }
 
