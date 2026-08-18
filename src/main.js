@@ -175,7 +175,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.83';
+const APP_VERSION='1.84';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -1680,6 +1680,7 @@ function openInventory(){
   document.getElementById('sheetInventory').classList.add('show');
   positionInventorySheetFromForge();
 }
+document.getElementById('hoyFace')?.addEventListener('click',openInventory);
 let inventoryPositionFrame=0;
 function scheduleInventorySheetPosition(){
   if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
@@ -2646,8 +2647,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     renderHabits();
     return;
   }
-  if(event.target.closest('[data-open-settings]')){
-    openAjustes();
+  if(event.target.closest('[data-open-inventory]')){
+    openInventory();
     return;
   }
   if(event.target.closest('[data-add-habit]')){
@@ -3008,10 +3009,6 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-hero-skills]')){
     showHeroSkillsPanel();
     document.getElementById('sheetHeroSkills').classList.add('show');
-    return;
-  }
-  if(e.target.closest('.sprite-box')){
-    openAjustes();
     return;
   }
   if(e.target.closest('#bossInfoBtn')){

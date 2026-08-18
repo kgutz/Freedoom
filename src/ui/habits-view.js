@@ -141,7 +141,7 @@ export function renderHabitsView({
     </div>
     <div class="habit-hero-card">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite" type="button" data-open-settings aria-label="Abrir ajustes del héroe"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></button>
+      <button class="habit-hero-sprite" type="button" data-open-inventory aria-label="Abrir inventario"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></button>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
