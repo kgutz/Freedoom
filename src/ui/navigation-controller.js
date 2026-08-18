@@ -9,6 +9,7 @@ export function bindNavigation({
   document,
   window,
   onOpenSettings,
+  onOpenInventory,
   onOpenRecoveries,
   onHabits,
   onCalendar,
@@ -35,7 +36,7 @@ export function bindNavigation({
   });
 
   document.getElementById('view-hoy').addEventListener('click', (event) => {
-    if (event.target.closest('.hoy-face')) onOpenSettings();
+    if (event.target.closest('.hoy-face')) onOpenInventory();
   });
   document.getElementById('navMenu').addEventListener('click', () => {
     document.getElementById('menuBg').classList.add('show');

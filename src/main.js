@@ -175,7 +175,9 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.84';
+const APP_VERSION='1.85';
+const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
+const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -1676,11 +1678,40 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   positionInventorySheetFromForge();
 }
 function openInventory(){
+  const inventoryBody=document.getElementById('inventoryBody');
+  if(inventoryBody) inventoryBody.scrollTop=0;
   showInventoryPanel('inventory');
   document.getElementById('sheetInventory').classList.add('show');
   positionInventorySheetFromForge();
+  requestAnimationFrame(()=>{
+    const refreshedInventoryBody=document.getElementById('inventoryBody');
+    if(refreshedInventoryBody) refreshedInventoryBody.scrollTop=0;
+  });
 }
-document.getElementById('hoyFace')?.addEventListener('click',openInventory);
+function syncInventoryShortcutHint(){
+  let seen=false;
+  try{ seen=localStorage.getItem(INVENTORY_SHORTCUT_HINT_KEY)==='1'; }catch{}
+  if(FORCE_INVENTORY_SHORTCUT_HINT) seen=false;
+  document.documentElement.classList.toggle('inventory-shortcut-unseen',!seen);
+}
+function dismissInventoryShortcutHint(){
+  try{ localStorage.setItem(INVENTORY_SHORTCUT_HINT_KEY,'1'); }catch{}
+  document.documentElement.classList.remove('inventory-shortcut-unseen');
+}
+function restartInventoryShortcutHint(){
+  let seen=false;
+  try{ seen=localStorage.getItem(INVENTORY_SHORTCUT_HINT_KEY)==='1'; }catch{}
+  if(FORCE_INVENTORY_SHORTCUT_HINT) seen=false;
+  if(seen) return;
+  document.documentElement.classList.remove('inventory-shortcut-unseen');
+  void document.documentElement.offsetWidth;
+  document.documentElement.classList.add('inventory-shortcut-unseen');
+}
+function openInventoryFromShortcut(){
+  dismissInventoryShortcutHint();
+  openInventory();
+}
+syncInventoryShortcutHint();
 let inventoryPositionFrame=0;
 function scheduleInventorySheetPosition(){
   if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
@@ -2222,6 +2253,7 @@ const navigation=bindNavigation({
   document,
   window,
   onOpenSettings:openAjustes,
+  onOpenInventory:openInventoryFromShortcut,
   onOpenRecoveries:openRecoveryModal,
   onHabits:renderHabits,
   onCalendar:()=>{
@@ -2233,8 +2265,12 @@ const navigation=bindNavigation({
 document.getElementById('navHero').addEventListener('click',()=>{
   renderHero();
 });
+['navHoy','navHabits','navHero'].forEach(id=>{
+  document.getElementById(id)?.addEventListener('click',restartInventoryShortcutHint);
+});
 function switchView(viewId,buttonId){
   navigation.switchView(viewId,buttonId);
+  if(viewId==='view-hoy'||viewId==='view-habits'||viewId==='view-hero') restartInventoryShortcutHint();
 }
 
 /* controles de la gráfica */
@@ -2648,6 +2684,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     return;
   }
   if(event.target.closest('[data-open-inventory]')){
+    if(event.target.closest('[data-inventory-shortcut]')) dismissInventoryShortcutHint();
     openInventory();
     return;
   }
@@ -3003,6 +3040,7 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-open-inventory]')){
+    if(e.target.closest('[data-inventory-shortcut]')) dismissInventoryShortcutHint();
     openInventory();
     return;
   }
