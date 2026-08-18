@@ -363,7 +363,7 @@ describe('Sinergias de Fusión', () => {
   });
 
   it.each([
-    ['fusion_02', 'relic_01', 'relic_04', 20, 35],
+    ['fusion_02', 'relic_01', 'relic_04', 20, 40],
   ])('concede una sola recompensa semanal para %s además de Constancia',
     (_fusionId, leftId, rightId, synergyXp, expectedTotal) => {
       let state = fuse(fusionState(6), leftId, rightId);

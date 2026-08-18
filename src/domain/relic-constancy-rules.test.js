@@ -12,6 +12,7 @@ import {
 } from './loot-rules.js';
 import { weeklyBossPenalty } from './hero-rules.js';
 import { calculateGameStats } from './progression-rules.js';
+import { relicRankEffect } from '../data/loot-data.js';
 
 const SIX_HITS = ['hit', 'hit', 'hit', 'hit', 'hit', 'hit', 'pend'];
 
@@ -76,7 +77,7 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
     expect(constancyCharge(week.pips)).toBe(6);
   });
 
-  it.each([[1, 15], [2, 25], [3, 40]])(
+  it.each([[1, 20], [2, 30], [3, 45]])(
     'Rango %i entrega %i XP completa fuera de los caps de hábitos',
     (rank, expectedXp) => {
       const state = yelmoState(rank);
@@ -137,11 +138,15 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
     const repeated = activateRelicConstancy({
       state: restored, cycleId, outcomes: SIX_HITS, bossWon: true, nowTimestamp: 20,
     });
-    expect(first.xp).toBe(40);
+    expect(first.xp).toBe(45);
     expect(repeated.activated).toBe(false);
     expect(repeated.xp).toBe(0);
     expect(Object.keys(repeated.inventory.weeklyActivations)
       .filter((key) => key === constancyActivationKey(cycleId))).toHaveLength(1);
+  });
+
+  it('mantiene la Daga de Alquitrán exactamente en 2, 3 y 4 XP', () => {
+    expect([1, 2, 3].map((rank) => relicRankEffect('relic_03', rank))).toEqual([2, 3, 4]);
   });
 
   it('sincroniza y persiste la carga sin entregar recompensas durante renderizados', () => {

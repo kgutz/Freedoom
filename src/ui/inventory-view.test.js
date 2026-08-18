@@ -127,7 +127,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Yelmo de la Última Brasa');
     expect(html).toContain('CONSTANCIA');
     expect(html).toContain('Carga actual: 4/6');
-    expect(html).toContain('Valor actual: 25 XP');
+    expect(html).toContain('Valor actual: 30 XP');
     expect(html).not.toContain('puntos porcentuales');
   });
 
