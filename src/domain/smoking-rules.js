@@ -63,10 +63,7 @@ export function evaluateSmoke({
   } else if (smoked === 0 && nowMinutes < logicalWakeMinutes) {
     damage = 15;
   } else if (limit <= 0 || smokedAfter > limit) {
-    damage =
-      classId === 'knight' && level >= 5
-        ? scalePassiveUpgrade(25, 18, passiveMultiplier)
-        : 25;
+    damage = 25;
   } else {
     const lastSmokeMinutes = smokeTimeOfDay(record.t, dayStartTime);
     if (lastSmokeMinutes !== null) {
@@ -88,11 +85,7 @@ export function evaluateSmoke({
   }
 
   let consumesRoots = false;
-  const rootsEligible =
-    damage > 0 &&
-    classId === 'druid' &&
-    level >= 12 &&
-    rootsDay !== today;
+  const rootsEligible = false;
   if (rootsEligible) {
     consumesRoots = true;
     if (passiveActivates(passiveMultiplier, passiveRandomValue)) {
@@ -100,12 +93,6 @@ export function evaluateSmoke({
     }
   }
 
-  if (damage > 0 && classId === 'sorcerer') {
-    damage = Math.max(
-      1,
-      damage - scalePassiveAmount(2, passiveMultiplier),
-    );
-  }
   if (damage > 0 && pestActive) {
     damage = Math.max(1, Math.round(damage / 2));
   }
@@ -125,10 +112,7 @@ export function evaluateSmoke({
     shielded,
     consumesRoots,
     consumesShield: shielded,
-    healing:
-      perfect && classId === 'paladin' && level >= 5
-        ? scalePassiveAmount(3, passiveMultiplier)
-        : 0,
+    healing:0,
   };
 }
 
@@ -144,9 +128,7 @@ export function perfectShotRewards({
   return {
     xp: marksmanActive
       ? 5
-      : classId === 'paladin'
-        ? scalePassiveUpgrade(2, 3, passiveMultiplier)
-        : 2,
+      : 2,
     mana: ashCurseActive ? 20 : 10,
   };
 }

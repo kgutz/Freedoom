@@ -23,14 +23,14 @@ export const CLASSES={
       "...OO......OO..."
     ],
     pas:[
-      {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas armadura cada 2 días de racha (en vez de 3).'},
-      {lvl:5,icon:'yelmo',name:'Yelmo Templado',d:'Pasarte del límite hace −18 en vez de −25.'},
-      {lvl:12,icon:'voluntad',name:'Voluntad de Acero',d:'Tras un día fallido amaneces al 85% de tu vida (en vez del 75%).'}
+      {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas Armadura cada 2 días de racha.'},
+      {lvl:5,icon:'voluntad',name:'Voluntad de Acero',d:'Día correcto con Armadura: +4 XP (5/semana).'},
+      {lvl:12,icon:'yelmo',name:'Yelmo Templado',d:'Día correcto con 3 hábitos: +1 moneda (4/semana).'}
     ],
     act:[
-      {lvl:2,id:'muro',icon:'muro',name:'Muro de Escudos',cost:30,d:'Los próximos 2 cigarros no hacen daño.'},
-      {lvl:8,id:'grito',icon:'grito',name:'Grito de Guerra',cost:50,d:'+20 de vida al instante.'},
-      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:90,ulti:true,d:'Tu racha sobrevive al próximo día fallido. 1 uso por semana.'}
+      {lvl:2,id:'grito',icon:'grito',name:'Grito de Guerra',cost:30,modern:true,d:'+10% Vida y +2 Armadura para el próximo golpe.'},
+      {lvl:8,id:'muro',icon:'muro',name:'Muro de Escudos',cost:40,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 monedas al completar ambos.'},
+      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:60,ulti:true,modern:true,d:'Cada día correcto suma 1 carga. Con 6: +5 XP y Armadura máxima hasta el próximo jefe.'}
     ]
   },
   paladin:{
@@ -57,14 +57,14 @@ export const CLASSES={
       "...OO....OO....."
     ],
     pas:[
-      {lvl:1,icon:'ojohalcon',name:'Ojo del Halcón',d:'Los disparos perfectos dan +3 XP (en vez de +2).'},
-      {lvl:5,icon:'flecha',name:'Flecha Bendita',d:'Cada disparo perfecto además cura +3 de vida.'},
-      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'El bonus por margen sube a +5 XP por cigarro (en vez de +4).'}
+      {lvl:1,icon:'flecha',name:'Flecha Bendita',d:'Día correcto: recupera 5% de vida.'},
+      {lvl:5,icon:'ojohalcon',name:'Ojo del Halcón',d:'Día correcto con 2 hábitos: +4 XP (5/semana).'},
+      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'Días correctos 3 y 5: +2 monedas.'}
     ],
     act:[
-      {lvl:2,id:'certero',icon:'certero',name:'Ojo Certero',cost:25,d:'Durante 1 hora, los disparos perfectos dan +5 XP.'},
-      {lvl:8,id:'luz',icon:'luz',name:'Luz Sanadora',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:80,ulti:true,d:'Si hoy cierras cumpliendo, la XP del día ×2. 1 uso por semana.'}
+      {lvl:2,id:'luz',icon:'luz',name:'Luz Sanadora',cost:35,modern:true,d:'+10% Vida. El próximo hábito recupera 5% de Maná.'},
+      {lvl:8,id:'certero',icon:'certero',name:'Ojo Certero',cost:45,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 monedas al completar ambos.'},
+      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Bendice hasta 3 hábitos. Completarlos concede +5 XP.'}
     ]
   },
   sorcerer:{
@@ -91,14 +91,14 @@ export const CLASSES={
       "...OOOOOOOOOO..."
     ],
     pas:[
-      {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Cada cigarro adelantado te quita −2 menos (drenas su fuerza).'},
-      {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'Batir tu mínimo histórico da +40 XP (en vez de +25).'},
-      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Maldición de Ceniza dura 3 horas (en vez de 2).'}
+      {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Primer hábito del día: +5% Maná.'},
+      {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'4 hábitos: +5 XP (4/semana).'},
+      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Gasta 50 de Maná: +2 monedas y −15% Vida (2/semana).'}
     ],
     act:[
-      {lvl:2,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:30,d:'Durante 2 horas, cada disparo perfecto da el doble de maná (+20).'},
-      {lvl:8,id:'peste',icon:'peste',name:'Peste al Antojo',cost:35,d:'Los cigarros de hoy hacen la mitad de daño.'},
-      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,d:'Convierte todo tu maná en vida (2 maná = 1 vida). Mínimo 40 de maná. 1 uso por semana.'}
+      {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima.'},
+      {lvl:8,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:50,habitChallenge:true,autoHabitChallenge:true,modern:true,d:'Los primeros 2 hábitos conceden +5 XP y recuperan 5 de maná. Completar ambos concede 2 monedas.'},
+      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,modern:true,d:'Cumple tu hábito más débil en 24 h: recupera el Maná y gana +5 XP.'}
     ]
   },
   druid:{
@@ -125,14 +125,14 @@ export const CLASSES={
       "...OOOOOOOOOO..."
     ],
     pas:[
-      {lvl:1,icon:'savia',name:'Savia Viva',d:'Regeneras +1 de vida cada 7 minutos (en vez de 10).'},
-      {lvl:5,icon:'pocion',name:'Poción Mayor',d:'Completar las pastillas del día cura +20 (en vez de +15).'},
-      {lvl:12,icon:'raices',name:'Raíces Profundas',d:'El primer cigarro adelantado de cada día no hace daño.'}
+      {lvl:1,icon:'savia',name:'Savia Viva',d:'Día correcto: recupera 8% de Vida.'},
+      {lvl:5,icon:'raices',name:'Raíces Profundas',d:'4 hábitos: +5 XP (4/semana).'},
+      {lvl:12,icon:'pocion',name:'Poción Mayor',d:'Cumple tus objetivos de salud: +1 moneda (4/semana).'}
     ],
     act:[
-      {lvl:2,id:'regen',icon:'regen',name:'Regeneración',cost:30,d:'Durante 2 horas regeneras vida al doble de velocidad.'},
-      {lvl:8,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:40,d:'+15 de vida al instante.'},
-      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:90,ulti:true,d:'Esta noche amaneces a tu vida máxima pase lo que pase. 1 uso por semana.'}
+      {lvl:2,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:50,modern:true,d:'+6% Vida ahora y +9% durante 30 min.'},
+      {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno; ambos dan +2 monedas.'},
+      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Completa un hábito 3 veces en 7 días: Vida completa y +5 XP.'}
     ]
   }
 };
@@ -198,8 +198,7 @@ export const SMOKE_FREE_SKILLS={
 export function classDataForJourney(classId,{smokeFree=false}={}){
   const base=CLASSES[classId];
   if(!base) return null;
-  const pack=smokeFree?SMOKE_FREE_SKILLS[classId]:null;
-  return pack?{...base,...pack}:base;
+  return base;
 }
 
 export const BOSSES=[
@@ -247,3 +246,4 @@ export const CLASS_GROWTH={
   sorcerer:{hp:2, mp:8},   /* mago puro */
   druid:   {hp:3, mp:7}    /* mago sanador */
 };
+

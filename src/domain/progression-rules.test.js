@@ -78,7 +78,7 @@ describe('progreso completo', () => {
       ...common,game:{cls:'knight',bonusXp:5000},
     });
 
-    expect(paladin.xp-knight.xp).toBe(30);
+    expect(paladin.xp-knight.xp).toBe(0);
   });
 
   it('aplica Cosecha Oscura y Peste sin modificar los sellos del jefe',()=>{
@@ -97,7 +97,7 @@ describe('progreso completo', () => {
       game:{cls:'sorcerer',bonusXp:1000,pestXpDays:['2026-07-19']},
     });
 
-    expect(sorcerer.xp-base.xp).toBe(35);
+    expect(sorcerer.xp-base.xp).toBe(0);
     expect(sorcerer.bossesDown).toBe(base.bossesDown);
   });
   it('calcula XP, racha y nivel desde los días guardados', () => {

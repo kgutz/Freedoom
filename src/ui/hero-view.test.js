@@ -182,7 +182,7 @@ describe('modelo de Héroe', () => {
       },
     }));
 
-    expect(model.classData.pas[0].d).toContain('55 XP');
+    expect(model.classData.pas[0].d).toContain('5% de vida');
     expect(model.classData.pas[0].d).not.toContain('disparos perfectos');
     expect(model.skillEffects).toEqual([]);
   });

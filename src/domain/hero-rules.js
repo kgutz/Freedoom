@@ -18,9 +18,7 @@ export function dailyRecovery({
 
   let hp;
   if (rebirthActive) hp = maxHp;
-  else if (classId === 'knight' && level >= 12) {
-    hp = Math.round(maxHp * (0.75 + 0.1 * passiveMultiplier));
-  } else {
+  else {
     hp = Math.round(maxHp * 0.75);
   }
 
@@ -41,8 +39,7 @@ export function regenerationIntervalMinutes({
   druidFastRegeneration = true,
   additiveMinutesReduction = 0,
 }) {
-  const baseInterval =
-    classId === 'druid'&&druidFastRegeneration ? 10 - 3 * passiveMultiplier : 10;
+  const baseInterval = 10;
   const reducedInterval = Math.max(
     1,
     baseInterval - Math.max(0, Number(additiveMinutesReduction) || 0),
@@ -89,10 +86,7 @@ export function pillCompletionReward({
   passiveMultiplier = 1,
 }) {
   return {
-    healing:
-      classId === 'druid' && level >= 5
-        ? 15 + Math.round(5 * passiveMultiplier)
-        : 15,
+    healing:15,
     mana: 15,
   };
 }

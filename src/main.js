@@ -175,15 +175,16 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.85';
+const APP_VERSION='1.86';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
-const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoFusions')==='1';
+const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
 const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoConstancy')||'0',10)||0))
   : null;
@@ -197,6 +198,8 @@ const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
     ? `${STORAGE_KEY}:demo-paladin-effects-v3`
+    : LOCAL_DEMO_PROFILE==='control'
+    ? `${STORAGE_KEY}:demo-control-complete-v2`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -234,10 +237,11 @@ let selectedClassChange=null;
 let initializeLocalDemo=false;
 let observedHeroLevel=null;
 let pendingHeroLevelUp=false;
+let pendingSkillCast=null;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
-createRecoveryModeController({
+const recoveryModeController=createRecoveryModeController({
   logo:document.querySelector('.settings-footer .set-logo'),
   emergencySection:document.getElementById('emergencyRecoverySection'),
   showToast
@@ -803,6 +807,36 @@ function prepareLocalBossDemo(){
     state.game.mp=demoMaxes.maxMp;
     state.economy={...state.economy,bossBlood:99,coins:999};
   }
+  if(LOCAL_DEMO_PROFILE==='control'){
+    state.config={
+      ...state.config,
+      journeyMode:'controlled',
+      controlledDays:[5,6,0],
+      controlledWeeklyLimit:6,
+      startLimit:20
+    };
+    state.game={
+      ...state.game,
+      cls:'paladin',
+      name:'Héroe de control',
+      bonusXp:250000,
+      buffs:{},
+      day:todayKey()
+    };
+    const demoMaxes=heroMaxes();
+    state.game.hp=demoMaxes.maxHp;
+    state.game.mp=demoMaxes.maxMp;
+    state.economy={...state.economy,coins:9999,bossBlood:99};
+    if(!normalizeHabitState(state.habits).items.some(habit=>habit.active!==false)){
+      const now=Date.now();
+      state.habits={items:[
+        {id:'demo-water',title:'Beber agua',difficulty:'easy',frequency:'daily',target:1,repeatable:false,active:true,order:0,createdAt:now,updatedAt:now},
+        {id:'demo-walk',title:'Caminar 20 minutos',difficulty:'medium',frequency:'daily',target:1,repeatable:false,active:true,order:1,createdAt:now+1,updatedAt:now+1},
+        {id:'demo-breathe',title:'Respirar antes del antojo',difficulty:'hard',frequency:'daily',target:1,repeatable:false,active:true,order:2,createdAt:now+2,updatedAt:now+2},
+        {id:'demo-read',title:'Leer 10 minutos',difficulty:'medium',frequency:'daily',target:1,repeatable:false,active:true,order:3,createdAt:now+3,updatedAt:now+3}
+      ],entries:{}};
+    }
+  }
   scheduleSave({type:'demo:bosses',count:LOCAL_DEMO_BOSSES});
 }
 
@@ -1291,6 +1325,23 @@ function ensureHero(){
   if(g.mp===undefined) g.mp=heroMaxes().maxMp;
   g.buffs=g.buffs||{};
   let dirty=false;
+  if(g.buffs.balm){
+    const balm=g.buffs.balm;
+    const duration=Math.max(1,(balm.until||now)-(balm.startedAt||now));
+    const fraction=Math.max(0,Math.min(1,(Math.min(now,balm.until||now)-(balm.startedAt||now))/duration));
+    const total=Math.max(0,Number(balm.remaining)||0);
+    const shouldApply=Math.floor(total*fraction);
+    const already=Math.max(0,Number(balm.applied)||0);
+    if(shouldApply>already){
+      g.hp=capHp((g.hp||0)+(shouldApply-already));
+      balm.applied=shouldApply;
+      dirty=true;
+    }
+    if(now>=(balm.until||0)){
+      delete g.buffs.balm;
+      dirty=true;
+    }
+  }
   /* compatibilidad con partidas antiguas que aún no guardaban estas marcas */
   if(!g.day){g.day=todayKey();dirty=true;}
   /* Una partida antigua podía haber cambiado de fecha a medianoche. Durante
@@ -1310,7 +1361,10 @@ function ensureHero(){
         : isControlledMode(previousConfig)
           ? controlledDayCompleted(g.day)
           : c<=lim;
-    if(completedDay) awardRelicDayXp(g.day);
+    if(completedDay){
+      awardRelicDayXp(g.day);
+      applyClassDayRewards(g.day,true);
+    }
     const recovered=dailyRecovery({
       completedDay,
       currentMana:g.mp,
@@ -1416,12 +1470,143 @@ function smokeDamage(){
 }
 
 /* --- lanzar hechizos --- */
-function castSpell(id){
+function pendingDailyHabits(){
+  const normalized=normalizeHabitState(state.habits);
+  const periodKey=`d:${todayKey()}`;
+  return normalized.items.filter(habit=>{
+    if(habit.active===false||habit.frequency!=='daily') return false;
+    const count=Math.max(0,Number(normalized.entries[`${habit.id}|${periodKey}`]?.count)||0);
+    return count<Math.max(1,Number(habit.target)||1);
+  });
+  if(result.dmg>0&&g.buffs?.knightGuard?.day===key){
+    result.dmg=Math.max(0,result.dmg-Math.max(0,Number(g.buffs.knightGuard.amount)||0));
+    delete g.buffs.knightGuard;
+  }
+}
+
+function closeSkillHabitPicker(){
+  document.getElementById('skillHabitPickerBg').classList.remove('show');
+}
+
+function closeSkillConfirmation(){
+  document.getElementById('skillConfirmBg').classList.remove('show');
+}
+
+function skillSelectionLimit(spell){
+  if(spell.id==='renacer') return {min:1,max:1};
+  if(spell.id==='juicio') return {min:2,max:3};
+  return {min:2,max:2};
+}
+
+function renderSkillHabitPicker(){
+  if(!pendingSkillCast) return;
+  const {spell,available,selected}=pendingSkillCast;
+  const limit=skillSelectionLimit(spell);
+  document.getElementById('skillHabitPickerTitle').textContent=spell.name;
+  document.getElementById('skillHabitPickerIntro').textContent=limit.max===1
+    ? 'Selecciona un hábito diario pendiente.'
+    : limit.max===3
+      ? 'Selecciona entre dos y tres hábitos diarios pendientes.'
+      : 'Selecciona dos hábitos diarios pendientes.';
+  document.getElementById('skillHabitPickerList').innerHTML=available.map(habit=>{
+    const isSelected=selected.includes(habit.id);
+    const difficulty=habit.difficulty==='hard'?'Difícil':habit.difficulty==='medium'?'Media':'Fácil';
+    return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${habit.id}" aria-pressed="${isSelected}">
+      <span class="skill-habit-option-mark">${isSelected?'✓':'·'}</span>
+      <span class="skill-habit-option-copy"><b>${habit.title}</b><small>${difficulty} · hábito diario</small></span>
+      <span class="skill-habit-option-xp">+5 XP</span>
+    </button>`;
+  }).join('');
+  const ready=selected.length>=limit.min&&selected.length<=limit.max;
+  const count=document.getElementById('skillHabitPickerCount');
+  count.textContent=`${selected.length} de ${limit.max} seleccionados`;
+  count.classList.toggle('ready',ready);
+  document.getElementById('skillHabitPickerContinue').disabled=!ready;
+}
+
+function openSkillHabitPicker(spell){
+  const available=pendingDailyHabits();
+  const limit=skillSelectionLimit(spell);
+  if(available.length<limit.min){
+    showToast(`No puedes usar esta habilidad · necesitas ${limit.min} hábitos diarios pendientes`,'dmg');
+    return;
+  }
+  pendingSkillCast={spell,available,selected:[]};
+  renderSkillHabitPicker();
+  document.getElementById('skillHabitPickerBg').classList.add('show');
+}
+
+function openSkillConfirmation(spell,selectedHabitIds=[],targetHabitId=null){
+  const all=normalizeHabitState(state.habits).items;
+  const selected=all.filter(habit=>selectedHabitIds.includes(habit.id)||habit.id===targetHabitId);
+  const hpCost=spell.hpCost?` + ${spell.hpCost}% de vida máxima`:'';
+  document.getElementById('skillConfirmTitle').textContent=`¿Activar ${spell.name}?`;
+  document.getElementById('skillConfirmBody').innerHTML=`
+    <div class="skill-confirm-summary">
+      ${selected.length?`<b>${selected.map(habit=>habit.title).join(' · ')}</b><br>`:''}
+      <span>${spell.d}</span>
+    </div>
+    <div class="skill-confirm-cost"><span>Coste al confirmar</span><b>${spell.cost} 💧${hpCost}</b></div>`;
+  pendingSkillCast={spell,selectedHabitIds,targetHabitId,confirmed:true};
+  document.getElementById('skillConfirmBg').classList.add('show');
+}
+
+function weakestPendingHabit(){
+  const candidates=pendingDailyHabits();
+  return [...candidates].sort((a,b)=>{
+    const weight={easy:1,medium:2,hard:3};
+    return (weight[b.difficulty]||1)-(weight[a.difficulty]||1);
+  })[0]||null;
+}
+
+function applyFilacteria(spentMana){
+  const g=state.game;
+  if(g?.cls!=='sorcerer'||gameStats().lvl<12||spentMana<=0) return '';
+  const rewards=g.powerProgress=g.powerProgress||{};
+  const week=Math.max(0,weekIndexOf(currentDayDate()));
+  const progressKey=`filacteria-mana:${week}`;
+  const usesKey=`filacteria-uses:${week}`;
+  rewards[progressKey]=(Number(rewards[progressKey])||0)+spentMana;
+  rewards[usesKey]=Number(rewards[usesKey])||0;
+  let activations=0;
+  while(rewards[progressKey]>=50&&rewards[usesKey]<2){
+    rewards[progressKey]-=50;
+    rewards[usesKey]+=1;
+    state.economy.coins+=2;
+    const sacrifice=Math.max(1,Math.round(heroMaxes().maxHp*0.15));
+    g.hp=Math.max(1,(g.hp||1)-sacrifice);
+    activations+=1;
+  }
+  return activations?` · Filacteria ×${activations} · +${activations*2} 🪙`:'';
+}
+
+function castSpell(id,options={}){
   ensureHero();
   const g=state.game;
   const st=gameStats();
   const C=classDataForJourney(g.cls,{smokeFree:usesSmokeFreeSkills(state.config)}); if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
+  if(sp.autoHabitChallenge&&!options.confirmed){
+    if(pendingDailyHabits().length<2){
+      showToast('No puedes usar esta habilidad · necesitas 2 hábitos diarios pendientes','dmg');
+      return;
+    }
+    openSkillConfirmation(sp);
+    return;
+  }
+  if(sp.habitChallenge&&!options.confirmed){
+    openSkillHabitPicker(sp);
+    return;
+  }
+  if(sp.modern&&sp.id==='alma'&&!options.confirmed){
+    const target=weakestPendingHabit();
+    if(!target){
+      showToast('No puedes usar esta habilidad · no hay hábitos diarios pendientes','dmg');
+      return;
+    }
+    openSkillConfirmation(sp,[],target.id);
+    return;
+  }
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
   const intoxication=currentIntoxication(now);
@@ -1436,10 +1621,13 @@ function castSpell(id){
     today:todayKey(),
     nowTimestamp:now,
     maxHp:st.maxHp,
+    maxMp:st.maxMp,
     activeFailureChance:intoxication.activeFailureChance,
     passiveMultiplier:intoxication.passiveMultiplier,
     smokeFreeMode:usesSmokeFreeSkills(state.config),
-    manaDiscount
+    manaDiscount,
+    selectedHabitIds:options.selectedHabitIds||[],
+    targetHabitId:options.targetHabitId||null
   });
   if(manaDiscount>0&&(result.ok||result.reason==='intoxicated')){
     applyLootSlices(markDailyEffectSources(state,'relic_05',spellDayKey,discountSources,true));
@@ -1451,6 +1639,10 @@ function castSpell(id){
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
+    else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó esta semana','dmg');
+    else if(result.reason==='habits') showToast('No hay suficientes hábitos diarios pendientes','dmg');
+    else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
+    else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
     else if(result.minimumMana) showToast('Necesitas al menos '+result.requiredMana+' 💧','dmg');
     else if(result.reason==='mana') showToast('Maná insuficiente ('+result.requiredMana+' 💧)','dmg');
     else if(result.reason==='intoxicated'){
@@ -1463,19 +1655,20 @@ function castSpell(id){
     return;
   }
   state.game=result.game;
+  const filacteriaNotice=applyFilacteria(result.spentMana||0);
   switch(id){
-    case 'alma': showToast('Robar Alma · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
-    case 'ceniza': showToast('☠ Maldición de Ceniza · −'+result.spentMana+' 💧','heal');break;
-    case 'muro': showToast('🛡 Muro de Escudos · −'+result.spentMana+' 💧','heal');break;
-    case 'grito': showToast('Grito de Guerra · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
-    case 'bastion': showToast('🏰 Último Bastión · −'+result.spentMana+' 💧','heal');break;
-    case 'certero': showToast('🎯 Ojo Certero · −'+result.spentMana+' 💧','heal');break;
-    case 'luz': showToast('Luz Sanadora · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
-    case 'juicio': showToast('⚖️ Juicio Divino · −'+result.spentMana+' 💧','heal');break;
-    case 'peste': showToast('☠ Peste al Antojo · −'+result.spentMana+' 💧','heal');break;
-    case 'regen': showToast('🌿 Regeneración · −'+result.spentMana+' 💧','heal');break;
-    case 'balsamo': showToast('Bálsamo · −'+result.spentMana+' 💧 · +'+result.healing+' ♥','heal');break;
-    case 'renacer': showToast('🌅 Renacer · −'+result.spentMana+' 💧','heal');break;
+    case 'alma': showToast('Robar Alma · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'ceniza': showToast('☠ Maldición de Ceniza · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'muro': showToast('🛡 Muro de Escudos · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'grito': showToast('Grito de Guerra · −'+result.spentMana+' 💧 · +'+result.healing+' ♥'+filacteriaNotice,'heal');break;
+    case 'bastion': showToast('🏰 Último Bastión · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'certero': showToast('🎯 Ojo Certero · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'luz': showToast('Luz Sanadora · −'+result.spentMana+' 💧 · +'+result.healing+' ♥'+filacteriaNotice,'heal');break;
+    case 'juicio': showToast('⚖️ Juicio Divino · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'peste': showToast('☠ Drenaje del Antojo · −'+result.spentMana+' 💧 · +'+result.healing+' ♥'+filacteriaNotice,'heal');break;
+    case 'regen': showToast('🌿 Regeneración · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
+    case 'balsamo': showToast('Bálsamo · −'+result.spentMana+' 💧 · +'+result.healing+' ♥'+filacteriaNotice,'heal');break;
+    case 'renacer': showToast('🌅 Renacer · −'+result.spentMana+' 💧'+filacteriaNotice,'heal');break;
   }
   scheduleSave();
   renderHero();
@@ -1827,7 +2020,10 @@ function closeModal(){
   }
   setDay(editingKey,c,p,undefined,b,undefined,{type:'day:update',day:editingKey,cigarettes:c,pills:p,beers:b});
   if(editingKey<todayKey()){
-    if(completedDayForKey(editingKey)) awardRelicDayXp(editingKey);
+    if(completedDayForKey(editingKey)){
+      awardRelicDayXp(editingKey);
+      applyClassDayRewards(editingKey,true);
+    }
     else revokeRelicDayXp(editingKey);
     scheduleSave({type:'relic:historical-day-sync',day:editingKey});
     renderAll();
@@ -2045,6 +2241,86 @@ document.querySelectorAll('[data-modal-smoke-free]').forEach(button=>{
     button.classList.add('active');
   });
 });
+function completedDailyHabitCount(key){
+  const normalized=normalizeHabitState(state.habits);
+  const periodKey=`d:${key}`;
+  return normalized.items.filter(habit=>{
+    if(habit.active===false||habit.frequency!=='daily') return false;
+    const count=Math.max(0,Number(normalized.entries[`${habit.id}|${periodKey}`]?.count)||0);
+    return count>=Math.max(1,Number(habit.target)||1);
+  }).length;
+}
+
+function applyClassDayRewards(key,completed){
+  const g=state.game;
+  if(!g?.cls) return '';
+  const lvl=gameStats().lvl;
+  const rewards=g.powerProgress=g.powerProgress||{};
+  rewards.dayRewards=rewards.dayRewards||{};
+  if(rewards.dayRewards[key]) return '';
+  if(!completed) return '';
+  const week=Math.max(0,weekIndexOf(parseKey(key)));
+  const habitCount=completedDailyHabitCount(key);
+  const {maxHp}=heroMaxes();
+  const notice=[];
+  const record={xp:0,coins:0};
+  if(g.cls==='knight'){
+    rewards.bastionCharges=Math.min(6,(Number(rewards.bastionCharges)||0)+1);
+    if(lvl>=5&&heroArmor()>=1){
+      const usedKey=`knight-xp:${week}`;
+      const used=Number(rewards[usedKey])||0;
+      if(used<5){ rewards[usedKey]=used+1; record.xp+=4; }
+    }
+    if(lvl>=12&&habitCount>=3){
+      const usedKey=`knight-coins:${week}`;
+      const used=Number(rewards[usedKey])||0;
+      if(used<4){ rewards[usedKey]=used+1; record.coins+=1; }
+    }
+  }else if(g.cls==='paladin'){
+    const before=g.hp;
+    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
+    if(g.hp>before) notice.push(`+${g.hp-before} ♥ Flecha Bendita`);
+    if(lvl>=5&&habitCount>=2){
+      const usedKey=`paladin-xp:${week}`;
+      const used=Number(rewards[usedKey])||0;
+      if(used<5){ rewards[usedKey]=used+1; record.xp+=4; }
+    }
+    if(lvl>=12){
+      const daysKey=`paladin-days:${week}`;
+      const days=rewards[daysKey]=[...new Set([...(rewards[daysKey]||[]),key])].sort();
+      if(days.length===3||days.length===5) record.coins+=2;
+    }
+  }else if(g.cls==='druid'){
+    const before=g.hp;
+    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.08)));
+    if(g.hp>before) notice.push(`+${g.hp-before} ♥ Savia Viva`);
+    if(lvl>=12){
+      const dateConfig=journeyConfigForDate(state.config,parseKey(key));
+      const day=getDay(key);
+      const tracksPills=dateConfig.takesPills!==false;
+      const tracksBeer=dateConfig.tracksBeer!==false;
+      const pillsOk=!tracksPills||(day.p||0)>=(dateConfig.pillsGoal||3);
+      const beerOk=!tracksBeer||(day.b||0)===0;
+      const usedKey=`druid-coins:${week}`;
+      const used=Number(rewards[usedKey])||0;
+      if((tracksPills||tracksBeer)&&pillsOk&&beerOk&&used<4){
+        rewards[usedKey]=used+1;
+        record.coins+=1;
+      }
+    }
+  }
+  const judgment=rewards.judgment;
+  if(g.cls==='paladin'&&judgment&&judgment.day===key&&!judgment.rewarded&&
+      judgment.completedIds.length===judgment.habitIds.length){
+    judgment.rewarded=true;
+    record.xp+=5;
+  }
+  if(record.xp){ g.bonusXp=(g.bonusXp||0)+record.xp; notice.push(`+${record.xp} XP`); }
+  if(record.coins){ state.economy.coins+=record.coins; notice.push(`+${record.coins} 🪙`); }
+  rewards.dayRewards[key]=record;
+  return notice.length?' · '+notice.join(' · '):'';
+}
+
 function applySmokeFreeDayRewards(key,status){
   if(status!==SMOKE_FREE_STATUS_SUCCESS||!state.game?.cls) return '';
   ensureHero();
@@ -2053,18 +2329,9 @@ function applySmokeFreeDayRewards(key,status){
   rewards.healedDays=rewards.healedDays||[];
   if(rewards.healedDays.includes(key)) return '';
   const relicXp=awardRelicDayXp(key);
-  const lvl=gameStats().lvl;
-  const passive=currentIntoxication().passiveMultiplier;
-  let healing=0;
-  if(g.cls==='paladin'&&lvl>=5) healing=Math.max(0,Math.round(5*passive));
-  else if(g.cls==='druid'&&lvl>=1) healing=Math.max(0,Math.round(8*passive));
-  if(healing>0){
-    const before=g.hp;
-    g.hp=capHp(g.hp+healing);
-    healing=g.hp-before;
-  }
   rewards.healedDays.push(key);
-  return (healing>0?' · +'+healing+' ♥':'')+
+  const classNotice=applyClassDayRewards(key,true);
+  return classNotice+
     (relicXp>0?' · +'+relicXp+' XP reliquia':'');
 }
 document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
@@ -2445,40 +2712,96 @@ let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
 
-function applySmokeFreeHabitRewards({result}){
+function applyClassHabitRewards({result,habit}){
   const g=state.game;
   if(!g||!g.cls||result.xpDelta<=0) return '';
   const key=todayKey();
   const lvl=gameStats().lvl;
-  const passive=currentIntoxication().passiveMultiplier;
-  const rewards=g.smokeFreeRewards=g.smokeFreeRewards||{};
+  const {maxHp,maxMp}=heroMaxes();
+  const week=Math.max(0,weekIndexOf(currentDayDate()));
+  const rewards=g.powerProgress=g.powerProgress||{};
+  rewards.habitEntries=rewards.habitEntries||{};
+  const entryKey=`${result.entry.habitId}|${result.entry.periodKey}|${result.entry.count}`;
+  if(rewards.habitEntries[entryKey]) return '';
+  rewards.habitEntries[entryKey]=true;
   const notices=[];
   if(g.cls==='sorcerer'&&lvl>=1){
-    rewards.sorcererHabitDays=rewards.sorcererHabitDays||[];
-    if(!rewards.sorcererHabitDays.includes(key)){
-      const mana=Math.max(0,Math.round(5*passive));
-      const recovered=recoverMana(mana);
-      rewards.sorcererHabitDays.push(key);
-      if(recovered>0) notices.push('+'+recovered+' 💧');
+    rewards.sorcererManaDays=rewards.sorcererManaDays||[];
+    if(!rewards.sorcererManaDays.includes(key)){
+      const recovered=recoverMana(Math.max(1,Math.round(maxMp*0.05)));
+      rewards.sorcererManaDays.push(key);
+      if(recovered>0) notices.push('+'+recovered+' 💧 Absorber Esencia');
     }
   }
-  if(g.cls==='druid'&&lvl>=12){
-    rewards.druidHabitDays=rewards.druidHabitDays||[];
-    if(!rewards.druidHabitDays.includes(key)){
-      const amount=Math.max(0,Math.round(5*passive));
-      g.hp=capHp((g.hp||0)+amount);
-      const recovered=recoverMana(amount);
-      rewards.druidHabitDays.push(key);
-      if(amount>0) notices.push('+'+amount+' ♥ · +'+recovered+' 💧');
+  if(g.cls==='paladin'&&g.buffs?.paladinManaHabit){
+    const recovered=recoverMana(Math.max(1,Math.round(maxMp*0.05)));
+    g.buffs.paladinManaHabit=false;
+    if(recovered>0) notices.push('+'+recovered+' 💧 Luz Sanadora');
+  }
+  if((g.cls==='sorcerer'||g.cls==='druid')&&lvl>=5){
+    const counterKey=`harvest:${week}`;
+    const rewardKey=`harvest-rewards:${week}`;
+    rewards[counterKey]=(Number(rewards[counterKey])||0)+1;
+    rewards[rewardKey]=Number(rewards[rewardKey])||0;
+    if(rewards[counterKey]>=4&&rewards[rewardKey]<4){
+      rewards[counterKey]-=4;
+      rewards[rewardKey]+=1;
+      g.bonusXp=(g.bonusXp||0)+5;
+      notices.push(g.cls==='sorcerer'?'+5 XP Cosecha Oscura':'+5 XP Raíces Profundas');
     }
   }
-  if(g.cls==='sorcerer'&&g.buffs?.cenizaUntil>Date.now()){
-    const entryKey=`${result.entry.habitId}|${result.entry.periodKey}`;
-    rewards.cenizaHabitEntries=rewards.cenizaHabitEntries||[];
-    if(!rewards.cenizaHabitEntries.includes(entryKey)){
-      const recovered=recoverMana(10);
-      rewards.cenizaHabitEntries.push(entryKey);
-      notices.push('+'+recovered+' 💧 Ceniza');
+  const challenge=rewards.habitChallenge;
+  const autoChallengeAvailable=challenge?.autoNextHabitCount>0&&
+    challenge.completedIds.length<challenge.autoNextHabitCount&&
+    !challenge.completedIds.includes(habit.id);
+  const selectedChallengeAvailable=challenge?.habitIds?.includes(habit.id)&&
+    !challenge.completedIds.includes(habit.id);
+  if(challenge&&challenge.day===key&&(autoChallengeAvailable||selectedChallengeAvailable)){
+    challenge.completedIds.push(habit.id);
+    g.bonusXp=(g.bonusXp||0)+5;
+    if(challenge.spellId==='muro'){
+      g.buffs.shield=(g.buffs.shield||0)+1;
+      notices.push('+5 XP · +1 Escudo');
+    }else if(challenge.spellId==='ceniza'){
+      const recovered=recoverMana(5);
+      notices.push(`+5 XP · +${recovered} 💧`);
+    }else if(challenge.spellId==='regen'){
+      const before=g.hp;
+      g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
+      notices.push(`+5 XP · +${g.hp-before} ♥`);
+    }else notices.push('+5 XP');
+    const challengeTarget=challenge.autoNextHabitCount||challenge.habitIds.length;
+    if(challenge.completedIds.length===challengeTarget&&!challenge.coinRewarded){
+      challenge.coinRewarded=true;
+      state.economy.coins+=2;
+      notices.push('+2 🪙');
+    }
+  }
+  const judgment=rewards.judgment;
+  if(judgment&&judgment.day===key&&judgment.habitIds.includes(habit.id)&&!judgment.completedIds.includes(habit.id)){
+    judgment.completedIds.push(habit.id);
+    notices.push(`Juicio · ${judgment.completedIds.length}/${judgment.habitIds.length}`);
+  }
+  const wager=rewards.soulWager;
+  if(wager&&!wager.completed&&Date.now()<=wager.expiresAt&&wager.habitId===habit.id){
+    wager.completed=true;
+    recoverMana(wager.mana||40);
+    g.bonusXp=(g.bonusXp||0)+5;
+    notices.push('+5 XP · apuesta recuperada');
+  }
+  const rebirth=rewards.rebirthHabit;
+  if(rebirth&&!rebirth.completed&&Date.now()<=rebirth.expiresAt&&rebirth.habitId===habit.id&&!rebirth.entryKeys.includes(entryKey)){
+    rebirth.entryKeys.push(entryKey);
+    rebirth.progress=Math.min(3,(rebirth.progress||0)+1);
+    const hpBefore=g.hp;
+    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.1)));
+    const manaRecovered=recoverMana(Math.max(1,Math.round(maxMp*0.1)));
+    notices.push(`Renacer ${rebirth.progress}/3 · +${g.hp-hpBefore} ♥ · +${manaRecovered} 💧`);
+    if(rebirth.progress>=3){
+      rebirth.completed=true;
+      g.hp=maxHp;
+      g.bonusXp=(g.bonusXp||0)+5;
+      notices.push('+5 XP · vida completa');
     }
   }
   return notices.length?' · '+notices.join(' · '):'';
@@ -2774,8 +3097,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     }
     const fusionListXp=result.xpDelta>0?awardFusionDailyHabitListXp(dayKey):0;
     if(fusionListXp>0) relicHabitNotice+=' · +'+fusionListXp+' XP Daga del Antojo';
-    const habitRewardNotice=result.xpDelta>0&&smokeFreeMode
-      ? applySmokeFreeHabitRewards({result})
+    const habitRewardNotice=result.xpDelta>0
+      ? applyClassHabitRewards({result,habit})
       : '';
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
@@ -3010,11 +3333,12 @@ function openClassChangeConfirmation(selectedClass){
   selectedClassChange=selectedClass;
   const classData=classDataForJourney(selectedClass,{smokeFree:usesSmokeFreeSkills(state.config)});
   const blood=Math.max(0,Number(state.economy?.bossBlood)||0);
+  const freeRecoveryChange=recoveryModeController.isActive();
   document.getElementById('classChangeConfirmTitle').textContent=`Libro de habilidades · ${classData.es}`;
   document.getElementById('classChangeConfirmBody').innerHTML=`
     <p class="class-change-description">${classData.desc}</p>
     <div class="class-change-skills" id="classChangeSkills"></div>
-    <div class="class-change-cost"><span>Coste al confirmar</span><b>1 Sangre de Jefe</b><small>Tienes ${blood}</small></div>`;
+    <div class="class-change-cost"><span>Coste al confirmar</span><b>${freeRecoveryChange?'GRATIS · Modo recuperación':'1 Sangre de Jefe'}</b><small>${freeRecoveryChange?'No se consumirá ningún recurso':`Tienes ${blood}`}</small></div>`;
   renderSkillsView({
     document,
     classId:selectedClass,
@@ -3024,8 +3348,8 @@ function openClassChangeConfirmation(selectedClass){
     targetId:'classChangeSkills'
   });
   const accept=document.getElementById('classChangeConfirmAccept');
-  accept.disabled=blood<1;
-  accept.textContent=blood<1?'SIN SANGRE':'CAMBIAR CLASE';
+  accept.disabled=!freeRecoveryChange&&blood<1;
+  accept.textContent=freeRecoveryChange?'CAMBIAR GRATIS':blood<1?'SIN SANGRE':'CAMBIAR CLASE';
   document.getElementById('classChangeConfirmBg').classList.add('show');
 }
 
@@ -3087,6 +3411,54 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
 });
 
+document.getElementById('skillHabitPickerList').addEventListener('click',event=>{
+  const option=event.target.closest('[data-skill-habit]');
+  if(!option||!pendingSkillCast?.spell) return;
+  const id=option.dataset.skillHabit;
+  const limit=skillSelectionLimit(pendingSkillCast.spell);
+  const selected=pendingSkillCast.selected||[];
+  if(selected.includes(id)) pendingSkillCast.selected=selected.filter(value=>value!==id);
+  else if(selected.length<limit.max) pendingSkillCast.selected=[...selected,id];
+  renderSkillHabitPicker();
+});
+document.getElementById('skillHabitPickerCancel').addEventListener('click',()=>{
+  closeSkillHabitPicker();
+  pendingSkillCast=null;
+});
+document.getElementById('skillHabitPickerContinue').addEventListener('click',()=>{
+  if(!pendingSkillCast?.spell) return;
+  const {spell,selected=[]}=pendingSkillCast;
+  const limit=skillSelectionLimit(spell);
+  if(selected.length<limit.min) return;
+  closeSkillHabitPicker();
+  openSkillConfirmation(spell,selected,spell.id==='renacer'?selected[0]:null);
+});
+document.getElementById('skillConfirmCancel').addEventListener('click',()=>{
+  closeSkillConfirmation();
+  pendingSkillCast=null;
+});
+document.getElementById('skillConfirmAccept').addEventListener('click',()=>{
+  if(!pendingSkillCast?.spell) return;
+  const request={...pendingSkillCast};
+  closeSkillConfirmation();
+  pendingSkillCast=null;
+  castSpell(request.spell.id,{
+    confirmed:true,
+    selectedHabitIds:request.selectedHabitIds||[],
+    targetHabitId:request.targetHabitId||null,
+  });
+});
+document.getElementById('skillHabitPickerBg').addEventListener('click',event=>{
+  if(event.target.id!=='skillHabitPickerBg') return;
+  closeSkillHabitPicker();
+  pendingSkillCast=null;
+});
+document.getElementById('skillConfirmBg').addEventListener('click',event=>{
+  if(event.target.id!=='skillConfirmBg') return;
+  closeSkillConfirmation();
+  pendingSkillCast=null;
+});
+
 document.getElementById('sheetHeroSkills').addEventListener('click',e=>{
   const pasTap=e.target.closest('[data-pas-name]');
   if(pasTap){
@@ -3107,19 +3479,22 @@ document.getElementById('classChangeConfirmAccept').addEventListener('click',()=
   if(!pendingClassChange||!selectedClassChange) return;
   const fromClass=pendingClassChange.fromClass;
   const toClass=selectedClassChange;
-  const payment=payClassChange({
-    state,
-    fromClass,
-    toClass,
-    operationId:`${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    nowTimestamp:Date.now()
-  });
-  if(!payment.ok){
-    closeClassChangeConfirmation();
-    showToast('Necesitas 1 Sangre de Jefe','dmg');
-    return;
+  const freeRecoveryChange=recoveryModeController.isActive();
+  if(!freeRecoveryChange){
+    const payment=payClassChange({
+      state,
+      fromClass,
+      toClass,
+      operationId:`${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      nowTimestamp:Date.now()
+    });
+    if(!payment.ok){
+      closeClassChangeConfirmation();
+      showToast('Necesitas 1 Sangre de Jefe','dmg');
+      return;
+    }
+    applyLootSlices(payment);
   }
-  applyLootSlices(payment);
   const hadHero=state.game.hp!==undefined;
   state.game.cls=toClass;
   if(hadHero){
@@ -3134,12 +3509,12 @@ document.getElementById('classChangeConfirmAccept').addEventListener('click',()=
   }
   pendingClassChange=null;
   closeClassChangeConfirmation();
-  scheduleSave({type:'hero:class-change',toClass,bossBloodSpent:1});
+  scheduleSave({type:'hero:class-change',toClass,bossBloodSpent:freeRecoveryChange?0:1,recoveryMode:freeRecoveryChange});
   const destination=classChangeReturn||{viewId:'view-hoy',buttonId:'navHoy'};
   classChangeReturn=null;
   switchView(destination.viewId,destination.buttonId);
   renderAll();
-  showToast('Clase cambiada · −1 Sangre de Jefe','heal');
+  showToast(freeRecoveryChange?'Clase cambiada gratis · Modo recuperación':'Clase cambiada · −1 Sangre de Jefe','heal');
 });
 
 function handlePotionUse(potionId){
@@ -3738,7 +4113,7 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
   const currentClass=state.game?.cls;
   if(!currentClass) return;
   const blood=Math.max(0,Number(state.economy?.bossBlood)||0);
-  if(blood<1){
+  if(!recoveryModeController.isActive()&&blood<1){
     showToast('Necesitas 1 Sangre de Jefe para cambiar de clase','dmg');
     return;
   }
@@ -3902,7 +4277,7 @@ resetGuardContinue.addEventListener('click',()=>{
       }
       if(!LOCAL_DEMO_PALADIN_EFFECTS){
         openInventory();
-        showInventoryPanel(LOCAL_DEMO_FUSIONS?'collection':'inventory',true);
+        showInventoryPanel(LOCAL_DEMO_PROFILE==='control'?'inventory':LOCAL_DEMO_FUSIONS?'collection':'inventory',true);
       }
     }else finishInitialReturnSplash();
   }

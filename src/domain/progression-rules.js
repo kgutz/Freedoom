@@ -38,14 +38,8 @@ function calculateXpPass({
   const start = parseKey(config.startDate);
   const goal = config.pillsGoal || 3;
   const classId = game?.cls;
-  const marginXp =
-    classId === 'paladin' && levelHint >= 12
-      ? 4 + Math.round(passiveMultiplier)
-      : 4;
-  const recordXp =
-    classId === 'sorcerer' && levelHint >= 5
-      ? 25 + Math.round(15 * passiveMultiplier)
-      : 25;
+  const marginXp = 4;
+  const recordXp = 25;
   const pardons = game?.pardons || [];
   const judgmentDays = game?.judgmentDays || [];
   const pestXpDays = game?.pestXpDays || [];
@@ -70,23 +64,8 @@ function calculateXpPass({
       : smokeFreeStatusOf(record)===SMOKE_FREE_STATUS_SUCCESS;
   const smokeFreeDayXp=(record,key)=>{
     let value=50;
-    if(classId==='paladin'&&levelHint>=1){
-      value+=Math.max(0,Math.round(5*passiveMultiplier));
-    }
     if(record.p>=goal&&config.takesPills!==false) value+=10;
-    if(pestXpDays.includes(key)) value+=20;
-    if(judgmentDays.includes(key)) value*=2;
     return value;
-  };
-  const smokeFreeStreakXp=(nextStreak)=>{
-    if(nextStreak<=0||nextStreak%3!==0) return 0;
-    if(classId==='paladin'&&levelHint>=12){
-      return Math.max(0,Math.round(15*passiveMultiplier));
-    }
-    if(classId==='sorcerer'&&levelHint>=5){
-      return Math.max(0,Math.round(15*passiveMultiplier));
-    }
-    return 0;
   };
 
   for (
@@ -114,7 +93,6 @@ function calculateXpPass({
       if (completed) {
         xp += smokeFreeDayXp(record,key);
         streak += 1;
-        xp += smokeFreeStreakXp(streak);
         if (streak === 7) xp += 75;
         else if (streak === 14) xp += 150;
         else if (streak === 30) xp += 300;
@@ -131,7 +109,6 @@ function calculateXpPass({
       let dayXp = 50 + marginXp * Math.max(0, limit - cigarettes);
       if (record.p >= goal && config.takesPills !== false) dayXp += 10;
       if (cigarettes <= Math.floor(limit / 2)) dayXp += 10;
-      if (judgmentDays.includes(key)) dayXp *= 2;
       xp += dayXp;
       streak += 1;
       if (streak === 7) xp += 75;
@@ -163,7 +140,6 @@ function calculateXpPass({
     if (todayCompleted) {
       xp += smokeFreeDayXp(today,keyOf(now));
       streak += 1;
-      xp += smokeFreeStreakXp(streak);
     }
   } else {
     xp += today.sx !== undefined ? today.sx : 2 * (today.s || 0);

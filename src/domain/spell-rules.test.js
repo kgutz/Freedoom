@@ -114,6 +114,49 @@ describe('efectos temporales y defensivos', () => {
 });
 
 describe('curación y habilidades definitivas', () => {
+  it('escala las curaciones modernas con la vida máxima',()=>{
+    const knight=cast(spell('grito',{modern:true}),{
+      game:{hp:100,mp:100,buffs:{}},maxHp:200,
+    });
+    const sorcerer=cast(spell('peste',{modern:true,cost:45}),{
+      game:{hp:50,mp:100,buffs:{}},maxHp:200,
+    });
+    expect(knight.game.hp).toBe(120);
+    expect(knight.game.buffs.knightGuard).toEqual({amount:2,day:'2026-07-26'});
+    expect(sorcerer.game.hp).toBe(66);
+  });
+
+  it('crea el reto semanal de dos hábitos y cobra vida y maná',()=>{
+    const result=cast(spell('certero',{
+      lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
+    }),{
+      game:{hp:80,mp:100,buffs:{}},
+      selectedHabitIds:['habit-a','habit-b'],
+    });
+    expect(result.game).toMatchObject({hp:70,mp:55});
+    expect(result.game.powerProgress.habitChallenge).toMatchObject({
+      spellId:'certero',habitIds:['habit-a','habit-b'],completedIds:[],week:3,
+    });
+    expect(result.game.powerProgress.challengeWeekUses['3:certero']).toBe(true);
+  });
+
+  it('Maldición de Ceniza espera los dos primeros hábitos completados, no los primeros de la lista',()=>{
+    const result=cast(spell('ceniza',{
+      lvl:8,cost:50,modern:true,habitChallenge:true,autoHabitChallenge:true,
+    }),{game:{hp:100,mp:100,buffs:{}}});
+    expect(result.game.powerProgress.habitChallenge).toMatchObject({
+      spellId:'ceniza',habitIds:[],autoNextHabitCount:2,completedIds:[],week:3,
+    });
+  });
+
+  it('impide que el sacrificio de una activa moderna deje al héroe sin vida',()=>{
+    expect(cast(spell('muro',{
+      lvl:8,cost:40,modern:true,hpCost:10,habitChallenge:true,
+    }),{
+      game:{hp:10,mp:100,buffs:{}},selectedHabitIds:['a','b'],
+    })).toMatchObject({ok:false,reason:'health'});
+  });
+
   it('limita la curación a la vida máxima', () => {
     const result = cast(spell('grito'), {
       game: { hp: 95, mp: 100, buffs: {} },

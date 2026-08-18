@@ -220,6 +220,11 @@ export function activeSpellStatus({
   smokeFreeMode = false,
 }) {
   const buffs = game?.buffs || {};
+  const powers = game?.powerProgress || {};
+  if (powers.habitChallenge?.spellId === spellId) {
+    const challenge = powers.habitChallenge;
+    return `${challenge.completedIds?.length || 0}/${challenge.autoNextHabitCount || challenge.habitIds?.length || 2}`;
+  }
   if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
   if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
   if (spellId === 'certero') {
@@ -227,9 +232,20 @@ export function activeSpellStatus({
     return remainingMinutesLabel(buffs.certeroUntil, nowTimestamp);
   }
   if (spellId === 'muro') return buffs.shield > 0 ? `×${buffs.shield}` : null;
-  if (spellId === 'bastion') return buffs.bastion ? 'LISTO' : null;
-  if (spellId === 'renacer') return buffs.renacer ? 'HOY' : null;
-  if (spellId === 'juicio') return (game?.judgmentDays || []).includes(today) ? 'HOY' : null;
+  if (spellId === 'bastion') {
+    if (buffs.bastion) return 'LISTO';
+    const charges = Math.max(0, Number(powers.bastionCharges) || 0);
+    return charges > 0 ? `${charges}/6` : null;
+  }
+  if (spellId === 'renacer') {
+    if (powers.rebirthHabit && !powers.rebirthHabit.completed) return `${powers.rebirthHabit.progress || 0}/3`;
+    return buffs.renacer ? 'HOY' : null;
+  }
+  if (spellId === 'juicio') {
+    if (powers.judgment && !powers.judgment.rewarded) return `${powers.judgment.completedIds?.length || 0}/${powers.judgment.habitIds?.length || 2}`;
+    return (game?.judgmentDays || []).includes(today) ? 'HOY' : null;
+  }
+  if (spellId === 'alma' && powers.soulWager && !powers.soulWager.completed) return '24H';
   if (spellId === 'peste') {
     const active = smokeFreeMode
       ? (game?.pestXpDays || []).includes(today)
@@ -632,6 +648,15 @@ export function renderSkillsView({
   const classData = classDataForJourney(classId,{
     smokeFree:usesSmokeFreeSkills(config),
   });
+  const passiveDescription=(ability)=>{
+    if(classId!=='druid'||ability.name!=='Poción Mayor') return ability.d;
+    const pills=config?.takesPills!==false;
+    const beer=config?.tracksBeer!==false;
+    if(pills&&beer) return 'Completa todas tus pastillas y no bebas cerveza para ganar 1 moneda. Máximo 4 por semana.';
+    if(pills) return 'Completa todas tus pastillas para ganar 1 moneda. Máximo 4 por semana.';
+    if(beer) return 'No bebas cerveza para ganar 1 moneda. Máximo 4 por semana.';
+    return 'Configura un objetivo de salud para activar esta pasiva.';
+  };
   const passiveHtml = classData.pas
     .map((ability) => {
       const active = level >= ability.lvl;
@@ -640,7 +665,7 @@ export function renderSkillsView({
       <div style="flex:1">
         <span class="lv" style="float:right">Nv ${ability.lvl}</span>
         <div class="an">${ability.name}${active ? ' · <span style="color:var(--ok);font-size:11px">activa</span>' : ''}</div>
-        <div class="ad">${ability.d}</div>
+        <div class="ad">${passiveDescription(ability)}</div>
       </div>
     </div>`;
     })

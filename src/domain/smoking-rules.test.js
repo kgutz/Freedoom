@@ -68,7 +68,7 @@ describe('ritmo y límite', () => {
     expect(result.dmg).toBe(0);
   });
 
-  it('aplica el daño de exceso y la reducción del caballero', () => {
+  it('aplica el mismo daño de exceso antes de la Armadura', () => {
     expect(
       evaluateSmoke(base({ record: { c: 20 }, classId: 'paladin' })).dmg,
     ).toBe(25);
@@ -76,12 +76,12 @@ describe('ritmo y límite', () => {
       evaluateSmoke(
         base({ record: { c: 20 }, classId: 'knight', level: 5 }),
       ).dmg,
-    ).toBe(18);
+    ).toBe(25);
   });
 });
 
 describe('habilidades defensivas', () => {
-  it('consume Raíces Profundas solo en el primer daño adelantado del día', () => {
+  it('no usa la nueva Raíces Profundas como escudo de cigarros', () => {
     const protectedResult = evaluateSmoke(
       base({
         now: at(7, 10),
@@ -100,7 +100,7 @@ describe('habilidades defensivas', () => {
       }),
     );
 
-    expect(protectedResult).toMatchObject({ dmg: 0, consumesRoots: true });
+    expect(protectedResult).toMatchObject({ dmg: 15, consumesRoots: false });
     expect(spentResult.dmg).toBe(15);
   });
 
@@ -115,7 +115,7 @@ describe('habilidades defensivas', () => {
       }),
     );
 
-    expect(result.dmg).toBe(5);
+    expect(result.dmg).toBe(6);
   });
 
   it('consume el escudo cuando quedaba daño', () => {
@@ -130,7 +130,7 @@ describe('habilidades defensivas', () => {
     });
   });
 
-  it('reduce Yelmo, Absorber Esencia y Raíces según la borrachera', () => {
+  it('no mezcla las nuevas pasivas con el daño de fumar', () => {
     expect(
       evaluateSmoke(
         base({
@@ -140,7 +140,7 @@ describe('habilidades defensivas', () => {
           passiveMultiplier: 0.55,
         }),
       ).dmg,
-    ).toBe(21);
+    ).toBe(25);
     expect(
       evaluateSmoke(
         base({
@@ -150,7 +150,7 @@ describe('habilidades defensivas', () => {
           passiveMultiplier: 0.55,
         }),
       ).dmg,
-    ).toBe(14);
+    ).toBe(15);
     expect(
       evaluateSmoke(
         base({
@@ -162,7 +162,7 @@ describe('habilidades defensivas', () => {
           passiveRandomValue: 0.7,
         }),
       ),
-    ).toMatchObject({ dmg: 15, consumesRoots: true });
+    ).toMatchObject({ dmg: 15, consumesRoots: false });
   });
 });
 
@@ -170,7 +170,7 @@ describe('recompensas de disparo perfecto', () => {
   it('aplica las bonificaciones de paladín y de los hechizos activos', () => {
     expect(
       perfectShotRewards({ perfect: true, classId: 'paladin' }),
-    ).toEqual({ xp: 3, mana: 10 });
+    ).toEqual({ xp: 2, mana: 10 });
     expect(
       perfectShotRewards({
         perfect: true,
@@ -188,7 +188,7 @@ describe('recompensas de disparo perfecto', () => {
         classId: 'paladin',
         passiveMultiplier: 0.55,
       }),
-    ).toEqual({ xp: 3, mana: 10 });
+    ).toEqual({ xp: 2, mana: 10 });
   });
 });
 
