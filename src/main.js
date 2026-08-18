@@ -3526,10 +3526,28 @@ function handlePotionUse(potionId){
     inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp:Date.now()
   });
   if(!result.ok){
+    const remainingAvailability=()=>{
+      if(result.reason==='active'){
+        const endsAt=Number(state.inventory?.potions?.active?.endsAt)||Date.now();
+        const minutes=Math.max(1,Math.ceil((endsAt-Date.now())/60000));
+        return `Podrás usar otra poción en ${minutes} min`;
+      }
+      if(result.reason==='limit'){
+        if(potionId==='blood') return 'Podrás preparar más con el próximo jefe';
+        const nextDay=new Date();
+        nextDay.setHours(24,0,0,0);
+        const minutes=Math.max(1,Math.ceil((nextDay.getTime()-Date.now())/60000));
+        const hours=Math.floor(minutes/60);
+        const rest=minutes%60;
+        return `Podrás usarla de nuevo en ${hours?`${hours} h${rest?` ${rest} min`:''}`:`${rest} min`}`;
+      }
+      return null;
+    };
+    const availability=remainingAvailability();
     const message=result.reason==='active'?'Ya hay una poción temporal activa'
       : result.reason==='limit'?'Has alcanzado el límite de esta poción'
       : result.reason==='empty'?'No tienes esa poción':'No se puede usar ahora';
-    showToast(message,'dmg'); return false;
+    showToast(availability||message,'dmg'); return false;
   }
   state.inventory=result.inventory;
   let notice='Poción utilizada';
@@ -3676,6 +3694,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const quantity=Number(event.currentTarget.querySelector('[data-potion-quantity]')?.textContent)||1;
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
+    if(definition.price*quantity>(Number(state.economy?.coins)||0)){
+      showToast('No tienes suficientes monedas','dmg');
+      return;
+    }
     openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
     return;
   }
@@ -3773,7 +3795,9 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     output.textContent=String(next);
     const total=next*(Number(buyButton.dataset.unitPrice)||0);
     buyButton.textContent=`COMPRAR · ${total}`;
-    buyButton.disabled=total>(Number(state.economy?.coins)||0);
+    const lacksCoins=total>(Number(state.economy?.coins)||0);
+    buyButton.setAttribute('aria-disabled',String(lacksCoins));
+    buyButton.textContent=lacksCoins?'FALTA ORO':`COMPRAR · ${total}`;
     return;
   }
   const potionPurchase=event.target.closest('[data-buy-potion]');
@@ -3782,6 +3806,10 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const potionId=potionPurchase.dataset.buyPotion;
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
+    if(definition.price*quantity>(Number(state.economy?.coins)||0)){
+      showToast('No tienes suficientes monedas','dmg');
+      return;
+    }
     openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
     return;
   }
