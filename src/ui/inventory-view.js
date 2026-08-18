@@ -441,9 +441,9 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   const mode = options.mode === 'fusion' ? 'fusion' : 'upgrade';
   const ownedDefinitions = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id]);
-  const selectedDefinition = ownedDefinitions.find((definition) => definition.id === selectedRelicId)
-    || ownedDefinitions[0]
-    || null;
+  const selectedDefinition = selectedRelicId
+    ? ownedDefinitions.find((definition) => definition.id === selectedRelicId) || null
+    : null;
   const body = document.getElementById('forgeBody');
   if (!body) return null;
   if (mode === 'fusion') {
@@ -452,12 +452,31 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     });
     return selectedRelicId;
   }
-  if (!selectedDefinition) {
+  if (!ownedDefinitions.length) {
     body.innerHTML = `${forgeModeTabs('upgrade')}<div class="forge-empty">
       <div class="forge-empty-slot">?</div>
       <h3>LA FORJA ESPERA</h3>
       <p>Derrota a un jefe para conseguir tu primera reliquia.</p>
     </div>`;
+    return null;
+  }
+  if (!selectedDefinition) {
+    body.innerHTML = `${forgeModeTabs('upgrade')}
+      <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong><details class="forge-info forge-toolbar-info">
+        <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
+        <div class="forge-info-popover"><p>Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
+      </details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+      <section class="forge-focus forge-focus--empty">
+        <button type="button" class="forge-focus-art forge-focus-picker fusion-slot" data-open-forge-picker="upgrade" aria-label="Elegir reliquia para mejorar"></button>
+        <div class="forge-panel">
+          <div class="forge-cost" aria-label="Coste pendiente de seleccionar una reliquia">
+            <span>COSTE</span>
+            <span class="resource-value">${resourceIcon('coin')}<b>?</b></span>
+            <span class="resource-value">${resourceIcon('boss-blood')}<b>?</b></span>
+          </div>
+          <button type="button" class="forge-attempt" disabled>FORJAR</button>
+        </div>
+      </section>`;
     return null;
   }
   const relicId = selectedDefinition.id;
@@ -512,7 +531,7 @@ function fusionSlotMarkup(definition, label) {
   const slot = label === 'SLOT A' ? 'left' : 'right';
   return definition
     ? `<button type="button" class="fusion-slot filled" data-remove-fusion-slot="${slot}" aria-label="Quitar ${escapeHtml(definition.name)} de la Fusión">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></button>`
-    : `<button type="button" class="fusion-slot" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Elegir reliquia para ${label}"><span>?</span><small>${label}</small></button>`;
+    : `<button type="button" class="fusion-slot" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Elegir reliquia para ${label}"></button>`;
 }
 
 export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', slot = 'left', leftId = null, rightId = null } = {}) {

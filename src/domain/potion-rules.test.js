@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyLootState } from './loot-rules.js';
-import { emptyHabitState } from './habit-rules.js';
+import { adjustHabitProgress, emptyHabitState } from './habit-rules.js';
 import {
   consumePreparedBlood,
   potionBloodChance,
@@ -82,6 +82,42 @@ describe('pociones', () => {
     const reward = reconcilePotionHabitBonus({ inventory: used.inventory, habitState, economy: state.economy, habit: easy, date: DATE, planStartDate: DAY, previousCount: 0, nowTimestamp: 2000 });
     expect(reward.xpDelta).toBe(2);
     expect(reward.habitState.entries[`water|d:${DAY}`].potionXpAwarded).toBe(2);
+  });
+
+  it.each([
+    ['fortune', 'coinDelta', 4],
+    ['experience', 'xpDelta', 2],
+  ])('revierte exactamente el bono de %s al quitar y volver a poner el hábito', (potionId, deltaField, bonus) => {
+    const state = richState();
+    state.inventory.potions = { owned: { [potionId]: 1 } };
+    const used = usePotion({ inventory: state.inventory, potionId, dayKey: DAY, nowTimestamp: 1000 });
+
+    const added = adjustHabitProgress({
+      habitState: emptyHabitState(), habit: easy, delta: 1, date: DATE, planStartDate: DAY,
+    });
+    const rewarded = reconcilePotionHabitBonus({
+      inventory: used.inventory, habitState: added.habitState, economy: state.economy,
+      habit: easy, date: DATE, planStartDate: DAY, previousCount: 0, nowTimestamp: 2000,
+    });
+    expect(rewarded[deltaField]).toBe(bonus);
+
+    const removed = adjustHabitProgress({
+      habitState: rewarded.habitState, habit: easy, delta: -1, date: DATE, planStartDate: DAY,
+    });
+    const reversed = reconcilePotionHabitBonus({
+      inventory: rewarded.inventory, habitState: removed.habitState, economy: rewarded.economy,
+      habit: easy, date: DATE, planStartDate: DAY, previousCount: 1, nowTimestamp: 2500,
+    });
+    expect(reversed[deltaField]).toBe(-bonus);
+
+    const restored = adjustHabitProgress({
+      habitState: reversed.habitState, habit: easy, delta: 1, date: DATE, planStartDate: DAY,
+    });
+    const rewardedAgain = reconcilePotionHabitBonus({
+      inventory: reversed.inventory, habitState: restored.habitState, economy: reversed.economy,
+      habit: easy, date: DATE, planStartDate: DAY, previousCount: 0, nowTimestamp: 3000,
+    });
+    expect(rewardedAgain[deltaField]).toBe(bonus);
   });
 
   it('Sangre acumula 20, 10 y 5 por jefe y se consume al resolverlo', () => {

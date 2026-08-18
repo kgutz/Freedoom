@@ -68,7 +68,7 @@ describe('vista de hábitos', () => {
     expect(html.indexOf('Beber agua')).toBeLessThan(html.indexOf('Gimnasio'));
   });
 
-  it('muestra la próxima recompensa de repetibles y semanales', () => {
+  it('muestra la próxima XP sin adelantar monedas en la descripción', () => {
     const html = render({
       items: [
         { id: 'water', title: 'Beber agua', difficulty: 'medium', frequency: 'daily', target: 3, repeatable: true, active: true },
@@ -79,8 +79,10 @@ describe('vista de hábitos', () => {
         'gym|w:2026-07-31': { habitId: 'gym', periodKey: 'w:2026-07-31', frequency: 'weekly', count: 1, xpAwarded: 7, coinsAwarded: 2 },
       },
     });
-    expect(html).toContain('Diario · Repetible · Próximo avance: +4 XP · +2 🪙');
-    expect(html).toContain('Semanal · Próximo avance: +6 XP · +2 🪙');
+    expect(html).toContain('Diario · Repetible · Próximo avance: +4 XP');
+    expect(html).toContain('Semanal · Próximo avance: +6 XP');
+    expect(html).not.toContain('Próximo avance: +4 XP · +2 🪙');
+    expect(html).not.toContain('Próximo avance: +6 XP · +2 🪙');
     expect(html).toContain('1 / 3 · +6 XP · +3 🪙');
   });
 

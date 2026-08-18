@@ -2,7 +2,6 @@ import { CLASSES } from '../data/game-data.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
-  habitProgressCoinSchedule,
   habitProgressXpSchedule,
   habitReward,
   habitXpCapForState,
@@ -26,12 +25,10 @@ function habitRow(habit, entry) {
   const frequency = habit.frequency === 'weekly' ? 'Semanal' : 'Diario';
   const reward = habitReward(habit);
   const xpSchedule = habitProgressXpSchedule(habit);
-  const coinSchedule = habitProgressCoinSchedule(habit);
   const progressive = habit.frequency === 'weekly' || habit.repeatable === true;
   const nextXp = xpSchedule[entry.count] || 0;
-  const nextCoins = coinSchedule[entry.count] || 0;
   const rewardCopy = progressive && !completed
-    ? `Próximo avance: +${nextXp} XP · +${nextCoins} 🪙`
+    ? `Próximo avance: +${nextXp} XP`
     : `+${reward} XP`;
   const earnedParts = [];
   if (entry.xpAwarded > 0) earnedParts.push(`+${entry.xpAwarded} XP`);

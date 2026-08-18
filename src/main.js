@@ -1859,6 +1859,11 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   positionInventorySheetFromForge();
 }
 function openInventory(){
+  selectedForgeRelicId=null;
+  fusionLeftId=null;
+  fusionRightId=null;
+  clearFusionFeedback();
+  forgePickerTarget=null;
   const inventoryBody=document.getElementById('inventoryBody');
   if(inventoryBody) inventoryBody.scrollTop=0;
   showInventoryPanel('inventory');
@@ -3897,6 +3902,16 @@ async function handleForgeAttempt(relicId){
   forgeLocked=false;
 }
 document.getElementById('forgeBody').addEventListener('click',event=>{
+  const forgeInfoButton=event.target.closest('.forge-info summary');
+  if(forgeInfoButton){
+    requestAnimationFrame(()=>{
+      const details=forgeInfoButton.closest('.forge-info');
+      const popover=details?.querySelector('.forge-info-popover');
+      if(!details?.open||!popover) return;
+      const buttonBounds=forgeInfoButton.getBoundingClientRect();
+      popover.style.setProperty('--forge-info-top',`${Math.round(buttonBounds.bottom+6)}px`);
+    });
+  }
   const forge=event.target.closest('[data-forge-relic]');
   if(!forge||forge.disabled) return;
   const relicId=forge.dataset.forgeRelic;

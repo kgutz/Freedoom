@@ -338,6 +338,7 @@ export function adjustHabitProgress({
   }
   const xpAwarded = xpAwards.reduce((sum, reward) => sum + reward, 0);
   const entry = {
+    ...previous,
     habitId: habit.id,
     periodKey,
     frequency: habit.frequency,

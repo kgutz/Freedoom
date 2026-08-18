@@ -185,6 +185,21 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('class="forge-toolbar"');
   });
 
+  it('mantiene vacío el slot de Mejora hasta que se elige una reliquia', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    expect(renderForgeView(document, state, null)).toBeNull();
+    const html = document.elements.forgeBody.innerHTML;
+    expect(html).toContain('data-open-forge-picker="upgrade"');
+    expect(html).toContain('forge-focus--empty');
+    expect(html).toContain('forge-focus-picker fusion-slot');
+    expect(html).toContain('Coste pendiente de seleccionar una reliquia');
+    expect(html).toContain('<b>?</b>');
+    expect(html).toContain('class="forge-attempt" disabled>FORJAR</button>');
+    expect(html).not.toContain('Corazón de Ojin');
+    expect(html).not.toContain('forge-focus-picker fusion-slot"><span>?</span>');
+  });
+
   it('renderizar o recalcular la Forja nunca vuelve a consumir Sangre', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
@@ -248,6 +263,8 @@ describe('interfaz de inventario y botín', () => {
     const html = document.elements.forgeBody.innerHTML;
     expect(html).toContain('data-remove-fusion-slot="left"');
     expect(html).toContain('data-fusion-slot="right"');
+    expect(html).not.toContain('<span>?</span>');
+    expect(html).not.toContain('<small>SLOT B</small>');
     expect(html).toContain('Estas reliquias no pueden fusionarse.');
     expect(html).toContain('Selecciona otra reliquia compatible.');
     expect(html).toContain('data-fuse-relics="relic_01|" disabled');
