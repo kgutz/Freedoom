@@ -1308,7 +1308,7 @@
 
   @media (max-width:600px){
     .daily-wake{gap:3px}
-    .hero-top{margin-bottom:3px}
+    .hero-top{margin-bottom:11px}
     .hero-id .nombre{margin:4px 0 2px}
     .hero-resource-wallet{margin-top:4px}
     .hero-summary{gap:1px;margin-top:3px}
