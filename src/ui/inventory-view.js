@@ -14,6 +14,7 @@ import {
   getForgeFusionPreview,
   fusionRecipeStatus,
   ensureShopRotation,
+  equipRelic,
   normalizeLootState,
   shopOffers,
 } from '../domain/loot-rules.js';
@@ -268,7 +269,7 @@ export function relicCardMarkup({
         nowTimestamp,
       })
     : '';
-  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${fusion ? ' fusion-relic' : ''}${chargeIndicator ? ' has-charge' : ''}" data-relic-kind="${fusion ? 'fusion' : 'normal'}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}"` : ''}>
+  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${fusion ? ' fusion-relic' : ''}${chargeIndicator ? ' has-charge' : ''}" data-relic-kind="${fusion ? 'fusion' : 'normal'}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}" data-double-tap-unequip="${definition.id}"` : ''}>
     ${relicArt(definition, chargeIndicator)}
     <span class="relic-card-copy">
       <b>${escapeHtml(definition.name)}</b>
@@ -315,7 +316,7 @@ export function renderInventoryView(document, lootState, options = {}) {
           slot,
           chargeState: normalized.inventory.constancy,
         })
-      : `<div class="relic-slot-empty"><span>SLOT ${slot + 1}</span><b>VACÍO</b></div>`;
+      : `<button type="button" class="relic-slot-empty" data-open-equip-picker="${slot}" aria-label="Elegir reliquia para el slot ${slot + 1}"><span>SLOT ${slot + 1}</span><b>VACÍO</b></button>`;
   }).join('');
   const inventory = ALL_RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
@@ -455,7 +456,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   }
   if (!ownedDefinitions.length) {
     body.innerHTML = `${forgeModeTabs('upgrade')}<div class="forge-empty">
-      <div class="forge-empty-slot">?</div>
+      <div class="forge-empty-slot forge-animated-slot forge-animated-slot--upgrade">?</div>
       <h3>LA FORJA ESPERA</h3>
       <p>Derrota a un jefe para conseguir tu primera reliquia.</p>
     </div>`;
@@ -468,7 +469,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
         <div class="forge-info-popover"><p>Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
       </details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
       <section class="forge-focus forge-focus--empty">
-        <button type="button" class="forge-focus-art forge-focus-picker fusion-slot" data-open-forge-picker="upgrade" aria-label="Elegir reliquia para mejorar"></button>
+        <button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Elegir reliquia para mejorar"></button>
         <div class="forge-panel">
           <div class="forge-cost" aria-label="Coste pendiente de seleccionar una reliquia">
             <span>COSTE</span>
@@ -512,7 +513,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     ${forgeModeTabs('upgrade')}
     <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong>${upgradeInfoMarkup}</div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="forge-focus ${rarityClass(relic.rarity)}">
-      <button type="button" class="forge-focus-art forge-focus-picker" data-open-forge-picker="upgrade" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button>
+      <button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button>
       <h3>${escapeHtml(selectedDefinition.name)}</h3>
       <div class="forge-rank-line"><span>${forgeRankStars(relic.rank)}</span><b>${rarity.label} · RANGO ${relic.rank}</b></div>
       <p class="forge-current-effect">${escapeHtml(selectedDefinition.effectLabel)} <strong>${relicEffectValue(relicId, relicRankEffect(relicId, relic.rank))}</strong></p>
@@ -531,8 +532,8 @@ function forgeModeTabs(active) {
 function fusionSlotMarkup(definition, label) {
   const slot = label === 'SLOT A' ? 'left' : 'right';
   return definition
-    ? `<button type="button" class="fusion-slot filled" data-remove-fusion-slot="${slot}" aria-label="Quitar ${escapeHtml(definition.name)} de la Fusión">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></button>`
-    : `<button type="button" class="fusion-slot" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Elegir reliquia para ${label}"></button>`;
+    ? `<button type="button" class="fusion-slot filled forge-animated-slot forge-animated-slot--fusion" data-open-filled-fusion-slot="${slot}" aria-label="Cambiar ${escapeHtml(definition.name)} de la Fusión. Doble toque para quitarla">${relicArt(definition)}<small>${escapeHtml(definition.name)}</small></button>`
+    : `<button type="button" class="fusion-slot forge-animated-slot forge-animated-slot--fusion" data-open-forge-picker="fusion" data-fusion-slot="${slot}" aria-label="Elegir reliquia para ${label}"></button>`;
 }
 
 export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', slot = 'left', leftId = null, rightId = null } = {}) {
@@ -540,7 +541,11 @@ export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', 
   const title = document.getElementById('forgeRelicPickerTitle');
   const body = document.getElementById('forgeRelicPickerBody');
   if (!title || !body) return;
-  title.textContent = mode === 'fusion' ? `Elegir reliquia · Slot ${slot === 'right' ? 'B' : 'A'}` : 'Elegir reliquia para mejorar';
+  title.textContent = mode === 'fusion'
+    ? `Elegir reliquia · Slot ${slot === 'right' ? 'B' : 'A'}`
+    : mode === 'equip'
+      ? `Elegir reliquia · Slot ${Number(slot) + 1}`
+      : 'Elegir reliquia para mejorar';
   const otherSlotId = mode === 'fusion' ? (slot === 'right' ? leftId : rightId) : null;
   const currentSlotId = mode === 'fusion' ? (slot === 'right' ? rightId : leftId) : null;
   const cards = ALL_RELIC_DEFINITIONS.filter((definition) => normalized.inventory.relics[definition.id]).map((definition) => {
@@ -548,8 +553,23 @@ export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', 
     const fusion = Boolean(definition.recipeId);
     const selected = definition.id === currentSlotId;
     const incompatible = Boolean(otherSlotId && (definition.id === otherSlotId || fusionRecipeStatus(otherSlotId, definition.id).status !== 'available'));
-    const unavailable = fusion || incompatible;
-    const unavailableCopy = fusion ? 'FUSIONADA' : incompatible ? 'INCOMPATIBLE' : selected ? 'TOCA PARA QUITAR' : '';
+    const equipped = mode === 'equip' && normalized.inventory.equipped.includes(definition.id);
+    const equipPreview = mode === 'equip' && !equipped
+      ? equipRelic(normalized, definition.id, Number(slot))
+      : null;
+    const equipIncompatible = mode === 'equip' && !equipped && equipPreview?.ok === false;
+    const unavailable = mode === 'equip' ? equipped || equipIncompatible : fusion || incompatible || selected;
+    const unavailableCopy = equipped
+      ? 'EQUIPADA'
+      : equipIncompatible
+        ? 'INCOMPATIBLE'
+        : fusion
+          ? 'FUSIONADA'
+          : incompatible
+            ? 'INCOMPATIBLE'
+            : selected
+              ? 'SELECCIONADA'
+              : '';
     return `<button type="button" class="forge-picker-relic ${rarityClass(relic.rarity)}${selected ? ' selected' : ''}${incompatible ? ' incompatible' : ''}" data-picker-kind="${fusion ? 'fusion' : 'normal'}" data-pick-forge-relic="${definition.id}"${unavailable ? ' disabled aria-disabled="true"' : ''}>${relicArt(definition)}<b>${escapeHtml(definition.name)}</b><small>RANGO ${relic.rank}${unavailableCopy ? ` · ${unavailableCopy}` : ''}</small></button>`;
   }).join('');
   body.innerHTML = `<div class="relic-kind-filters forge-picker-filters" role="group" aria-label="Filtrar reliquias"><button type="button" class="active" data-picker-filter="all">TODAS</button><button type="button" data-picker-filter="normal">NORMALES</button><button type="button" data-picker-filter="fusion">FUSIONADAS</button></div><div class="forge-picker-grid">${cards || '<p>No tienes reliquias disponibles.</p>'}</div>`;
@@ -625,7 +645,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
     : `<p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
     <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Cada intento cuesta monedas. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. La rareza y el rango más altos están garantizados.</p><p>Cada efecto conserva la potencia exacta que tenía en su reliquia de origen. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
-    <section class="fusion-flow" aria-label="Receta de Fusión">
+    <section class="fusion-flow${left && right ? ' has-pair' : ''}" aria-label="Receta de Fusión">
       <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
       ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
     </section>

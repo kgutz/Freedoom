@@ -595,6 +595,7 @@ function renderCal(){
 
 function renderHabits(){
   const stats=state.game&&state.game.cls?gameStats():null;
+  const intoxication=currentIntoxication();
   renderHabitsView({
     document,
     habitState:state.habits,
@@ -602,6 +603,7 @@ function renderHabits(){
     planStartDate:state.config.startDate,
     game:state.game,
     stats,
+    intoxication,
     filter:habitViewFilter
   });
 }
@@ -1790,6 +1792,9 @@ let fusionRightId=null;
 let fusionErrorId=null;
 let forgePickerTarget=null;
 let pendingFusion=null;
+let pendingActiveRelicTap=null;
+let pendingFusionSlotTap=null;
+const ACTIVE_RELIC_DOUBLE_TAP_MS=375;
 const EQUIPMENT_TYPE_NAMES={
   heart:'corazones',spirit:'reliquias espirituales',dagger:'dagas',helmet:'yelmos',
   vessel:'recipientes mágicos',fang:'colmillos'
@@ -1907,6 +1912,63 @@ function openInventory(){
     const refreshedInventoryBody=document.getElementById('inventoryBody');
     if(refreshedInventoryBody) refreshedInventoryBody.scrollTop=0;
   });
+}
+function unequipInventoryRelic(relicId){
+  let result=unequipRelic(state,relicId);
+  if(result.reason==='constancy-confirmation-required'){
+    if(!confirmConstancyLoss(result)) return false;
+    result=unequipRelic(state,relicId,{confirmConstancyReset:true});
+  }
+  if(!result.ok) return false;
+  applyLootSlices(result); capHeroAfterEquipmentChange();
+  scheduleSave({type:'loot:unequip',relicId});
+  document.getElementById('sheetRelicDetail').classList.remove('show');
+  document.getElementById('sheetInventory').classList.add('show');
+  showInventoryPanel('inventory',true); renderHero();
+  showToast('Reliquia desequipada','heal');
+  return true;
+}
+function handleActiveRelicTap(relicId){
+  const now=Date.now();
+  if(pendingActiveRelicTap?.relicId===relicId&&now-pendingActiveRelicTap.at<=ACTIVE_RELIC_DOUBLE_TAP_MS){
+    clearTimeout(pendingActiveRelicTap.timer);
+    pendingActiveRelicTap=null;
+    unequipInventoryRelic(relicId);
+    return;
+  }
+  if(pendingActiveRelicTap) clearTimeout(pendingActiveRelicTap.timer);
+  const pending={relicId,at:now,timer:null};
+  pending.timer=setTimeout(()=>{
+    if(pendingActiveRelicTap!==pending) return;
+    pendingActiveRelicTap=null;
+    if(document.getElementById('sheetInventory')?.classList.contains('show')) openRelicDetail(relicId);
+  },ACTIVE_RELIC_DOUBLE_TAP_MS);
+  pendingActiveRelicTap=pending;
+}
+function openFusionSlotPicker(slot){
+  forgePickerTarget={mode:'fusion',slot};
+  renderForgeRelicPicker(document,state,{...forgePickerTarget,leftId:fusionLeftId,rightId:fusionRightId});
+  document.getElementById('forgeRelicPickerBg').classList.add('show');
+}
+function handleFilledFusionSlotTap(slot){
+  const now=Date.now();
+  if(pendingFusionSlotTap?.slot===slot&&now-pendingFusionSlotTap.at<=ACTIVE_RELIC_DOUBLE_TAP_MS){
+    clearTimeout(pendingFusionSlotTap.timer);
+    pendingFusionSlotTap=null;
+    if(slot==='right') fusionRightId=null;
+    else fusionLeftId=null;
+    clearFusionFeedback();
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  if(pendingFusionSlotTap) clearTimeout(pendingFusionSlotTap.timer);
+  const pending={slot,at:now,timer:null};
+  pending.timer=setTimeout(()=>{
+    if(pendingFusionSlotTap!==pending) return;
+    pendingFusionSlotTap=null;
+    if(document.getElementById('sheetInventory')?.classList.contains('show')) openFusionSlotPicker(slot);
+  },ACTIVE_RELIC_DOUBLE_TAP_MS);
+  pendingFusionSlotTap=pending;
 }
 function syncInventoryShortcutHint(){
   let seen=false;
@@ -3685,6 +3747,13 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     }
     return;
   }
+  const equipPicker=event.target.closest('[data-open-equip-picker]');
+  if(equipPicker){
+    forgePickerTarget={mode:'equip',slot:Number(equipPicker.dataset.openEquipPicker)||0};
+    renderForgeRelicPicker(document,state,forgePickerTarget);
+    document.getElementById('forgeRelicPickerBg').classList.add('show');
+    return;
+  }
   const effectInfo=event.target.closest('[data-relic-effect]');
   if(effectInfo){
     if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
@@ -3760,12 +3829,9 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     }
     return;
   }
-  const removeFusionSlot=event.target.closest('[data-remove-fusion-slot]');
-  if(removeFusionSlot){
-    if(removeFusionSlot.dataset.removeFusionSlot==='right') fusionRightId=null;
-    else fusionLeftId=null;
-    clearFusionFeedback();
-    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+  const filledFusionSlot=event.target.closest('[data-open-filled-fusion-slot]');
+  if(filledFusionSlot){
+    handleFilledFusionSlotTap(filledFusionSlot.dataset.openFilledFusionSlot);
     return;
   }
   const openForgePicker=event.target.closest('[data-open-forge-picker]');
@@ -3790,7 +3856,13 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     return;
   }
   const relic=event.target.closest('[data-open-relic]');
-  if(relic) openRelicDetail(relic.dataset.openRelic);
+  if(relic){
+    if(relic.dataset.doubleTapUnequip){
+      handleActiveRelicTap(relic.dataset.doubleTapUnequip);
+      return;
+    }
+    openRelicDetail(relic.dataset.openRelic);
+  }
   const relicFilter=event.target.closest('[data-relic-filter]');
   if(relicFilter){
     const filter=relicFilter.dataset.relicFilter;
@@ -3817,9 +3889,20 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   const choice=event.target.closest('[data-pick-forge-relic]');
   if(!choice||choice.disabled||!forgePickerTarget) return;
   const relicId=choice.dataset.pickForgeRelic;
+  if(forgePickerTarget.mode==='equip'){
+    const result=equipRelic(state,relicId,Number(forgePickerTarget.slot));
+    if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
+    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange();
+    scheduleSave({type:'loot:equip',relicId});
+    event.currentTarget.classList.remove('show');
+    forgePickerTarget=null;
+    renderInventoryView(document,state,potionViewOptions()); renderHero();
+    showToast('Reliquia equipada','heal');
+    return;
+  }
   if(forgePickerTarget.mode==='upgrade') selectedForgeRelicId=relicId;
-  else if(forgePickerTarget.slot==='right') fusionRightId=relicId===fusionRightId?null:relicId;
-  else fusionLeftId=relicId===fusionLeftId?null:relicId;
+  else if(forgePickerTarget.slot==='right') fusionRightId=relicId;
+  else fusionLeftId=relicId;
   clearFusionFeedback();
   event.currentTarget.classList.remove('show');
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
@@ -3895,16 +3978,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   }
   const unequip=event.target.closest('[data-unequip-relic]');
   if(unequip){
-    let result=unequipRelic(state,unequip.dataset.unequipRelic);
-    if(result.reason==='constancy-confirmation-required'){
-      if(!confirmConstancyLoss(result)) return;
-      result=unequipRelic(state,unequip.dataset.unequipRelic,{confirmConstancyReset:true});
-    }
-    if(!result.ok) return;
-    applyLootSlices(result); capHeroAfterEquipmentChange();
-    scheduleSave({type:'loot:unequip',relicId:unequip.dataset.unequipRelic});
-    renderRelicDetail(document,state,unequip.dataset.unequipRelic); renderInventoryView(document,state); renderHero();
-    showToast('Reliquia desequipada','heal');
+    unequipInventoryRelic(unequip.dataset.unequipRelic);
     return;
   }
 });

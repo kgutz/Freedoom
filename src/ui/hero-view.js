@@ -16,6 +16,7 @@ import {
   usesSmokeFreeSkills,
 } from '../domain/journey-mode-rules.js';
 import { weekIndexFor } from '../domain/plan-rules.js';
+import { intoxicationStage } from '../domain/intoxication-rules.js';
 import { resourceValue } from './inventory-view.js';
 
 function clamp(value, min, max) {
@@ -349,20 +350,11 @@ export function renderHeroView({
     boss: bossState,
   } = model;
   const intoxicationEffect = model.skillEffects.find((effect) => effect.kind === 'intoxication');
-  const intoxicationStage = intoxicationEffect
-    ? Math.max(
-        1,
-        Math.min(
-          5,
-          Number(model.intoxication?.activeBeers) ||
-            [10, 25, 45, 70, 85].findIndex(
-              (threshold) => intoxicationEffect.level <= threshold,
-            ) + 1,
-        ),
-      )
+  const intoxicationStageValue = intoxicationEffect
+    ? intoxicationStage(model.intoxication)
     : 0;
   const intoxicationParticlesHtml = intoxicationEffect
-    ? `<span class="hero-intoxication-particles hero-intoxication-particles--stage-${intoxicationStage}" aria-hidden="true">
+    ? `<span class="hero-intoxication-particles hero-intoxication-particles--stage-${intoxicationStageValue}" aria-hidden="true">
         ${Array.from({ length: 8 }, (_, index) => `<i class="hero-intoxication-particle p${index + 1}"></i>`).join('')}
       </span>`
     : '';
@@ -578,7 +570,7 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top">
         <div class="hero-visual-column">
-          <div class="sprite-box ${energyView.classes}${intoxicationOverlayHtml ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStage}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}${intoxicationOverlayHtml}</div>
+          <div class="sprite-box ${energyView.classes}${intoxicationOverlayHtml ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}${intoxicationOverlayHtml}</div>
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">

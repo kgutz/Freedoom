@@ -1,8 +1,11 @@
 import { CLASSES } from '../data/game-data.js';
 import { keyOf } from '../domain/date-utils.js';
+import { intoxicationStage } from '../domain/intoxication-rules.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
+  habitProgressCoinSchedule,
+  habitProgressXpSchedule,
   habitXpCapForState,
   habitXpForCurrentPeriods,
   normalizeHabitState,
@@ -50,7 +53,8 @@ export function markedHabitIdsForGame(game, date = new Date()) {
 function habitRow(habit, entry, skillMarked = false) {
   const completed = entry.count >= habit.target;
   const difficulty = HABIT_DIFFICULTIES[habit.difficulty] || HABIT_DIFFICULTIES.easy;
-  const frequency = habit.frequency === 'weekly' ? 'Semanal' : 'Diario';
+  const rewardXp = habitProgressXpSchedule(habit).reduce((total, value) => total + value, 0);
+  const rewardCoins = habitProgressCoinSchedule(habit).reduce((total, value) => total + value, 0);
   const earnedParts = [];
   if (entry.xpAwarded > 0) earnedParts.push(`+${entry.xpAwarded} XP`);
   if (entry.coinsAwarded > 0) earnedParts.push(`+${entry.coinsAwarded} 🪙`);
@@ -60,7 +64,7 @@ function habitRow(habit, entry, skillMarked = false) {
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${frequency}${habit.repeatable ? ' · Repetible' : ''}</span>
+      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} monedas</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${earnedCopy}</span>
     </button>
@@ -94,6 +98,7 @@ export function renderHabitsView({
   planStartDate,
   game,
   stats,
+  intoxication,
   filter = 'all',
 }) {
   const root = document.getElementById('habitsContent');
@@ -116,6 +121,10 @@ export function renderHabitsView({
   const xp = stats?.xp || 0;
   const nextXp = stats?.nextTh || 35;
   const progress = Math.max(0, Math.min(100, Math.round((stats?.prog || 0) * 100)));
+  const intoxicationStageValue = intoxicationStage(intoxication);
+  const intoxicationClass = intoxicationStageValue > 0
+    ? ` compact-hero-intoxicated compact-intoxication-stage-${intoxicationStageValue}`
+    : '';
   const selectedFilter = ['daily', 'weekly'].includes(filter) ? filter : 'all';
   const visibleHabits = selectedFilter === 'all'
     ? habits
@@ -163,7 +172,7 @@ export function renderHabitsView({
     </div>
     <div class="habit-hero-card">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></button>
+      <button class="habit-hero-sprite${intoxicationClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></button>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>

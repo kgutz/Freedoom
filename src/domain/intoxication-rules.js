@@ -4,6 +4,16 @@ export const MAX_INTOXICATION = 85;
 
 const CONTRIBUTIONS = [10, 15, 20, 25, 15];
 
+export function intoxicationStage(status) {
+  if (!status || Number(status.level) <= 0) return 0;
+  const activeBeers = Math.max(0, Math.trunc(Number(status.activeBeers) || 0));
+  const levelIndex = INTOXICATION_LEVELS.findIndex(
+    (threshold) => Number(status.level) <= threshold,
+  );
+  const stage = activeBeers || (levelIndex < 0 ? INTOXICATION_LEVELS.length : levelIndex + 1);
+  return Math.max(1, Math.min(INTOXICATION_LEVELS.length, stage));
+}
+
 export function activeIntoxicationEffects(effects = [], nowTimestamp) {
   return effects.filter(
     (effect) =>

@@ -21,6 +21,7 @@ import {
   smokeFreeStatusOf,
 } from '../domain/journey-mode-rules.js';
 import { parseKey } from '../domain/date-utils.js';
+import { intoxicationStage } from '../domain/intoxication-rules.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -343,6 +344,21 @@ export function renderTodayView({
       document.getElementById('beerDrunkInfo').textContent =
         `Fallo de activas ${level}% · pasivas −${level}% · ` +
         `sobrio en ~${model.intoxication.remainingMinutes} min`;
+    }
+  }
+
+  const heroFace = document.getElementById('hoyFace');
+  if (heroFace) {
+    heroFace.classList.remove(
+      'compact-hero-intoxicated',
+      ...Array.from({ length: 5 }, (_, index) => `compact-intoxication-stage-${index + 1}`),
+    );
+    const stage = intoxicationStage(model.intoxication);
+    if (stage > 0) {
+      heroFace.classList.add(
+        'compact-hero-intoxicated',
+        `compact-intoxication-stage-${stage}`,
+      );
     }
   }
 

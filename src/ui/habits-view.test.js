@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { markedHabitIdsForGame, renderHabitsView } from './habits-view.js';
 
-function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike' }) {
+function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike' }, intoxication = null) {
   const root = { innerHTML: '' };
   renderHabitsView({
     document: { getElementById: () => root },
@@ -9,6 +9,7 @@ function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike
     date: new Date(2026, 7, 1, 12),
     planStartDate: '2026-07-17',
     game,
+    intoxication,
     stats: { lvl: 4, xp: 120, nextTh: 560, prog: 0.2 },
     filter,
   });
@@ -47,7 +48,7 @@ describe('vista de hábitos', () => {
 
     expect(html).toContain('Beber agua');
     expect(html).toContain('data-open-inventory');
-    expect(html).toContain('<span class="habit-meta">Media · Diario</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 6 XP + 3 monedas</span>');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).not.toContain('🪙');
     expect(html).toContain('completed');
@@ -66,9 +67,20 @@ describe('vista de hábitos', () => {
 
     expect(html.indexOf('Diarios')).toBeLessThan(html.indexOf('Semanales'));
     expect(html.indexOf('Beber agua')).toBeLessThan(html.indexOf('Gimnasio'));
+    expect(html).toContain('Fácil · 3 XP + 2 monedas');
   });
 
-  it('oculta las recompensas en la descripción y conserva lo ganado debajo', () => {
+  it('marca la foto del héroe según la intensidad de Borrachera', () => {
+    const html = render(
+      { items: [], entries: {} },
+      'all',
+      { cls: 'paladin', name: 'Kike' },
+      { level: 45, activeBeers: 3 },
+    );
+    expect(html).toContain('habit-hero-sprite compact-hero-intoxicated compact-intoxication-stage-3');
+  });
+
+  it('muestra la recompensa real total en la descripción y conserva lo ganado debajo', () => {
     const html = render({
       items: [
         { id: 'water', title: 'Beber agua', difficulty: 'medium', frequency: 'daily', target: 3, repeatable: true, active: true },
@@ -79,8 +91,8 @@ describe('vista de hábitos', () => {
         'gym|w:2026-07-31': { habitId: 'gym', periodKey: 'w:2026-07-31', frequency: 'weekly', count: 1, xpAwarded: 7, coinsAwarded: 2 },
       },
     });
-    expect(html).toContain('<span class="habit-meta">Media · Diario · Repetible</span>');
-    expect(html).toContain('<span class="habit-meta">Media · Semanal</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 12 XP + 6 monedas</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 18 XP + 5 monedas</span>');
     expect(html).not.toContain('Próximo avance:');
     expect(html).toContain('1 / 3 · +6 XP · +3 🪙');
   });
