@@ -444,6 +444,7 @@
   .habit-group-list{display:flex;flex-direction:column;gap:8px}
   .habit-row{position:relative;display:grid;grid-template-columns:44px minmax(0,1fr) 44px;min-height:62px;border:1px solid var(--line);border-radius:999px;background:var(--panel);overflow:hidden;transition:border-color .16s,box-shadow .16s,opacity .16s,transform .16s}
   .habit-row.completed{border-color:rgba(143,174,107,.55)}
+  .habit-row.skill-marked{border-color:var(--kodak);box-shadow:0 0 0 1px rgba(232,180,74,.3),0 0 14px rgba(232,180,74,.2)}
   .habit-adjust{width:34px;height:34px;align-self:center;justify-self:center;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
   .habit-plus{background:linear-gradient(145deg,#D19A3A,var(--kodak));color:#241C0E}
   .habit-row.completed .habit-plus{background:var(--ok);color:#17200F}
@@ -847,7 +848,9 @@
   .hero-skill-slot:active:not(.future){transform:scale(.95)}
   .hero-skill-slot:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-skill-slot.spell-effect-active{border-color:var(--kodak);box-shadow:0 0 10px rgba(232,180,74,.32);animation:activeSpellGlow 2.8s ease-in-out infinite}
+  .hero-skill-slot.spell-week-used{border-color:#51483d;filter:saturate(.35);opacity:.62;box-shadow:none;animation:none}
   .hero-skill-slot .hero-skill-timer{right:3px;bottom:3px;font-size:9px}
+  .hero-skill-used{right:2px;bottom:3px;font-size:7px}
   .hero-skill-slot.cast-confirm{z-index:2;animation:heroCastConfirm .9s ease-out 1}
   .stat-bar.stat-cast-feedback .stat-track{animation:heroStatFeedback .9s ease-out 1}
   .stat-bar.hp-feedback .stat-track{--stat-feedback:#8fae6b}
@@ -1014,6 +1017,7 @@
   .skill-box.spell-effect-active{
     animation:activeSpellGlow 2.8s ease-in-out infinite;
   }
+  .skill-box.spell-week-used{border-color:#51483d;filter:saturate(.35);opacity:.62;box-shadow:none;animation:none}
   .skill-box.passive-effect-active{
     animation:passiveBorderGlow 2.8s ease-in-out infinite;
   }
@@ -1035,6 +1039,9 @@
     0%,100%{filter:drop-shadow(0 0 2px rgba(232,180,74,.42)) drop-shadow(0 0 3px rgba(232,180,74,.18))}
     50%{filter:drop-shadow(0 0 2px rgba(242,202,103,.72)) drop-shadow(0 0 6px rgba(232,180,74,.4))}
   }
+  .skill-used-label{position:absolute;right:4px;bottom:4px;z-index:3;padding:2px 3px;border-radius:3px;background:#18130f;color:#8f8578;font:400 8px var(--font-display);line-height:1;letter-spacing:.03em}
+  .skill-confirm-unavailable{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);color:var(--muted);font-size:10px;line-height:1.55;text-align:center}
+  .fusion-confirm-actions.skill-confirm-info-actions{grid-template-columns:minmax(0,160px);justify-content:center}
   p,small,.hint,.ob-sub,.cd,.habit-meta,.habit-order-hint,.collection-hint,
   .class-change-description,.class-change-preview p,.class-change-abilities li span,
   .relic-effect p,.relic-affixes p,.forge-panel p,.shop-empty p,.loot-notice-modal>p,
@@ -1136,6 +1143,7 @@
   .relic-art--fusion .fusion-art-part--1{left:-2%;bottom:2%}.relic-art--fusion .fusion-art-part--2{right:-2%;top:2%}
   .relic-art--fusion .fusion-art-sigil{position:absolute;z-index:2;display:grid;place-items:center;width:28%;height:28%;border-radius:50%;background:#20170f;color:var(--kodak);font-size:clamp(10px,4vw,18px);line-height:1;box-shadow:0 0 8px rgba(232,180,74,.72)}
   .relic-collection-item.fusion-relic{border-style:double;border-width:3px;background:linear-gradient(145deg,#293d43,#142126)}
+  .relic-card.fusion-relic .relic-art{border:3px double rgba(158,225,232,.8);background:linear-gradient(145deg,#293d43,#142126);box-shadow:inset 0 0 0 1px rgba(158,225,232,.44),inset 0 0 18px rgba(95,205,217,.38),0 0 10px rgba(95,205,217,.28)}
   .relic-collection-item.not-owned{opacity:.48;filter:grayscale(.45)}
   .relic-collection-unknown{display:grid;place-items:center;aspect-ratio:1;border:1px dashed #5a4a39;border-radius:10px;background:var(--panel2);color:var(--muted);font:400 22px var(--font-display)}
   .relic-not-owned{padding:9px;border:1px dashed var(--line);border-radius:9px;color:var(--muted);font:400 9px var(--font-display);letter-spacing:.1em;text-align:center}
@@ -1257,6 +1265,8 @@
   .equipped-relics .relic-card.rarity-legendary .relic-art{--relic-border-color:var(--rarity-legendary);--relic-border-light:#ffe09a}
   .equipped-relics .relic-card.rarity-mythic .relic-art{--relic-border-color:var(--rarity-mythic);--relic-border-light:#dda4fa}
   .equipped-relics .relic-card .relic-art::before{content:'';position:absolute;inset:0;z-index:2;border-radius:inherit;padding:2px;pointer-events:none;background:conic-gradient(from var(--relic-border-angle),var(--relic-border-color) 0deg 255deg,var(--relic-border-light) 285deg,var(--relic-border-color) 325deg 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:relic-border-shine 4.5s linear infinite}
+  .equipped-relics .relic-card.fusion-relic .relic-art{border-color:var(--relic-border-color)}
+  .equipped-relics .relic-card.fusion-relic .relic-art::before{inset:-48%;z-index:0;border-radius:0;padding:0;background:conic-gradient(from 0deg,#2ee6da 0 12%,#265b72 20%,#9b4fc5 37%,#3a2059 51%,#f0b84a 68%,#9a4c22 82%,#2ee6da 100%);-webkit-mask:none;mask:none;animation:fused-relic-spin 4.2s linear infinite}
   .relic-detail-frame{border:0;background:transparent;padding:0;box-shadow:none!important}
   .relic-detail-frame::before{display:none}
   .relic-detail-art{--relic-border-color:var(--rarity-rare);--relic-border-light:#9bc9dc;position:relative;width:150px;height:150px;margin:0 auto 10px;border-radius:12px;background:var(--panel2)}

@@ -15,6 +15,7 @@ import {
   isSmokeFreeMode,
   usesSmokeFreeSkills,
 } from '../domain/journey-mode-rules.js';
+import { weekIndexFor } from '../domain/plan-rules.js';
 import { resourceValue } from './inventory-view.js';
 
 function clamp(value, min, max) {
@@ -210,7 +211,11 @@ export function activeSpellStatus({
   const powers = game?.powerProgress || {};
   if (powers.habitChallenge?.spellId === spellId) {
     const challenge = powers.habitChallenge;
-    return `${challenge.completedIds?.length || 0}/${challenge.autoNextHabitCount || challenge.habitIds?.length || 2}`;
+    const completed = challenge.completedIds?.length || 0;
+    const target = challenge.autoNextHabitCount || challenge.habitIds?.length || 2;
+    return challenge.day === today && completed < target
+      ? `${completed}/${target}`
+      : null;
   }
   if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
   if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
@@ -237,10 +242,19 @@ export function activeSpellStatus({
   return null;
 }
 
-function skillIcon(classId, level, ability, type, status = null) {
+export function spellUnavailableAfterUse({ ability, game, currentWeek, today }) {
+  if (ability?.ulti) return game?.ultiW === currentWeek;
+  if (!ability?.habitChallenge) return false;
+  return Boolean(
+    game?.powerProgress?.challengeDayUses?.[`${today}:${ability.id}`],
+  );
+}
+
+function skillIcon(classId, level, ability, type, status = null, used = false) {
   const active = level >= ability.lvl;
   const ultimateClass = ability.ulti ? ' ulti' : '';
   const statusClass = status ? ' spell-effect-active' : '';
+  const usedClass = used ? ' spell-week-used' : '';
   const passiveActiveClass = type === 'pas' && active ? ' passive-effect-active' : '';
   const source =
     `spells/${classId}_spells/` +
@@ -250,21 +264,23 @@ function skillIcon(classId, level, ability, type, status = null) {
     type === 'act'
       ? `data-cast="${ability.id}"`
       : `data-pas-name="${ability.name}" data-pas-lvl="${ability.lvl}"`;
-  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${passiveActiveClass}" ${attributes}>
+  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${usedClass}${passiveActiveClass}" ${attributes}>
       <span class="sk-lv">Nv ${ability.lvl}</span>
       <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="sk-fallback" style="display:none">${fallback}</span>
       ${status ? `<span class="skill-active-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
+      ${used ? `<span class="skill-used-label" aria-label="Habilidad usada">${ability.ulti ? 'USADA' : 'USADA HOY'}</span>` : ''}
     </div>`;
 }
 
-function quickSkillIcon(classId, level, ability, status = null) {
+function quickSkillIcon(classId, level, ability, status = null, used = false) {
   const unlocked = level >= ability.lvl;
   const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.png`;
-  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}" title="${ability.name}">
+  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada esta semana' : ' · Usada hoy') : ''}" title="${ability.name}">
     <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
     ${status ? `<span class="skill-active-timer hero-skill-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
+    ${used ? `<span class="skill-used-label hero-skill-used">${ability.ulti ? 'USADA' : 'HOY'}</span>` : ''}
   </button>`;
 }
 
@@ -375,34 +391,34 @@ export function renderHeroView({
   const passiveIcons = classData.pas
     .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'pas'))
     .join('');
-  const activeIcons = classData.act
-    .map((ability) => skillIcon(
-      classId,
-      heroStats.lvl,
-      ability,
-      'act',
-      activeSpellStatus({
+  const currentWeek = config.startDate
+    ? Math.max(0, weekIndexFor(config.startDate, now))
+    : 0;
+  const abilityUiState = (ability) => {
+    const today = dayKey || keyOf(now);
+    const status = activeSpellStatus({
         spellId: ability.id,
         game,
         nowTimestamp: now.getTime(),
-        today: dayKey || keyOf(now),
+        today,
         smokeFreeMode: usesSmokeFreeSkills(config),
-      }),
-    ))
+      });
+    return {
+      status,
+      used: !status && spellUnavailableAfterUse({ ability, game, currentWeek, today }),
+    };
+  };
+  const activeIcons = classData.act
+    .map((ability) => {
+      const ui = abilityUiState(ability);
+      return skillIcon(classId, heroStats.lvl, ability, 'act', ui.status, ui.used);
+    })
     .join('');
   const quickActiveIcons = classData.act
-    .map((ability) => quickSkillIcon(
-      classId,
-      heroStats.lvl,
-      ability,
-      activeSpellStatus({
-        spellId: ability.id,
-        game,
-        nowTimestamp: now.getTime(),
-        today: dayKey || keyOf(now),
-        smokeFreeMode: usesSmokeFreeSkills(config),
-      }),
-    ))
+    .map((ability) => {
+      const ui = abilityUiState(ability);
+      return quickSkillIcon(classId, heroStats.lvl, ability, ui.status, ui.used);
+    })
     .join('');
   const futureActiveIcons = Array.from({ length: Math.max(0, 6 - classData.act.length) }, (_, index) =>
     `<button type="button" class="hero-skill-slot future" data-future-skill aria-label="Habilidad futura ${index + 1}" title="Próximamente">?</button>`,

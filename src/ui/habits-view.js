@@ -1,4 +1,5 @@
 import { CLASSES } from '../data/game-data.js';
+import { keyOf } from '../domain/date-utils.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
@@ -19,7 +20,36 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-function habitRow(habit, entry) {
+export function markedHabitIdsForGame(game, date = new Date()) {
+  const marked = new Set();
+  const progress = game?.powerProgress || {};
+  const today = keyOf(date);
+  const nowTimestamp = date.getTime();
+  const challenge = progress.habitChallenge;
+  const challengeTarget = challenge?.autoNextHabitCount || challenge?.habitIds?.length || 0;
+  if (
+    challenge?.day === today &&
+    challengeTarget > 0 &&
+    (challenge.completedIds?.length || 0) < challengeTarget
+  ) {
+    for (const id of challenge.habitIds || []) marked.add(id);
+  }
+  const judgment = progress.judgment;
+  if (judgment?.day === today && !judgment.rewarded) {
+    for (const id of judgment.habitIds || []) marked.add(id);
+  }
+  const wager = progress.soulWager;
+  if (wager?.habitId && !wager.completed && nowTimestamp <= wager.expiresAt) {
+    marked.add(wager.habitId);
+  }
+  const rebirth = progress.rebirthHabit;
+  if (rebirth?.habitId && !rebirth.completed && nowTimestamp <= rebirth.expiresAt) {
+    marked.add(rebirth.habitId);
+  }
+  return marked;
+}
+
+function habitRow(habit, entry, skillMarked = false) {
   const completed = entry.count >= habit.target;
   const difficulty = HABIT_DIFFICULTIES[habit.difficulty] || HABIT_DIFFICULTIES.easy;
   const frequency = habit.frequency === 'weekly' ? 'Semanal' : 'Diario';
@@ -34,7 +64,7 @@ function habitRow(habit, entry) {
   if (entry.xpAwarded > 0) earnedParts.push(`+${entry.xpAwarded} XP`);
   if (entry.coinsAwarded > 0) earnedParts.push(`+${entry.coinsAwarded} 🪙`);
   const earnedCopy = earnedParts.length ? ` · ${earnedParts.join(' · ')}` : '';
-  return `<article class="habit-row${completed ? ' completed' : ''}" data-habit-id="${escapeHtml(habit.id)}">
+  return `<article class="habit-row${completed ? ' completed' : ''}${skillMarked ? ' skill-marked' : ''}" data-habit-id="${escapeHtml(habit.id)}"${skillMarked ? ' data-skill-marked="true"' : ''}>
     <button class="habit-adjust habit-minus" type="button" data-habit-delta="-1" aria-label="Restar progreso"${entry.count <= 0 ? ' disabled' : ''}>−</button>
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
@@ -48,7 +78,7 @@ function habitRow(habit, entry) {
   </article>`;
 }
 
-function habitGroup({ habits, frequency, title, normalized, date, planStartDate }) {
+function habitGroup({ habits, frequency, title, normalized, date, planStartDate, markedHabitIds }) {
   const group = habits.filter((habit) => habit.frequency === frequency);
   if (!group.length) return '';
   const rows = group
@@ -56,6 +86,7 @@ function habitGroup({ habits, frequency, title, normalized, date, planStartDate 
       habitRow(
         habit,
         habitEntryFor(normalized, habit, date, planStartDate),
+        markedHabitIds.has(habit.id),
       ),
     )
     .join('');
@@ -77,6 +108,7 @@ export function renderHabitsView({
   const root = document.getElementById('habitsContent');
   if (!root) return;
   const normalized = normalizeHabitState(habitState);
+  const markedHabitIds = markedHabitIdsForGame(game, date);
   const habits = sortHabits(
     normalized.items.filter((habit) => habit.active !== false),
   );
@@ -108,6 +140,7 @@ export function renderHabitsView({
               normalized,
               date,
               planStartDate,
+              markedHabitIds,
             })
           : '',
         selectedFilter !== 'daily'
@@ -118,6 +151,7 @@ export function renderHabitsView({
               normalized,
               date,
               planStartDate,
+              markedHabitIds,
             })
           : '',
       ].join('')

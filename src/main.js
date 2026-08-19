@@ -1492,6 +1492,27 @@ function closeSkillConfirmation(){
   document.getElementById('skillConfirmBg').classList.remove('show');
 }
 
+function resetSkillConfirmation(){
+  document.getElementById('skillConfirmKicker').textContent='CONFIRMAR HABILIDAD';
+  document.getElementById('skillConfirmCancel').style.display='';
+  document.getElementById('skillConfirmAccept').textContent='ACTIVAR';
+  document.getElementById('skillConfirmActions').classList.remove('skill-confirm-info-actions');
+}
+
+function openUsedSkillModal(spell,{weekly=false}={}){
+  resetSkillConfirmation();
+  document.getElementById('skillConfirmKicker').textContent='HABILIDAD NO DISPONIBLE';
+  document.getElementById('skillConfirmTitle').textContent=spell.name;
+  document.getElementById('skillConfirmBody').innerHTML=`<div class="skill-confirm-unavailable">${weekly
+    ? 'Ya usaste esta habilidad esta semana. Volverá a activarse al comenzar la próxima semana.'
+    : 'Ya usaste esta habilidad hoy. Volverá a activarse mañana al despertar.'}</div>`;
+  document.getElementById('skillConfirmCancel').style.display='none';
+  document.getElementById('skillConfirmAccept').textContent='ENTENDIDO';
+  document.getElementById('skillConfirmActions').classList.add('skill-confirm-info-actions');
+  pendingSkillCast={mode:'used-info'};
+  document.getElementById('skillConfirmBg').classList.add('show');
+}
+
 function skillSelectionLimit(spell){
   if(spell.id==='renacer'||spell.id==='alma') return {min:1,max:1};
   if(spell.id==='juicio') return {min:2,max:3};
@@ -1537,6 +1558,7 @@ function openSkillHabitPicker(spell){
 }
 
 function openSkillConfirmation(spell,selectedHabitIds=[],targetHabitId=null){
+  resetSkillConfirmation();
   document.getElementById('skillConfirmTitle').textContent=`¿Activar ${spell.name}?`;
   document.getElementById('skillConfirmBody').innerHTML=`
     <div class="skill-confirm-cost"><span>Coste de maná</span><b>${spell.cost} 💧</b></div>`;
@@ -1579,6 +1601,20 @@ function castSpell(id,options={}){
   const st=gameStats();
   const C=classDataForJourney(g.cls,{smokeFree:usesSmokeFreeSkills(state.config)}); if(!C) return;
   const sp=C.act.find(a=>a.id===id); if(!sp) return;
+  if(st.lvl<sp.lvl){
+    showToast('Nivel '+sp.lvl+' necesario','dmg');
+    return;
+  }
+  const w=Math.max(0,weekIndexOf(currentDayDate()));
+  const spellDayKey=todayKey();
+  if(sp.ulti&&g.ultiW===w){
+    openUsedSkillModal(sp,{weekly:true});
+    return;
+  }
+  if(sp.habitChallenge&&!sp.ulti&&g.powerProgress?.challengeDayUses?.[`${spellDayKey}:${sp.id}`]){
+    openUsedSkillModal(sp);
+    return;
+  }
   if(sp.autoHabitChallenge&&!options.confirmed){
     if(pendingDailyHabits().length<2){
       showToast('No puedes usar esta habilidad · necesitas 2 hábitos diarios pendientes','dmg');
@@ -1595,10 +1631,8 @@ function castSpell(id,options={}){
     openSkillHabitPicker(sp);
     return;
   }
-  const w=Math.max(0,weekIndexOf(currentDayDate()));
   const now=Date.now();
   const intoxication=currentIntoxication(now);
-  const spellDayKey=todayKey();
   const discountSources=availableDailyEffectSources(state,'relic_05',spellDayKey);
   const manaDiscount=discountSources.reduce((total,source)=>total+source.value,0);
   const result=castSpellEffect({
@@ -1627,7 +1661,7 @@ function castSpell(id,options={}){
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
-    else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó esta semana','dmg');
+    else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó hoy','dmg');
     else if(result.reason==='habits') showToast('No hay suficientes hábitos diarios pendientes','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
@@ -3434,12 +3468,20 @@ document.getElementById('skillHabitPickerContinue').addEventListener('click',()=
 document.getElementById('skillConfirmCancel').addEventListener('click',()=>{
   closeSkillConfirmation();
   pendingSkillCast=null;
+  resetSkillConfirmation();
 });
 document.getElementById('skillConfirmAccept').addEventListener('click',()=>{
+  if(pendingSkillCast?.mode==='used-info'){
+    closeSkillConfirmation();
+    pendingSkillCast=null;
+    resetSkillConfirmation();
+    return;
+  }
   if(!pendingSkillCast?.spell) return;
   const request={...pendingSkillCast};
   closeSkillConfirmation();
   pendingSkillCast=null;
+  resetSkillConfirmation();
   castSpell(request.spell.id,{
     confirmed:true,
     selectedHabitIds:request.selectedHabitIds||[],

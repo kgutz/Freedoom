@@ -126,7 +126,7 @@ describe('curación y habilidades definitivas', () => {
     expect(sorcerer.game.hp).toBe(66);
   });
 
-  it('crea el reto semanal de dos hábitos y cobra vida y maná',()=>{
+  it('crea el reto diario de dos hábitos y cobra vida y maná',()=>{
     const result=cast(spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
     }),{
@@ -137,7 +137,23 @@ describe('curación y habilidades definitivas', () => {
     expect(result.game.powerProgress.habitChallenge).toMatchObject({
       spellId:'certero',habitIds:['habit-a','habit-b'],completedIds:[],week:3,
     });
-    expect(result.game.powerProgress.challengeWeekUses['3:certero']).toBe(true);
+    expect(result.game.powerProgress.challengeDayUses['2026-07-26:certero']).toBe(true);
+  });
+
+  it('impide repetir el reto el mismo día y lo permite al día siguiente',()=>{
+    const selectedSpell=spell('certero',{
+      lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
+    });
+    const usedGame={
+      hp:80,mp:100,buffs:{},
+      powerProgress:{challengeDayUses:{'2026-07-26:certero':true}},
+    };
+    expect(cast(selectedSpell,{
+      game:usedGame,selectedHabitIds:['a','b'],
+    })).toMatchObject({ok:false,reason:'challenge-used'});
+    expect(cast(selectedSpell,{
+      game:usedGame,today:'2026-07-27',selectedHabitIds:['a','b'],
+    }).ok).toBe(true);
   });
 
   it('Maldición de Ceniza espera los dos primeros hábitos completados, no los primeros de la lista',()=>{

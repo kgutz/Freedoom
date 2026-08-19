@@ -254,6 +254,7 @@ export function relicCardMarkup({
   definition, relic, equipped = false, slot = null, chargeState = null, nowTimestamp = Date.now(),
 }) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
+  const fusion = Boolean(definition.recipeId);
   const isActiveSlot = slot !== null;
   const statusMarkup = isActiveSlot
     ? `<span class="relic-active-meta">${rarity.label} - RANGO ${relic.rank}</span>`
@@ -267,7 +268,7 @@ export function relicCardMarkup({
         nowTimestamp,
       })
     : '';
-  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${chargeIndicator ? ' has-charge' : ''}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}"` : ''}>
+  return `<button type="button" class="relic-card ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}${fusion ? ' fusion-relic' : ''}${chargeIndicator ? ' has-charge' : ''}" data-relic-kind="${fusion ? 'fusion' : 'normal'}" data-open-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}"${isActiveSlot ? ` data-equipped-slot="${slot}"` : ''}>
     ${relicArt(definition, chargeIndicator)}
     <span class="relic-card-copy">
       <b>${escapeHtml(definition.name)}</b>

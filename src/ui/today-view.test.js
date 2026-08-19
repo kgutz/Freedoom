@@ -24,6 +24,24 @@ describe('barra de ritmo', () => {
     expect(pace.status).toBe('Vas bien');
   });
 
+  it('considera en ritmo el primer cigarrillo y calcula el siguiente desde su hora', () => {
+    const pace = createPaceModel({
+      now: new Date(2026, 6, 26, 8, 31),
+      smoked: 1,
+      limit: 19,
+      config: { ...config, wakeTime: '08:30' },
+      record: {
+        c: 1,
+        w: '08:30',
+        t: new Date(2026, 6, 26, 8, 31).getTime(),
+      },
+    });
+
+    expect(pace.statusClass).toBe('g');
+    expect(pace.status).toBe('Vas bien');
+    expect(pace.info).toContain('el siguiente aprox. a las <b>~09:19</b>');
+  });
+
   it('distingue antes de levantarse y límite superado', () => {
     expect(
       createPaceModel({

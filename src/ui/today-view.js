@@ -70,6 +70,9 @@ export function createPaceModel({ now, smoked, limit, config, record }) {
   } else if (smoked >= limit) {
     statusClass = 'r';
     status = smoked > limit ? 'Límite superado' : 'Límite alcanzado';
+  } else if (smoked === 1) {
+    statusClass = 'g';
+    status = 'Vas bien';
   } else {
     const ratio = expected > 0.3 ? smoked / expected : smoked <= 1 ? 0 : 2;
     if (ratio <= 1) {

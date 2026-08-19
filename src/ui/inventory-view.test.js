@@ -310,6 +310,9 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('relic-collection-unknown');
     expect(inventoryHtml).not.toContain('data-open-relic="relic_01"');
     expect(inventoryHtml).toContain('data-open-relic="fusion_01"');
+    expect(inventoryHtml).toContain('fusion-relic');
+    expect(inventoryHtml).toContain('data-relic-kind="fusion"');
+    expect(inventoryHtml).toContain('relic-art--fusion');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     const detail = document.elements.relicDetailBody.innerHTML;
     expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');

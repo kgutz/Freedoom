@@ -7,6 +7,7 @@ import {
   heroEnergyModel,
   renderHeroView,
   renderSkillsView,
+  spellUnavailableAfterUse,
   spriteImage,
 } from './hero-view.js';
 import { BOSSES, BOSS_LORE } from '../data/game-data.js';
@@ -125,6 +126,32 @@ describe('modelo de Héroe', () => {
       nowTimestamp: now,
       today: '2026-07-26',
     })).toBeNull();
+  });
+
+  it('apaga el reto completado y conserva el bloqueo semanal como usada', () => {
+    const now = new Date(2026, 6, 26, 12).getTime();
+    const game = {
+      powerProgress: {
+        habitChallenge: {
+          spellId: 'certero',
+          habitIds: ['a', 'b'],
+          completedIds: ['a', 'b'],
+          day: '2026-07-26',
+        },
+        challengeWeekUses: { '3:certero': true },
+      },
+    };
+
+    expect(activeSpellStatus({
+      spellId: 'certero', game, nowTimestamp: now, today: '2026-07-26',
+    })).toBeNull();
+    game.powerProgress.challengeDayUses = { '2026-07-26:certero': true };
+    expect(spellUnavailableAfterUse({
+      ability: { id: 'certero', habitChallenge: true }, game, currentWeek: 3, today: '2026-07-26',
+    })).toBe(true);
+    expect(spellUnavailableAfterUse({
+      ability: { id: 'certero', habitChallenge: true }, game, currentWeek: 3, today: '2026-07-27',
+    })).toBe(false);
   });
 
   it('incluye una sinopsis para cada jefe de la campaña', () => {

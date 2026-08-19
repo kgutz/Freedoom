@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { renderHabitsView } from './habits-view.js';
+import { markedHabitIdsForGame, renderHabitsView } from './habits-view.js';
 
-function render(habitState, filter = 'all') {
+function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike' }) {
   const root = { innerHTML: '' };
   renderHabitsView({
     document: { getElementById: () => root },
     habitState,
     date: new Date(2026, 7, 1, 12),
     planStartDate: '2026-07-17',
-    game: { cls: 'paladin', name: 'Kike' },
+    game,
     stats: { lvl: 4, xp: 120, nextTh: 560, prog: 0.2 },
     filter,
   });
@@ -132,5 +132,43 @@ describe('vista de hábitos', () => {
       entries: {},
     });
     expect(html).toContain('Topes 45/día · 53/sem.');
+  });
+
+  it('marca con el estado dorado los hábitos elegidos por una habilidad activa', () => {
+    const html = render({
+      items: [
+        { id: 'water', title: 'Beber agua', difficulty: 'easy', frequency: 'daily', target: 1, active: true },
+        { id: 'walk', title: 'Caminar', difficulty: 'easy', frequency: 'daily', target: 1, active: true },
+      ],
+      entries: {},
+    }, 'all', {
+      cls: 'paladin',
+      name: 'Kike',
+      powerProgress: {
+        habitChallenge: {
+          spellId: 'certero',
+          habitIds: ['water'],
+          completedIds: [],
+          day: '2026-08-01',
+        },
+      },
+    });
+
+    expect(html).toContain('class="habit-row skill-marked" data-habit-id="water" data-skill-marked="true"');
+    expect(html).not.toContain('data-habit-id="walk" data-skill-marked="true"');
+  });
+
+  it('incluye todos los retos con selección y deja de marcar los completados', () => {
+    const expiresAt = new Date(2026, 7, 2, 12).getTime();
+    const marked = markedHabitIdsForGame({
+      powerProgress: {
+        judgment: { day: '2026-08-01', habitIds: ['judgment'], rewarded: false },
+        soulWager: { habitId: 'soul', completed: false, expiresAt },
+        rebirthHabit: { habitId: 'rebirth', completed: false, expiresAt },
+        habitChallenge: { day: '2026-08-01', habitIds: ['finished'], completedIds: ['finished'] },
+      },
+    }, new Date(2026, 7, 1, 12));
+
+    expect([...marked].sort()).toEqual(['judgment', 'rebirth', 'soul']);
   });
 });

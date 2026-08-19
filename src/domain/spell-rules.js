@@ -27,7 +27,7 @@ export function castSpellEffect({
     return { ok: false, reason: 'ultimate-used' };
   }
   const progress = game.powerProgress || {};
-  if (spell.habitChallenge && !spell.ulti && progress.challengeWeekUses?.[`${currentWeek}:${spell.id}`]) {
+  if (spell.habitChallenge && !spell.ulti && progress.challengeDayUses?.[`${today}:${spell.id}`]) {
     return { ok: false, reason: 'challenge-used' };
   }
   if (spell.habitChallenge && !spell.autoHabitChallenge) {
@@ -74,6 +74,7 @@ export function castSpellEffect({
   nextGame.powerProgress = {
     ...(game.powerProgress || {}),
     challengeWeekUses: { ...(game.powerProgress?.challengeWeekUses || {}) },
+    challengeDayUses: { ...(game.powerProgress?.challengeDayUses || {}) },
   };
 
   if (spell.modern && spell.hpCost) {
@@ -131,7 +132,7 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeWeekUses[`${currentWeek}:${spell.id}`] = true;
+        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       result.durationHours =
@@ -149,7 +150,7 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeWeekUses[`${currentWeek}:${spell.id}`] = true;
+        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       nextGame.buffs.shield = (nextGame.buffs.shield || 0) + 2;
@@ -182,7 +183,7 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeWeekUses[`${currentWeek}:${spell.id}`] = true;
+        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       if(smokeFreeMode){
@@ -253,7 +254,7 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeWeekUses[`${currentWeek}:${spell.id}`] = true;
+        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       nextGame.buffs.regenUntil = nowTimestamp + 2 * 3_600_000;
