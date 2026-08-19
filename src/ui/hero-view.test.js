@@ -373,6 +373,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('sprite-aura');
     expect(heroContent.innerHTML).toContain('<div class="nombre">Farenheil</div>');
     expect(heroContent.innerHTML).toContain('class="hero-summary"');
+    expect(heroContent.innerHTML).toContain('class="hero-summary-primary"');
+    expect(heroContent.innerHTML).toContain('class="boss-progress-summary"');
     expect(heroContent.innerHTML).not.toContain('Jefes:');
     expect(heroContent.innerHTML).toContain('Disparos perfectos hoy:');
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');

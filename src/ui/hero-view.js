@@ -572,9 +572,11 @@ export function renderHeroView({
             ${resourceValue('boss-blood', lootState?.economy?.bossBlood)}
           </button>
           <div class="hero-summary">
-            <span>Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'}</span>
-            <span>Armadura: <b>−${model.armor}</b></span>
-            ${smokeFreeMode ? '' : `<span>Disparos perfectos hoy: <b>${model.perfectToday}</b></span>`}
+            <div class="hero-summary-primary">
+              <span>Racha: <b>${heroStats.streak}</b> día${heroStats.streak === 1 ? '' : 's'}</span>
+              <span>Armadura: <b>−${model.armor}</b></span>
+            </div>
+            ${smokeFreeMode ? '' : `<span class="hero-summary-perfect">Disparos perfectos hoy: <b>${model.perfectToday}</b></span>`}
           </div>
         </div>
       </div>
@@ -611,12 +613,14 @@ export function renderHeroView({
           <div class="pips">${pips}</div>
         </div>
       </div>
-      <div class="boss-hp-label">
-        <span>${bossState.won ? 'DERROTADO' : 'VIDA DEL JEFE'}</span>
-        <b>${bossState.hp} / ${bossState.maxHp} HP</b>
+      <div class="boss-progress-summary">
+        <div class="boss-hp-label">
+          <span>${bossState.won ? 'DERROTADO' : 'VIDA DEL JEFE'}</span>
+          <b>${bossState.hp} / ${bossState.maxHp} HP</b>
+        </div>
+        <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
+        <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b>${remainingBosses > 0 ? ' de <b>?</b> · ¡Aún quedan jefes por derrotar!' : ' · campaña completada'}</div>
       </div>
-      <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
-      <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b>${remainingBosses > 0 ? ' de <b>?</b> · ¡Aún quedan jefes por derrotar!' : ' · campaña completada'}</div>
     </div>`;
 
   const skillsModalBody = document.getElementById('heroSkillsModalBody');

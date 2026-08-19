@@ -1,13 +1,13 @@
 export const POTION_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'fortune', name: 'Poción de Fortuna', price: 20, symbol: '¤', tone: 'gold',
-    shortEffect: 'Triplica las monedas de hábitos durante 30 min.',
-    detail: 'Añade hasta 30 monedas extra. No afecta al bonus de lista completa.',
+    shortEffect: 'Triplica las monedas de tus hábitos diarios durante 30 min.',
+    detail: 'Añade hasta 30 monedas extra.',
   }),
   Object.freeze({
     id: 'experience', name: 'Poción de Experiencia', price: 20, symbol: '✦', tone: 'violet',
-    shortEffect: '+50% XP de hábitos durante 30 min.',
-    detail: 'Añade hasta 10 XP fuera del tope diario de hábitos.',
+    shortEffect: '+50% XP de tus hábitos diarios durante 30 min.',
+    detail: 'Añade hasta 10 XP extra.',
   }),
   Object.freeze({
     id: 'life', name: 'Poción de Vida', price: 6, symbol: '♥', tone: 'red',

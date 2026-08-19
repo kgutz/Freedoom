@@ -14,6 +14,7 @@ import {
   renderFusionView,
   renderInventoryView,
   renderLootNotice,
+  renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
   renderShopView,
@@ -37,6 +38,22 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
+    const document = fakeDocument();
+    expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);
+    const html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('<span>EFECTO</span>');
+    expect(html).toContain('Triplica las monedas de tus hábitos diarios durante 30 min.');
+    expect(html).toContain('Añade hasta 30 monedas extra.');
+    expect(html).not.toContain('REGLAS');
+
+    expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'experience', { mode: 'shop' })).toBe(true);
+    const experienceHtml = document.elements.relicDetailBody.innerHTML;
+    expect(experienceHtml).toContain('+50% XP de tus hábitos diarios durante 30 min.');
+    expect(experienceHtml).toContain('Añade hasta 10 XP extra.');
+    expect(experienceHtml).not.toContain('REGLAS');
+  });
+
   it('cierra la información de Forja al tocar fuera y conserva la tocada', () => {
     const insideTarget = {};
     const outsideTarget = {};
