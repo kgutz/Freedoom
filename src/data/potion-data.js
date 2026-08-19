@@ -21,8 +21,8 @@ export const POTION_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'blood', name: 'Poción de Sangre', price: 25, symbol: '♦', tone: 'blood',
-    shortEffect: 'Mejora la próxima extracción de Sangre.',
-    detail: 'Hasta tres por jefe: +20%, +10% y +5%.',
+    shortEffect: 'Aumenta la probabilidad de obtener +1 Sangre de Jefe adicional.',
+    detail: 'Hasta tres por jefe: +20%, +10% y +5% de probabilidad.',
   }),
 ]);
 

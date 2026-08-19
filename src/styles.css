@@ -723,9 +723,10 @@
 
   /* ---------- héroe RPG ---------- */
   .hero-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:6px}
+  .hero-top.hero-top--with-effects{margin-bottom:2px}
   .hero-visual-column{width:120px;flex:0 0 120px;display:flex;flex-direction:column;align-items:center}
   .hero-visual-effects{width:100%}
-  .hero-visual-effects .buff-row{justify-content:flex-start;gap:7px;margin-top:8px;transform:translateX(-2px)}
+  .hero-visual-effects .buff-row{justify-content:flex-start;gap:7px;margin-top:1px;transform:translateX(-2px)}
   .hero-visual-effects .buff-row--compact{row-gap:0}
   .hero-visual-effects .skill-buff-icon{width:26px;height:26px}
   .hero-visual-effects .skill-buff-icon--intoxication{width:28px;height:28px}
@@ -849,6 +850,7 @@
   .hero-summary,.hero-summary b,.boss-count,.boss-count b{font-family:var(--font-copy)}
 
   .stat-bar{margin-top:10px}
+  .hero-top--with-effects+.stat-bar{margin-top:2px}
   .stat-bar .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;letter-spacing:.08em}
   .stat-bar .lbl b{font-family:var(--font-display);color:var(--text);font-size:11px;letter-spacing:0}
   .stat-track{height:9px;border-radius:6px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}

@@ -362,6 +362,7 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('sprite-box--intoxicated');
     expect(heroContent.innerHTML).toContain('hero-intoxication-particles--stage-2');
     expect(heroContent.innerHTML).toContain('class="hero-visual-effects"');
+    expect(heroContent.innerHTML).toContain('hero-top hero-top--with-effects');
     expect(heroContent.innerHTML).not.toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');

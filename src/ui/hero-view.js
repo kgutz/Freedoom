@@ -558,7 +558,7 @@ export function renderHeroView({
 
   box.innerHTML = `
     <div class="card">
-      <div class="hero-top">
+      <div class="hero-top${chipsHtml ? ' hero-top--with-effects' : ''}">
         <div class="hero-visual-column">
           <div class="sprite-box ${energyView.classes}${intoxicationEffect ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}</div>
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
