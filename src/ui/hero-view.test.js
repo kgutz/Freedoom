@@ -358,14 +358,14 @@ describe('modelo de Héroe', () => {
     expect(heroSkillsModalBody.innerHTML).toContain('>30m</span>');
     expect((heroSkillsModalBody.innerHTML.match(/passive-effect-active/g) || []).length).toBe(2);
     expect(heroContent.innerHTML).toContain('skill-buff-icon--intoxication');
-    expect(heroContent.innerHTML).toContain('hero-intoxication-overlay');
+    expect(heroContent.innerHTML).not.toContain('hero-intoxication-overlay');
     expect(heroContent.innerHTML).toContain('sprite-box--intoxicated');
     expect(heroContent.innerHTML).toContain('hero-intoxication-particles--stage-2');
-    expect(heroContent.innerHTML).not.toContain('class="hero-visual-effects"');
+    expect(heroContent.innerHTML).toContain('class="hero-visual-effects"');
     expect(heroContent.innerHTML).not.toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.png');
     expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');
-    expect(heroContent.innerHTML).not.toContain('skill-buff--intoxication');
+    expect(heroContent.innerHTML).toContain('skill-buff--intoxication');
     expect(heroContent.innerHTML).toContain('Borrachera 25%: 41m restantes');
     expect(heroContent.innerHTML).not.toContain('🍺');
     expect(heroContent.innerHTML).toContain('hero-energy--paladin');

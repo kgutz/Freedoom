@@ -762,11 +762,6 @@
   .hero-intoxication-particles--stage-3{opacity:.78}.hero-intoxication-particles--stage-3 .hero-intoxication-particle{animation-duration:3.2s}
   .hero-intoxication-particles--stage-4{opacity:.9}.hero-intoxication-particles--stage-4 .hero-intoxication-particle{animation-duration:2.7s}
   .hero-intoxication-particles--stage-5{opacity:1}.hero-intoxication-particles--stage-5 .hero-intoxication-particle{animation-duration:2.45s;box-shadow:0 0 4px #ad3440,0 0 7px rgba(76,5,20,.86)}
-  .hero-intoxication-overlay{position:absolute;right:8px;bottom:1px;z-index:6;display:inline-flex;align-items:center;justify-content:flex-end;gap:0;pointer-events:none}
-  .hero-intoxication-overlay .skill-buff-icon{width:26px;height:26px;flex:0 0 26px}
-  .hero-intoxication-overlay .skill-buff-icon--intoxication{filter:brightness(1.08) saturate(1.12) drop-shadow(0 1px 1px rgba(0,0,0,.62)) drop-shadow(0 0 3px rgba(118,9,42,.72));animation:none}
-  .hero-intoxication-overlay .skill-buff-icon--intoxication img{width:72%;height:72%}
-  .hero-intoxication-overlay>b{position:static;min-width:0;margin-left:-2px;padding:0;border:0;background:none;color:#fff;font:400 10px/1 var(--font-display);text-align:left;text-shadow:0 1px 1px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.42)}
   .sprite-bg{
     position:absolute;inset:0;width:100%;height:100%;
     object-fit:cover;image-rendering:pixelated;z-index:0;

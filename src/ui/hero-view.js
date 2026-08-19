@@ -358,17 +358,7 @@ export function renderHeroView({
         ${Array.from({ length: 8 }, (_, index) => `<i class="hero-intoxication-particle p${index + 1}"></i>`).join('')}
       </span>`
     : '';
-  const intoxicationOverlayHtml = intoxicationEffect
-    ? `<span class="hero-intoxication-overlay" aria-label="${intoxicationEffect.name} ${intoxicationEffect.level}%: ${intoxicationEffect.remaining} restantes">
-        <span class="skill-buff-icon skill-buff-icon--intoxication">
-          <img src="spells/effect_icons/beer_effect_intoxication.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-          <span class="sk-fallback" style="display:none">B</span>
-        </span>
-        <b>${intoxicationEffect.remaining}</b>
-      </span>`
-    : '';
   const skillEffectsHtml = model.skillEffects
-    .filter((effect) => effect.kind !== 'intoxication')
     .map((effect) => {
       const intoxicationEffect = effect.kind === 'intoxication';
       const source = intoxicationEffect
@@ -570,7 +560,7 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top">
         <div class="hero-visual-column">
-          <div class="sprite-box ${energyView.classes}${intoxicationOverlayHtml ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}${intoxicationOverlayHtml}</div>
+          <div class="sprite-box ${energyView.classes}${intoxicationEffect ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}</div>
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">
