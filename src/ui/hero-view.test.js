@@ -390,7 +390,7 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.png');
     expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.png');
     expect(bossHistoryBody.innerHTML).toContain('EN COMBATE');
-    expect(heroContent.innerHTML).toContain('Jefes derrotados: <b>1</b> de <b>?</b> · ¡Aún quedan jefes por derrotar!');
+    expect(heroContent.innerHTML).toContain('Derrotados: <b>1</b> de <b>?</b> · ¡Aún quedan jefes por derrotar!');
     expect(heroContent.innerHTML).not.toContain('de <b>20</b>');
   });
 

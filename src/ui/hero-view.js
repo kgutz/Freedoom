@@ -609,8 +609,10 @@ export function renderHeroView({
             <h2 style="margin:0">Jefe de la semana</h2>
             <button class="sk-info-btn boss-info-btn" id="bossInfoBtn" aria-label="Ver historial de golpes">ⓘ</button>
           </div>
-          <div class="boss-name">${bossState.name}<small>Seis días cumplidos garantizan la victoria</small></div>
-          <div class="pips">${pips}</div>
+          <div class="boss-detail-content">
+            <div class="boss-name">${bossState.name}<small>Seis días cumplidos garantizan la victoria</small></div>
+            <div class="pips">${pips}</div>
+          </div>
         </div>
       </div>
       <div class="boss-progress-summary">
@@ -619,7 +621,7 @@ export function renderHeroView({
           <b>${bossState.hp} / ${bossState.maxHp} HP</b>
         </div>
         <div class="boss-hp-track"><div class="boss-hp-fill${bossState.won ? ' defeated' : ''}" style="width:${bossState.hpPercent}%"></div></div>
-        <div class="boss-count">Jefes derrotados: <b>${defeatedBosses}</b>${remainingBosses > 0 ? ' de <b>?</b> · ¡Aún quedan jefes por derrotar!' : ' · campaña completada'}</div>
+        <div class="boss-count">Derrotados: <b>${defeatedBosses}</b>${remainingBosses > 0 ? ' de <b>?</b> · ¡Aún quedan jefes por derrotar!' : ' · campaña completada'}</div>
       </div>
     </div>`;
 

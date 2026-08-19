@@ -874,6 +874,7 @@
   .boss-box-open{appearance:none;padding:0;color:inherit;cursor:pointer;transition:border-color .16s ease,transform .16s ease}.boss-box-open:active{transform:scale(.97)}.boss-box-open:focus-visible{outline:2px solid var(--kodak);outline-offset:3px}
   .boss-fallback{font-size:34px;width:100%;height:100%;align-items:center;justify-content:center;opacity:.5}
   .boss-id{flex:1;min-width:0;transform:translateY(-9px)}
+  .boss-detail-content{transform:translateY(-6px)}
   .boss-id .boss-name{margin-bottom:9px}
   .boss-name{font-size:16px;font-weight:400}
   .boss-name small{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
@@ -901,7 +902,7 @@
   .boss-hp-track{height:13px;margin-top:6px;border-radius:999px;overflow:hidden;background:#211713;border:1px solid #4B2920}
   .boss-hp-fill{height:100%;background:linear-gradient(90deg,#8F2F20,var(--warn));transition:width .35s ease}
   .boss-hp-fill.defeated{background:var(--ok)}
-  .boss-progress-summary{transform:translateY(-2px)}
+  .boss-progress-summary{transform:translateY(-7px)}
   .boss-gate{display:flex;justify-content:space-between;gap:8px;margin-top:8px;font-size:10px;color:var(--muted);letter-spacing:.04em}
   .boss-gate b{color:var(--kodak);font-family:var(--font-display);letter-spacing:0}
   .boss-gate-warning{margin-top:10px;padding:8px 10px;border-radius:8px;background:#2A1C13;border:1px solid var(--kodak);font-size:11px;color:var(--kodak);line-height:1.4}
@@ -1307,6 +1308,11 @@
 
   @media (max-width:600px){
     .daily-wake{gap:3px}
+    .hero-top{margin-bottom:3px}
+    .hero-id .nombre{margin:4px 0 2px}
+    .hero-resource-wallet{margin-top:4px}
+    .hero-summary{gap:1px;margin-top:3px}
+    .stat-bar{margin-top:7px}
   }
 
   @media (prefers-reduced-motion: reduce){
