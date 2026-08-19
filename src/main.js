@@ -156,6 +156,7 @@ import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
 import { setTextWithResourceIcons } from './ui/resource-icons.js';
+import { habitRewardToast } from './ui/habit-feedback.js';
 import {
   DEFAULT_DAY_START_TIME,
   dayStartMinutes,
@@ -3111,6 +3112,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const habit=activeHabitById(row?.dataset.habitId);
     if(!habit) return;
     ensureHero();
+    const rewardTotalsBefore={
+      xp:gameStats().xp,
+      coins:Number(state.economy?.coins)||0
+    };
     const smokeFreeMode=usesSmokeFreeSkills(state.config);
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
@@ -3158,15 +3163,11 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
-    let extraMessage='';
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
-      extraMessage=' · Ojo Certero';
     }
-    let relicHabitNotice='';
     if(result.xpDelta>0&&relicHabitXpActive){
       applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,habitXpSources,true));
-      relicHabitNotice=' · Daga de Alquitrán';
     }
     const manaSources=result.xpDelta>0
       ? availableDailyEffectSources(state,'relic_02',dayKey)
@@ -3179,50 +3180,37 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
       const recovered=recoverMana(mana);
       applyLootSlices(markDailyEffectSources(state,'relic_02',dayKey,manaSources,true));
-      if(recovered>0) relicHabitNotice+=' · +'+recovered+' 💧 Lágrima';
       if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_07')&&
           collarRecoverySourcesForKey(dayKey).some(source=>source.relicId==='fusion_07')){
         state.inventory.dailyActivations[`fusion_07:mana-used:${dayKey}`]=true;
       }
     }
-    const fusionListXp=result.xpDelta>0?awardFusionDailyHabitListXp(dayKey):0;
-    if(fusionListXp>0) relicHabitNotice+=' · +'+fusionListXp+' XP Daga del Antojo';
-    const habitRewardNotice=result.xpDelta>0
-      ? applyClassHabitRewards({result,habit})
-      : '';
+    if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
+    if(result.xpDelta>0) applyClassHabitRewards({result,habit});
+    const rewardTotalsAfter={
+      xp:gameStats().xp,
+      coins:Number(state.economy?.coins)||0
+    };
+    const totalRewardDelta={
+      xpDelta:rewardTotalsAfter.xp-rewardTotalsBefore.xp,
+      coinDelta:rewardTotalsAfter.coins-rewardTotalsBefore.coins
+    };
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
       period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins+potionResult.coinDelta,
       potionXpDelta:potionResult.xpDelta
     });
     renderAll();
-    const habitCoinNotice=coinResult.habitCoinDelta>0
-      ? ' · +'+coinResult.habitCoinDelta+' 🪙'
-      : coinResult.habitCoinDelta<0
-        ? ' · '+coinResult.habitCoinDelta+' 🪙'
-        : '';
-    const bonusCoinNotice=coinResult.bonusCoinDelta>0
-      ? ' · Todos los hábitos completados · +'+coinResult.bonusCoinDelta+' 🪙'
-      : coinResult.bonusCoinDelta<0
-        ? ' · Bonus diario retirado · '+coinResult.bonusCoinDelta+' 🪙'
-        : '';
-    const potionNotice=potionResult.coinDelta
-      ? ` · ${potionResult.coinDelta>0?'+':''}${potionResult.coinDelta} 🪙 Poción`
-      : potionResult.xpDelta
-        ? ` · ${potionResult.xpDelta>0?'+':''}${potionResult.xpDelta} XP Poción`
-        : '';
     if(result.becameCompleted){
-      const xpNotice=result.xpDelta>0
-        ? ' · +'+(result.xpDelta+fusionListXp+newRelicRewards.xp)+' XP'
-        : ' · límite de XP alcanzado';
-      showToast('Hábito completado'+xpNotice+habitCoinNotice+bonusCoinNotice+potionNotice+extraMessage+relicHabitNotice+newRelicRewards.notice+habitRewardNotice,'heal');
+      showToast(habitRewardToast('Hábito completado',totalRewardDelta),'heal');
     }
-    else if(result.xpDelta>0||coinResult.habitCoinDelta>0){
-      const xpNotice=result.xpDelta>0?' · +'+result.xpDelta+' XP':' · límite de XP alcanzado';
-      showToast('Progreso registrado'+xpNotice+habitCoinNotice+potionNotice+extraMessage+relicHabitNotice+habitRewardNotice,'heal');
+    else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
+      showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
     }
-    else if(result.xpDelta<0||coinResult.coinDelta<0||potionResult.coinDelta<0||potionResult.xpDelta<0) showToast('Progreso corregido · '+result.xpDelta+' XP'+habitCoinNotice+bonusCoinNotice+potionNotice,'dmg');
-    else if(result.completed) showToast('Límite de XP alcanzado','heal');
+    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0){
+      showToast(habitRewardToast('Progreso corregido',totalRewardDelta),'dmg');
+    }
+    else if(result.completed) showToast('Límite de recompensas alcanzado','heal');
     return;
   }
   const edit=event.target.closest('[data-edit-habit]');
