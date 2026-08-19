@@ -348,7 +348,35 @@ export function renderHeroView({
     stats: heroStats,
     boss: bossState,
   } = model;
+  const intoxicationEffect = model.skillEffects.find((effect) => effect.kind === 'intoxication');
+  const intoxicationStage = intoxicationEffect
+    ? Math.max(
+        1,
+        Math.min(
+          5,
+          Number(model.intoxication?.activeBeers) ||
+            [10, 25, 45, 70, 85].findIndex(
+              (threshold) => intoxicationEffect.level <= threshold,
+            ) + 1,
+        ),
+      )
+    : 0;
+  const intoxicationParticlesHtml = intoxicationEffect
+    ? `<span class="hero-intoxication-particles hero-intoxication-particles--stage-${intoxicationStage}" aria-hidden="true">
+        ${Array.from({ length: 8 }, (_, index) => `<i class="hero-intoxication-particle p${index + 1}"></i>`).join('')}
+      </span>`
+    : '';
+  const intoxicationOverlayHtml = intoxicationEffect
+    ? `<span class="hero-intoxication-overlay" aria-label="${intoxicationEffect.name} ${intoxicationEffect.level}%: ${intoxicationEffect.remaining} restantes">
+        <span class="skill-buff-icon skill-buff-icon--intoxication">
+          <img src="spells/effect_icons/beer_effect_intoxication.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <span class="sk-fallback" style="display:none">B</span>
+        </span>
+        <b>${intoxicationEffect.remaining}</b>
+      </span>`
+    : '';
   const skillEffectsHtml = model.skillEffects
+    .filter((effect) => effect.kind !== 'intoxication')
     .map((effect) => {
       const intoxicationEffect = effect.kind === 'intoxication';
       const source = intoxicationEffect
@@ -550,7 +578,7 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top">
         <div class="hero-visual-column">
-          <div class="sprite-box ${energyView.classes}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}</div>
+          <div class="sprite-box ${energyView.classes}${intoxicationOverlayHtml ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStage}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}${intoxicationOverlayHtml}</div>
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">

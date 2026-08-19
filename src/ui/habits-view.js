@@ -3,8 +3,6 @@ import { keyOf } from '../domain/date-utils.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
-  habitProgressXpSchedule,
-  habitReward,
   habitXpCapForState,
   habitXpForCurrentPeriods,
   normalizeHabitState,
@@ -53,13 +51,6 @@ function habitRow(habit, entry, skillMarked = false) {
   const completed = entry.count >= habit.target;
   const difficulty = HABIT_DIFFICULTIES[habit.difficulty] || HABIT_DIFFICULTIES.easy;
   const frequency = habit.frequency === 'weekly' ? 'Semanal' : 'Diario';
-  const reward = habitReward(habit);
-  const xpSchedule = habitProgressXpSchedule(habit);
-  const progressive = habit.frequency === 'weekly' || habit.repeatable === true;
-  const nextXp = xpSchedule[entry.count] || 0;
-  const rewardCopy = progressive && !completed
-    ? `Próximo avance: +${nextXp} XP`
-    : `+${reward} XP`;
   const earnedParts = [];
   if (entry.xpAwarded > 0) earnedParts.push(`+${entry.xpAwarded} XP`);
   if (entry.coinsAwarded > 0) earnedParts.push(`+${entry.coinsAwarded} 🪙`);
@@ -69,7 +60,7 @@ function habitRow(habit, entry, skillMarked = false) {
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${frequency}${habit.repeatable ? ' · Repetible' : ''} · ${rewardCopy}</span>
+      <span class="habit-meta">${difficulty.label} · ${frequency}${habit.repeatable ? ' · Repetible' : ''}</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${earnedCopy}</span>
     </button>

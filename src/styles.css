@@ -731,6 +731,37 @@
     background:#0E0B09;border:1px solid var(--line);border-radius:12px;
     image-rendering:pixelated;cursor:pointer;
   }
+  .sprite-box--intoxicated{border-color:#64151d;animation:heroIntoxicationBorder 3.4s ease-in-out infinite}
+  .sprite-box--intoxicated .hero-energy-particles{visibility:hidden}
+  .hero-intoxication-particles{position:absolute;inset:11px 13px 13px;z-index:5;overflow:hidden;pointer-events:none;color:#861b27;opacity:.56}
+  .hero-intoxication-particle{position:absolute;display:none;width:3px;height:3px;background:currentColor;box-shadow:0 0 3px rgba(158,38,50,.72);animation:hero-energy-rise 3.2s steps(7,end) infinite}
+  .hero-intoxication-particle.p1{left:14%;bottom:15%;animation-delay:-.4s}
+  .hero-intoxication-particle.p2{left:78%;bottom:20%;animation-delay:-1.7s}
+  .hero-intoxication-particle.p3{left:35%;bottom:7%;animation-delay:-2.6s}
+  .hero-intoxication-particle.p4{left:64%;bottom:10%;animation-delay:-.9s}
+  .hero-intoxication-particle.p5{left:22%;bottom:42%;animation-delay:-2.1s}
+  .hero-intoxication-particle.p6{left:85%;bottom:46%;animation-delay:-1.2s}
+  .hero-intoxication-particle.p7{left:47%;bottom:28%;animation-delay:-2.9s}
+  .hero-intoxication-particle.p8{left:69%;bottom:56%;animation-delay:-.2s}
+  .hero-energy--knight .hero-intoxication-particle{width:5px;height:2px;transform:rotate(-28deg)}
+  .hero-energy--paladin .hero-intoxication-particle{box-shadow:0 0 2px #a9323d,0 0 5px rgba(77,5,22,.72)}
+  .hero-energy--sorcerer .hero-intoxication-particle{width:4px;height:4px;transform:rotate(45deg);background:#8f202c}
+  .hero-energy--druid .hero-intoxication-particle{width:3px;height:5px;border-radius:3px 0;transform:rotate(28deg)}
+  .hero-intoxication-particles--stage-1 .hero-intoxication-particle:nth-child(-n+1),
+  .hero-intoxication-particles--stage-2 .hero-intoxication-particle:nth-child(-n+3),
+  .hero-intoxication-particles--stage-3 .hero-intoxication-particle:nth-child(-n+5),
+  .hero-intoxication-particles--stage-4 .hero-intoxication-particle:nth-child(-n+7),
+  .hero-intoxication-particles--stage-5 .hero-intoxication-particle{display:block}
+  .hero-intoxication-particles--stage-1 .hero-intoxication-particle{animation-duration:5.2s}
+  .hero-intoxication-particles--stage-2{opacity:.68}.hero-intoxication-particles--stage-2 .hero-intoxication-particle{animation-duration:4.2s}
+  .hero-intoxication-particles--stage-3{opacity:.78}.hero-intoxication-particles--stage-3 .hero-intoxication-particle{animation-duration:3.2s}
+  .hero-intoxication-particles--stage-4{opacity:.9}.hero-intoxication-particles--stage-4 .hero-intoxication-particle{animation-duration:2.7s}
+  .hero-intoxication-particles--stage-5{opacity:1}.hero-intoxication-particles--stage-5 .hero-intoxication-particle{animation-duration:2.45s;box-shadow:0 0 4px #ad3440,0 0 7px rgba(76,5,20,.86)}
+  .hero-intoxication-overlay{position:absolute;right:8px;bottom:1px;z-index:6;display:inline-flex;align-items:center;justify-content:flex-end;gap:0;pointer-events:none}
+  .hero-intoxication-overlay .skill-buff-icon{width:26px;height:26px;flex:0 0 26px}
+  .hero-intoxication-overlay .skill-buff-icon--intoxication{filter:brightness(1.08) saturate(1.12) drop-shadow(0 1px 1px rgba(0,0,0,.62)) drop-shadow(0 0 3px rgba(118,9,42,.72));animation:none}
+  .hero-intoxication-overlay .skill-buff-icon--intoxication img{width:72%;height:72%}
+  .hero-intoxication-overlay>b{position:static;min-width:0;margin-left:-2px;padding:0;border:0;background:none;color:#fff;font:400 10px/1 var(--font-display);text-align:left;text-shadow:0 1px 1px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.42)}
   .sprite-bg{
     position:absolute;inset:0;width:100%;height:100%;
     object-fit:cover;image-rendering:pixelated;z-index:0;
@@ -797,7 +828,7 @@
   .hero-id{position:relative;flex:1;min-width:0;padding-right:38px}
   .hero-rank-row{min-height:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .hero-id .rango{font-size:12px;line-height:1;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-  .hero-quick-actions{position:absolute;right:0;top:0;display:grid;gap:9px}
+  .hero-quick-actions{position:absolute;right:-3px;top:-4px;display:grid;gap:9px}
   .hero-quick-action{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--panel2);color:var(--kodak);cursor:pointer}
   .hero-quick-action svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .hero-quick-action:active{background:rgba(232,180,74,.15);transform:scale(.96)}
@@ -920,7 +951,7 @@
   .boss-log-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:10px;color:var(--muted)}
   .boss-log-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .boss-log-row b{flex-shrink:0;color:var(--kodak);font-family:var(--font-display)}
-  .boss-info-btn{width:28px;height:28px}
+  .boss-info-btn{width:28px;height:28px;transform:translate(3px,2px)}
   .boss-history-intro{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
   .boss-log-sheet{margin-top:14px}
   .boss-log-empty{margin-top:14px;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center;font-size:12px;color:var(--muted)}
@@ -1057,7 +1088,11 @@
     52%{filter:brightness(.84) saturate(1.1) drop-shadow(0 0 2px rgba(59,0,22,.86)) drop-shadow(0 0 5px rgba(29,0,12,.72))}
     68%{filter:brightness(1.04) saturate(1.12) drop-shadow(0 0 3px rgba(151,19,54,.88)) drop-shadow(0 0 7px rgba(78,3,30,.66))}
   }
-  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-level-up-burst,.hero-skill-slot.cast-confirm,.stat-bar.stat-cast-feedback .stat-track,html.inventory-shortcut-unseen [data-inventory-shortcut],html.inventory-shortcut-unseen [data-inventory-shortcut]::after{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
+  @keyframes heroIntoxicationBorder{
+    0%,100%{border-color:#521015;box-shadow:inset 0 0 8px rgba(43,2,6,.36),0 0 3px rgba(59,5,9,.42)}
+    50%{border-color:#861b27;box-shadow:inset 0 0 13px rgba(70,5,11,.56),0 0 8px rgba(103,15,23,.5)}
+  }
+  @media (prefers-reduced-motion:reduce){.skill-box.spell-effect-active,.skill-box.passive-effect-active,.skill-buff-icon,.hero-energy-glow,.hero-energy-particle,.hero-intoxication-particle,.hero-level-up-burst,.hero-skill-slot.cast-confirm,.stat-bar.stat-cast-feedback .stat-track,.sprite-box--intoxicated,html.inventory-shortcut-unseen [data-inventory-shortcut],html.inventory-shortcut-unseen [data-inventory-shortcut]::after{animation:none!important}.hero-level-up-burst{display:none}.hero-energy-particle{translate:none!important}}
 
   /* ---------- libro de habilidades (sheet) ---------- */
   .grim-cls-tag{font-size:12px;color:var(--kodak);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 4px}
