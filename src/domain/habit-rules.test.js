@@ -439,7 +439,7 @@ describe('hábitos', () => {
     ['weekly', 'easy', 3],
     ['weekly', 'medium', 5],
     ['weekly', 'hard', 8],
-  ])('entrega monedas %s de dificultad %s', (frequency, difficulty, expected) => {
+  ])('entrega oro %s de dificultad %s', (frequency, difficulty, expected) => {
     const targetHabit = { ...habit, id: `${frequency}-${difficulty}`, frequency, difficulty, target: 1 };
     const result = progressWithCoins({
       habitState: { items: [targetHabit], entries: {} },
@@ -452,7 +452,7 @@ describe('hábitos', () => {
     expect(result.economy.coins).toBe(expected + (frequency === 'daily' ? 3 : 0));
   });
 
-  it('no entrega monedas antes del objetivo y solo recompensa una vez', () => {
+  it('no entrega oro antes del objetivo y solo recompensa una vez', () => {
     const initial = { items: [habit], entries: {} };
     const first = progressWithCoins({ habitState: initial, currentEconomy: economy(), delta: 1 });
     const completed = progressWithCoins({
@@ -472,7 +472,7 @@ describe('hábitos', () => {
     expect(repeated.economy.coins).toBe(6);
   });
 
-  it('retira monedas al deshacer y permite recuperarlas sin duplicarlas', () => {
+  it('retira oro al deshacer y permite recuperarlo sin duplicarlo', () => {
     const targetHabit = { ...habit, target: 1 };
     const completed = progressWithCoins({
       habitState: { items: [targetHabit], entries: {} },
@@ -587,7 +587,7 @@ describe('hábitos', () => {
     expect(after.coinDelta).toBe(6);
   });
 
-  it('entrega monedas aunque el tope de XP diaria ya esté completo', () => {
+  it('entrega oro aunque el tope de XP diaria ya esté completo', () => {
     const habits = Array.from({ length: 3 }, (_, index) => ({
       ...habit, id: `cap-${index}`, difficulty: 'hard', target: 1,
     }));

@@ -101,7 +101,7 @@ describe('loot de bosses', () => {
       ['discipline', 'fortune', 'arcane'].includes(id))).toBe(true);
   });
 
-  it('entrega reliquia, monedas y Sangre una sola vez', () => {
+  it('entrega reliquia, oro y Sangre una sola vez', () => {
     const first = grantBossRewards({
       state: emptyLootState(),
       bossesDown: 3,
@@ -259,7 +259,7 @@ describe('loot de bosses', () => {
     expect(second.rewards).toEqual([]);
   });
 
-  it('entrega exactamente +25 monedas y resuelve una sola vez la tirada anticipada', () => {
+  it('entrega exactamente +25 oro y resuelve una sola vez la tirada anticipada', () => {
     const eligibility = {
       id: 'boss_reward_01:early-victory:week-0', bossIndex: 0,
     };
@@ -593,7 +593,7 @@ describe('equipamiento y bonus derivados', () => {
     });
   });
 
-  it('la Malla devuelve monedas únicamente cuando falla una mejora', () => {
+  it('la Malla devuelve oro únicamente cuando falla una mejora', () => {
     const raw = emptyLootState();
     raw.economy.coins = 100;
     raw.economy.bossBlood = 5;

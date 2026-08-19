@@ -25,11 +25,11 @@ export const CLASSES={
     pas:[
       {lvl:1,icon:'pielhierro',name:'Piel de Hierro',d:'Ganas Armadura cada 2 días de racha.'},
       {lvl:5,icon:'voluntad',name:'Voluntad de Acero',d:'Día correcto con Armadura: +4 XP (5/semana).'},
-      {lvl:12,icon:'yelmo',name:'Yelmo Templado',d:'Día correcto con 3 hábitos: +1 moneda (4/semana).'}
+      {lvl:12,icon:'yelmo',name:'Yelmo Templado',d:'Día correcto con 3 hábitos: +1 oro (4/semana).'}
     ],
     act:[
       {lvl:2,id:'grito',icon:'grito',name:'Grito de Guerra',cost:30,modern:true,d:'+10% Vida y +2 Armadura para el próximo golpe.'},
-      {lvl:8,id:'muro',icon:'muro',name:'Muro de Escudos',cost:40,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 monedas al completar ambos.'},
+      {lvl:8,id:'muro',icon:'muro',name:'Muro de Escudos',cost:40,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 oro al completar ambos.'},
       {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:60,ulti:true,modern:true,d:'Cada día correcto suma 1 carga. Con 6: +5 XP y Armadura máxima hasta el próximo jefe.'}
     ]
   },
@@ -59,11 +59,11 @@ export const CLASSES={
     pas:[
       {lvl:1,icon:'flecha',name:'Flecha Bendita',d:'Día correcto: recupera 5% de vida.'},
       {lvl:5,icon:'ojohalcon',name:'Ojo del Halcón',d:'Día correcto con 2 hábitos: +4 XP (5/semana).'},
-      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'Días correctos 3 y 5: +2 monedas.'}
+      {lvl:12,icon:'punteria',name:'Puntería Divina',d:'Días correctos 3 y 5: +2 oro.'}
     ],
     act:[
       {lvl:2,id:'luz',icon:'luz',name:'Luz Sanadora',cost:35,modern:true,d:'+10% Vida. El próximo hábito recupera 5% de Maná.'},
-      {lvl:8,id:'certero',icon:'certero',name:'Ojo Certero',cost:45,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 monedas al completar ambos.'},
+      {lvl:8,id:'certero',icon:'certero',name:'Ojo Certero',cost:45,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 oro al completar ambos.'},
       {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Bendice hasta 3 hábitos. Completarlos concede +5 XP.'}
     ]
   },
@@ -93,11 +93,11 @@ export const CLASSES={
     pas:[
       {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Primer hábito del día: +5% Maná.'},
       {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'4 hábitos: +5 XP (4/semana).'},
-      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Gasta 50 de Maná: +2 monedas y −15% Vida (2/semana).'}
+      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Gasta 50 de Maná: +2 oro y −15% Vida (2/semana).'}
     ],
     act:[
       {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima.'},
-      {lvl:8,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:50,habitChallenge:true,autoHabitChallenge:true,modern:true,d:'Los primeros 2 hábitos conceden +5 XP y recuperan 5 de maná. Completar ambos concede 2 monedas.'},
+      {lvl:8,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:50,habitChallenge:true,autoHabitChallenge:true,modern:true,d:'Los primeros 2 hábitos conceden +5 XP y recuperan 5 de maná. Completar ambos concede 2 oro.'},
       {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,modern:true,d:'Cumple tu hábito más débil en 24 h: recupera el Maná y gana +5 XP.'}
     ]
   },
@@ -127,11 +127,11 @@ export const CLASSES={
     pas:[
       {lvl:1,icon:'savia',name:'Savia Viva',d:'Día correcto: recupera 8% de Vida.'},
       {lvl:5,icon:'raices',name:'Raíces Profundas',d:'4 hábitos: +5 XP (4/semana).'},
-      {lvl:12,icon:'pocion',name:'Poción Mayor',d:'Cumple tus objetivos de salud: +1 moneda (4/semana).'}
+      {lvl:12,icon:'pocion',name:'Poción Mayor',d:'Cumple tus objetivos de salud: +1 oro (4/semana).'}
     ],
     act:[
       {lvl:2,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:50,modern:true,d:'+6% Vida ahora y +9% durante 30 min.'},
-      {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno; ambos dan +2 monedas.'},
+      {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno; ambos dan +2 oro.'},
       {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Completa un hábito 3 veces en 7 días: Vida completa y +5 XP.'}
     ]
   }

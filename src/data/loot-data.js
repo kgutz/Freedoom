@@ -173,9 +173,9 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'eye',
     effectFamily: 'coins',
     image: 'relics/relic_08_ojo_duda_petrificada.png',
-    effectLabel: 'El primer hábito difícil completado cada día concede monedas adicionales. Una activación diaria.',
+    effectLabel: 'El primer hábito difícil completado cada día concede oro adicional. Una activación diaria.',
     affixPool: ['fortune', 'discipline', 'vitality'],
-    valueUnit: 'monedas',
+    valueUnit: 'oro',
   },
   {
     id: 'relic_09',
@@ -185,7 +185,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'armor',
     effectFamily: 'forge',
     image: 'relics/relic_09_malla_escamas_brea.png',
-    effectLabel: 'Cuando falla una mejora en la Forja, recupera una parte de las monedas invertidas.',
+    effectLabel: 'Cuando falla una mejora en la Forja, recupera una parte del oro invertido.',
     affixPool: ['fortune', 'regeneration', 'vitality'],
     valueUnit: '%',
   },
@@ -221,9 +221,9 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'fist',
     effectFamily: 'coins',
     image: 'relics/relic_12_puno_papel.png',
-    effectLabel: 'Completar todos los hábitos programados para el día concede monedas adicionales. Una activación diaria.',
+    effectLabel: 'Completar todos los hábitos programados para el día concede oro adicional. Una activación diaria.',
     affixPool: ['fortune', 'discipline', 'vitality'],
-    valueUnit: 'monedas',
+    valueUnit: 'oro',
   },
 ];
 

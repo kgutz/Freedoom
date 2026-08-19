@@ -43,8 +43,8 @@ describe('interfaz de inventario y botín', () => {
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('<span>EFECTO</span>');
-    expect(html).toContain('Triplica las monedas de tus hábitos diarios durante 30 min.');
-    expect(html).toContain('Añade hasta 30 monedas extra.');
+    expect(html).toContain('Triplica el oro de tus hábitos diarios durante 30 min.');
+    expect(html).toContain('Añade hasta 30 de oro extra.');
     expect(html).not.toContain('REGLAS');
 
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'experience', { mode: 'shop' })).toBe(true);
@@ -76,13 +76,13 @@ describe('interfaz de inventario y botín', () => {
     expect(closedRemovals).toBe(2);
   });
 
-  it('centra todas las pestañas con la altura real de Forja y prioriza pantallas bajas', () => {
-    expect(inventoryReferenceOffset(600, 400)).toBe(100);
+  it('sitúa todas las pestañas 10 px sobre el centro y prioriza pantallas bajas', () => {
+    expect(inventoryReferenceOffset(600, 400)).toBe(90);
     expect(inventoryReferenceOffset(400, 500)).toBe(0);
     expect(inventoryReferenceOffset(0, 400)).toBe(0);
   });
 
-  it('usa iconos CSS accesibles y no imágenes para las monedas y la sangre', () => {
+  it('usa iconos CSS accesibles y no imágenes para el oro y la sangre', () => {
     expect(resourceIcon('coin')).toContain('resource-icon--coin');
     expect(resourceIcon('boss-blood')).toContain('resource-icon--boss-blood');
     expect(resourceIcon('coin')).not.toContain('<img');
@@ -469,7 +469,7 @@ describe('interfaz de inventario y botín', () => {
     renderLootNotice(document, state, state.loot.notices[0]);
     const html = document.elements.lootNoticeRewards.innerHTML;
     expect(html).toContain('BONUS VICTORIA ANTICIPADA');
-    expect(html).toContain('+25 monedas');
+    expect(html).toContain('+25 oro');
     expect(html).not.toContain('+1 Sangre de Jefe');
   });
 });

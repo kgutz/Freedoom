@@ -677,9 +677,9 @@ export function renderSkillsView({
     if(classId!=='druid'||ability.name!=='Poción Mayor') return ability.d;
     const pills=config?.takesPills!==false;
     const beer=config?.tracksBeer!==false;
-    if(pills&&beer) return 'Completa todas tus pastillas y no bebas cerveza para ganar 1 moneda. Máximo 4 por semana.';
-    if(pills) return 'Completa todas tus pastillas para ganar 1 moneda. Máximo 4 por semana.';
-    if(beer) return 'No bebas cerveza para ganar 1 moneda. Máximo 4 por semana.';
+    if(pills&&beer) return 'Completa todas tus pastillas y no bebas cerveza para ganar 1 de oro. Máximo 4 por semana.';
+    if(pills) return 'Completa todas tus pastillas para ganar 1 de oro. Máximo 4 por semana.';
+    if(beer) return 'No bebas cerveza para ganar 1 de oro. Máximo 4 por semana.';
     return 'Configura un objetivo de salud para activar esta pasiva.';
   };
   const passiveHtml = classData.pas

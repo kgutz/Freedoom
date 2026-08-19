@@ -21,6 +21,9 @@ import {
 import { BOSSES } from '../data/game-data.js';
 import { POTION_DEFINITIONS, POTION_FUTURE_SLOTS, POTION_DAILY_LIMITS } from '../data/potion-data.js';
 import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
+import { resourceIcon, resourceValue } from './resource-icons.js';
+
+export { resourceIcon, resourceValue } from './resource-icons.js';
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -28,15 +31,6 @@ function escapeHtml(value) {
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
-}
-
-export function resourceIcon(type) {
-  const label = type === 'coin' ? 'Monedas' : 'Sangre de Jefe';
-  return `<span class="resource-icon resource-icon--${type}" role="img" aria-label="${label}"></span>`;
-}
-
-export function resourceValue(type, value, label = '') {
-  return `<span class="resource-value">${resourceIcon(type)}<b>${Math.max(0, Number(value) || 0)}</b>${label ? `<small>${label}</small>` : ''}</span>`;
 }
 
 function relicArt(definition, overlay = '') {
@@ -80,7 +74,7 @@ function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey
     const owned = potions.owned[definition.id] || 0;
     if (mode === 'shop') {
       const lacksCoins = normalized.economy.coins < definition.price;
-      return `<button type="button" class="potion-card potion-card--shop potion-tone--${definition.tone}${lacksCoins ? ' is-disabled' : ''}" data-open-shop-potion="${definition.id}" aria-label="Ver ${escapeHtml(definition.name)} · ${definition.price} monedas">
+      return `<button type="button" class="potion-card potion-card--shop potion-tone--${definition.tone}${lacksCoins ? ' is-disabled' : ''}" data-open-shop-potion="${definition.id}" aria-label="Ver ${escapeHtml(definition.name)} · ${definition.price} de oro">
         ${potionArt(definition)}
       </button>`;
     }
@@ -141,7 +135,7 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const action=shopMode
     ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins?' aria-disabled="true"':''}>${lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
     : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
-  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} MONEDAS`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
+  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
   return true;
 }
 
@@ -172,7 +166,7 @@ export function chargeIndicatorMarkup({ mechanicId, chargeState = {}, rarity = '
 export function inventoryReferenceOffset(availableHeight, referenceHeight) {
   const available = Math.max(0, Number(availableHeight) || 0);
   const reference = Math.max(0, Number(referenceHeight) || 0);
-  return Math.max(0, Math.floor((available - Math.min(reference, available)) / 2));
+  return Math.max(0, Math.floor((available - Math.min(reference, available)) / 2) - 10);
 }
 
 export function closeForgeInfoOutside(document, target) {
@@ -330,7 +324,7 @@ export function renderInventoryView(document, lootState, options = {}) {
   if (!body) return;
   body.innerHTML = `
     <section class="inventory-resources">
-      ${resourceValue('coin', normalized.economy.coins, 'MONEDAS')}
+      ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
     </section>
     <section class="inventory-section" id="inventoryEquippedSection">
@@ -466,7 +460,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     body.innerHTML = `${forgeModeTabs('upgrade')}
       <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong><details class="forge-info forge-toolbar-info">
         <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
-        <div class="forge-info-popover"><p>Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
+        <div class="forge-info-popover"><p>El oro se gasta en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
       </details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
       <section class="forge-focus forge-focus--empty">
         <button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Elegir reliquia para mejorar"></button>
@@ -488,7 +482,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   const upgradeInfoMarkup = `<details class="forge-info forge-toolbar-info">
     <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
     <div class="forge-info-popover">${preview.ok ? `<div><span>Probabilidad <b>${preview.finalProbability}%</b></span><span>Pity <b>${preview.pityProbability}%</b></span><span>Fortuna <b>+${preview.fortune}%</b></span></div>` : ''}
-    <p>Las monedas se gastan en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
+    <p>El oro se gasta en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
   </details>`;
   const forgeControls = preview.ok
     ? `${forgeUpgradeMarkup(relicId, relic.rank, preview.targetRank)}
@@ -625,7 +619,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
         : preview.reason === 'already-owned'
           ? 'Ya posees esta reliquia fusionada.'
           : preview.reason === 'coins'
-            ? 'No tienes suficientes monedas.'
+            ? 'No tienes suficiente oro.'
             : preview.reason === 'blood'
               ? 'No tienes suficiente Sangre de Jefe.'
               : preview.definition ? `Resultado listo · ${preview.successProbability}% de éxito.` : 'Elige dos reliquias base.';
@@ -644,7 +638,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
     ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible.</small></p>'
     : `<p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
-    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Cada intento cuesta monedas. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. La rareza y el rango más altos están garantizados.</p><p>Cada efecto conserva la potencia exacta que tenía en su reliquia de origen. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Cada intento consume oro. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. La rareza y el rango más altos están garantizados.</p><p>Cada efecto conserva la potencia exacta que tenía en su reliquia de origen. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="fusion-flow${left && right ? ' has-pair' : ''}" aria-label="Receta de Fusión">
       <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
       ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
@@ -696,7 +690,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
       </div>`;
   body.innerHTML = `
     <section class="inventory-resources">
-      ${resourceValue('coin', normalized.economy.coins, 'MONEDAS')}
+      ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
     </section>
     <div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
@@ -735,7 +729,7 @@ export function renderLootNotice(document, lootState, notice) {
     ? `<div class="loot-blood-bonus">¡GOLPE DE SUERTE! · SANGRE DOBLE (+${notice.bonusBossBlood})</div>`
     : '';
   const earlyVictoryMarkup = notice.earlyVictoryBonusCoins > 0
-    ? `<div class="loot-early-victory-bonus"><b>BONUS VICTORIA ANTICIPADA</b><span>${resourceIcon('coin')} +${notice.earlyVictoryBonusCoins} monedas</span>${notice.earlyVictoryBonusBossBlood > 0 ? `<span>${resourceIcon('boss-blood')} +${notice.earlyVictoryBonusBossBlood} Sangre de Jefe</span>` : ''}</div>`
+    ? `<div class="loot-early-victory-bonus"><b>BONUS VICTORIA ANTICIPADA</b><span>${resourceIcon('coin')} +${notice.earlyVictoryBonusCoins} oro</span>${notice.earlyVictoryBonusBossBlood > 0 ? `<span>${resourceIcon('boss-blood')} +${notice.earlyVictoryBonusBossBlood} Sangre de Jefe</span>` : ''}</div>`
     : '';
   document.getElementById('lootNoticeTitle').textContent =
     retroactive ? 'NUEVAS RECOMPENSAS' : 'BOTÍN CONSEGUIDO';
@@ -748,7 +742,7 @@ export function renderLootNotice(document, lootState, notice) {
     (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards + failedRewards + bloodBonusMarkup + earlyVictoryMarkup;
   document.getElementById('lootNoticeSummary').innerHTML = `
     <span class="loot-summary-value"><b>${notice.relicIds.length}</b><small>RELIQUIA${notice.relicIds.length === 1 ? '' : 'S'}</small></span>
-    <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('coin')}<b>${notice.coins}</b></span><small>MONEDAS</small></span>
+    <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('coin')}<b>${notice.coins}</b></span><small>ORO</small></span>
     <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('boss-blood')}<b>${notice.bossBlood}</b></span><small>SANGRE DE JEFE</small></span>`;
   const actions = document.getElementById('lootNoticeActions');
   actions.innerHTML = retroactive
@@ -771,17 +765,17 @@ export function forgeResultMarkup(result, relicName, relicId) {
     return `<div class="forge-result success"><span>FORJA COMPLETADA</span>${artMarkup}<h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
   }
   const refundCopy = result.coinsRefunded > 0
-    ? `<p>La Malla de Escamas de Brea recupera ${result.coinsRefunded} monedas.</p>`
+    ? `<p>La Malla de Escamas de Brea recupera ${result.coinsRefunded} de oro.</p>`
     : '';
   const netCoinsLost = Math.max(0, result.spentCoins - (result.coinsRefunded || 0));
-  return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${netCoinsLost} monedas.</p>${refundCopy}<p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+  return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${netCoinsLost} de oro.</p>${refundCopy}<p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
 }
 
 export function fusionResultMarkup(result) {
   const definition = fusionDefinition(result.historyEntry?.recipeId || result.preview?.definition?.recipeId);
   if (!definition) return '';
   if (!result.success) {
-    return `<div class="forge-result failure fusion-result"><span>FUSIÓN FALLIDA</span><div class="forge-result-art">${relicArt(definition)}</div><h3>Las reliquias rechazan la unión.</h3><p>Has perdido ${result.spentCoins} monedas.</p><p>Las dos reliquias y la Sangre de Jefe se conservan.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+    return `<div class="forge-result failure fusion-result"><span>FUSIÓN FALLIDA</span><div class="forge-result-art">${relicArt(definition)}</div><h3>Las reliquias rechazan la unión.</h3><p>Has perdido ${result.spentCoins} de oro.</p><p>Las dos reliquias y la Sangre de Jefe se conservan.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
   }
   const rarity = RARITIES[result.fusedRelic?.rarity] || RARITIES.rare;
   const affixCount = result.fusedRelic?.affixes?.length || 0;

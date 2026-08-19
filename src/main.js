@@ -155,6 +155,7 @@ import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
+import { setTextWithResourceIcons } from './ui/resource-icons.js';
 import {
   DEFAULT_DAY_START_TIME,
   dayStartMinutes,
@@ -1799,7 +1800,7 @@ const EQUIPMENT_TYPE_NAMES={
   heart:'corazones',spirit:'reliquias espirituales',dagger:'dagas',helmet:'yelmos',
   vessel:'recipientes mágicos',fang:'colmillos'
 };
-const EFFECT_FAMILY_NAMES={experience:'de Experiencia',coins:'de Monedas',forge:'de Forja',bosses:'de Jefes'};
+const EFFECT_FAMILY_NAMES={experience:'de Experiencia',coins:'de Oro',forge:'de Forja',bosses:'de Jefes'};
 function equipFailureMessage(result){
   if(result?.reason==='fusion-equipped-conflict'){
     return 'Solo puedes equipar una reliquia fusionada a la vez.';
@@ -2934,8 +2935,8 @@ function updateHabitEditor(){
     ? `Primer avance: +${xpSchedule[0]||0} XP · +${coinSchedule[0]||0} 🪙 · total: +${xpSchedule.reduce((sum,value)=>sum+value,0)} XP · +${coinSchedule.reduce((sum,value)=>sum+value,0)} 🪙`
     : previewHabit.repeatable
       ? `${xpSchedule.slice(0,3).map((xp,index)=>`${xp} XP · ${coinSchedule[index]||0} 🪙`).join('  /  ')}${habitDraftTarget>3?'  /  después 0':''}`
-      : `+${habitReward(previewHabit)} XP · +${habitCoinReward(previewHabit)} ${habitCoinReward(previewHabit)===1?'moneda':'monedas'}`;
-  document.getElementById('habitRewardPreview').textContent=preview;
+      : `+${habitReward(previewHabit)} XP · +${habitCoinReward(previewHabit)} oro`;
+  setTextWithResourceIcons(document.getElementById('habitRewardPreview'),preview);
 }
 function finishHabitEditorClose(){
   const modal=document.getElementById('habitModalBg');
@@ -3673,9 +3674,9 @@ function openShopPurchaseConfirmation(purchase){
   const body=document.getElementById('shopPurchaseConfirmBody');
   const accept=document.getElementById('shopPurchaseConfirmAccept');
   if(purchase.type==='potion'){
-    body.innerHTML=`<p><b>${purchase.name}</b> × ${purchase.quantity}</p><p>Se descontarán <b>${purchase.coinCost} monedas</b>.</p>`;
+    body.innerHTML=`<p><b>${purchase.name}</b> × ${purchase.quantity}</p><p>Se descontarán <b>${purchase.coinCost} de oro</b>.</p>`;
   }else{
-    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.coinCost} monedas</b>${purchase.bloodCost?` y <b>${purchase.bloodCost} Sangre de Jefe</b>`:''}.</p>`;
+    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.coinCost} de oro</b>${purchase.bloodCost?` y <b>${purchase.bloodCost} Sangre de Jefe</b>`:''}.</p>`;
   }
   accept.disabled=false;
   accept.textContent='COMPRAR';
@@ -3703,7 +3704,7 @@ async function handleRelicPurchase(relicId){
     renderHero();
     if(purchaseSaved) showToast('Reliquia recuperada','heal');
   }else{
-    const message=result.reason==='coins'?'No tienes suficientes monedas'
+    const message=result.reason==='coins'?'No tienes suficiente oro'
       :result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'Esta reliquia ya no está disponible';
     showToast(message,'dmg');
     renderShopView(document,state,Date.now(),potionViewOptions());
@@ -3716,7 +3717,7 @@ function handlePotionPurchase(potionId,quantity=1){
   const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const result=purchasePotion({inventory:state.inventory,economy:state.economy,potionId,operationId,quantity,nowTimestamp:Date.now()});
   if(!result.ok){
-    showToast(result.reason==='coins'?'No tienes suficientes monedas':'No se pudo comprar la poción','dmg');
+    showToast(result.reason==='coins'?'No tienes suficiente oro':'No se pudo comprar la poción','dmg');
     return false;
   }
   state.inventory=result.inventory;
@@ -3804,7 +3805,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
-      showToast('No tienes suficientes monedas','dmg');
+      showToast('No tienes suficiente oro','dmg');
       return;
     }
     openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
@@ -3851,7 +3852,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
       (id===leftId||id===rightId)&&(id==='relic_04'||Number(state.inventory?.relics?.[id]?.inheritedEffects?.relic_04)>0)
     )&&(Number(state.inventory?.constancy?.charge)||0)>0;
     const preview=getForgeFusionPreview(state,leftId,rightId);
-    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Probabilidad de éxito: <b>${preview.successProbability}%</b>. El intento cuesta <b>100 monedas</b>.</p><p>Las reliquias y <b>1 Sangre de Jefe</b> solo se consumirán si tiene éxito.</p>${losesConstancy?`<p><b>Si tiene éxito, perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
+    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Probabilidad de éxito: <b>${preview.successProbability}%</b>. El intento cuesta <b>100 de oro</b>.</p><p>Las reliquias y <b>1 Sangre de Jefe</b> solo se consumirán si tiene éxito.</p>${losesConstancy?`<p><b>Si tiene éxito, perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
     document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }
@@ -3930,7 +3931,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
-      showToast('No tienes suficientes monedas','dmg');
+      showToast('No tienes suficiente oro','dmg');
       return;
     }
     openShopPurchaseConfirmation({type:'potion',potionId,name:definition.name,quantity,coinCost:definition.price*quantity});
@@ -4014,7 +4015,7 @@ async function handleForgeAttempt(relicId){
     document.getElementById('forgeResultBg').classList.add('show');
     selectedForgeRelicId=relicId;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
-  }else showToast(result.reason==='coins'?'No tienes suficientes monedas':result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'No cumples los requisitos de la Forja','dmg');
+  }else showToast(result.reason==='coins'?'No tienes suficiente oro':result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'No cumples los requisitos de la Forja','dmg');
   forgeLocked=false;
 }
 document.getElementById('forgeBody').addEventListener('click',event=>{

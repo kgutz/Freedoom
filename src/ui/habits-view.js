@@ -1,6 +1,7 @@
 import { CLASSES } from '../data/game-data.js';
 import { keyOf } from '../domain/date-utils.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
+import { resourceIcon } from './resource-icons.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
@@ -57,14 +58,14 @@ function habitRow(habit, entry, skillMarked = false) {
   const rewardCoins = habitProgressCoinSchedule(habit).reduce((total, value) => total + value, 0);
   const earnedParts = [];
   if (entry.xpAwarded > 0) earnedParts.push(`+${entry.xpAwarded} XP`);
-  if (entry.coinsAwarded > 0) earnedParts.push(`+${entry.coinsAwarded} 🪙`);
+  if (entry.coinsAwarded > 0) earnedParts.push(`+${entry.coinsAwarded} ${resourceIcon('coin')}`);
   const earnedCopy = earnedParts.length ? ` · ${earnedParts.join(' · ')}` : '';
   return `<article class="habit-row${completed ? ' completed' : ''}${skillMarked ? ' skill-marked' : ''}" data-habit-id="${escapeHtml(habit.id)}"${skillMarked ? ' data-skill-marked="true"' : ''}>
     <button class="habit-adjust habit-minus" type="button" data-habit-delta="-1" aria-label="Restar progreso"${entry.count <= 0 ? ' disabled' : ''}>−</button>
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} monedas</span>
+      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} oro</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${earnedCopy}</span>
     </button>
