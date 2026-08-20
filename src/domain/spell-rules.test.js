@@ -137,22 +137,44 @@ describe('curación y habilidades definitivas', () => {
     expect(result.game.powerProgress.habitChallenge).toMatchObject({
       spellId:'certero',habitIds:['habit-a','habit-b'],completedIds:[],week:3,
     });
-    expect(result.game.powerProgress.challengeDayUses['2026-07-26:certero']).toBe(true);
+    expect(result.game.powerProgress.challengeDayUses['2026-07-26:certero']).toEqual({
+      count:1,lastUsedAt:1_000_000,lastCompletedAt:0,
+    });
   });
 
-  it('impide repetir el reto el mismo día y lo permite al día siguiente',()=>{
+  it('permite dos retos diarios y empieza el cooldown al completar el primero',()=>{
     const selectedSpell=spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
     });
-    const usedGame={
-      hp:80,mp:100,buffs:{},
-      powerProgress:{challengeDayUses:{'2026-07-26:certero':true}},
+    const first=cast(selectedSpell,{
+      game:{hp:100,mp:200,buffs:{}},selectedHabitIds:['a','b'],
+    });
+    expect(cast(selectedSpell,{
+      game:first.game,nowTimestamp:1_120_000,selectedHabitIds:['c','d'],
+    })).toMatchObject({ok:false,reason:'challenge-active'});
+    const completedGame={
+      ...first.game,
+      mp:200,
+      powerProgress:{
+        ...first.game.powerProgress,
+        habitChallenge:{...first.game.powerProgress.habitChallenge,completedIds:['a','b'],coinRewarded:true},
+        challengeDayUses:{
+          '2026-07-26:certero':{count:1,lastUsedAt:1_000_000,lastCompletedAt:1_120_000},
+        },
+      },
     };
     expect(cast(selectedSpell,{
-      game:usedGame,selectedHabitIds:['a','b'],
+      game:completedGame,nowTimestamp:1_150_000,selectedHabitIds:['c','d'],
+    })).toMatchObject({ok:false,reason:'challenge-cooldown',cooldownRemainingMs:30_000});
+    const second=cast(selectedSpell,{
+      game:completedGame,nowTimestamp:1_180_001,selectedHabitIds:['c','d'],
+    });
+    expect(second).toMatchObject({ok:true,dailyUses:2});
+    expect(cast(selectedSpell,{
+      game:{...second.game,mp:200},nowTimestamp:1_300_000,selectedHabitIds:['e','f'],
     })).toMatchObject({ok:false,reason:'challenge-used'});
     expect(cast(selectedSpell,{
-      game:usedGame,today:'2026-07-27',selectedHabitIds:['a','b'],
+      game:{...second.game,mp:200},today:'2026-07-27',selectedHabitIds:['a','b'],
     }).ok).toBe(true);
   });
 

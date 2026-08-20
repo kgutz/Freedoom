@@ -1,6 +1,11 @@
 import { CLASSES } from '../data/game-data.js';
 import { keyOf } from '../domain/date-utils.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
+import {
+  heroFaceSource,
+  heroSpriteSource,
+  outfitUsesTransparentPortrait,
+} from '../data/outfit-data.js';
 import { resourceIcon } from './resource-icons.js';
 import {
   HABIT_DIFFICULTIES,
@@ -126,6 +131,9 @@ export function renderHabitsView({
   const intoxicationClass = intoxicationStageValue > 0
     ? ` compact-hero-intoxicated compact-intoxication-stage-${intoxicationStageValue}`
     : '';
+  const outfitPortraitClass = outfitUsesTransparentPortrait(game?.outfit)
+    ? ' outfit-transparent-portrait'
+    : '';
   const selectedFilter = ['daily', 'weekly'].includes(filter) ? filter : 'all';
   const visibleHabits = selectedFilter === 'all'
     ? habits
@@ -173,7 +181,7 @@ export function renderHabitsView({
     </div>
     <div class="habit-hero-card">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite${intoxicationClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="hero_face/${classId}_face.png" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='sprites/${classId}_happy.png';this.className='face-full'"></button>
+      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></button>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>

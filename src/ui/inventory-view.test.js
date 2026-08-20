@@ -14,6 +14,7 @@ import {
   renderFusionView,
   renderInventoryView,
   renderLootNotice,
+  renderOutfitSelector,
   renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
@@ -30,7 +31,7 @@ function lootWithBosses(count, source = 'retroactive') {
 function fakeDocument() {
   const elements = Object.fromEntries([
     'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
-    'forgeRelicPickerTitle', 'forgeRelicPickerBody',
+    'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -38,6 +39,42 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('mantiene oculto el outfit beta hasta aceptar la recompensa de pionero', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.game = { cls: 'sorcerer', outfit: 'original' };
+    renderInventoryView(document, state);
+    expect(document.elements.inventoryBody.innerHTML).toContain('OUTFIT EQUIPADO');
+    expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo original');
+    expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
+    expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('original');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-option--locked/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-locked-mark/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit="beta-tester"');
+
+    state.game.pioneerReward = { claimedAt: 1234, outfitId: 'beta-tester', coins: 130 };
+    expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('beta-tester');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-option--locked/g)).toHaveLength(1);
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-locked-mark/g)).toHaveLength(1);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Guardián de la Brasa');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Vestiduras nocturnas');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-outfit="beta-tester"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('sprites/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option rarity-common equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option rarity-rare selected');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-selector-preview');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('hero_background/');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>DISPONIBLE</small>');
+    state.game.outfit = 'beta-tester';
+    renderInventoryView(document, state);
+    expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--outfit-beta-tester');
+    expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--sorcerer');
+  });
+
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
     const document = fakeDocument();
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);

@@ -565,6 +565,16 @@
   </div>
 </div>
 
+<div class="modal-bg center" id="outfitSelectorBg" style="z-index:31">
+  <div class="modal outfit-selector-modal" role="dialog" aria-modal="true" aria-labelledby="outfitSelectorTitle">
+    <div class="outfit-selector-top">
+      <h3 id="outfitSelectorTitle">Outfits</h3>
+      <button type="button" id="outfitSelectorClose" aria-label="Cerrar selector de outfits">✕</button>
+    </div>
+    <div id="outfitSelectorBody"></div>
+  </div>
+</div>
+
 <div class="modal-bg center" id="relicEffectInfoBg" style="z-index:32">
   <div class="modal relic-effect-info-modal" role="dialog" aria-modal="true" aria-labelledby="relicEffectInfoTitle">
     <span class="relic-effect-info-kicker">EFECTO EXTRA</span>
@@ -638,6 +648,40 @@
     <div id="lootNoticeRewards" class="loot-notice-rewards"></div>
     <div id="lootNoticeSummary" class="loot-notice-summary"></div>
     <div id="lootNoticeActions" class="loot-notice-actions"></div>
+  </div>
+</div>
+
+<div class="modal-bg center pioneer-reward-bg" id="pioneerRewardBg" style="z-index:48">
+  <div class="modal pioneer-reward-modal" role="dialog" aria-modal="true" aria-labelledby="pioneerRewardTitle">
+    <section id="pioneerRewardThanks" class="pioneer-reward-step">
+      <span class="pioneer-reward-kicker">RECOMPENSA</span>
+      <h3 id="pioneerRewardTitle">Gracias, pionero</h3>
+      <div class="pioneer-chest-scene" aria-hidden="true">
+        <span class="pioneer-chest-aura"></span>
+        <span class="pioneer-chest-rays"></span>
+        <span class="pioneer-chest-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <img src="rewards/pioneer-chest.png" alt="">
+      </div>
+      <p>Gracias por cada prueba y cada feedback. Sin ti, Freedoom no sería lo mismo.</p>
+      <button type="button" class="pioneer-reward-action" id="pioneerRewardAccept">ACEPTAR</button>
+    </section>
+    <section id="pioneerRewardReveal" class="pioneer-reward-step pioneer-reward-reveal" hidden>
+      <span class="pioneer-reward-kicker">RECOMPENSA CONSEGUIDA</span>
+      <h3>Tu huella queda en Freedoom</h3>
+      <div class="pioneer-reward-items">
+        <div class="pioneer-reward-item pioneer-reward-outfit">
+          <span class="pioneer-reward-outfit-art"><img id="pioneerRewardOutfitImage" src="" alt="Outfit Beta Tester"></span>
+          <strong>Outfit Beta Tester</strong>
+          <small>EXCLUSIVO DE PIONEROS</small>
+        </div>
+        <div class="pioneer-reward-item pioneer-reward-gold">
+          <span class="resource-icon resource-icon--coin" role="img" aria-label="Oro"></span>
+          <strong>+130</strong>
+          <small>ORO</small>
+        </div>
+      </div>
+      <button type="button" class="pioneer-reward-action" id="pioneerRewardContinue">CONTINUAR</button>
+    </section>
   </div>
 </div>
 

@@ -20,10 +20,68 @@ import {
 } from '../domain/loot-rules.js';
 import { BOSSES } from '../data/game-data.js';
 import { POTION_DEFINITIONS, POTION_FUTURE_SLOTS, POTION_DAILY_LIMITS } from '../data/potion-data.js';
+import {
+  OUTFIT_DEFINITIONS,
+  equippedOutfit,
+  heroFaceSource,
+  heroSpriteSource,
+  isOutfitUnlocked,
+} from '../data/outfit-data.js';
 import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 
 export { resourceIcon, resourceValue } from './resource-icons.js';
+
+function outfitClassId(lootState) {
+  const classId = lootState?.game?.cls;
+  return ['knight', 'paladin', 'sorcerer', 'druid'].includes(classId) ? classId : 'paladin';
+}
+
+function outfitPortrait(classId, outfit, extraClass = '') {
+  return `<span class="outfit-portrait outfit-portrait--${classId} outfit-portrait--outfit-${outfit.id}${extraClass ? ` ${extraClass}` : ''}" aria-hidden="true">
+    <img src="${heroFaceSource(classId, outfit.id)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', outfit.id)}'">
+  </span>`;
+}
+
+function outfitFullBody(classId, outfit) {
+  return `<span class="outfit-full-body outfit-full-body--${classId} outfit-full-body--outfit-${outfit.id}" aria-hidden="true">
+    <img src="${heroSpriteSource(classId, 'happy', outfit.id)}" alt="">
+  </span>`;
+}
+
+function outfitCardMarkup(lootState) {
+  const classId = outfitClassId(lootState);
+  const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
+  return `<section class="inventory-outfit-section">
+    <span class="inventory-outfit-label">OUTFIT EQUIPADO</span>
+    <button type="button" class="inventory-outfit-card" data-open-outfits aria-label="Cambiar outfit. Actual: ${escapeHtml(equipped.name)}">
+      ${outfitPortrait(classId, equipped)}
+      <span class="inventory-outfit-copy"><b>${escapeHtml(equipped.name)}</b><small>EQUIPADO</small></span>
+      <i class="inventory-outfit-chevron" aria-hidden="true">›</i>
+    </button>
+  </section>`;
+}
+
+export function renderOutfitSelector(document, lootState, selectedOutfitId = null) {
+  const body = document.getElementById('outfitSelectorBody');
+  if (!body) return 'original';
+  const classId = outfitClassId(lootState);
+  const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
+  const requested = OUTFIT_DEFINITIONS.find((outfit) => (
+    outfit.id === selectedOutfitId && isOutfitUnlocked(outfit, lootState?.game)
+  ));
+  const selected = requested || equipped;
+  body.innerHTML = `
+    <div class="outfit-selector-grid" role="listbox" aria-label="Outfits disponibles">
+      ${OUTFIT_DEFINITIONS.map((outfit) => isOutfitUnlocked(outfit, lootState?.game)
+        ? `<button type="button" class="outfit-option rarity-${outfit.rarity || 'common'}${outfit.id === selected.id ? ' selected' : ''}${outfit.id === equipped.id ? ' equipped' : ''}" data-select-outfit="${outfit.id}" role="option" aria-selected="${outfit.id === selected.id}" aria-label="${escapeHtml(outfit.name)}${outfit.id === equipped.id ? ', equipado' : ''}">
+          ${outfitFullBody(classId, outfit)}
+        </button>`
+        : `<button type="button" class="outfit-option outfit-option--locked" disabled role="option" aria-selected="false" aria-label="Outfit por descubrir"><span class="outfit-locked-mark" aria-hidden="true">?</span></button>`).join('')}
+    </div>
+    <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${selected.id === equipped.id ? ' disabled' : ''}>${selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`;
+  return selected.id;
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -327,6 +385,7 @@ export function renderInventoryView(document, lootState, options = {}) {
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
     </section>
+    ${outfitCardMarkup(lootState)}
     <section class="inventory-section" id="inventoryEquippedSection">
       <div class="inventory-section-head"><span>RELIQUIAS ACTIVAS</span><small>2 MÁXIMO</small></div>
       <div class="equipped-relics">${equippedSlots}</div>

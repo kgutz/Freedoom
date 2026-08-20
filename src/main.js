@@ -47,7 +47,11 @@ import {
   perfectShotRewards,
   smokeUndoEffects
 } from './domain/smoking-rules.js';
-import { castSpellEffect } from './domain/spell-rules.js';
+import {
+  LEVEL_EIGHT_COOLDOWN_MS,
+  castSpellEffect,
+  levelEightSpellAvailability,
+} from './domain/spell-rules.js';
 import {
   acknowledgeLootNotice,
   activateRelicConstancy,
@@ -112,6 +116,12 @@ import {
   scalePassiveUpgrade
 } from './domain/intoxication-rules.js';
 import {
+  claimPioneerReward,
+  migratePioneerRewardEligibility,
+  shouldOfferPioneerReward,
+} from './domain/pioneer-reward-rules.js';
+import { isOutfitUnlocked } from './data/outfit-data.js';
+import {
   STORAGE_KEY,
   createBrowserStore,
   mergeState,
@@ -144,6 +154,7 @@ import {
   renderCollectionView,
   renderInventoryView,
   renderLootNotice,
+  renderOutfitSelector,
   renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
@@ -177,13 +188,16 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.89';
+const APP_VERSION='1.90';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
+  LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
+);
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -240,6 +254,9 @@ let initializeLocalDemo=false;
 let observedHeroLevel=null;
 let pendingHeroLevelUp=false;
 let pendingSkillCast=null;
+let selectedOutfitDraft=null;
+let pioneerRewardTimer=null;
+let pioneerRewardOpening=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -468,6 +485,8 @@ async function load(){
       const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
       state=mergeState(state,saved);
       state={...state,...initializeForgeSeed(state)};
+      const pioneerMigration=migratePioneerRewardEligibility(state,{existingProfile:true});
+      state=pioneerMigration.state;
       setStorageHealth({
         state:'saved',
         revision:r.revision||0,
@@ -485,6 +504,9 @@ async function load(){
           state.days[key]={...record,w:state.config.wakeTime||'09:00'};
         }
         scheduleSave();
+      }
+      else if(pioneerMigration.changed){
+        scheduleSave({type:'reward:pioneer-eligibility-migrated'});
       }
     }
   }catch(e){
@@ -1503,13 +1525,13 @@ function resetSkillConfirmation(){
   document.getElementById('skillConfirmActions').classList.remove('skill-confirm-info-actions');
 }
 
-function openUsedSkillModal(spell,{weekly=false}={}){
+function openUsedSkillModal(spell,{weekly=false,message=''}={}){
   resetSkillConfirmation();
   document.getElementById('skillConfirmKicker').textContent='HABILIDAD NO DISPONIBLE';
   document.getElementById('skillConfirmTitle').textContent=spell.name;
-  document.getElementById('skillConfirmBody').innerHTML=`<div class="skill-confirm-unavailable">${weekly
+  document.getElementById('skillConfirmBody').innerHTML=`<div class="skill-confirm-unavailable">${message||(weekly
     ? 'Ya usaste esta habilidad esta semana. Volverá a activarse al comenzar la próxima semana.'
-    : 'Ya usaste esta habilidad hoy. Volverá a activarse mañana al despertar.'}</div>`;
+    : 'Ya usaste esta habilidad dos veces hoy. Volverá a activarse mañana al despertar.')}</div>`;
   document.getElementById('skillConfirmCancel').style.display='none';
   document.getElementById('skillConfirmAccept').textContent='ENTENDIDO';
   document.getElementById('skillConfirmActions').classList.add('skill-confirm-info-actions');
@@ -1615,9 +1637,21 @@ function castSpell(id,options={}){
     openUsedSkillModal(sp,{weekly:true});
     return;
   }
-  if(sp.habitChallenge&&!sp.ulti&&g.powerProgress?.challengeDayUses?.[`${spellDayKey}:${sp.id}`]){
-    openUsedSkillModal(sp);
-    return;
+  if(sp.lvl===8&&!sp.ulti){
+    const availability=levelEightSpellAvailability({game:g,spellId:sp.id,today:spellDayKey,nowTimestamp:Date.now()});
+    if(availability.exhausted){
+      openUsedSkillModal(sp);
+      return;
+    }
+    if(availability.challengeActive){
+      openUsedSkillModal(sp,{message:'Completa primero el reto de hábitos que ya tienes activo.'});
+      return;
+    }
+    if(availability.cooldownRemainingMs>0){
+      const seconds=Math.max(1,Math.ceil(availability.cooldownRemainingMs/1000));
+      openUsedSkillModal(sp,{message:`Esta habilidad se está recargando. Podrás volver a usarla en ${seconds} s.`});
+      return;
+    }
   }
   if(sp.autoHabitChallenge&&!options.confirmed){
     if(pendingDailyHabits().length<2){
@@ -1665,7 +1699,9 @@ function castSpell(id,options={}){
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
-    else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó hoy','dmg');
+    else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó dos veces hoy','dmg');
+    else if(result.reason==='challenge-active') showToast('Completa primero el reto activo','dmg');
+    else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
     else if(result.reason==='habits') showToast('No hay suficientes hábitos diarios pendientes','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
@@ -2026,6 +2062,39 @@ async function showPendingLootNotice(){
 }
 function queueLootNotice(){
   window.setTimeout(()=>void showPendingLootNotice(),0);
+}
+function resetPioneerRewardModal(){
+  const thanks=document.getElementById('pioneerRewardThanks');
+  const reveal=document.getElementById('pioneerRewardReveal');
+  const accept=document.getElementById('pioneerRewardAccept');
+  if(thanks) thanks.hidden=false;
+  if(reveal) reveal.hidden=true;
+  if(accept) accept.disabled=false;
+}
+function shouldDisplayPioneerReward(){
+  return shouldOfferPioneerReward(state)||Boolean(
+    LOCAL_PIONEER_REWARD_PREVIEW&&state.onboarded&&state.game?.cls
+  );
+}
+function showPendingPioneerReward(){
+  pioneerRewardTimer=null;
+  if(pioneerRewardOpening||!shouldDisplayPioneerReward()) return;
+  if(returnSplashPlaying||document.querySelector('.modal-bg.show:not(#pioneerRewardBg)')){
+    pioneerRewardTimer=window.setTimeout(showPendingPioneerReward,500);
+    return;
+  }
+  pioneerRewardOpening=true;
+  resetPioneerRewardModal();
+  const classId=state.game?.cls||'knight';
+  const outfitImage=document.getElementById('pioneerRewardOutfitImage');
+  if(outfitImage) outfitImage.src=`outfits/beta-tester/${classId}_happy.png`;
+  document.getElementById('pioneerRewardBg')?.classList.add('show');
+  pioneerRewardOpening=false;
+}
+function queuePioneerReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
+  clearTimeout(pioneerRewardTimer);
+  if(!shouldDisplayPioneerReward()) return;
+  pioneerRewardTimer=window.setTimeout(showPendingPioneerReward,delay);
 }
 function acknowledgeActiveLootNotice(){
   if(!activeLootNoticeId) return;
@@ -2866,6 +2935,19 @@ function applyClassHabitRewards({result,habit}){
       challenge.coinRewarded=true;
       state.economy.coins+=2;
       notices.push('+2 🪙');
+      const challengeUseKey=`${key}:${challenge.spellId}`;
+      const recordedUse=rewards.challengeDayUses?.[challengeUseKey];
+      const completedAt=Date.now();
+      if(recordedUse&&typeof recordedUse==='object'){
+        recordedUse.lastCompletedAt=completedAt;
+        if((Number(recordedUse.count)||0)<2){
+          window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
+        }
+      }else{
+        rewards.challengeDayUses=rewards.challengeDayUses||{};
+        rewards.challengeDayUses[challengeUseKey]={count:1,lastUsedAt:0,lastCompletedAt:completedAt};
+        window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
+      }
     }
   }
   const judgment=rewards.judgment;
@@ -3727,6 +3809,12 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
+  const outfitShortcut=event.target.closest('[data-open-outfits]');
+  if(outfitShortcut){
+    selectedOutfitDraft=renderOutfitSelector(document,state,state.game?.outfit);
+    document.getElementById('outfitSelectorBg').classList.add('show');
+    return;
+  }
   const forgeScrollButton=event.target.closest('[data-forge-scroll]');
   if(forgeScrollButton){
     const relicStrip=forgeScrollButton.closest('.forge-collection')?.querySelector('.forge-relic-grid');
@@ -3864,6 +3952,33 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     filterPanel?.querySelectorAll('[data-relic-kind]').forEach(item=>{
       item.hidden=filter!=='all'&&item.dataset.relicKind!==filter;
     });
+  }
+});
+
+document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
+  const option=event.target.closest('[data-select-outfit]');
+  if(option){
+    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit);
+    return;
+  }
+  const equip=event.target.closest('[data-equip-outfit]');
+  if(equip&&!equip.disabled){
+    const outfitId=equip.dataset.equipOutfit;
+    if(!isOutfitUnlocked(outfitId,state.game)) return;
+    state.game={...state.game,outfit:outfitId};
+    selectedOutfitDraft=outfitId;
+    scheduleSave({type:'hero:outfit-equipped',outfitId});
+    document.getElementById('outfitSelectorBg').classList.remove('show');
+    renderInventoryView(document,state,potionViewOptions());
+    renderHero();
+    renderHoy();
+    renderHabits();
+    showToast('Outfit equipado','heal');
+    return;
+  }
+  if(event.target.id==='outfitSelectorBg'||event.target.closest('#outfitSelectorClose')){
+    selectedOutfitDraft=null;
+    document.getElementById('outfitSelectorBg').classList.remove('show');
   }
 });
 document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
@@ -4121,6 +4236,39 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
   renderInventoryView(document,state); renderHero();
   forgeLocked=false;
 });
+document.getElementById('pioneerRewardAccept').addEventListener('click',async()=>{
+  const button=document.getElementById('pioneerRewardAccept');
+  if(button.disabled) return;
+  button.disabled=true;
+  const previousState=state;
+  const result=claimPioneerReward(state,Date.now());
+  if(!result.granted){
+    if(LOCAL_PIONEER_REWARD_PREVIEW){
+      document.getElementById('pioneerRewardThanks').hidden=true;
+      document.getElementById('pioneerRewardReveal').hidden=false;
+    }else{
+      document.getElementById('pioneerRewardBg').classList.remove('show');
+    }
+    return;
+  }
+  state=result.state;
+  try{
+    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+    try{store.recordAction({type:'reward:pioneer-claimed',coins:result.coins,outfitId:result.outfitId},ACTIVE_STORAGE_KEY);}catch(error){console.warn('No se pudo registrar la recompensa de pionero',error);}
+    document.getElementById('pioneerRewardThanks').hidden=true;
+    document.getElementById('pioneerRewardReveal').hidden=false;
+  }catch(error){
+    state=previousState;
+    button.disabled=false;
+    console.error('No se pudo guardar la recompensa de pionero',error);
+    showToast('No se pudo guardar la recompensa. Inténtalo otra vez.','dmg');
+  }
+});
+document.getElementById('pioneerRewardContinue').addEventListener('click',()=>{
+  document.getElementById('pioneerRewardBg').classList.remove('show');
+  renderAll();
+  showToast('Outfit Beta Tester y +130 de oro','heal');
+});
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
   const shop=event.target.closest('[data-loot-shop]');
@@ -4276,7 +4424,8 @@ bindBackupControls({
   getState:()=>state,
   onImported:(importedState)=>{
     store.authorizeDestructiveSave('import');
-    state={...importedState,...initializeForgeSeed(importedState)};
+    const imported={...importedState,...initializeForgeSeed(importedState)};
+    state=migratePioneerRewardEligibility(imported,{existingProfile:true}).state;
     registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
@@ -4327,7 +4476,7 @@ const onboarding=createOnboardingController({
   spriteImage,
   onFinish:(result)=>{
     state.config={...state.config,...result.config};
-    state.game=result.game;
+    state.game={...result.game,pioneerRewardEligible:false};
     state.onboarded=result.onboarded;
     applyLootSlices(initializeForgeSeed(state,createForgeSeed()));
     registerDailyWakeEstimate();
@@ -4338,6 +4487,7 @@ const onboarding=createOnboardingController({
     document.getElementById('mainNav').classList.add('show');
     switchView('view-hoy','navHoy');
     renderAll();
+    queuePioneerReward();
   }
 });
 function startOnboarding(){
@@ -4422,4 +4572,5 @@ resetGuardContinue.addEventListener('click',()=>{
       }
     }else finishInitialReturnSplash();
   }
+  queuePioneerReward();
 })();

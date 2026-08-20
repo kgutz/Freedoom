@@ -22,6 +22,11 @@ import {
 } from '../domain/journey-mode-rules.js';
 import { parseKey } from '../domain/date-utils.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
+import {
+  heroFaceSource,
+  heroSpriteSource,
+  outfitUsesTransparentPortrait,
+} from '../data/outfit-data.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -349,6 +354,10 @@ export function renderTodayView({
 
   const heroFace = document.getElementById('hoyFace');
   if (heroFace) {
+    heroFace.classList.toggle(
+      'outfit-transparent-portrait',
+      outfitUsesTransparentPortrait(game?.outfit),
+    );
     heroFace.classList.remove(
       'compact-hero-intoxicated',
       ...Array.from({ length: 5 }, (_, index) => `compact-intoxication-stage-${index + 1}`),
@@ -373,8 +382,8 @@ export function renderTodayView({
     document.getElementById('hoyHeroName').textContent = model.hero.name;
     document.getElementById('hoyHeroCls').textContent = model.hero.className;
     document.getElementById('hoyFace').innerHTML =
-      `<img src="hero_face/${model.hero.classId}_face.png" alt="" ` +
-      `onerror="this.onerror=null;this.src='sprites/${model.hero.classId}_happy.png';this.className='face-full'">`;
+      `<img src="${heroFaceSource(model.hero.classId, game?.outfit)}" alt="" ` +
+      `onerror="this.onerror=null;this.src='${heroSpriteSource(model.hero.classId, 'happy', game?.outfit)}';this.className='face-full'">`;
     const fill = document.getElementById('hoyHpFill');
     fill.style.width = `${model.hero.hpPercent}%`;
     fill.className = `stat-fill ${model.hero.hpClass}`;

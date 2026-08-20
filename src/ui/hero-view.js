@@ -17,13 +17,15 @@ import {
 } from '../domain/journey-mode-rules.js';
 import { weekIndexFor } from '../domain/plan-rules.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
+import { levelEightSpellAvailability } from '../domain/spell-rules.js';
+import { heroSpriteSource } from '../data/outfit-data.js';
 import { resourceValue } from './inventory-view.js';
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function spriteImage(classId, mood, extraClass = '') {
+export function spriteImage(classId, mood, extraClass = '', outfitId = 'original') {
   const available = {
     knight: ['happy'],
     paladin: ['happy'],
@@ -34,7 +36,10 @@ export function spriteImage(classId, mood, extraClass = '') {
     ? mood
     : 'happy';
   const hurt = mood === 'hurt' ? ' hurt' : '';
-  return `<img class="sprite-svg${hurt} ${extraClass}" src="sprites/${classId}_${file}.png" alt="${classId}" draggable="false">`;
+  const outfitClass = outfitId === 'beta-tester'
+    ? ` sprite-svg--outfit-beta-tester sprite-svg--${classId}`
+    : '';
+  return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}" src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false">`;
 }
 
 const HERO_ENERGY_CLASSES = new Set(['knight', 'paladin', 'sorcerer', 'druid']);
@@ -218,6 +223,10 @@ export function activeSpellStatus({
       ? `${completed}/${target}`
       : null;
   }
+  const levelEightUse = levelEightSpellAvailability({ game, spellId, today, nowTimestamp });
+  if (levelEightUse.count === 1 && levelEightUse.cooldownRemainingMs > 0) {
+    return `${Math.max(1, Math.ceil(levelEightUse.cooldownRemainingMs / 1000))}s`;
+  }
   if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
   if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
   if (spellId === 'balsamo') return remainingMinutesLabel(buffs.balm?.until, nowTimestamp);
@@ -245,10 +254,8 @@ export function activeSpellStatus({
 
 export function spellUnavailableAfterUse({ ability, game, currentWeek, today }) {
   if (ability?.ulti) return game?.ultiW === currentWeek;
-  if (!ability?.habitChallenge) return false;
-  return Boolean(
-    game?.powerProgress?.challengeDayUses?.[`${today}:${ability.id}`],
-  );
+  if (ability?.lvl !== 8) return false;
+  return levelEightSpellAvailability({ game, spellId: ability.id, today }).exhausted;
 }
 
 function skillIcon(classId, level, ability, type, status = null, used = false) {
@@ -560,7 +567,7 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top${chipsHtml ? ' hero-top--with-effects' : ''}">
         <div class="hero-visual-column">
-          <div class="sprite-box ${energyView.classes}${intoxicationEffect ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood)}${sleeping}${intoxicationParticlesHtml}</div>
+          <div class="sprite-box ${energyView.classes}${intoxicationEffect ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood, '', game?.outfit)}${sleeping}${intoxicationParticlesHtml}</div>
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">

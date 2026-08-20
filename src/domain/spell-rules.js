@@ -2,6 +2,42 @@ function cappedHealth(hp, maxHp) {
   return Math.max(0, Math.min(maxHp, hp));
 }
 
+export const LEVEL_EIGHT_DAILY_USES = 2;
+export const LEVEL_EIGHT_COOLDOWN_MS = 60_000;
+
+function normalizedLevelEightUse(value) {
+  if (value === true) return { count: 1, lastUsedAt: 0, lastCompletedAt: 0 };
+  if (Number.isFinite(Number(value))) {
+    return { count: Math.max(0, Math.trunc(Number(value))), lastUsedAt: 0, lastCompletedAt: 0 };
+  }
+  return {
+    count: Math.max(0, Math.trunc(Number(value?.count) || 0)),
+    lastUsedAt: Math.max(0, Number(value?.lastUsedAt) || 0),
+    lastCompletedAt: Math.max(0, Number(value?.lastCompletedAt) || 0),
+  };
+}
+
+export function levelEightSpellAvailability({ game, spellId, today, nowTimestamp = Date.now() }) {
+  const progress = game?.powerProgress || {};
+  const use = normalizedLevelEightUse(progress.challengeDayUses?.[`${today}:${spellId}`]);
+  const active = progress.habitChallenge;
+  const activeTarget = active?.autoNextHabitCount || active?.habitIds?.length || 2;
+  const challengeActive = active?.spellId === spellId
+    && active?.day === today
+    && (active?.completedIds?.length || 0) < activeTarget;
+  const cooldownUntil = use.lastCompletedAt > 0
+    ? use.lastCompletedAt + LEVEL_EIGHT_COOLDOWN_MS
+    : 0;
+  return {
+    count: use.count,
+    remainingUses: Math.max(0, LEVEL_EIGHT_DAILY_USES - use.count),
+    exhausted: use.count >= LEVEL_EIGHT_DAILY_USES,
+    challengeActive,
+    cooldownUntil,
+    cooldownRemainingMs: Math.max(0, cooldownUntil - nowTimestamp),
+  };
+}
+
 export function castSpellEffect({
   game,
   spell,
@@ -27,8 +63,18 @@ export function castSpellEffect({
     return { ok: false, reason: 'ultimate-used' };
   }
   const progress = game.powerProgress || {};
-  if (spell.habitChallenge && !spell.ulti && progress.challengeDayUses?.[`${today}:${spell.id}`]) {
-    return { ok: false, reason: 'challenge-used' };
+  if (spell.lvl === 8 && !spell.ulti) {
+    const availability = levelEightSpellAvailability({ game, spellId: spell.id, today, nowTimestamp });
+    if (availability.exhausted) return { ok: false, reason: 'challenge-used' };
+    if (availability.challengeActive) return { ok: false, reason: 'challenge-active' };
+    if (availability.cooldownRemainingMs > 0) {
+      return {
+        ok: false,
+        reason: 'challenge-cooldown',
+        cooldownRemainingMs: availability.cooldownRemainingMs,
+        cooldownUntil: availability.cooldownUntil,
+      };
+    }
   }
   if (spell.habitChallenge && !spell.autoHabitChallenge) {
     const minimum = spell.id === 'renacer' ? 1 : 2;
@@ -132,7 +178,6 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       result.durationHours =
@@ -150,7 +195,6 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       nextGame.buffs.shield = (nextGame.buffs.shield || 0) + 2;
@@ -183,7 +227,6 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       if(smokeFreeMode){
@@ -254,7 +297,6 @@ export function castSpellEffect({
           day: today,
           week: currentWeek,
         };
-        nextGame.powerProgress.challengeDayUses[`${today}:${spell.id}`] = true;
         break;
       }
       nextGame.buffs.regenUntil = nowTimestamp + 2 * 3_600_000;
@@ -277,6 +319,18 @@ export function castSpellEffect({
       break;
     default:
       return { ok: false, reason: 'unknown-spell' };
+  }
+
+  if (spell.lvl === 8 && !spell.ulti) {
+    const key = `${today}:${spell.id}`;
+    const previousUse = normalizedLevelEightUse(game.powerProgress?.challengeDayUses?.[key]);
+    nextGame.powerProgress.challengeDayUses[key] = {
+      count: previousUse.count + 1,
+      lastUsedAt: nowTimestamp,
+      lastCompletedAt: previousUse.lastCompletedAt,
+    };
+    result.dailyUses = previousUse.count + 1;
+    result.cooldownUntil = nowTimestamp + LEVEL_EIGHT_COOLDOWN_MS;
   }
 
   return result;

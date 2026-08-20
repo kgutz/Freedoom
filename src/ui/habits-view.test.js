@@ -80,6 +80,16 @@ describe('vista de hábitos', () => {
     expect(html).toContain('habit-hero-sprite compact-hero-intoxicated compact-intoxication-stage-3');
   });
 
+  it('muestra el retrato transparente del outfit de beta tester sin el círculo', () => {
+    const html = render(
+      { items: [], entries: {} },
+      'all',
+      { cls: 'paladin', name: 'Kike', outfit: 'beta-tester' },
+    );
+    expect(html).toContain('habit-hero-sprite outfit-transparent-portrait');
+    expect(html).toContain('outfits/beta-tester/paladin_face.png');
+  });
+
   it('muestra la recompensa real total en la descripción y conserva lo ganado debajo', () => {
     const html = render({
       items: [

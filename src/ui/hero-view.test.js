@@ -128,7 +128,7 @@ describe('modelo de Héroe', () => {
     })).toBeNull();
   });
 
-  it('apaga el reto completado y conserva el bloqueo semanal como usada', () => {
+  it('apaga el reto completado y bloquea la habilidad tras dos usos diarios', () => {
     const now = new Date(2026, 6, 26, 12).getTime();
     const game = {
       powerProgress: {
@@ -138,19 +138,18 @@ describe('modelo de Héroe', () => {
           completedIds: ['a', 'b'],
           day: '2026-07-26',
         },
-        challengeWeekUses: { '3:certero': true },
+        challengeDayUses: { '2026-07-26:certero': { count: 2, lastUsedAt: now, lastCompletedAt: now } },
       },
     };
 
     expect(activeSpellStatus({
       spellId: 'certero', game, nowTimestamp: now, today: '2026-07-26',
     })).toBeNull();
-    game.powerProgress.challengeDayUses = { '2026-07-26:certero': true };
     expect(spellUnavailableAfterUse({
-      ability: { id: 'certero', habitChallenge: true }, game, currentWeek: 3, today: '2026-07-26',
+      ability: { id: 'certero', lvl: 8, habitChallenge: true }, game, currentWeek: 3, today: '2026-07-26',
     })).toBe(true);
     expect(spellUnavailableAfterUse({
-      ability: { id: 'certero', habitChallenge: true }, game, currentWeek: 3, today: '2026-07-27',
+      ability: { id: 'certero', lvl: 8, habitChallenge: true }, game, currentWeek: 3, today: '2026-07-27',
     })).toBe(false);
   });
 
@@ -228,6 +227,18 @@ describe('modelo de Héroe', () => {
   it('reutiliza el sprite feliz como respaldo para estados sin arte', () => {
     expect(spriteImage('paladin', 'worried')).toContain(
       'sprites/paladin_happy.png',
+    );
+  });
+
+  it('aumenta solo el sprite del outfit de beta tester', () => {
+    expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
+      'sprite-svg--outfit-beta-tester',
+    );
+    expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
+      'sprite-svg--paladin',
+    );
+    expect(spriteImage('paladin', 'happy', '', 'original')).not.toContain(
+      'sprite-svg--outfit-beta-tester',
     );
   });
 
