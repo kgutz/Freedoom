@@ -51,6 +51,8 @@ import {
   LEVEL_EIGHT_COOLDOWN_MS,
   castSpellEffect,
   levelEightSpellAvailability,
+  ultimateHabitReward,
+  ultimateSpellAvailability,
 } from './domain/spell-rules.js';
 import {
   acknowledgeLootNotice,
@@ -1540,8 +1542,7 @@ function openUsedSkillModal(spell,{weekly=false,message=''}={}){
 }
 
 function skillSelectionLimit(spell){
-  if(spell.id==='renacer'||spell.id==='alma') return {min:1,max:1};
-  if(spell.id==='juicio') return {min:2,max:3};
+  if(spell.ulti) return {min:3,max:3};
   return {min:2,max:2};
 }
 
@@ -1550,7 +1551,9 @@ function renderSkillHabitPicker(){
   const {spell,available,selected}=pendingSkillCast;
   const limit=skillSelectionLimit(spell);
   document.getElementById('skillHabitPickerTitle').textContent=spell.name;
-  document.getElementById('skillHabitPickerIntro').textContent=limit.max===1
+  document.getElementById('skillHabitPickerIntro').textContent=spell.ulti
+    ? 'Selecciona tres hábitos diarios pendientes.'
+    : limit.max===1
     ? 'Selecciona un hábito diario pendiente.'
     : limit.max===3
       ? 'Selecciona entre dos y tres hábitos diarios pendientes.'
@@ -1633,7 +1636,18 @@ function castSpell(id,options={}){
   }
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const spellDayKey=todayKey();
-  if(sp.ulti&&g.ultiW===w){
+  if(sp.ulti&&sp.modern){
+    const availability=ultimateSpellAvailability({game:g,currentWeek:w,today:spellDayKey});
+    if(availability.exhausted){
+      openUsedSkillModal(sp,{weekly:true,message:'Ya usaste esta definitiva dos veces esta semana. Volverá a activarse al comenzar la próxima semana.'});
+      return;
+    }
+    if(availability.challengeActive){
+      openUsedSkillModal(sp,{message:'Completa primero el reto de la definitiva que ya tienes activo.'});
+      return;
+    }
+  }
+  if(sp.ulti&&!sp.modern&&g.ultiW===w){
     openUsedSkillModal(sp,{weekly:true});
     return;
   }
@@ -1698,7 +1712,8 @@ function castSpell(id,options={}){
   }
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
-    else if(result.reason==='ultimate-used') showToast('Ya usada esta semana','dmg');
+    else if(result.reason==='ultimate-used') showToast(sp.modern?'Ya usada dos veces esta semana':'Ya usada esta semana','dmg');
+    else if(result.reason==='ultimate-active') showToast('Completa primero el reto de la definitiva activa','dmg');
     else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó dos veces hoy','dmg');
     else if(result.reason==='challenge-active') showToast('Completa primero el reto activo','dmg');
     else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
@@ -2425,7 +2440,6 @@ function applyClassDayRewards(key,completed){
   const notice=[];
   const record={xp:0,coins:0};
   if(g.cls==='knight'){
-    rewards.bastionCharges=Math.min(6,(Number(rewards.bastionCharges)||0)+1);
     if(lvl>=5&&heroArmor()>=1){
       const usedKey=`knight-xp:${week}`;
       const used=Number(rewards[usedKey])||0;
@@ -2948,6 +2962,20 @@ function applyClassHabitRewards({result,habit}){
         rewards.challengeDayUses[challengeUseKey]={count:1,lastUsedAt:0,lastCompletedAt:completedAt};
         window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
       }
+    }
+  }
+  const ultimate=rewards.ultimateChallenge;
+  if(ultimate&&ultimate.day===key&&ultimate.habitIds.includes(habit.id)&&!ultimate.completedIds.includes(habit.id)){
+    ultimate.completedIds.push(habit.id);
+    const ultimateReward=ultimateHabitReward({
+      completedCount:ultimate.completedIds.length,
+      target:ultimate.habitIds.length,
+    });
+    g.bonusXp=(g.bonusXp||0)+ultimateReward.xp;
+    state.economy.coins+=ultimateReward.gold;
+    notices.push(`+${ultimateReward.xp} XP · +${ultimateReward.gold} 🪙 · ${ultimate.completedIds.length}/3`);
+    if(ultimateReward.completesChallenge&&!ultimate.rewarded){
+      ultimate.rewarded=true;
     }
   }
   const judgment=rewards.judgment;
@@ -4241,7 +4269,10 @@ document.getElementById('pioneerRewardAccept').addEventListener('click',async()=
   if(button.disabled) return;
   button.disabled=true;
   const previousState=state;
-  const result=claimPioneerReward(state,Date.now());
+  const claimState=LOCAL_PIONEER_REWARD_PREVIEW&&!state.game?.pioneerReward?.claimedAt
+    ? {...state,game:{...state.game,pioneerRewardEligible:true}}
+    : state;
+  const result=claimPioneerReward(claimState,Date.now());
   if(!result.granted){
     if(LOCAL_PIONEER_REWARD_PREVIEW){
       document.getElementById('pioneerRewardThanks').hidden=true;

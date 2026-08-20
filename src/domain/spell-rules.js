@@ -4,6 +4,36 @@ function cappedHealth(hp, maxHp) {
 
 export const LEVEL_EIGHT_DAILY_USES = 2;
 export const LEVEL_EIGHT_COOLDOWN_MS = 60_000;
+export const ULTIMATE_HABIT_XP = 10;
+export const ULTIMATE_HABIT_GOLD = 4;
+export const ULTIMATE_COMPLETION_XP = 10;
+export const ULTIMATE_COMPLETION_GOLD = 8;
+export const ULTIMATE_WEEKLY_USES = 2;
+
+export function ultimateHabitReward({ completedCount, target = 3 }) {
+  const completesChallenge = completedCount >= target;
+  return {
+    xp: ULTIMATE_HABIT_XP + (completesChallenge ? ULTIMATE_COMPLETION_XP : 0),
+    gold: ULTIMATE_HABIT_GOLD + (completesChallenge ? ULTIMATE_COMPLETION_GOLD : 0),
+    completesChallenge,
+  };
+}
+
+export function ultimateSpellAvailability({ game, currentWeek, today }) {
+  const progress = game?.powerProgress || {};
+  const uses = Math.max(0, Number(progress.ultimateWeekUses?.[currentWeek]) || 0);
+  const active = progress.ultimateChallenge;
+  return {
+    uses,
+    exhausted: uses >= ULTIMATE_WEEKLY_USES,
+    challengeActive: Boolean(
+      active
+      && active.week === currentWeek
+      && active.day === today
+      && !active.rewarded,
+    ),
+  };
+}
 
 function normalizedLevelEightUse(value) {
   if (value === true) return { count: 1, lastUsedAt: 0, lastCompletedAt: 0 };
@@ -59,10 +89,16 @@ export function castSpellEffect({
   if (level < spell.lvl) {
     return { ok: false, reason: 'level', requiredLevel: spell.lvl };
   }
-  if (spell.ulti && game.ultiW === currentWeek) {
+  if (spell.ulti && (spell.modern
+    ? ultimateSpellAvailability({ game, currentWeek, today }).exhausted
+    : game.ultiW === currentWeek)) {
     return { ok: false, reason: 'ultimate-used' };
   }
   const progress = game.powerProgress || {};
+  if (spell.modern && spell.ulti
+    && ultimateSpellAvailability({ game, currentWeek, today }).challengeActive) {
+    return { ok: false, reason: 'ultimate-active' };
+  }
   if (spell.lvl === 8 && !spell.ulti) {
     const availability = levelEightSpellAvailability({ game, spellId: spell.id, today, nowTimestamp });
     if (availability.exhausted) return { ok: false, reason: 'challenge-used' };
@@ -77,13 +113,10 @@ export function castSpellEffect({
     }
   }
   if (spell.habitChallenge && !spell.autoHabitChallenge) {
-    const minimum = spell.id === 'renacer' ? 1 : 2;
-    if (selectedHabitIds.length < minimum && !targetHabitId) {
+    const minimum = spell.ulti ? 3 : 2;
+    if (selectedHabitIds.length < minimum && (!targetHabitId || spell.ulti)) {
       return { ok: false, reason: 'habits', requiredHabits: minimum };
     }
-  }
-  if (spell.modern && spell.id === 'alma' && !targetHabitId) {
-    return { ok: false, reason: 'habits', requiredHabits: 1 };
   }
 
   const mana = game.mp || 0;
@@ -121,6 +154,7 @@ export function castSpellEffect({
     ...(game.powerProgress || {}),
     challengeWeekUses: { ...(game.powerProgress?.challengeWeekUses || {}) },
     challengeDayUses: { ...(game.powerProgress?.challengeDayUses || {}) },
+    ultimateWeekUses: { ...(game.powerProgress?.ultimateWeekUses || {}) },
   };
 
   if (spell.modern && spell.hpCost) {
@@ -131,15 +165,18 @@ export function castSpellEffect({
     nextGame.hp -= hpCost;
   }
 
-  if (spell.modern && spell.id === 'alma') {
+  if (spell.modern && spell.ulti) {
     nextGame.mp = mana - effectiveCost;
-    nextGame.ultiW = currentWeek;
-    nextGame.powerProgress.soulWager = {
-      habitId: targetHabitId,
+    nextGame.powerProgress.ultimateWeekUses[currentWeek] =
+      (Number(nextGame.powerProgress.ultimateWeekUses[currentWeek]) || 0) + 1;
+    nextGame.powerProgress.ultimateChallenge = {
+      spellId: spell.id,
+      habitIds: [...new Set(selectedHabitIds)].slice(0, 3),
+      completedIds: [],
+      day: today,
+      week: currentWeek,
       startedAt: nowTimestamp,
-      expiresAt: nowTimestamp + 24 * 3_600_000,
-      mana: effectiveCost,
-      completed: false,
+      rewarded: false,
     };
     return { ok: true, game: nextGame, spentMana: effectiveCost, healing: 0 };
   }
@@ -208,13 +245,6 @@ export function castSpellEffect({
       break;
     }
     case 'bastion':
-      if (spell.modern) {
-        const charges = Math.max(0, Number(nextGame.powerProgress.bastionCharges) || 0);
-        if (charges < 6) return { ok: false, reason: 'charges', requiredCharges: 6, charges };
-        nextGame.powerProgress.bastionCharges = 0;
-        nextGame.powerProgress.bastionArmorProtected = true;
-        nextGame.bonusXp = (nextGame.bonusXp || 0) + 5;
-      }
       nextGame.buffs.bastion = true;
       nextGame.ultiW = currentWeek;
       break;

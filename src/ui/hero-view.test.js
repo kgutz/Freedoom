@@ -153,6 +153,33 @@ describe('modelo de Héroe', () => {
     })).toBe(false);
   });
 
+  it('muestra el progreso de la ulti y la apaga al cobrarla',()=>{
+    const now=new Date(2026,6,26,12).getTime();
+    const ultimateChallenge={
+      spellId:'juicio',habitIds:['a','b','c'],completedIds:['a','b'],
+      day:'2026-07-26',rewarded:false,
+    };
+    expect(activeSpellStatus({
+      spellId:'juicio',game:{powerProgress:{ultimateChallenge}},
+      nowTimestamp:now,today:'2026-07-26',
+    })).toBe('2/3');
+    expect(activeSpellStatus({
+      spellId:'juicio',game:{powerProgress:{ultimateChallenge:{...ultimateChallenge,rewarded:true}}},
+      nowTimestamp:now,today:'2026-07-26',
+    })).toBeNull();
+  });
+
+  it('bloquea la ulti moderna después de dos usos semanales',()=>{
+    const ability={id:'juicio',lvl:14,ulti:true,modern:true};
+    const game={powerProgress:{ultimateWeekUses:{3:2}}};
+    expect(spellUnavailableAfterUse({
+      ability,game,currentWeek:3,today:'2026-07-26',
+    })).toBe(true);
+    expect(spellUnavailableAfterUse({
+      ability,game,currentWeek:4,today:'2026-08-02',
+    })).toBe(false);
+  });
+
   it('incluye una sinopsis para cada jefe de la campaña', () => {
     expect(BOSS_LORE).toHaveLength(BOSSES.length);
     expect(BOSS_LORE.every((synopsis) => synopsis.length > 60)).toBe(true);

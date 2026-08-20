@@ -17,7 +17,7 @@ import {
 } from '../domain/journey-mode-rules.js';
 import { weekIndexFor } from '../domain/plan-rules.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
-import { levelEightSpellAvailability } from '../domain/spell-rules.js';
+import { levelEightSpellAvailability, ultimateSpellAvailability } from '../domain/spell-rules.js';
 import { heroSpriteSource } from '../data/outfit-data.js';
 import { resourceValue } from './inventory-view.js';
 
@@ -215,6 +215,13 @@ export function activeSpellStatus({
 }) {
   const buffs = game?.buffs || {};
   const powers = game?.powerProgress || {};
+  if (powers.ultimateChallenge?.spellId === spellId) {
+    const ultimate = powers.ultimateChallenge;
+    const completed = ultimate.completedIds?.length || 0;
+    return ultimate.day === today && !ultimate.rewarded
+      ? `${completed}/${ultimate.habitIds?.length || 3}`
+      : null;
+  }
   if (powers.habitChallenge?.spellId === spellId) {
     const challenge = powers.habitChallenge;
     const completed = challenge.completedIds?.length || 0;
@@ -235,11 +242,6 @@ export function activeSpellStatus({
     return remainingMinutesLabel(buffs.certeroUntil, nowTimestamp);
   }
   if (spellId === 'muro') return buffs.shield > 0 ? `×${buffs.shield}` : null;
-  if (spellId === 'bastion') {
-    if (buffs.bastion) return 'LISTO';
-    const charges = Math.max(0, Number(powers.bastionCharges) || 0);
-    return charges > 0 ? `${charges}/6` : null;
-  }
   if (spellId === 'renacer') {
     if (powers.rebirthHabit && !powers.rebirthHabit.completed) return `${powers.rebirthHabit.progress || 0}/3`;
     return buffs.renacer ? 'HOY' : null;
@@ -253,7 +255,9 @@ export function activeSpellStatus({
 }
 
 export function spellUnavailableAfterUse({ ability, game, currentWeek, today }) {
-  if (ability?.ulti) return game?.ultiW === currentWeek;
+  if (ability?.ulti) return ability.modern
+    ? ultimateSpellAvailability({ game, currentWeek, today }).exhausted
+    : game?.ultiW === currentWeek;
   if (ability?.lvl !== 8) return false;
   return levelEightSpellAvailability({ game, spellId: ability.id, today }).exhausted;
 }
@@ -284,7 +288,7 @@ function skillIcon(classId, level, ability, type, status = null, used = false) {
 function quickSkillIcon(classId, level, ability, status = null, used = false) {
   const unlocked = level >= ability.lvl;
   const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.png`;
-  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada esta semana' : ' · Usada hoy') : ''}" title="${ability.name}">
+  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada dos veces esta semana' : ' · Usada hoy') : ''}" title="${ability.name}">
     <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
     ${status ? `<span class="skill-active-timer hero-skill-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}

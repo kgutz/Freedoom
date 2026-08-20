@@ -187,9 +187,15 @@ describe('vista de hábitos', () => {
         soulWager: { habitId: 'soul', completed: false, expiresAt },
         rebirthHabit: { habitId: 'rebirth', completed: false, expiresAt },
         habitChallenge: { day: '2026-08-01', habitIds: ['finished'], completedIds: ['finished'] },
+        ultimateChallenge: {
+          day: '2026-08-01', habitIds: ['ulti-a','ulti-b','ulti-c'],
+          completedIds: ['ulti-a'], rewarded: false,
+        },
       },
     }, new Date(2026, 7, 1, 12));
 
-    expect([...marked].sort()).toEqual(['judgment', 'rebirth', 'soul']);
+    expect([...marked].sort()).toEqual([
+      'judgment','rebirth','soul','ulti-a','ulti-b','ulti-c',
+    ]);
   });
 });

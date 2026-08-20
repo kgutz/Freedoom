@@ -30,7 +30,7 @@ export const CLASSES={
     act:[
       {lvl:2,id:'grito',icon:'grito',name:'Grito de Guerra',cost:30,modern:true,d:'+10% Vida y +2 Armadura para el próximo golpe.'},
       {lvl:8,id:'muro',icon:'muro',name:'Muro de Escudos',cost:40,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 oro al completar ambos.'},
-      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:60,ulti:true,modern:true,d:'Cada día correcto suma 1 carga. Con 6: +5 XP y Armadura máxima hasta el próximo jefe.'}
+      {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Fortifica 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
   },
   paladin:{
@@ -64,7 +64,7 @@ export const CLASSES={
     act:[
       {lvl:2,id:'luz',icon:'luz',name:'Luz Sanadora',cost:35,modern:true,d:'+10% Vida. El próximo hábito recupera 5% de Maná.'},
       {lvl:8,id:'certero',icon:'certero',name:'Ojo Certero',cost:45,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP cada uno y +2 oro al completar ambos.'},
-      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Bendice hasta 3 hábitos. Completarlos concede +5 XP.'}
+      {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Bendice 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
   },
   sorcerer:{
@@ -98,7 +98,7 @@ export const CLASSES={
     act:[
       {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima.'},
       {lvl:8,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:50,habitChallenge:true,autoHabitChallenge:true,modern:true,d:'Los primeros 2 hábitos conceden +5 XP y recuperan 5 de maná. Completar ambos concede 2 oro.'},
-      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:40,ulti:true,modern:true,d:'Cumple tu hábito más débil en 24 h: recupera el Maná y gana +5 XP.'}
+      {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Marca 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
   },
   druid:{
@@ -132,7 +132,7 @@ export const CLASSES={
     act:[
       {lvl:2,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:50,modern:true,d:'+6% Vida ahora y +9% durante 30 min.'},
       {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno; ambos dan +2 oro.'},
-      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Completa un hábito 3 veces en 7 días: Vida completa y +5 XP.'}
+      {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Cultiva 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
   }
 };

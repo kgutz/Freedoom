@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { castSpellEffect } from './spell-rules.js';
+import { castSpellEffect, ultimateHabitReward } from './spell-rules.js';
 
 const spell = (id, overrides = {}) => ({
   id,
@@ -193,6 +193,89 @@ describe('curación y habilidades definitivas', () => {
     }),{
       game:{hp:10,mp:100,buffs:{}},selectedHabitIds:['a','b'],
     })).toMatchObject({ok:false,reason:'health'});
+  });
+
+  it('da a las cuatro ultis modernas el mismo reto de tres hábitos',()=>{
+    for(const id of ['bastion','juicio','alma','renacer']){
+      const result=cast(spell(id,{
+        lvl:14,cost:70,ulti:true,modern:true,habitChallenge:true,
+      }),{
+        level:14,
+        game:{hp:100,mp:100,buffs:{}},
+        selectedHabitIds:['a','b','c'],
+      });
+
+      expect(result).toMatchObject({ok:true,spentMana:70});
+      expect(result.game).toMatchObject({
+        mp:30,
+        powerProgress:{
+          ultimateWeekUses:{3:1},
+          ultimateChallenge:{
+            spellId:id,
+            habitIds:['a','b','c'],
+            completedIds:[],
+            day:'2026-07-26',
+            week:3,
+            rewarded:false,
+          },
+        },
+      });
+    }
+  });
+
+  it('exige tres hábitos para activar una ulti moderna',()=>{
+    expect(cast(spell('juicio',{
+      lvl:14,cost:70,ulti:true,modern:true,habitChallenge:true,
+    }),{
+      level:14,
+      selectedHabitIds:['a','b'],
+    })).toMatchObject({ok:false,reason:'habits',requiredHabits:3});
+  });
+
+  it('permite dos ultis por semana y exige completar la primera',()=>{
+    const selectedSpell=spell('juicio',{
+      lvl:14,cost:70,ulti:true,modern:true,habitChallenge:true,
+    });
+    expect(cast(selectedSpell,{
+      level:14,
+      game:{hp:100,mp:100,buffs:{},powerProgress:{
+        ultimateWeekUses:{3:1},
+        ultimateChallenge:{week:3,day:'2026-07-26',rewarded:false},
+      }},
+      selectedHabitIds:['a','b','c'],
+    })).toMatchObject({ok:false,reason:'ultimate-active'});
+    const second=cast(selectedSpell,{
+      level:14,
+      game:{hp:100,mp:100,buffs:{},powerProgress:{
+        ultimateWeekUses:{3:1},
+        ultimateChallenge:{week:3,day:'2026-07-26',rewarded:true},
+      }},
+      selectedHabitIds:['a','b','c'],
+    });
+    expect(second.ok).toBe(true);
+    expect(second.game.powerProgress.ultimateWeekUses[3]).toBe(2);
+    expect(cast(selectedSpell,{
+      level:14,
+      game:{...second.game,mp:100},
+      selectedHabitIds:['d','e','f'],
+    })).toMatchObject({ok:false,reason:'ultimate-used'});
+    expect(cast(selectedSpell,{
+      level:14,currentWeek:4,today:'2026-08-02',
+      game:{...second.game,mp:100},
+      selectedHabitIds:['d','e','f'],
+    }).ok).toBe(true);
+  });
+
+  it('reparte 40 XP y 20 de oro entre los tres hábitos de la ulti',()=>{
+    const rewards=[1,2,3].map((completedCount)=>(
+      ultimateHabitReward({completedCount,target:3})
+    ));
+
+    expect(rewards[0]).toEqual({xp:10,gold:4,completesChallenge:false});
+    expect(rewards[1]).toEqual({xp:10,gold:4,completesChallenge:false});
+    expect(rewards[2]).toEqual({xp:20,gold:12,completesChallenge:true});
+    expect(rewards.reduce((total,reward)=>total+reward.xp,0)).toBe(40);
+    expect(rewards.reduce((total,reward)=>total+reward.gold,0)).toBe(20);
   });
 
   it('limita la curación a la vida máxima', () => {

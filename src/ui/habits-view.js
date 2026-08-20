@@ -45,6 +45,10 @@ export function markedHabitIdsForGame(game, date = new Date()) {
   if (judgment?.day === today && !judgment.rewarded) {
     for (const id of judgment.habitIds || []) marked.add(id);
   }
+  const ultimate = progress.ultimateChallenge;
+  if (ultimate?.day === today && !ultimate.rewarded) {
+    for (const id of ultimate.habitIds || []) marked.add(id);
+  }
   const wager = progress.soulWager;
   if (wager?.habitId && !wager.completed && nowTimestamp <= wager.expiresAt) {
     marked.add(wager.habitId);
