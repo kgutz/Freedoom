@@ -1,22 +1,55 @@
 import { describe, expect, it } from 'vitest';
 import { markedHabitIdsForGame, renderHabitsView } from './habits-view.js';
 
-function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike' }, intoxication = null) {
+function render(habitState, filter = 'all', game = { cls: 'paladin', name: 'Kike' }, intoxication = null, section = 'habits', todoState = { items: [] }) {
   const root = { innerHTML: '' };
   renderHabitsView({
     document: { getElementById: () => root },
     habitState,
+    todoState,
     date: new Date(2026, 7, 1, 12),
     planStartDate: '2026-07-17',
     game,
     intoxication,
     stats: { lvl: 4, xp: 120, nextTh: 560, prog: 0.2 },
     filter,
+    section,
   });
   return root.innerHTML;
 }
 
 describe('vista de hábitos', () => {
+  it('sustituye el título por las pestañas de Hábitos y To Do List', () => {
+    const html = render({ items: [], entries: {} });
+    expect(html).toContain('data-habit-section="habits" class="active"');
+    expect(html).toContain('data-habit-section="todo"');
+    expect(html).toContain('To Do List');
+    expect(html).not.toContain('Construye una rutina que acompañe tu camino.');
+  });
+
+  it('muestra el espacio independiente de To Do List', () => {
+    const html = render({ items: [], entries: {} }, 'all', undefined, null, 'todo');
+    expect(html).toContain('data-habit-section="todo" class="active"');
+    expect(html).toContain('data-add-todo');
+    expect(html).toContain('Crear mi primera tarea');
+    expect(html).not.toContain('habit-hero-card');
+    expect(html).not.toContain('data-add-habit');
+  });
+
+  it('renderiza las tareas con la misma recompensa base que los hábitos', () => {
+    const html = render(
+      { items: [], entries: {} },
+      'all',
+      undefined,
+      null,
+      'todo',
+      { items: [{ id: 'call', title: 'Llamar al médico', difficulty: 'hard', active: true }] },
+    );
+    expect(html).toContain('data-todo-id="call"');
+    expect(html).toContain('Difícil · 10 XP + 5 oro');
+    expect(html).toContain('data-todo-completed="true"');
+  });
+
   it('muestra el estado vacío y el acceso para crear', () => {
     const html = render({ items: [], entries: {} });
     expect(html).toContain('Crear mi primer hábito');

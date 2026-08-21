@@ -7,6 +7,7 @@ import {
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
 import { resourceIcon } from './resource-icons.js';
+import { normalizeTodoState, todoReward } from '../domain/todo-rules.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
@@ -101,15 +102,37 @@ function habitGroup({ habits, frequency, title, normalized, date, planStartDate,
   </section>`;
 }
 
+function todoRow(todo) {
+  const difficulty = HABIT_DIFFICULTIES[todo.difficulty] || HABIT_DIFFICULTIES.easy;
+  const reward = todoReward(todo);
+  const completed = todo.completed === true;
+  const earnedCopy = completed
+    ? ` · +${Math.max(0, Number(todo.xpAwarded) || reward.xp)} XP · +${Math.max(0, Number(todo.coinsAwarded) || reward.coins)} ${resourceIcon('coin')}`
+    : '';
+  return `<article class="habit-row todo-row${completed ? ' completed' : ''}" data-todo-id="${escapeHtml(todo.id)}">
+    <button class="habit-adjust habit-minus" type="button" data-todo-completed="false" aria-label="Desmarcar tarea"${completed ? '' : ' disabled'}>−</button>
+    <button class="habit-main" type="button" data-edit-todo="${escapeHtml(todo.id)}">
+      <span class="habit-title">${escapeHtml(todo.title)}</span>
+      ${todo.notes ? `<span class="habit-notes">${escapeHtml(todo.notes)}</span>` : ''}
+      <span class="habit-meta">${difficulty.label} · ${reward.xp} XP + ${reward.coins} oro</span>
+      <span class="habit-progress"><i style="width:${completed ? 100 : 0}%"></i></span>
+      <span class="habit-count">${completed ? 1 : 0} / 1${earnedCopy}</span>
+    </button>
+    <button class="habit-adjust habit-plus" type="button" data-todo-completed="true" aria-label="Completar tarea"${completed ? ' disabled' : ''}>+</button>
+  </article>`;
+}
+
 export function renderHabitsView({
   document,
   habitState,
+  todoState,
   date,
   planStartDate,
   game,
   stats,
   intoxication,
   filter = 'all',
+  section = 'habits',
 }) {
   const root = document.getElementById('habitsContent');
   if (!root) return;
@@ -139,6 +162,7 @@ export function renderHabitsView({
     ? ` outfit-transparent-portrait outfit-id-${game?.outfit || 'original'}`
     : '';
   const selectedFilter = ['daily', 'weekly'].includes(filter) ? filter : 'all';
+  const selectedSection = section === 'todo' ? 'todo' : 'habits';
   const visibleHabits = selectedFilter === 'all'
     ? habits
     : habits.filter((habit) => habit.frequency === selectedFilter);
@@ -175,14 +199,33 @@ export function renderHabitsView({
         <button type="button" data-add-habit>${habits.length ? 'Crear hábito' : 'Crear mi primer hábito'}</button>
       </div>`;
 
-  root.innerHTML = `
+  const tabs = `
     <div class="habits-head">
-      <div>
-        <h1>Hábitos</h1>
-        <p>Construye una rutina que acompañe tu camino.</p>
+      <div class="habit-section-tabs" role="tablist" aria-label="Organización">
+        <button type="button" data-habit-section="habits" class="${selectedSection === 'habits' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'habits'}">Hábitos</button>
+        <button type="button" data-habit-section="todo" class="${selectedSection === 'todo' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'todo'}">To Do List</button>
       </div>
-      <button class="habit-create" type="button" data-add-habit aria-label="Crear hábito">+</button>
-    </div>
+      <button class="habit-create" type="button" ${selectedSection === 'habits' ? 'data-add-habit aria-label="Crear hábito"' : 'data-add-todo aria-label="Crear tarea"'}>+</button>
+    </div>`;
+
+  if (selectedSection === 'todo') {
+    const todos = normalizeTodoState(todoState).items
+      .filter((todo) => todo.active !== false)
+      .sort((left, right) => Number(left.completed) - Number(right.completed) || (Number(left.createdAt) || 0) - (Number(right.createdAt) || 0));
+    const todoList = todos.length
+      ? `<div class="habit-list todo-list">${todos.map(todoRow).join('')}</div>`
+      : `<div class="todo-list-preview" role="tabpanel">
+          <div class="habit-empty-icon" aria-hidden="true">✓</div>
+          <h3>Empieza con una tarea</h3>
+          <p>Organiza pendientes concretos sin convertirlos en hábitos.</p>
+          <button type="button" data-add-todo>Crear mi primera tarea</button>
+        </div>`;
+    root.innerHTML = `${tabs}
+      ${todoList}`;
+    return;
+  }
+
+  root.innerHTML = `${tabs}
     <div class="habit-hero-card">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
       <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></button>

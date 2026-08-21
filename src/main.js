@@ -104,6 +104,11 @@ import {
   reorderHabits
 } from './domain/habit-rules.js';
 import {
+  adjustTodoCompletion,
+  normalizeTodoInput,
+  normalizeTodoState,
+} from './domain/todo-rules.js';
+import {
   consumePreparedBlood,
   potionBloodChance,
   purchasePotion,
@@ -249,6 +254,7 @@ let state={
   config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:'2026-07-17', startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
   days:{},
   habits:{items:[],entries:{}},
+  todos:{items:[]},
   seeded:false,
   seededV:0,
   game:{cls:null},
@@ -640,12 +646,14 @@ function renderHabits(){
   renderHabitsView({
     document,
     habitState:state.habits,
+    todoState:state.todos,
     date:currentDayDate(),
     planStartDate:state.config.startDate,
     game:state.game,
     stats,
     intoxication,
-    filter:habitViewFilter
+    filter:habitViewFilter,
+    section:habitViewSection
   });
 }
 
@@ -2997,7 +3005,9 @@ document.getElementById('recoveryList').addEventListener('click',async event=>{
 
 /* ---------- hábitos ---------- */
 let editingHabitId=null;
+let habitEditorMode='habit';
 let habitViewFilter='all';
+let habitViewSection='habits';
 let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
@@ -3131,6 +3141,9 @@ function applyClassHabitRewards({result,habit}){
 function activeHabitById(id){
   return normalizeHabitState(state.habits).items.find(habit=>habit.id===id&&habit.active!==false);
 }
+function activeTodoById(id){
+  return normalizeTodoState(state.todos).items.find(todo=>todo.id===id&&todo.active!==false);
+}
 function updateHabitEditor(){
   document.querySelectorAll('[data-habit-difficulty]').forEach(button=>{
     button.classList.toggle('active',button.dataset.habitDifficulty===habitDraftDifficulty);
@@ -3140,9 +3153,14 @@ function updateHabitEditor(){
   });
   document.getElementById('habitTargetValue').textContent=habitDraftTarget;
   const repeatRow=document.getElementById('habitRepeatRow');
+  const frequencySection=document.getElementById('habitFrequencySection');
+  const targetRow=document.getElementById('habitTargetRow');
   const repeatToggle=document.getElementById('habitRepeatToggle');
+  const editingTodo=habitEditorMode==='todo';
   const isWeekly=habitDraftFrequency==='weekly';
-  repeatRow.hidden=isWeekly;
+  frequencySection.hidden=editingTodo;
+  repeatRow.hidden=editingTodo||isWeekly;
+  targetRow.hidden=editingTodo;
   repeatToggle.classList.toggle('active',habitDraftRepeatable&&!isWeekly);
   repeatToggle.setAttribute('aria-pressed',String(habitDraftRepeatable&&!isWeekly));
   repeatToggle.textContent=habitDraftRepeatable&&!isWeekly?'Sí':'No';
@@ -3156,13 +3174,13 @@ function updateHabitEditor(){
       : 'Veces necesarias para completarlo';
   const previewHabit={
     difficulty:habitDraftDifficulty,
-    frequency:habitDraftFrequency,
-    target:habitDraftTarget,
-    repeatable:habitDraftRepeatable&&!isWeekly,
+    frequency:editingTodo?'daily':habitDraftFrequency,
+    target:editingTodo?1:habitDraftTarget,
+    repeatable:editingTodo?false:habitDraftRepeatable&&!isWeekly,
   };
   const xpSchedule=habitProgressXpSchedule(previewHabit);
   const coinSchedule=habitProgressCoinSchedule(previewHabit);
-  const preview=isWeekly
+  const preview=!editingTodo&&isWeekly
     ? `Primer avance: +${xpSchedule[0]||0} XP · +${coinSchedule[0]||0} 🪙 · total: +${xpSchedule.reduce((sum,value)=>sum+value,0)} XP · +${coinSchedule.reduce((sum,value)=>sum+value,0)} 🪙`
     : previewHabit.repeatable
       ? `${xpSchedule.slice(0,3).map((xp,index)=>`${xp} XP · ${coinSchedule[index]||0} 🪙`).join('  /  ')}${habitDraftTarget>3?'  /  después 0':''}`
@@ -3207,6 +3225,7 @@ function closeHabitEditor(){
   habitEditorResizeHandler();
 }
 function openHabitEditor(id=null){
+  habitEditorMode='habit';
   const habit=id?activeHabitById(id):null;
   editingHabitId=habit?habit.id:null;
   habitDraftDifficulty=habit?.difficulty||'easy';
@@ -3217,13 +3236,71 @@ function openHabitEditor(id=null){
   document.getElementById('habitTitle').value=habit?.title||'';
   document.getElementById('habitNotes').value=habit?.notes||'';
   document.getElementById('habitDelete').style.display=habit?'block':'none';
+  document.getElementById('habitDelete').textContent='Eliminar hábito';
+  document.getElementById('habitTitle').placeholder='Ej. Caminar 20 minutos';
   updateHabitEditor();
   if(habitEditorCloseTimer||habitEditorResizeHandler) finishHabitEditorClose();
   habitEditorViewportHeight=window.visualViewport?.height||window.innerHeight;
   document.body.classList.add('habit-editor-open');
   document.getElementById('habitModalBg').classList.add('show');
 }
+function openTodoEditor(id=null){
+  habitEditorMode='todo';
+  const todo=id?activeTodoById(id):null;
+  editingHabitId=todo?todo.id:null;
+  habitDraftDifficulty=todo?.difficulty||'easy';
+  habitDraftFrequency='daily';
+  habitDraftTarget=1;
+  habitDraftRepeatable=false;
+  document.getElementById('habitModalTitle').textContent=todo?'Editar tarea':'Nueva tarea';
+  document.getElementById('habitTitle').value=todo?.title||'';
+  document.getElementById('habitTitle').placeholder='Ej. Pedir cita con el médico';
+  document.getElementById('habitNotes').value=todo?.notes||'';
+  document.getElementById('habitDelete').style.display=todo?'block':'none';
+  document.getElementById('habitDelete').textContent='Eliminar tarea';
+  updateHabitEditor();
+  if(habitEditorCloseTimer||habitEditorResizeHandler) finishHabitEditorClose();
+  habitEditorViewportHeight=window.visualViewport?.height||window.innerHeight;
+  document.body.classList.add('habit-editor-open');
+  document.getElementById('habitModalBg').classList.add('show');
+}
+function saveTodoEditor(){
+  const input=normalizeTodoInput({
+    title:document.getElementById('habitTitle').value,
+    notes:document.getElementById('habitNotes').value,
+    difficulty:habitDraftDifficulty,
+  });
+  if(!input.title){
+    showToast('Escribe un nombre para la tarea','dmg');
+    return;
+  }
+  const normalized=normalizeTodoState(state.todos);
+  const wasEditing=Boolean(editingHabitId);
+  let savedId=editingHabitId;
+  if(editingHabitId){
+    normalized.items=normalized.items.map(todo=>todo.id===editingHabitId
+      ? {...todo,...input,updatedAt:Date.now()}
+      : todo);
+  }else{
+    savedId=globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function'
+      ? globalThis.crypto.randomUUID()
+      : 'todo-'+Date.now()+'-'+Math.random().toString(16).slice(2);
+    normalized.items.push({
+      id:savedId,...input,active:true,completed:false,xpAwarded:0,coinsAwarded:0,
+      createdAt:Date.now(),updatedAt:Date.now(),
+    });
+  }
+  state.todos=normalized;
+  scheduleSave({type:wasEditing?'todo:update':'todo:create',id:savedId,title:input.title});
+  closeHabitEditor();
+  renderAll();
+  showToast(wasEditing?'Tarea actualizada':'Tarea creada','heal');
+}
 function saveHabitEditor(){
+  if(habitEditorMode==='todo'){
+    saveTodoEditor();
+    return;
+  }
   const input=normalizeHabitInput({
     title:document.getElementById('habitTitle').value,
     notes:document.getElementById('habitNotes').value,
@@ -3321,6 +3398,12 @@ function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
 }
 
 document.getElementById('view-habits').addEventListener('click',event=>{
+  const section=event.target.closest('[data-habit-section]');
+  if(section){
+    habitViewSection=section.dataset.habitSection;
+    renderHabits();
+    return;
+  }
   const filter=event.target.closest('[data-habit-filter]');
   if(filter){
     habitViewFilter=filter.dataset.habitFilter;
@@ -3334,6 +3417,31 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   }
   if(event.target.closest('[data-add-habit]')){
     openHabitEditor();
+    return;
+  }
+  if(event.target.closest('[data-add-todo]')){
+    openTodoEditor();
+    return;
+  }
+  const todoCompletion=event.target.closest('[data-todo-completed]');
+  if(todoCompletion&&!todoCompletion.disabled){
+    const row=todoCompletion.closest('[data-todo-id]');
+    const todoId=row?.dataset.todoId;
+    const completed=todoCompletion.dataset.todoCompleted==='true';
+    const result=adjustTodoCompletion(state.todos,todoId,completed,Date.now());
+    if(!result.changed) return;
+    ensureHero();
+    state.todos=result.todoState;
+    state.game.bonusXp=Math.max(0,(Number(state.game.bonusXp)||0)+result.xpDelta);
+    state.economy.coins=Math.max(0,(Number(state.economy.coins)||0)+result.coinDelta);
+    scheduleSave({type:'todo:progress',id:todoId,completed,xpDelta:result.xpDelta,coinDelta:result.coinDelta});
+    renderAll();
+    showToast(
+      completed
+        ? `Tarea completada · +${result.xpDelta} XP · +${result.coinDelta} oro`
+        : `Tarea corregida · ${result.xpDelta} XP · ${result.coinDelta} oro`,
+      completed?'heal':'dmg',
+    );
     return;
   }
   const adjust=event.target.closest('[data-habit-delta]');
@@ -3454,7 +3562,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     return;
   }
   const edit=event.target.closest('[data-edit-habit]');
-  if(edit) openHabitEditor(edit.dataset.editHabit);
+  if(edit){
+    openHabitEditor(edit.dataset.editHabit);
+    return;
+  }
+  const editTodo=event.target.closest('[data-edit-todo]');
+  if(editTodo) openTodoEditor(editTodo.dataset.editTodo);
 });
 
 const habitsView=document.getElementById('view-habits');
@@ -3611,6 +3724,20 @@ document.getElementById('habitTargetAdd').addEventListener('click',()=>{
   updateHabitEditor();
 });
 document.getElementById('habitDelete').addEventListener('click',()=>{
+  if(habitEditorMode==='todo'){
+    if(!editingHabitId||!confirm('¿Eliminar esta tarea? La XP y el oro que ya ganaste se conservarán.')) return;
+    const deletedTodoId=editingHabitId;
+    const normalized=normalizeTodoState(state.todos);
+    normalized.items=normalized.items.map(todo=>todo.id===editingHabitId
+      ? {...todo,active:false,deletedAt:Date.now()}
+      : todo);
+    state.todos=normalized;
+    scheduleSave({type:'todo:delete',id:deletedTodoId});
+    closeHabitEditor();
+    renderAll();
+    showToast('Tarea eliminada','dmg');
+    return;
+  }
   if(!editingHabitId||!confirm('¿Eliminar este hábito? La XP que ya ganaste se conservará.')) return;
   const deletedHabitId=editingHabitId;
   const normalized=normalizeHabitState(state.habits);
@@ -4154,11 +4281,6 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   const option=event.target.closest('[data-select-outfit]');
   if(option){
     selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned'});
-    return;
-  }
-  const collectionBack=event.target.closest('[data-outfit-collection-back]');
-  if(collectionBack){
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned'});
     return;
   }
   const weaveOption=event.target.closest('[data-select-weave-outfit]');
@@ -4739,7 +4861,7 @@ function resetApp(){
   store.authorizeDestructiveSave('reset');
   state={
     config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
-    days:{}, habits:{items:[],entries:{}}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false,
+    days:{}, habits:{items:[],entries:{}}, todos:{items:[]}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false,
     ...emptyLootState()
   };
   scheduleSave();

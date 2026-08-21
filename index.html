@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.94</div>
+  <div class="ob-version" id="obVersion">v1.95</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.94</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.95</span></p>
       </div>
     </div>
   </div>
@@ -940,7 +940,7 @@
       <span>Nota opcional</span>
       <textarea id="habitNotes" maxlength="180" placeholder="Una pequeña ayuda o recordatorio"></textarea>
     </label>
-    <div class="habit-editor-section">
+    <div class="habit-editor-section" id="habitFrequencySection">
       <span class="habit-editor-label">Dificultad</span>
       <div class="habit-choice" id="habitDifficulty">
         <button type="button" data-habit-difficulty="easy" class="active">✦<small>Fácil</small></button>
@@ -959,7 +959,7 @@
       <div><span class="habit-editor-label">Repetible</span><small>Premia cada repetición, cada vez un poco menos</small></div>
       <button type="button" id="habitRepeatToggle" aria-pressed="false">No</button>
     </div>
-    <div class="habit-editor-section habit-target-row">
+    <div class="habit-editor-section habit-target-row" id="habitTargetRow">
       <div><span class="habit-editor-label" id="habitTargetLabel">Objetivo</span><small id="habitTargetHelp">Veces necesarias para completarlo</small></div>
       <div class="habit-target-stepper">
         <button type="button" id="habitTargetSub">−</button>

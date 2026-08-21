@@ -74,7 +74,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option equipped');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option selected');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-outfit-collection-back');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-collection-back');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-selector-preview');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('hero_background/');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
@@ -85,13 +85,19 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--outfit-beta-tester');
     expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--sorcerer');
 
-    expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBe('arcane-weave-01');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Operador del Nexo');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudaba a construir un mundo mejor conectado');
+    expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBeNull();
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.png');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit');
+    expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave' })).toBe('arcane-weave-01');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-owned-preview');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('aria-label="Outfits para tejer"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Operador del Nexo');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudaba a construir un mundo mejor conectado');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-01"');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {

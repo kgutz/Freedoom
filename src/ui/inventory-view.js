@@ -73,13 +73,13 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const requested = OUTFIT_DEFINITIONS.find((outfit) => (
     outfit.id === selectedOutfitId && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
   ));
-  const selected = requested || (section === 'weave' ? craftableOutfits[0] : null);
+  const selected = requested || null;
   const recipe = selected?.recipe;
   const alreadyOwned = selected ? isOutfitUnlocked(selected, lootState?.game) : false;
   const hasResources = recipe && Number(lootState?.economy?.coins || 0) >= recipe.coins
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   const selectorModal = body.closest?.('.outfit-selector-modal');
-  selectorModal?.classList.toggle('outfit-selector-modal--compact', section === 'owned' && !selected);
+  selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected);
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
   body.innerHTML = `
     <div class="outfit-modal-tabs" role="tablist" aria-label="Secciones de outfits">
@@ -92,7 +92,6 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     </div>
     ${section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
-        <button type="button" class="outfit-collection-back" data-outfit-collection-back>← COLECCIÓN</button>
         <div class="outfit-owned-preview">
           <div class="outfit-option selected${selected.id === equipped.id ? ' equipped' : ''}${selected.provisional ? ' outfit-option--arcane' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equipped.id ? ', equipado' : ''}">
             ${outfitFullBody(classId, selected)}
@@ -112,25 +111,32 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         ${Array.from({ length: emptyCollectionSlots }, (_, index) => `<div class="outfit-option outfit-option--locked outfit-collection-empty" aria-label="Espacio de outfit bloqueado ${index + 1}">
           <span class="outfit-locked-mark" aria-hidden="true">?</span>
         </div>`).join('')}
-      </div>`) : `
+      </div>`) : (selected ? `
+      <div class="outfit-owned-view outfit-weave-view">
+        <div class="outfit-owned-preview">
+          <div class="outfit-option outfit-weave-option selected${alreadyOwned ? ' owned' : ''}" aria-label="${escapeHtml(selected.name)}">
+            ${outfitFullBody(classId, selected)}
+          </div>
+        </div>
+        <section class="outfit-weave-detail">
+          <h4>${escapeHtml(selected.name)}</h4>
+          <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
+          <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
+          <div class="outfit-weave-cost">
+            ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
+            ${resourceValue('coin', recipe.coins, 'ORO')}
+          </div>
+          <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${alreadyOwned || !hasResources ? ' disabled' : ''}>${alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
+        </section>
+      </div>` : `
       <div class="outfit-weave-grid" role="listbox" aria-label="Outfits para tejer">
-        ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option${outfit.id === selected.id ? ' selected' : ''}${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-selected="${outfit.id === selected.id}" aria-label="${escapeHtml(outfit.name)}">
+        ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}">
           ${outfitFullBody(classId, outfit)}
         </button>`).join('')}
         ${Array.from({ length: 2 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
           <span aria-hidden="true">?</span>
         </div>`).join('')}
-      </div>
-      ${selected ? `<section class="outfit-weave-detail">
-        <h4>${escapeHtml(selected.name)}</h4>
-        <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
-        <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
-        <div class="outfit-weave-cost">
-          ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
-          ${resourceValue('coin', recipe.coins, 'ORO')}
-        </div>
-        <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${alreadyOwned || !hasResources ? ' disabled' : ''}>${alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
-      </section>` : '<p class="outfit-weave-empty">Próximamente habrá nuevos outfits.</p>'}`}`;
+      </div>`)}`;
   return selected?.id || null;
 }
 

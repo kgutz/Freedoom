@@ -174,6 +174,7 @@ export function mergeState(currentState, savedState) {
     days: currentState.days,
     game: currentState.game,
     habits: currentState.habits,
+    todos: currentState.todos,
     economy: currentState.economy,
     loot: currentState.loot,
     inventory: currentState.inventory,
@@ -199,6 +200,11 @@ export function mergeState(currentState, savedState) {
       dailyCoinBonuses: isObject(savedState.habits.dailyCoinBonuses)
         ? savedState.habits.dailyCoinBonuses
         : {},
+    };
+  }
+  if (isObject(savedState.todos)) {
+    nextState.todos = {
+      items: Array.isArray(savedState.todos.items) ? savedState.todos.items : [],
     };
   }
   if (isObject(savedState.economy)) nextState.economy = savedState.economy;
