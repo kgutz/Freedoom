@@ -8,7 +8,7 @@ import { calculateGameStats } from './progression-rules.js';
 import { castSpellEffect } from './spell-rules.js';
 
 describe('integración de efectos de reliquias', () => {
-  it('Disciplina y Seda suman XP sin superar el cap diario', () => {
+  it('Disciplina y los efectos de reliquia suman XP fuera del cap diario', () => {
     const date = new Date(2026, 7, 12, 12);
     const base = {
       habitState: null,
@@ -26,7 +26,7 @@ describe('integración de efectos de reliquias', () => {
       habit: { ...base.habit, id: 'h2' },
       flatRewardBonus: 20,
     });
-    expect(second.xpDelta).toBe(12);
+    expect(second.xpDelta).toBe(30);
   });
 
   it('la XP extraordinaria no consume cap ni permite saltárselo después', () => {
@@ -51,14 +51,14 @@ describe('integración de efectos de reliquias', () => {
       game: { cls: 'knight', bonusXp: 40 }, habits: habitState,
     });
     expect(afterExtra.xp - beforeExtra.xp).toBe(40);
-    expect(habitXpForCurrentPeriods(habitState, date, '2026-08-10')).toBe(13);
+    expect(habitXpForCurrentPeriods(habitState, date, '2026-08-10')).toBe(10);
 
     const second = adjustHabitProgress({
       habitState, habit: habits[1], delta: 1, date, planStartDate: '2026-08-10',
       flatRewardBonus: 20,
     });
-    expect(second.xpDelta).toBe(16);
-    expect(habitXpForCurrentPeriods(second.habitState, date, '2026-08-10')).toBe(29);
+    expect(second.xpDelta).toBe(30);
+    expect(habitXpForCurrentPeriods(second.habitState, date, '2026-08-10')).toBe(20);
   });
 
   it('la XP extraordinaria se entrega completa con el cap semanal lleno', () => {
@@ -120,10 +120,10 @@ describe('integración de efectos de reliquias', () => {
     const stats = calculateGameStats({
       ...input,
       relicXp: 10,
-      relicBonuses: { maxHp: 5, maxMana: 5 },
+      relicBonuses: { maxHpPercent: 5, maxManaPercent: 5 },
     });
     expect(stats.xp).toBe(10);
-    expect(stats.maxHp).toBe(base.maxHp + 5);
-    expect(stats.maxMp).toBe(base.maxMp + 5);
+    expect(stats.maxHp).toBe(Math.round(base.maxHp * 1.05));
+    expect(stats.maxMp).toBe(Math.round(base.maxMp * 1.05));
   });
 });

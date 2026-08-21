@@ -285,6 +285,20 @@ function existingXpAwards(entry, habit) {
   return legacy;
 }
 
+function existingExtraXpAwards(entry) {
+  const count = Math.max(0, Math.trunc(Number(entry?.count) || 0));
+  if (Array.isArray(entry?.extraXpAwards)) {
+    return Array.from(
+      { length: count },
+      (_, index) => Math.max(0, Number(entry.extraXpAwards[index]) || 0),
+    );
+  }
+  const legacyTotal = Math.max(0, Number(entry?.extraXpAwarded) || 0);
+  const legacy = Array(count).fill(0);
+  if (count > 0) legacy[count - 1] = legacyTotal;
+  return legacy;
+}
+
 function xpUsedInPeriod(entries, periodKey, frequency, excludedKey) {
   return Object.entries(entries).reduce((total, [entryKey, entry]) => {
     if (
@@ -326,17 +340,25 @@ export function adjustHabitProgress({
   );
   const previousAwards = existingXpAwards(previous, habit);
   let xpAwards = previousAwards.slice(0, count);
+  const previousExtraAwards = existingExtraXpAwards(previous);
+  let extraXpAwards = previousExtraAwards.slice(0, count);
   const rewardSchedule = habitProgressXpSchedule(habit);
   while (xpAwards.length < count) {
     const baseReward = rewardSchedule[xpAwards.length] || 0;
     const requested = baseReward > 0
-      ? Math.round(baseReward * Math.max(1, Number(rewardMultiplier) || 1)) +
-        Math.max(0, Math.round(Number(flatRewardBonus) || 0))
+      ? Math.round(baseReward * Math.max(1, Number(rewardMultiplier) || 1))
       : 0;
     const awardedSoFar = xpAwards.reduce((sum, reward) => sum + reward, 0);
     xpAwards.push(Math.min(requested, Math.max(0, cap - used - awardedSoFar)));
   }
+  while (extraXpAwards.length < count) {
+    const baseReward = rewardSchedule[extraXpAwards.length] || 0;
+    extraXpAwards.push(baseReward > 0
+      ? Math.max(0, Math.round(Number(flatRewardBonus) || 0))
+      : 0);
+  }
   const xpAwarded = xpAwards.reduce((sum, reward) => sum + reward, 0);
+  const extraXpAwarded = extraXpAwards.reduce((sum, reward) => sum + reward, 0);
   const entry = {
     ...previous,
     habitId: habit.id,
@@ -345,6 +367,8 @@ export function adjustHabitProgress({
     count,
     xpAwarded,
     xpAwards,
+    extraXpAwarded,
+    extraXpAwards,
     coinsAwarded: Math.max(0, Math.trunc(Number(previous.coinsAwarded) || 0)),
   };
   return {
@@ -353,7 +377,9 @@ export function adjustHabitProgress({
       entries: { ...normalized.entries, [entryKey]: entry },
     },
     entry,
-    xpDelta: xpAwarded - (Number(previous.xpAwarded) || 0),
+    xpDelta: xpAwarded + extraXpAwarded -
+      (Number(previous.xpAwarded) || 0) -
+      (Number(previous.extraXpAwarded) || 0),
     completed,
     wasCompleted,
     becameCompleted: !wasCompleted && completed,
@@ -517,6 +543,7 @@ export function habitXpTotal(habitState) {
   const normalized = normalizeHabitState(habitState);
   return Object.values(normalized.entries).reduce(
     (total, entry) => total + Math.max(0, Number(entry?.xpAwarded) || 0) +
+      Math.max(0, Number(entry?.extraXpAwarded) || 0) +
       Math.max(0, Number(entry?.potionXpAwarded) || 0),
     0,
   );

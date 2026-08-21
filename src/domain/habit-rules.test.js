@@ -381,7 +381,7 @@ describe('hábitos', () => {
     expect(habitXpTotal(habitState)).toBe(25);
   });
 
-  it('limita bonus de clase y Disciplina con el nuevo tope dinámico', () => {
+  it('limita el bonus de clase pero deja Disciplina fuera del tope dinámico', () => {
     const items = Array.from({ length: 5 }, (_, index) => ({
       ...habit, id: `boosted-${index}`, difficulty: 'hard', target: 1, active: true,
     }));
@@ -400,8 +400,8 @@ describe('hábitos', () => {
       habitState = result.habitState;
       deltas.push(result.xpDelta);
     });
-    expect(deltas).toEqual([16, 16, 13, 0, 0]);
-    expect(habitXpTotal(habitState)).toBe(45);
+    expect(deltas).toEqual([16, 16, 16, 1, 1]);
+    expect(habitXpTotal(habitState)).toBe(50);
   });
 
   it('calcula topes dinámicos en partidas antiguas sin guardar campos nuevos', () => {

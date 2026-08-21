@@ -123,7 +123,7 @@ describe('Fusión de reliquias', () => {
     const equipped = equipRelic(restored, 'fusion_01');
     expect(equippedRelicEffectSources(equipped, 'relic_01')[0].value).toBe(7);
     expect(equippedRelicEffectSources(equipped, 'relic_02')[0].value).toBe(10);
-    expect(equippedRelicBonuses(equipped)).toMatchObject({ maxHp: 5, maxMana: 5 });
+    expect(equippedRelicBonuses(equipped)).toMatchObject({ maxHpPercent: 5, maxManaPercent: 5 });
   });
 
   it('garantiza la rareza mayor y asciende según los efectos extras únicos', () => {

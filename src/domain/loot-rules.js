@@ -1283,10 +1283,10 @@ export function unequipRelic(lootState, relicId, options = {}) {
 export function equippedRelicBonuses(lootState) {
   const normalized = normalizeLootState(lootState);
   const result = {
-    maxHp: 0,
-    maxMana: 0,
+    maxHpPercent: 0,
+    maxManaPercent: 0,
     regenerationMinutesReduction: 0,
-    manaRecoveryBonus: 0,
+    manaRecoveryPercentBonus: 0,
     habitXpBonus: 0,
     fortune: 0,
     rankEffects: {},
@@ -1297,11 +1297,11 @@ export function equippedRelicBonuses(lootState) {
     result.rankEffects[relicId] = relicRankEffect(relicId, relic.rank);
     for (const affixId of relic.affixes) {
       const affix = AFFIX_DEFINITIONS[affixId];
-      result.maxHp += affix?.maxHp || 0;
-      result.maxMana += affix?.maxMana || 0;
+      result.maxHpPercent += affix?.maxHpPercent || 0;
+      result.maxManaPercent += affix?.maxManaPercent || 0;
       result.regenerationMinutesReduction +=
         affix?.regenerationMinutesReduction || 0;
-      result.manaRecoveryBonus += affix?.manaRecoveryBonus || 0;
+      result.manaRecoveryPercentBonus += affix?.manaRecoveryPercentBonus || 0;
       result.habitXpBonus += affix?.habitXpBonus || 0;
       result.fortune += affix?.forgeChanceBonus || 0;
     }

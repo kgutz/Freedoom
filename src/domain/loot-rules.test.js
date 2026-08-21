@@ -647,18 +647,18 @@ describe('equipamiento y bonus derivados', () => {
     raw.inventory.equipped = ['relic_02', 'relic_03'];
     const bonuses = equippedRelicBonuses(raw);
     expect(bonuses).toMatchObject({
-      maxMana: 5,
-      manaRecoveryBonus: 1,
+      maxManaPercent: 5,
+      manaRecoveryPercentBonus: 5,
       habitXpBonus: 1,
-      fortune: 1,
+      fortune: 3,
     });
     raw.inventory.relics.relic_02.affixes = ['regeneration', 'arcane'];
     raw.inventory.relics.relic_03.affixes = ['vitality', 'fortune'];
     expect(equippedRelicBonuses(raw)).toMatchObject({
-      maxHp: 5,
-      maxMana: 5,
-      regenerationMinutesReduction: 0.5,
-      fortune: 1,
+      maxHpPercent: 5,
+      maxManaPercent: 5,
+      regenerationMinutesReduction: 2,
+      fortune: 3,
     });
   });
 
@@ -853,16 +853,16 @@ describe('Forja', () => {
 
   it('mantiene Pity y Fortuna sobre la misma tirada lógica', () => {
     const state = forgeState({ fortune: true });
-    state.forge.seed = seedForOutcome(false, 71);
+    state.forge.seed = seedForOutcome(false, 73);
     const first = attemptForge({
       state, relicId: 'relic_01', operationId: 'fortune-1', nowTimestamp: 10,
     });
-    expect(first.preview).toMatchObject({ pityProbability: 70, fortune: 1, finalProbability: 71 });
+    expect(first.preview).toMatchObject({ pityProbability: 70, fortune: 3, finalProbability: 73 });
     expect(first.success).toBe(false);
     const second = attemptForge({
       state: first, relicId: 'relic_01', operationId: 'fortune-2', nowTimestamp: 20,
     });
-    expect(second.preview).toMatchObject({ pityProbability: 85, fortune: 1, finalProbability: 86 });
+    expect(second.preview).toMatchObject({ pityProbability: 85, fortune: 3, finalProbability: 88 });
     expect(second.forge.history.at(-1).logicalAttemptNumber).toBe(2);
   });
 
@@ -945,7 +945,7 @@ describe('Forja', () => {
 
   it('suma Fortuna, limita al 100 y valida recursos', () => {
     const state = forgeState({ fortune: true });
-    expect(forgePreview(state, 'relic_01').finalProbability).toBe(71);
+    expect(forgePreview(state, 'relic_01').finalProbability).toBe(73);
     const noCoins = forgeState({ coins: 49 });
     expect(attemptForge({
       state: noCoins,

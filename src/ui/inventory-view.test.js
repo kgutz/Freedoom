@@ -199,7 +199,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('CONSTANCIA');
     expect(html).toContain('Carga actual: 4/6');
     expect(html).toContain('Valor actual: 30 XP');
-    expect(html).not.toContain('puntos porcentuales');
+    expect(html).toContain('+3 puntos porcentuales en la Forja.');
   });
 
   it('mantiene conciso el efecto principal del Frasco del Antojo Roto', () => {
@@ -430,7 +430,7 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.relics.relic_03.affixes = ['discipline'];
     renderRelicDetail(document, state, 'relic_03');
     expect(document.elements.relicDetailBody.innerHTML).toContain('Disciplina');
-    expect(document.elements.relicDetailBody.innerHTML).toContain('+1 XP al completar hábitos');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('+1 XP extra al completar hábitos. No cuenta para el límite de XP.');
     expect(document.elements.relicDetailBody.innerHTML).toContain('relic-detail-art');
     expect(document.elements.relicDetailBody.innerHTML).toContain('data-open-forge-relic="relic_03"');
   });

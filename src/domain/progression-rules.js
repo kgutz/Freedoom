@@ -229,8 +229,12 @@ export function calculateGameStats({
   );
   const tier = level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
   const baseMaxes = classMaxes(game?.cls, level);
-  const maxHp = baseMaxes.maxHp + Math.max(0, Number(relicBonuses.maxHp) || 0);
-  const maxMp = baseMaxes.maxMp + Math.max(0, Number(relicBonuses.maxMana) || 0);
+  const maxHp = Math.round(baseMaxes.maxHp * (
+    1 + Math.max(0, Number(relicBonuses.maxHpPercent) || 0) / 100
+  ));
+  const maxMp = Math.round(baseMaxes.maxMp * (
+    1 + Math.max(0, Number(relicBonuses.maxManaPercent) || 0) / 100
+  ));
   const evolutionUnlocked = journeyEvolutionUnlocked({
     config,
     bossesDown: result.bossesDown,

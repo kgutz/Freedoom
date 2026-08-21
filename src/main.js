@@ -970,7 +970,10 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
 
 function recoverMana(amount){
   if(amount<=0) return 0;
-  const bonus=relicBonuses().manaRecoveryBonus;
+  const bonusPercent=relicBonuses().manaRecoveryPercentBonus;
+  const bonus=bonusPercent>0
+    ? Math.max(1,Math.round(heroMaxes().maxMp*bonusPercent/100))
+    : 0;
   const before=state.game.mp||0;
   state.game.mp=capMp(before+amount+bonus);
   return state.game.mp-before;
