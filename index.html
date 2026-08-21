@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <base href="./public/">
-<title>Freedoom</title>
+<title>Freedom</title>
 <link rel="apple-touch-icon" href="icono.png">
 <link rel="icon" type="image/png" href="icono.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Freedoom">
+<meta name="apple-mobile-web-app-title" content="Freedom">
 <meta name="theme-color" content="#171310">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Pixelify+Sans:wght@400&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -23,8 +23,8 @@
 <div id="onboard" style="display:none">
   <div class="ob-step active" id="ob1">
     <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
-    <img src="logo.png" alt="Freedoom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
-    <div id="obTitleFallback" class="ob-fallback" style="display:none">FREEDOOM</div>
+    <img src="logo.png" alt="Freedom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
+    <div id="obTitleFallback" class="ob-fallback" style="display:none">FREEDOM</div>
   </div>
   <div class="ob-step" id="ob2">
     <button type="button" class="ob-back" data-ob-back="1" aria-label="Volver a la bienvenida">←</button>
@@ -121,12 +121,12 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.96</div>
+  <div class="ob-version" id="obVersion">v1.97</div>
 </div>
 
 <div id="loading" class="loading">
   <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
-  <img src="logo.png" alt="Freedoom" class="load-logo" onerror="this.style.display='none'">
+  <img src="logo.png" alt="Freedom" class="load-logo" onerror="this.style.display='none'">
 </div>
 
 <div id="app" style="display:none">
@@ -137,7 +137,7 @@
     </button>
     <div class="semana-tag"><div class="sem-line">SEMANA <b id="semanaNum"></b></div><div class="max-line">máx <b id="limiteDia"></b>/día</div></div>
   </header>
-  <img src="logo.png" alt="Freedoom" class="top-logo" onerror="this.style.display='none'">
+  <img src="logo.png" alt="Freedom" class="top-logo" onerror="this.style.display='none'">
 
   <!-- VISTA HOY -->
   <section id="view-hoy" class="view active">
@@ -389,8 +389,8 @@
       </div>
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
-        <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.96</span></p>
+        <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v1.97</span></p>
       </div>
     </div>
   </div>
@@ -404,7 +404,7 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">↟</span><span>Tu camino</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Freedoom tiene tres puntos de partida. Puedes reducir progresivamente hasta llegar a cero, mantenerte completamente sin fumar o establecer un consumo controlado con días permitidos y un máximo semanal compartido.</p>
+          <p class="hint">Freedom tiene tres puntos de partida. Puedes reducir progresivamente hasta llegar a cero, mantenerte completamente sin fumar o establecer un consumo controlado con días permitidos y un máximo semanal compartido.</p>
           <p class="hint">En consumo controlado, los días permitidos muestran un contador de cigarros. En los demás debes confirmar si no fumaste. Superar el máximo semanal hace que los días permitidos de esa semana no cuenten como cumplidos.</p>
           <p class="hint">Si comenzaste en el camino sin fumar y decides pasar a consumo controlado, puedes programarlo desde Ajustes. El cambio comienza con tu siguiente semana para no alterar el jefe actual, y los días anteriores conservan sus reglas originales.</p>
           <p class="hint">Las cuatro clases adaptan sus habilidades al camino elegido. En reducción interactúan con el ritmo y los cigarros; los caminos sin fumar y controlado usan poderes centrados en confirmaciones, rachas, hábitos, vida, maná y defensa semanal.</p>
@@ -426,8 +426,8 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🌅</span><span>Cambio de día y despertar</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">En reducción y en el camino sin fumar, el día de Freedoom cambia por defecto a las <b style="color:var(--kodak)">04:00</b>. Lo registrado durante la madrugada sigue perteneciendo a la noche anterior. En consumo controlado, los días permitidos cambian por día natural a las <b style="color:var(--kodak)">00:00</b>, para que el contador se active en cuanto comienza uno de los días elegidos.</p>
-          <p class="hint">Puedes modificar la hora de cambio durante el onboarding o desde Ajustes. En la primera apertura posterior, Freedoom estima automáticamente tu hora de despertar para ese día. La verás en Hoy como <b style="color:var(--text)">“Despertar de hoy”</b>; si abriste la app más tarde de lo que te levantaste, puedes corregirla allí mismo sin modificar los días anteriores.</p>
+          <p class="hint">En reducción y en el camino sin fumar, el día de Freedom cambia por defecto a las <b style="color:var(--kodak)">04:00</b>. Lo registrado durante la madrugada sigue perteneciendo a la noche anterior. En consumo controlado, los días permitidos cambian por día natural a las <b style="color:var(--kodak)">00:00</b>, para que el contador se active en cuanto comienza uno de los días elegidos.</p>
+          <p class="hint">Puedes modificar la hora de cambio durante el onboarding o desde Ajustes. En la primera apertura posterior, Freedom estima automáticamente tu hora de despertar para ese día. La verás en Hoy como <b style="color:var(--text)">“Despertar de hoy”</b>; si abriste la app más tarde de lo que te levantaste, puedes corregirla allí mismo sin modificar los días anteriores.</p>
           <p class="hint">Tu hora habitual de Ajustes se conserva como respaldo cuando todavía no existe una hora específica para ese día.</p>
         </div>
       </details>
@@ -481,7 +481,7 @@
           <p class="hint">Crea hábitos positivos desde su pestaña y elige cuántas veces debes realizarlos. Puedes corregir el contador con los botones + y −. La XP se concede al alcanzar el objetivo completo, y se retira si lo deshaces durante ese mismo periodo.</p>
           <div class="hint"><span class="faq-lead">Recompensas:</span><ul class="faq-bullets"><li>Diario fácil → <b style="color:var(--kodak)">3 XP</b>; medio → <b style="color:var(--kodak)">6 XP</b>; difícil → <b style="color:var(--kodak)">10 XP</b>.</li><li>Semanal fácil → <b style="color:var(--kodak)">9 XP</b>; medio → <b style="color:var(--kodak)">18 XP</b>; difícil → <b style="color:var(--kodak)">30 XP</b>.</li><li>El tope base es de <b style="color:var(--kodak)">25 XP diarios</b> y <b style="color:var(--kodak)">35 XP semanales</b>. Si configuras más hábitos activos, el tope aumenta automáticamente según su XP potencial, hasta un máximo de <b style="color:var(--kodak)">100 al día</b> y <b style="color:var(--kodak)">120 a la semana</b>.</li></ul></div>
           <div class="hint"><span class="faq-lead">Oro por completar:</span><ul class="faq-bullets"><li>Hábitos diarios → <b style="color:var(--resource-coin)">1, 2 o 3 de oro</b> según sean fáciles, medios o difíciles.</li><li>Hábitos semanales → <b style="color:var(--resource-coin)">3, 5 u 8 de oro</b>.</li><li>Completar todos los hábitos diarios activos concede un bonus de <b style="color:var(--resource-coin)">+3 de oro</b>.</li></ul></div>
-          <p class="hint">Los hábitos aumentan la experiencia del héroe, pero no curan, no dan maná y no dañan al jefe. El progreso diario cambia junto al día de Freedoom; el semanal se reinicia el mismo día que tu semana del plan.</p>
+          <p class="hint">Los hábitos aumentan la experiencia del héroe, pero no curan, no dan maná y no dañan al jefe. El progreso diario cambia junto al día de Freedom; el semanal se reinicia el mismo día que tu semana del plan.</p>
         </div>
       </details>
       <details class="faq-item">
@@ -489,7 +489,7 @@
         <div class="faq-answer">
           <p class="hint">Al derrotar a determinados jefes recibes oro y <b style="color:var(--resource-blood)">Sangre de Jefe</b>. Además, tienes un <b style="color:var(--kodak)">70% de probabilidad</b> de conseguir su reliquia exclusiva. No existen reliquias repetidas.</p>
           <div class="hint"><span class="faq-lead">Rareza de una reliquia:</span><ul class="faq-bullets"><li>Rara: <b style="color:#80adc3">60%</b>, sin efectos extras.</li><li>Legendaria: <b style="color:#e2a74a">30%</b>, con 1 efecto extra.</li><li>Mítica: <b style="color:#c57ce8">10%</b>, con 2 efectos extras distintos.</li></ul></div>
-          <p class="hint">La recompensa de cada jefe solo puede recibirse una vez, incluso al importar o restaurar una partida. Si ya habías derrotado jefes antes de esta actualización, Freedoom reconoce esas victorias y entrega el botín retroactivamente. La misma partida siempre recibe las mismas rarezas y efectos extras durante esta migración.</p>
+          <p class="hint">La recompensa de cada jefe solo puede recibirse una vez, incluso al importar o restaurar una partida. Si ya habías derrotado jefes antes de esta actualización, Freedom reconoce esas victorias y entrega el botín retroactivamente. La misma partida siempre recibe las mismas rarezas y efectos extras durante esta migración.</p>
         </div>
       </details>
       <details class="faq-item">
@@ -516,7 +516,7 @@
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚒</span><span>Forja</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
           <p class="hint">La Forja tiene dos modos: <b style="color:var(--kodak)">Mejorar</b> aumenta el efecto principal de una reliquia desde el Rango I hasta el Rango III; <b style="color:var(--kodak)">Fusionar</b> combina dos reliquias base compatibles para descubrir una nueva.</p>
-          <p class="hint">Una Fusión cuesta <b style="color:var(--resource-coin)">100 de oro</b> y <b style="color:var(--resource-blood)">1 Sangre de Jefe</b>. Es 100% segura, pero consume permanentemente sus dos ingredientes. Antes de ejecutarla, Freedoom muestra una confirmación explícita.</p>
+          <p class="hint">Una Fusión cuesta <b style="color:var(--resource-coin)">100 de oro</b> y <b style="color:var(--resource-blood)">1 Sangre de Jefe</b>. Es 100% segura, pero consume permanentemente sus dos ingredientes. Antes de ejecutarla, Freedom muestra una confirmación explícita.</p>
           <p class="hint">La reliquia fusionada nunca baja de la rareza más alta de sus ingredientes. Conserva sus efectos extras sin duplicarlos: un efecto garantiza rareza Legendaria y dos o más garantizan rareza Mítica.</p>
           <p class="hint">Las recetas desconocidas ocultan su resultado hasta completar la primera Fusión. No todas las parejas son compatibles y las reliquias fusionadas no se pueden mejorar de rango por ahora.</p>
           <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 de oro</b>, necesita <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">70% → 85% → 100%</b>.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 de oro</b>, necesita <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">45% → 60% → 75% → 90% → 100%</b>.</li></ul></div>
@@ -530,14 +530,14 @@
       <details class="faq-item">
         <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💾</span><span>Guardado y recuperación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-answer">
-          <p class="hint">Freedoom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
-          <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedoom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
-          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b> y restaurar las copias automáticas. Freedoom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
+          <p class="hint">Freedom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
+          <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
+          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b> y restaurar las copias automáticas. Freedom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
           <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y revisa tus copias de seguridad. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
         </div>
       </details>
     </div>
-    <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
+    <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
   </div>
 </div>
 
@@ -662,12 +662,12 @@
         <span class="pioneer-chest-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <img src="rewards/pioneer-chest.png" alt="">
       </div>
-      <p>Gracias por cada prueba y cada feedback. Sin ti, Freedoom no sería lo mismo.</p>
+      <p>Gracias por cada prueba y cada feedback. Sin ti, Freedom no sería lo mismo.</p>
       <button type="button" class="pioneer-reward-action" id="pioneerRewardAccept">ACEPTAR</button>
     </section>
     <section id="pioneerRewardReveal" class="pioneer-reward-step pioneer-reward-reveal" hidden>
       <span class="pioneer-reward-kicker">RECOMPENSA CONSEGUIDA</span>
-      <h3>Tu huella queda en Freedoom</h3>
+      <h3>Tu huella queda en Freedom</h3>
       <div class="pioneer-reward-items">
         <div class="pioneer-reward-item pioneer-reward-outfit">
           <span class="pioneer-reward-outfit-art"><img id="pioneerRewardOutfitImage" src="" alt="Outfit Beta Tester"></span>
@@ -809,7 +809,7 @@
 <!-- MENÚ HAMBURGUESA -->
 <div class="modal-bg center" id="menuBg">
   <div class="modal">
-    <img src="logo.png" alt="Freedoom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
+    <img src="logo.png" alt="Freedom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
     <h3 id="menuTitle" style="display:none">Menú</h3>
     <button class="menu-item" id="menuInstr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>
@@ -912,7 +912,7 @@
     <div class="recovery-manual" id="emergencyRecoverySection" hidden>
       <div class="recovery-manual-copy">
         <b>Recuperación de emergencia</b>
-        <small>Herramientas destinadas únicamente a recuperar o trasladar una partida. No son necesarias para el uso normal de Freedoom.</small>
+        <small>Herramientas destinadas únicamente a recuperar o trasladar una partida. No son necesarias para el uso normal de Freedom.</small>
       </div>
       <div class="recovery-manual-actions">
         <button class="mini-btn" id="btnExport" type="button">Exportar partida</button>

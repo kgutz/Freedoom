@@ -455,7 +455,7 @@ function handleSaveResult(result){
       savedAt:result.savedAt||storageHealth.savedAt,
       title:'Pérdida de datos bloqueada',
       detail:'La copia con información sigue protegida',
-      warning:'Freedoom detectó que la partida iba a volver casi a cero y no sustituyó tus copias. Cierra y abre la app para recuperar automáticamente la última partida completa.'
+      warning:'Freedom detectó que la partida iba a volver casi a cero y no sustituyó tus copias. Cierra y abre la app para recuperar automáticamente la última partida completa.'
     });
     return;
   }
@@ -517,7 +517,7 @@ async function load(){
         title:r.recovered?'Partida recuperada automáticamente':'Guardado ✓',
         detail:r.savedAt?`Último guardado · ${savedAtLabel(r.savedAt)}`:'Partida compatible cargada',
         warning:r.recovered
-          ? 'La copia principal no era la más reciente o estaba dañada. Freedoom recuperó la última copia válida.'
+          ? 'La copia principal no era la más reciente o estaba dañada. Freedom recuperó la última copia válida.'
           : ''
       });
       if(legacyDayBoundary&&state.onboarded){
@@ -536,7 +536,7 @@ async function load(){
     console.error('Error cargando la partida',e);
     setStorageHealth({
       state:'error',title:'No se pudo cargar la partida',detail:e.message||'Error desconocido',
-      warning:'Freedoom no pudo leer el guardado. No reinicies la app: revisa Copias de seguridad en el menú.'
+      warning:'Freedom no pudo leer el guardado. No reinicies la app: revisa Copias de seguridad en el menú.'
     });
   }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -4658,7 +4658,7 @@ async function shareBossMedal(bossIndex,bossFile){
   const bossName=BOSSES[bossIndex];
   if(!bossName||!bossFile) return;
   const title=`Medallón de ${bossName}`;
-  const text=`¡He derrotado a ${bossName} en Freedoom y he conseguido su medallón de victoria!`;
+  const text=`¡He derrotado a ${bossName} en Freedom y he conseguido su medallón de victoria!`;
   try{
     const blob=await fetchBossMedalFile(bossFile);
     const file=new File([blob],bossFile,{type:blob.type||'image/png'});

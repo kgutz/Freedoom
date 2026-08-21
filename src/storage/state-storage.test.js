@@ -294,7 +294,7 @@ describe('copias de seguridad', () => {
     });
   });
 
-  it('rechaza texto y objetos que no son copias de Freedoom', () => {
+  it('rechaza texto y objetos que no son copias de Freedom', () => {
     expect(() => importBackup(defaultState(), 'no es json')).toThrow();
     expect(() => importBackup(defaultState(), '{"foo":"bar"}')).toThrow(
       'Formato de copia no válido',

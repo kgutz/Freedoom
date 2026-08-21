@@ -5,7 +5,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     rarity: 'common',
     unlocked: true,
     transparentPortrait: true,
-    lore: 'La vestimenta con la que comenzó tu aventura en Freedoom.',
+    lore: 'La vestimenta con la que comenzó tu aventura en Freedom.',
   }),
   Object.freeze({
     id: 'beta-tester',
@@ -13,7 +13,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     rarity: 'rare',
     unlocked: false,
     transparentPortrait: true,
-    lore: 'Un atuendo reservado para quienes ayudaron a construir los primeros pasos de Freedoom.',
+    lore: 'Un atuendo reservado para quienes ayudaron a construir los primeros pasos de Freedom.',
   }),
   Object.freeze({
     id: 'arcane-weave-01',
@@ -22,7 +22,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     craftable: true,
     assetId: 'telecom-beta',
     transparentPortrait: true,
-    lore: 'Dice la leyenda que un Beta Tester recorría Freedoom reparando sus redes. Con cada señal y consejo, ayudaba a construir un mundo mejor conectado.',
+    lore: 'Dice la leyenda que un Beta Tester recorría Freedom reparando sus redes. Con cada señal y consejo, ayudaba a construir un mundo mejor conectado.',
     recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
   }),
 ]);

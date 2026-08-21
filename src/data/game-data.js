@@ -137,7 +137,7 @@ export const CLASSES={
   }
 };
 
-/* Repertorio inicial para quien entra en Freedoom manteniéndose sin fumar.
+/* Repertorio inicial para quien entra en Freedom manteniéndose sin fumar.
    Conserva las identidades y el pixel art de cada clase, pero elimina efectos
    que dependen de cigarros, límites, margen o disparos perfectos. */
 export const SMOKE_FREE_SKILLS={
