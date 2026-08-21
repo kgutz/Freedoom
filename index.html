@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.98</div>
+  <div class="ob-version" id="obVersion">v1.99</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v1.98</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v1.99</span></p>
       </div>
     </div>
   </div>
@@ -742,6 +742,18 @@
     <div class="fusion-confirm-actions">
       <button type="button" id="shopPurchaseConfirmCancel">CANCELAR</button>
       <button type="button" id="shopPurchaseConfirmAccept">COMPRAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="todoCompletionBg" style="z-index:45">
+  <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="todoCompletionTitle">
+    <span class="relic-effect-info-kicker">TAREA COMPLETADA</span>
+    <h3 id="todoCompletionTitle">Tarea completada</h3>
+    <div id="todoCompletionBody"></div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="todoCompletionCancel">CANCELAR</button>
+      <button type="button" id="todoCompletionAccept">CONFIRMAR</button>
     </div>
   </div>
 </div>

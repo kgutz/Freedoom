@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adjustTodoCompletion,
   adjustTodoProgress,
+  archiveTodo,
   nextTodoOrder,
   normalizeTodoInput,
   reorderTodos,
@@ -68,5 +69,17 @@ describe('reglas de To Do List', () => {
     const reordered = reorderTodos(initial, ['c', 'a', 'b']);
     expect(sortTodos(reordered.items).map((todo) => todo.id)).toEqual(['c', 'a', 'b']);
     expect(nextTodoOrder(reordered)).toBe(3);
+  });
+
+  it('archiva una tarea sin retirar sus recompensas', () => {
+    const initial = { items: [{
+      id: 'task', active: true, completed: true, target: 2, count: 2,
+      xpAwarded: 12, coinsAwarded: 6,
+    }] };
+    const result = archiveTodo(initial, 'task', 50);
+    expect(result.changed).toBe(true);
+    expect(result.item).toMatchObject({
+      active: false, completed: true, xpAwarded: 12, coinsAwarded: 6, deletedAt: 50,
+    });
   });
 });

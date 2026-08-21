@@ -105,6 +105,7 @@ import {
 } from './domain/habit-rules.js';
 import {
   adjustTodoProgress,
+  archiveTodo,
   nextTodoOrder,
   normalizeTodoInput,
   normalizeTodoState,
@@ -3014,6 +3015,7 @@ let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
 let habitDraftRepeatable=false;
+let pendingCompletedTodoId=null;
 let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
@@ -3266,6 +3268,25 @@ function openTodoEditor(id=null){
   document.body.classList.add('habit-editor-open');
   document.getElementById('habitModalBg').classList.add('show');
 }
+function openTodoCompletion(todo){
+  if(!todo?.id) return;
+  pendingCompletedTodoId=todo.id;
+  document.getElementById('todoCompletionTitle').textContent='Tarea completada';
+  const body=document.getElementById('todoCompletionBody');
+  body.innerHTML='';
+  const taskName=document.createElement('p');
+  const taskNameStrong=document.createElement('b');
+  taskNameStrong.textContent=todo.title||'Tarea';
+  taskName.append(taskNameStrong);
+  const question=document.createElement('p');
+  question.textContent='¿Quieres eliminarla de tu lista?';
+  body.append(taskName,question);
+  document.getElementById('todoCompletionBg').classList.add('show');
+}
+function closeTodoCompletion(){
+  pendingCompletedTodoId=null;
+  document.getElementById('todoCompletionBg').classList.remove('show');
+}
 function saveTodoEditor(){
   const input=normalizeTodoInput({
     title:document.getElementById('habitTitle').value,
@@ -3439,6 +3460,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy.coins=Math.max(0,(Number(state.economy.coins)||0)+result.coinDelta);
     scheduleSave({type:'todo:progress',id:todoId,count:result.item?.count||0,xpDelta:result.xpDelta,coinDelta:result.coinDelta});
     renderAll();
+    if(result.item?.completed){
+      openTodoCompletion(result.item);
+      return;
+    }
     showToast(
       result.xpDelta<0||result.coinDelta<0
         ? `Tarea corregida · ${result.xpDelta} XP · ${result.coinDelta} oro`
@@ -3768,6 +3793,18 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
   closeHabitEditor();
   renderAll();
   showToast('Hábito eliminado','dmg');
+});
+document.getElementById('todoCompletionCancel').addEventListener('click',closeTodoCompletion);
+document.getElementById('todoCompletionAccept').addEventListener('click',()=>{
+  if(!pendingCompletedTodoId) return;
+  const todoId=pendingCompletedTodoId;
+  const result=archiveTodo(state.todos,todoId,Date.now());
+  closeTodoCompletion();
+  if(!result.changed) return;
+  state.todos=result.todoState;
+  scheduleSave({type:'todo:delete-completed',id:todoId});
+  renderAll();
+  showToast('Tarea eliminada','heal');
 });
 
 /* elegir clase de héroe y lanzar hechizos */

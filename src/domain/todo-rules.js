@@ -158,3 +158,18 @@ export function adjustTodoCompletion(todoState, todoId, completed, nowTimestamp 
   const target = todoTarget(current);
   return adjustTodoProgress(normalized, todoId, completed ? target - count : -count, nowTimestamp);
 }
+
+export function archiveTodo(todoState, todoId, nowTimestamp = Date.now()) {
+  const normalized = normalizeTodoState(todoState);
+  const current = normalized.items.find((item) => item.id === todoId && item.active !== false);
+  if (!current) return { todoState: normalized, changed: false, item: null };
+  const archived = { ...current, active: false, deletedAt: nowTimestamp, updatedAt: nowTimestamp };
+  return {
+    todoState: {
+      ...normalized,
+      items: normalized.items.map((item) => item.id === todoId ? archived : item),
+    },
+    changed: true,
+    item: archived,
+  };
+}
