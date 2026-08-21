@@ -116,7 +116,7 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     initial.economy.arcaneFibers = 7;
     const result = weaveOutfit({ state: initial, outfitId: 'arcane-weave-01', operationId: 'weave-1', nowTimestamp: 20 });
     expect(result.ok).toBe(true);
-    expect(result.economy.coins).toBe(40);
+    expect(result.economy.coins).toBe(60);
     expect(result.economy.arcaneFibers).toBe(2);
     expect(result.game.outfits.owned['arcane-weave-01'].source).toBe('woven');
     const repeated = weaveOutfit({ state: { ...initial, ...result }, outfitId: 'arcane-weave-01', operationId: 'weave-2' });

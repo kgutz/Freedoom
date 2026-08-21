@@ -84,7 +84,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.png');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('100</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {

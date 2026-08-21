@@ -23,7 +23,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     assetId: 'telecom-beta',
     transparentPortrait: true,
     lore: 'Dice la leyenda que un Beta Tester recorría Freedoom reparando sus redes. Con cada señal y consejo, ayudaba a construir un mundo mejor conectado.',
-    recipe: Object.freeze({ arcaneFibers: 5, coins: 100 }),
+    recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
   }),
 ]);
 
