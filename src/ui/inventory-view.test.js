@@ -45,7 +45,8 @@ describe('interfaz de inventario y botín', () => {
     state.game = { cls: 'sorcerer', outfit: 'original' };
     renderInventoryView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('OUTFIT EQUIPADO');
-    expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo original');
+    expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo Original');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
     expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('original');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-option--locked/g)).toHaveLength(2);
@@ -430,8 +431,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.lootNoticeActions.innerHTML).toBe(
       '<button type="button" data-loot-inventory>IR AL INVENTARIO</button>',
     );
-    expect(document.elements.lootNoticeSummary.innerHTML).toContain('160');
-    expect(document.elements.lootNoticeSummary.innerHTML).toContain('SANGRE');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('aria-label="160 de oro"');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('Sangre de Jefe');
+    expect(document.elements.lootNoticeSummary.innerHTML).toBe('');
   });
 
   it('usa el cofre pixel art en recompensas nuevas', () => {
@@ -439,8 +441,19 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(1, 'victory');
     renderLootNotice(document, state, state.loot.notices[0]);
     expect(document.elements.lootNoticeRewards.innerHTML).toContain(
-      'relics/boss_loot_chest.png',
+      'relics/boss_loot_chest_open_sapphire.png',
     );
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('data-loot-open-relic');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('loot-reward-empty');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('loot-resource-slot');
+    expect(document.elements.lootNoticeActions.innerHTML).toBe(
+      '<button type="button" data-loot-continue>CONFIRMAR</button>',
+    );
+    expect(document.elements.lootNoticeActions.innerHTML).not.toContain('data-loot-equip');
+    const rewardsHtml = document.elements.lootNoticeRewards.innerHTML;
+    expect(rewardsHtml.indexOf('data-loot-open-relic')).toBeLessThan(rewardsHtml.indexOf('de Sangre de Jefe'));
+    expect(rewardsHtml.indexOf('de Sangre de Jefe')).toBeLessThan(rewardsHtml.indexOf(' de oro'));
+    expect(rewardsHtml.indexOf(' de oro')).toBeLessThan(rewardsHtml.indexOf('loot-reward-empty'));
   });
 
   it('muestra el estado vacío de la Tienda sin ocultar sus recursos', () => {
@@ -477,7 +490,7 @@ describe('interfaz de inventario y botín', () => {
       dropRandom: () => 0.99, relicRandom: () => 0.2, nowTimestamp: 10,
     });
     renderLootNotice(document, state, state.loot.notices[0]);
-    expect(document.elements.lootNoticeRewards.innerHTML).toContain('NO CONSEGUIDA');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('no conseguida');
     expect(document.elements.lootNoticeActions.innerHTML).toContain('data-loot-shop');
   });
 
@@ -490,7 +503,7 @@ describe('interfaz de inventario y botín', () => {
     });
     renderLootNotice(document, state, state.loot.notices[0]);
     expect(document.elements.lootNoticeRewards.innerHTML).toContain('SANGRE DOBLE (+1)');
-    expect(document.elements.lootNoticeSummary.innerHTML).toContain('<b>2</b>');
+    expect(document.elements.lootNoticeRewards.innerHTML).toContain('aria-label="2 de Sangre de Jefe"');
   });
 
   it('muestra el Bonus Victoria Anticipada sin mensaje negativo si no sale Sangre', () => {

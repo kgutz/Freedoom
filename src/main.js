@@ -57,6 +57,7 @@ import {
 import {
   acknowledgeLootNotice,
   activateRelicConstancy,
+  advancePeriodicManaRecovery,
   attemptForge,
   awardFusionAllHabitsXp,
   availableDailyEffectSources,
@@ -724,13 +725,36 @@ function prepareLocalBossDemo(){
     scheduleSave({type:'demo:loot-migration',count:LOCAL_DEMO_MIGRATION});
     return;
   }
-  applyLootSlices(grantBossRewards({
-    state,
-    bossesDown:LOCAL_DEMO_BOSSES,
-    source:'retroactive',
-    seed:`local-demo-${LOCAL_DEMO_BOSSES}`,
-    nowTimestamp:Date.now()
-  }));
+  if(LOCAL_LOOT_NOTICE_PREVIEW){
+    const previousBosses=Math.max(0,LOCAL_DEMO_BOSSES-1);
+    if(previousBosses>0){
+      applyLootSlices(grantBossRewards({
+        state,
+        bossesDown:previousBosses,
+        source:'retroactive',
+        seed:`local-demo-${previousBosses}`,
+        nowTimestamp:Date.now()-1
+      }));
+    }
+    applyLootSlices(grantBossRewards({
+      state,
+      bossesDown:LOCAL_DEMO_BOSSES,
+      source:'victory',
+      seed:`local-preview-victory-${LOCAL_DEMO_BOSSES}`,
+      dropRandom:()=>0,
+      bloodRandom:()=>1,
+      relicBloodRandom:()=>1,
+      nowTimestamp:Date.now()
+    }));
+  }else{
+    applyLootSlices(grantBossRewards({
+      state,
+      bossesDown:LOCAL_DEMO_BOSSES,
+      source:'retroactive',
+      seed:`local-demo-${LOCAL_DEMO_BOSSES}`,
+      nowTimestamp:Date.now()
+    }));
+  }
   const demoRelics=state.inventory.relics;
   if(LOCAL_DEMO_FUSIONS){
     const nowTimestamp=Date.now();
@@ -809,7 +833,12 @@ function prepareLocalBossDemo(){
     ? ['relic_04','relic_01']
     : ['relic_01','relic_03'])
     .filter(id=>state.inventory.relics[id]);
-  state.loot.notices=state.loot.notices.map(notice=>({...notice,acknowledged:true}));
+  state.loot.notices=state.loot.notices.map((notice,index,notices)=>({
+    ...notice,
+    acknowledged:LOCAL_LOOT_NOTICE_PREVIEW
+      ? index!==notices.length-1
+      : true
+  }));
   state.loot.migrationComplete=true;
   if(LOCAL_DEMO_PALADIN_EFFECTS){
     const now=Date.now();
@@ -947,6 +976,34 @@ function recoverMana(amount){
   return state.game.mp-before;
 }
 
+function syncPeriodicRelicMana(now=Date.now(),notify=false){
+  if(!state.game?.cls) return 0;
+  const previousTimer=JSON.stringify(state.inventory?.periodicEffects?.manaRecovery||null);
+  const result=advancePeriodicManaRecovery({
+    state,
+    nowTimestamp:now,
+    maxMana:heroMaxes().maxMp,
+    currentMana:state.game.mp||0
+  });
+  applyLootSlices(result);
+  state.game.mp=result.mana;
+  const timerChanged=previousTimer!==JSON.stringify(state.inventory?.periodicEffects?.manaRecovery||null);
+  if(result.manaRecovered>0&&result.sourceIds.includes('fusion_08')&&
+      collarRecoverySourcesForKey(todayKey()).some(source=>source.relicId==='fusion_08')){
+    state.inventory.dailyActivations[`fusion_08:mana-recovered:${todayKey()}`]=true;
+  }
+  if(timerChanged||result.manaRecovered>0){
+    scheduleSave({type:'relic:periodic-mana',recovered:result.manaRecovered,ticks:result.ticks});
+  }
+  if(notify&&result.manaRecovered>0){
+    const sourceName=result.sourceIds.length===1
+      ? relicDefinition(result.sourceIds[0])?.name||'Reliquia'
+      : 'Reliquias de Maná';
+    showToast(`${sourceName} · +${result.manaRecovered} Maná`,'heal');
+  }
+  return result.manaRecovered;
+}
+
 function applyFirstDamageRelic(damage,key=todayKey()){
   const sources=availableDailyEffectSources(state,'relic_01',key);
   if(damage<=0||!sources.length){
@@ -1011,7 +1068,7 @@ function awardRelicDayXp(key){
       let synergyXp=0;
       if(source.relicId==='fusion_06'&&state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]) synergyXp=fusionSynergyXp('fusion_06');
       if(source.relicId==='fusion_07'&&state.inventory.dailyActivations[`fusion_07:mana-used:${key}`]) synergyXp=fusionSynergyXp('fusion_07');
-      if(source.relicId==='fusion_08'&&state.inventory.dailyActivations[`fusion_08:discount-used:${key}`]) synergyXp=fusionSynergyXp('fusion_08');
+      if(source.relicId==='fusion_08'&&state.inventory.dailyActivations[`fusion_08:mana-recovered:${key}`]) synergyXp=fusionSynergyXp('fusion_08');
       if(synergyXp>0){
         amount+=synergyXp;
         state.inventory.dailyActivations[`${source.relicId}:synergy-xp:${key}`]=synergyXp;
@@ -1685,8 +1742,6 @@ function castSpell(id,options={}){
   }
   const now=Date.now();
   const intoxication=currentIntoxication(now);
-  const discountSources=availableDailyEffectSources(state,'relic_05',spellDayKey);
-  const manaDiscount=discountSources.reduce((total,source)=>total+source.value,0);
   const result=castSpellEffect({
     game:g,
     spell:sp,
@@ -1699,17 +1754,9 @@ function castSpell(id,options={}){
     activeFailureChance:intoxication.activeFailureChance,
     passiveMultiplier:intoxication.passiveMultiplier,
     smokeFreeMode:usesSmokeFreeSkills(state.config),
-    manaDiscount,
     selectedHabitIds:options.selectedHabitIds||[],
     targetHabitId:options.targetHabitId||null
   });
-  if(manaDiscount>0&&(result.ok||result.reason==='intoxicated')){
-    applyLootSlices(markDailyEffectSources(state,'relic_05',spellDayKey,discountSources,true));
-    if(discountSources.some(source=>source.relicId==='fusion_08')&&
-        collarRecoverySourcesForKey(spellDayKey).some(source=>source.relicId==='fusion_08')){
-      state.inventory.dailyActivations[`fusion_08:discount-used:${spellDayKey}`]=true;
-    }
-  }
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-used') showToast(sp.modern?'Ya usada dos veces esta semana':'Ya usada esta semana','dmg');
@@ -1973,7 +2020,7 @@ function unequipInventoryRelic(relicId){
     result=unequipRelic(state,relicId,{confirmConstancyReset:true});
   }
   if(!result.ok) return false;
-  applyLootSlices(result); capHeroAfterEquipmentChange();
+  applyLootSlices(result); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
   scheduleSave({type:'loot:unequip',relicId});
   document.getElementById('sheetRelicDetail').classList.remove('show');
   document.getElementById('sheetInventory').classList.add('show');
@@ -4024,7 +4071,7 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   if(forgePickerTarget.mode==='equip'){
     const result=equipRelic(state,relicId,Number(forgePickerTarget.slot));
     if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
-    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange();
+    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
     scheduleSave({type:'loot:equip',relicId});
     event.currentTarget.classList.remove('show');
     forgePickerTarget=null;
@@ -4100,7 +4147,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
       result=equipRelic(state,equip.dataset.equipRelic,replace,{confirmConstancyReset:true});
     }
     if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
-    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange();
+    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
     scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
     document.getElementById('sheetRelicDetail').classList.remove('show');
     document.getElementById('sheetInventory').classList.add('show');
@@ -4303,23 +4350,16 @@ document.getElementById('pioneerRewardContinue').addEventListener('click',()=>{
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
   const shop=event.target.closest('[data-loot-shop]');
-  const equip=event.target.closest('[data-loot-equip]');
   const keepGoing=event.target.closest('[data-loot-continue]');
   if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); return; }
   if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); showInventoryPanel('shop'); return; }
-  if(equip){
-    const result=equipRelic(state,equip.dataset.lootEquip);
-    if(result.ok){ applyLootSlices(result); syncBossCombat(); }
-    acknowledgeActiveLootNotice();
-    switchView('view-hero','navHero'); renderHero(); openInventory();
-    if(result.ok){ capHeroAfterEquipmentChange(); scheduleSave({type:'loot:equip',relicId:equip.dataset.lootEquip}); renderInventoryView(document,state); renderHero(); showToast('Reliquia equipada','heal'); }
-    else{
-      openRelicDetail(equip.dataset.lootEquip);
-      showToast(equipFailureMessage(result),'dmg');
-    }
-    return;
-  }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
+});
+document.getElementById('lootNoticeRewards').addEventListener('click',event=>{
+  const relic=event.target.closest('[data-loot-open-relic]');
+  if(!relic) return;
+  openRelicDetail(relic.dataset.lootOpenRelic);
+  document.getElementById('sheetRelicDetail').classList.add('loot-detail-open');
 });
 function closeEarlyVictoryNotice(){
   document.getElementById('earlyVictoryBg').classList.remove('show');
@@ -4468,6 +4508,7 @@ bindBackupControls({
    cambia de día a medianoche en controlado o a la hora configurada en los demás caminos */
 let lastDay=todayKey();
 function checkDay(){
+  syncPeriodicRelicMana(Date.now(),true);
   if(todayKey()!==lastDay){
     lastDay=todayKey();
     scheduleSave({type:'storage:daily-checkpoint',day:lastDay});
@@ -4580,8 +4621,9 @@ resetGuardContinue.addEventListener('click',()=>{
     registerDailyWakeEstimate();
     document.getElementById('app').style.display='block';
     document.getElementById('mainNav').classList.add('show');
-    renderAll();
     ensureHero();
+    syncPeriodicRelicMana();
+    renderAll();
     scheduleSave({type:'storage:checkpoint'});
     showPendingWeekResult();
     if(LOCAL_LOOT_NOTICE_PREVIEW){

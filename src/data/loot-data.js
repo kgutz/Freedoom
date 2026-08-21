@@ -139,7 +139,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'vessel',
     effectFamily: 'mana',
     image: 'relics/relic_05_frasco_antojo_roto.png',
-    effectLabel: 'El primer hechizo activo del día cuesta menos Maná.',
+    effectLabel: 'Cada 3 horas recupera un porcentaje de tu Maná máximo mientras está equipado.',
     affixPool: ['arcane', 'channeling', 'fortune'],
   },
   {
@@ -255,7 +255,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Daga del Antojo',
     equipmentType: 'dagger',
     image: 'relics/fusion_04_daga_antojo.png',
-    effectLabel: 'El primer hábito concede XP y el primer hechizo cuesta menos. Completar todos los hábitos diarios otorga 5 XP adicionales.',
+    effectLabel: 'El primer hábito concede XP y cada 3 horas recupera un porcentaje del Maná máximo. Completar todos los hábitos diarios otorga 5 XP adicionales.',
     synergy: { type: 'all-daily-habits-xp', value: 5 },
   },
   {
@@ -285,8 +285,8 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Brazal del Antojo Roto',
     equipmentType: 'collar',
     image: 'relics/fusion_08_brazal_antojo_roto.png',
-    effectLabel: 'El primer hechizo activo cuesta menos Maná y concede XP al recuperarse de un día fallido. Si utilizas el descuento durante la recuperación y completas el día, obtienes 10 XP adicionales.',
-    synergy: { type: 'recovery-discount-xp', values: { 1: 10, 2: 14, 3: 18 } },
+    effectLabel: 'Cada 3 horas recupera un porcentaje del Maná máximo y concede XP al recuperarse de un día fallido. Si recuperas Maná durante esa recuperación y completas el día, obtienes XP adicional.',
+    synergy: { type: 'recovery-periodic-mana-xp', values: { 1: 10, 2: 14, 3: 18 } },
   },
 ];
 

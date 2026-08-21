@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   acknowledgeLootNotice,
+  advancePeriodicManaRecovery,
   attemptForge,
   awardFusionAllHabitsXp,
   canActivateDailyRelic,
@@ -44,6 +45,51 @@ function unlockedState(count = 3) {
 }
 
 describe('loot de bosses', () => {
+  it('regenera un porcentaje del Maná máximo cada tres horas sin concederlo al equipar', () => {
+    const start = 1_000;
+    const state = emptyLootState();
+    state.inventory.relics.relic_05 = {
+      id: 'relic_05', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
+    };
+    state.inventory.equipped = ['relic_05'];
+
+    const equipped = advancePeriodicManaRecovery({
+      state, nowTimestamp: start, maxMana: 200, currentMana: 20,
+    });
+    expect(equipped.mana).toBe(20);
+    expect(equipped.manaRecovered).toBe(0);
+
+    const recovered = advancePeriodicManaRecovery({
+      state: equipped, nowTimestamp: start + 3 * 60 * 60 * 1000, maxMana: 200, currentMana: 20,
+    });
+    expect(recovered.mana).toBe(30);
+    expect(recovered.manaRecovered).toBe(10);
+    expect(recovered.ticks).toBe(1);
+  });
+
+  it('acumula intervalos cerrada, respeta el máximo y reinicia el ciclo al cambiar la fuente', () => {
+    const start = 2_000;
+    const state = emptyLootState();
+    state.inventory.relics.fusion_04 = {
+      id: 'fusion_04', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
+      inheritedEffects: { relic_03: 2, relic_05: 7 },
+    };
+    state.inventory.equipped = ['fusion_04'];
+    const equipped = advancePeriodicManaRecovery({
+      state, nowTimestamp: start, maxMana: 100, currentMana: 80,
+    });
+    const recovered = advancePeriodicManaRecovery({
+      state: equipped, nowTimestamp: start + 6 * 60 * 60 * 1000, maxMana: 100, currentMana: 80,
+    });
+    expect(recovered.mana).toBe(94);
+    expect(recovered.ticks).toBe(2);
+    recovered.inventory.equipped = [];
+    const unequipped = advancePeriodicManaRecovery({
+      state: recovered, nowTimestamp: start + 7 * 60 * 60 * 1000, maxMana: 100, currentMana: 94,
+    });
+    expect(unequipped.inventory.periodicEffects.manaRecovery).toBeUndefined();
+  });
+
   it('premia la lista completa como XP extraordinaria fuera del tope de hábitos', () => {
     const state = emptyLootState();
     state.inventory.relics.fusion_04 = {

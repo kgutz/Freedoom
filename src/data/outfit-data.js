@@ -1,5 +1,5 @@
 export const OUTFIT_DEFINITIONS = Object.freeze([
-  Object.freeze({ id: 'original', name: 'Atuendo original', rarity: 'common', unlocked: true, transparentPortrait: true }),
+  Object.freeze({ id: 'original', name: 'Atuendo Original', rarity: 'common', unlocked: true, transparentPortrait: true }),
   Object.freeze({ id: 'beta-tester', name: 'Beta Tester', rarity: 'rare', unlocked: false, transparentPortrait: true }),
   Object.freeze({ id: 'locked-2', name: 'Outfit por descubrir', unlocked: false }),
 ]);

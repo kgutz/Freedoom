@@ -56,7 +56,7 @@ function outfitCardMarkup(lootState) {
     <span class="inventory-outfit-label">OUTFIT EQUIPADO</span>
     <button type="button" class="inventory-outfit-card" data-open-outfits aria-label="Cambiar outfit. Actual: ${escapeHtml(equipped.name)}">
       ${outfitPortrait(classId, equipped)}
-      <span class="inventory-outfit-copy"><b>${escapeHtml(equipped.name)}</b><small>EQUIPADO</small></span>
+      <span class="inventory-outfit-copy"><b>${escapeHtml(equipped.name)}</b></span>
       <i class="inventory-outfit-chevron" aria-hidden="true">›</i>
     </button>
   </section>`;
@@ -252,7 +252,8 @@ export function nextFusionSelection({ leftId = null, rightId = null } = {}, reli
 
 function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
-  if (relicId === 'relic_02' || relicId === 'relic_05') return `${value} MANÁ`;
+  if (relicId === 'relic_02') return `${value} MANÁ`;
+  if (relicId === 'relic_05') return `${value}% MANÁ MÁX.`;
   const definition = relicDefinition(relicId);
   if (definition?.valueUnit) return `${value} ${definition.valueUnit}`;
   return `${value} XP`;
@@ -270,7 +271,7 @@ function fusionEffectDescription(definition, relic) {
     return `El primer hábito recupera ${value('relic_02')} Maná. El primer hechizo cuesta ${value('relic_05')} Maná menos, o ${value('relic_05') + 3} menos si antes completas un hábito.`;
   }
   if (definition.id === 'fusion_04') {
-    return `El primer hábito concede ${value('relic_03')} XP y el primer hechizo cuesta ${value('relic_05')} Maná menos. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
+    return `El primer hábito concede ${value('relic_03')} XP. Cada 3 horas recupera ${value('relic_05')}% del Maná máximo. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
   }
   if (definition.id === 'fusion_06') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
@@ -282,7 +283,7 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_08') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    return `El primer hechizo cuesta ${value('relic_05')} Maná menos. La recuperación concede ${value('relic_07')} XP y, si utilizas el descuento, suma ${synergy} XP al completar el día.`;
+    return `Cada 3 horas recupera ${value('relic_05')}% del Maná máximo. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
   }
   if (definition.id === 'fusion_05') {
     return `La Constancia concede ${value('relic_04')} XP y cada día cumplido otorga ${value('relic_06')} XP. Alcanzar seis días cumplidos concede 25 XP adicionales.`;
@@ -764,13 +765,9 @@ export function renderLootNotice(document, lootState, notice) {
     const definition = relicDefinition(relicId);
     const relic = normalized.inventory.relics[relicId];
     if (!definition || !relic) return '';
-    const affixText = relic.affixes.length
-      ? relic.affixes.map((id) => AFFIX_DEFINITIONS[id]?.name).filter(Boolean).join(' · ')
-      : 'Sin efectos extras';
-    return `<div class="loot-reward-item ${rarityClass(relic.rarity)}">
+    return `<button type="button" class="loot-reward-slot loot-relic-slot relic-collection-item ${rarityClass(relic.rarity)}" data-loot-open-relic="${escapeHtml(relicId)}" aria-label="Ver ${escapeHtml(definition.name)}">
       ${relicArt(definition)}
-      <div><b>${escapeHtml(definition.name)}</b><span class="rarity-label">${RARITIES[relic.rarity].label}</span><small>${escapeHtml(affixText)}</small></div>
-    </div>`;
+    </button>`;
   }).join('');
   const failedRewards = (notice.failedRelicIds || []).map((relicId) => {
     const definition = relicDefinition(relicId);
@@ -778,11 +775,21 @@ export function renderLootNotice(document, lootState, notice) {
       ? normalized.loot.bossRelicOutcomes[definition.rewardId]
       : null;
     if (!definition || !outcome) return '';
-    return `<div class="loot-reward-item missed ${rarityClass(outcome.relic?.rarity)}">
+    return `<button type="button" class="loot-reward-slot loot-relic-slot relic-collection-item missed ${rarityClass(outcome.relic?.rarity)}" data-loot-open-relic="${escapeHtml(relicId)}" aria-label="Ver ${escapeHtml(definition.name)}, no conseguida">
       ${relicArt(definition)}
-      <div><b>${escapeHtml(definition.name)}</b><span class="loot-missed-label">NO CONSEGUIDA</span><small>Ahora puede aparecer en la Tienda.</small></div>
-    </div>`;
+      <span class="loot-missed-mark">NO</span>
+    </button>`;
   }).join('');
+  const relicSlotCount = notice.relicIds.length + (notice.failedRelicIds || []).length;
+  const emptyRewards = Array.from({ length: Math.max(0, 2 - relicSlotCount) }, () =>
+    '<span class="loot-reward-slot loot-reward-empty" aria-hidden="true"></span>').join('');
+  const resourceRewards = `
+    <div class="loot-reward-slot loot-resource-slot" aria-label="${notice.bossBlood} de Sangre de Jefe">
+      ${resourceIcon('boss-blood')}<b>${notice.bossBlood}</b>
+    </div>
+    <div class="loot-reward-slot loot-resource-slot" aria-label="${notice.coins} de oro">
+      ${resourceIcon('coin')}<b>${notice.coins}</b>
+    </div>`;
   const retroactive = notice.source === 'retroactive';
   const bloodBonusMarkup = notice.bonusBossBlood > 0
     ? `<div class="loot-blood-bonus">¡GOLPE DE SUERTE! · SANGRE DOBLE (+${notice.bonusBossBlood})</div>`
@@ -798,16 +805,17 @@ export function renderLootNotice(document, lootState, notice) {
       ? 'El jefe ha dejado una reliquia exclusiva y recursos para la Forja.'
       : 'Has conseguido los recursos del jefe. Su reliquia podrá recuperarse en la Tienda.';
   document.getElementById('lootNoticeRewards').innerHTML =
-    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest.png" alt=""></div>') + rewards + failedRewards + bloodBonusMarkup + earlyVictoryMarkup;
-  document.getElementById('lootNoticeSummary').innerHTML = `
-    <span class="loot-summary-value"><b>${notice.relicIds.length}</b><small>RELIQUIA${notice.relicIds.length === 1 ? '' : 'S'}</small></span>
-    <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('coin')}<b>${notice.coins}</b></span><small>ORO</small></span>
-    <span class="loot-summary-value loot-summary-resource"><span class="loot-summary-number">${resourceIcon('boss-blood')}<b>${notice.bossBlood}</b></span><small>SANGRE DE JEFE</small></span>`;
+    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest_open_sapphire.png" alt=""></div>') +
+    `<div class="loot-reward-grid">${rewards}${failedRewards}${resourceRewards}${emptyRewards}</div>` +
+    bloodBonusMarkup + earlyVictoryMarkup;
+  const summary = document.getElementById('lootNoticeSummary');
+  summary.innerHTML = '';
+  summary.hidden = true;
   const actions = document.getElementById('lootNoticeActions');
   actions.innerHTML = retroactive
     ? '<button type="button" data-loot-inventory>IR AL INVENTARIO</button>'
     : notice.relicIds[0]
-      ? `<button type="button" data-loot-equip="${notice.relicIds[0]}">EQUIPAR</button><button type="button" data-loot-continue>CONTINUAR</button>`
+      ? '<button type="button" data-loot-continue>CONFIRMAR</button>'
       : '<button type="button" data-loot-shop>IR A LA TIENDA</button><button type="button" data-loot-continue>CONTINUAR</button>';
 }
 

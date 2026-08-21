@@ -71,6 +71,7 @@ export function emptyLootState() {
       equipped: [],
       dailyActivations: {},
       weeklyActivations: {},
+      periodicEffects: {},
       constancy: {
         cycleId: '', charge: 0, baselineOutcomes: [], awaitingBaseline: false,
         lastIncreaseAt: 0, lastIncreaseCharge: 0,
@@ -264,6 +265,7 @@ export function normalizeLootState(state = {}) {
       equipped,
       dailyActivations: { ...objectOf(inventory.dailyActivations) },
       weeklyActivations: { ...objectOf(inventory.weeklyActivations) },
+      periodicEffects: { ...objectOf(inventory.periodicEffects) },
       potions: normalizePotionState(inventory.potions),
       constancy: {
         cycleId: typeof inventory.constancy?.cycleId === 'string'
@@ -1309,6 +1311,72 @@ export function equippedRelicEffectSources(lootState, baseRelicId) {
     const value = Number(relic.inheritedEffects?.[baseRelicId]);
     return value > 0 ? [{ relicId, baseRelicId, value }] : [];
   });
+}
+
+export const PERIODIC_MANA_RECOVERY_MS = 3 * 60 * 60 * 1000;
+
+export function advancePeriodicManaRecovery({
+  state,
+  nowTimestamp = Date.now(),
+  maxMana = 0,
+  currentMana = 0,
+}) {
+  const normalized = normalizeLootState(state);
+  const sources = equippedRelicEffectSources(normalized, 'relic_05');
+  const safeNow = Math.max(0, Number(nowTimestamp) || 0);
+  const safeMaxMana = Math.max(0, Number(maxMana) || 0);
+  const safeCurrentMana = Math.max(0, Math.min(safeMaxMana, Number(currentMana) || 0));
+  const signature = sources
+    .map((source) => `${source.relicId}:${source.value}`)
+    .sort()
+    .join('|');
+  const previous = objectOf(normalized.inventory.periodicEffects?.manaRecovery);
+
+  if (!sources.length) {
+    delete normalized.inventory.periodicEffects.manaRecovery;
+    return { ...normalized, mana: safeCurrentMana, manaRecovered: 0, ticks: 0, sourceIds: [] };
+  }
+
+  if (previous.signature !== signature || !(Number(previous.nextAt) > 0)) {
+    normalized.inventory.periodicEffects.manaRecovery = {
+      signature,
+      nextAt: safeNow + PERIODIC_MANA_RECOVERY_MS,
+    };
+    return {
+      ...normalized,
+      mana: safeCurrentMana,
+      manaRecovered: 0,
+      ticks: 0,
+      sourceIds: sources.map((source) => source.relicId),
+    };
+  }
+
+  const nextAt = Number(previous.nextAt);
+  if (safeNow < nextAt) {
+    return {
+      ...normalized,
+      mana: safeCurrentMana,
+      manaRecovered: 0,
+      ticks: 0,
+      sourceIds: sources.map((source) => source.relicId),
+    };
+  }
+
+  const ticks = Math.floor((safeNow - nextAt) / PERIODIC_MANA_RECOVERY_MS) + 1;
+  const recoveryPercent = sources.reduce((total, source) => total + source.value, 0);
+  const recoveryPerTick = Math.ceil(safeMaxMana * recoveryPercent / 100);
+  const mana = Math.min(safeMaxMana, safeCurrentMana + recoveryPerTick * ticks);
+  normalized.inventory.periodicEffects.manaRecovery = {
+    signature,
+    nextAt: nextAt + ticks * PERIODIC_MANA_RECOVERY_MS,
+  };
+  return {
+    ...normalized,
+    mana,
+    manaRecovered: mana - safeCurrentMana,
+    ticks,
+    sourceIds: sources.map((source) => source.relicId),
+  };
 }
 
 export function effectActivationKey(sourceRelicId, baseRelicId, periodKey) {

@@ -1,6 +1,7 @@
 export const PIONEER_REWARD_ID = 'pioneer-beta-reward-v1';
 export const PIONEER_REWARD_COINS = 130;
 export const PIONEER_REWARD_OUTFIT = 'beta-tester';
+export const PIONEER_REWARD_ACTIVE = false;
 
 function transactionsOf(state) {
   return Array.isArray(state?.economy?.transactions)
@@ -14,7 +15,7 @@ export function isPioneerRewardClaimed(state) {
 }
 
 export function shouldOfferPioneerReward(state) {
-  return Boolean(
+  return PIONEER_REWARD_ACTIVE && Boolean(
     state?.onboarded
     && state?.game?.cls
     && state?.game?.pioneerRewardEligible === true,
@@ -23,6 +24,26 @@ export function shouldOfferPioneerReward(state) {
 
 export function migratePioneerRewardEligibility(state, { existingProfile = false } = {}) {
   const game = state?.game;
+  if (
+    !PIONEER_REWARD_ACTIVE
+    && existingProfile
+    && state?.onboarded
+    && game?.cls
+    && !isPioneerRewardClaimed(state)
+    && game.pioneerRewardEligible !== false
+  ) {
+    return {
+      state: {
+        ...state,
+        game: {
+          ...game,
+          outfit: 'original',
+          pioneerRewardEligible: false,
+        },
+      },
+      changed: true,
+    };
+  }
   if (
     !existingProfile
     || !state?.onboarded

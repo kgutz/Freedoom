@@ -16,8 +16,8 @@ function eligibleState() {
 }
 
 describe('recompensa de pioneros', () => {
-  it('solo se ofrece a una partida activa que todavía no la recibió', () => {
-    expect(shouldOfferPioneerReward(eligibleState())).toBe(true);
+  it('mantiene cerrada la campaña aunque la partida fuese elegible', () => {
+    expect(shouldOfferPioneerReward(eligibleState())).toBe(false);
     expect(shouldOfferPioneerReward({ ...eligibleState(), onboarded: false })).toBe(false);
     expect(shouldOfferPioneerReward({ ...eligibleState(), game: { cls: null } })).toBe(false);
     expect(shouldOfferPioneerReward({
@@ -26,7 +26,7 @@ describe('recompensa de pioneros', () => {
     })).toBe(false);
   });
 
-  it('marca solo las partidas anteriores como beta testers elegibles', () => {
+  it('desactiva las partidas anteriores que no llegaron a reclamarla', () => {
     const legacy = eligibleState();
     delete legacy.game.pioneerRewardEligible;
     legacy.game.outfit = 'beta-tester';
@@ -34,7 +34,7 @@ describe('recompensa de pioneros', () => {
     expect(migrated.changed).toBe(true);
     expect(migrated.state.game).toMatchObject({
       outfit: 'original',
-      pioneerRewardEligible: true,
+      pioneerRewardEligible: false,
     });
 
     const newPlayer = migratePioneerRewardEligibility(legacy, { existingProfile: false });
@@ -42,22 +42,24 @@ describe('recompensa de pioneros', () => {
     expect(newPlayer.state.game.pioneerRewardEligible).toBeUndefined();
   });
 
-  it('entrega el outfit y 130 de oro una sola vez', () => {
-    const first = claimPioneerReward(eligibleState(), 1234);
-    expect(first.granted).toBe(true);
-    expect(first.coins).toBe(PIONEER_REWARD_COINS);
-    expect(first.outfitId).toBe('beta-tester');
-    expect(first.state.economy.coins).toBe(150);
-    expect(first.state.game.pioneerReward).toMatchObject({
-      claimedAt: 1234,
-      outfitId: 'beta-tester',
-      coins: 130,
-    });
-    expect(isPioneerRewardClaimed(first.state)).toBe(true);
+  it('ya no permite reclamar el outfit ni las 130 unidades de oro', () => {
+    const result = claimPioneerReward(eligibleState(), 1234);
+    expect(result.granted).toBe(false);
+    expect(result.coins).toBe(0);
+    expect(result.state.economy.coins).toBe(20);
+    expect(result.state.game.pioneerReward).toBeUndefined();
+    expect(isPioneerRewardClaimed(result.state)).toBe(false);
+  });
 
-    const repeated = claimPioneerReward(first.state, 5678);
-    expect(repeated.granted).toBe(false);
-    expect(repeated.state.economy.coins).toBe(150);
-    expect(repeated.state.economy.transactions).toHaveLength(1);
+  it('conserva el registro de quien ya había recibido el regalo', () => {
+    const claimed = eligibleState();
+    claimed.game.pioneerReward = {
+      id: 'pioneer-beta-reward-v1', claimedAt: 1234,
+      outfitId: 'beta-tester', coins: PIONEER_REWARD_COINS,
+    };
+    expect(isPioneerRewardClaimed(claimed)).toBe(true);
+    const migrated = migratePioneerRewardEligibility(claimed, { existingProfile: true });
+    expect(migrated.changed).toBe(false);
+    expect(migrated.state.game.pioneerReward.outfitId).toBe('beta-tester');
   });
 });
