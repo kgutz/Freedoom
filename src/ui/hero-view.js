@@ -36,8 +36,8 @@ export function spriteImage(classId, mood, extraClass = '', outfitId = 'original
     ? mood
     : 'happy';
   const hurt = mood === 'hurt' ? ' hurt' : '';
-  const outfitClass = outfitId === 'beta-tester'
-    ? ` sprite-svg--outfit-beta-tester sprite-svg--${classId}`
+  const outfitClass = outfitId !== 'original'
+    ? ` sprite-svg--outfit-${outfitId} sprite-svg--${classId}`
     : '';
   return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}" src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false">`;
 }
@@ -591,6 +591,7 @@ export function renderHeroView({
           <button class="hero-resource-wallet" type="button" data-open-inventory aria-label="Abrir inventario y forja">
             ${resourceValue('coin', lootState?.economy?.coins)}
             ${resourceValue('boss-blood', lootState?.economy?.bossBlood)}
+            ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers)}
           </button>
           <div class="hero-summary">
             <div class="hero-summary-primary">

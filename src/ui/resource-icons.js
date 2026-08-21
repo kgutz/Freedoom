@@ -1,5 +1,5 @@
 export function resourceIcon(type) {
-  const label = type === 'coin' ? 'Oro' : 'Sangre de Jefe';
+  const label = type === 'coin' ? 'Oro' : type === 'arcane-fiber' ? 'Fibra Arcana' : 'Sangre de Jefe';
   return `<span class="resource-icon resource-icon--${type}" role="img" aria-label="${label}"></span>`;
 }
 

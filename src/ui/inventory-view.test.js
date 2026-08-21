@@ -44,19 +44,21 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(2);
     state.game = { cls: 'sorcerer', outfit: 'original' };
     renderInventoryView(document, state);
-    expect(document.elements.inventoryBody.innerHTML).toContain('OUTFIT EQUIPADO');
+    expect(document.elements.inventoryBody.innerHTML).toContain('OUTFITS');
     expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo Original');
     expect(document.elements.inventoryBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
     expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('original');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-option--locked/g)).toHaveLength(2);
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-locked-mark/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('CONSEGUIDOS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('TEJER NUEVOS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>ORO</small>');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit="beta-tester"');
 
     state.game.pioneerReward = { claimedAt: 1234, outfitId: 'beta-tester', coins: 130 };
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('beta-tester');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-option--locked/g)).toHaveLength(1);
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-locked-mark/g)).toHaveLength(1);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Guardián de la Brasa');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Vestiduras nocturnas');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-outfit="beta-tester"');
@@ -64,16 +66,25 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.png');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option rarity-common equipped');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option rarity-rare selected');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option selected');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-selector-preview');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('hero_background/');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>DISPONIBLE</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
     state.game.outfit = 'beta-tester';
     renderInventoryView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--outfit-beta-tester');
     expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--sorcerer');
+
+    expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBe('arcane-weave-01');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Operador del Nexo');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudaba a construir un mundo mejor conectado');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('100</b><small>ORO');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -123,6 +134,7 @@ describe('interfaz de inventario y botín', () => {
   it('usa iconos CSS accesibles y no imágenes para el oro y la sangre', () => {
     expect(resourceIcon('coin')).toContain('resource-icon--coin');
     expect(resourceIcon('boss-blood')).toContain('resource-icon--boss-blood');
+    expect(resourceIcon('arcane-fiber')).toContain('resource-icon--arcane-fiber');
     expect(resourceIcon('coin')).not.toContain('<img');
   });
 
@@ -465,6 +477,18 @@ describe('interfaz de inventario y botín', () => {
     expect(rewardsHtml.indexOf('data-loot-open-relic')).toBeLessThan(rewardsHtml.indexOf('de Sangre de Jefe'));
     expect(rewardsHtml.indexOf('de Sangre de Jefe')).toBeLessThan(rewardsHtml.indexOf(' de oro'));
     expect(rewardsHtml.indexOf(' de oro')).toBeLessThan(rewardsHtml.indexOf('loot-reward-empty'));
+  });
+
+  it('muestra las Fibras Arcanas como cuarto objeto del botín del jefe', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(1, 'victory');
+    state.loot.notices[0].arcaneFibers = 4;
+    renderLootNotice(document, state, state.loot.notices[0]);
+    const html = document.elements.lootNoticeRewards.innerHTML;
+    expect(html).toContain('aria-label="4 Fibras Arcanas"');
+    expect(html).toContain('resource-icon--arcane-fiber');
+    expect(html).not.toContain('loot-reward-empty');
+    expect(html.indexOf(' de oro')).toBeLessThan(html.indexOf('Fibras Arcanas'));
   });
 
   it('muestra el estado vacío de la Tienda sin ocultar sus recursos', () => {

@@ -53,7 +53,7 @@ function outfitCardMarkup(lootState) {
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
   return `<section class="inventory-outfit-section">
-    <span class="inventory-outfit-label">OUTFIT EQUIPADO</span>
+    <span class="inventory-outfit-label">OUTFITS</span>
     <button type="button" class="inventory-outfit-card" data-open-outfits aria-label="Cambiar outfit. Actual: ${escapeHtml(equipped.name)}">
       ${outfitPortrait(classId, equipped)}
       <span class="inventory-outfit-copy"><b>${escapeHtml(equipped.name)}</b></span>
@@ -62,25 +62,62 @@ function outfitCardMarkup(lootState) {
   </section>`;
 }
 
-export function renderOutfitSelector(document, lootState, selectedOutfitId = null) {
+export function renderOutfitSelector(document, lootState, selectedOutfitId = null, options = {}) {
   const body = document.getElementById('outfitSelectorBody');
   if (!body) return 'original';
+  const section = options.section === 'weave' ? 'weave' : 'owned';
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
+  const ownedOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isOutfitUnlocked(outfit, lootState?.game));
+  const craftableOutfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.craftable && outfit.recipe);
   const requested = OUTFIT_DEFINITIONS.find((outfit) => (
-    outfit.id === selectedOutfitId && isOutfitUnlocked(outfit, lootState?.game)
+    outfit.id === selectedOutfitId && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
   ));
-  const selected = requested || equipped;
+  const selected = requested || (section === 'weave' ? craftableOutfits[0] : equipped);
+  const recipe = selected?.recipe;
+  const alreadyOwned = selected ? isOutfitUnlocked(selected, lootState?.game) : false;
+  const hasResources = recipe && Number(lootState?.economy?.coins || 0) >= recipe.coins
+    && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   body.innerHTML = `
-    <div class="outfit-selector-grid" role="listbox" aria-label="Outfits disponibles">
-      ${OUTFIT_DEFINITIONS.map((outfit) => isOutfitUnlocked(outfit, lootState?.game)
-        ? `<button type="button" class="outfit-option rarity-${outfit.rarity || 'common'}${outfit.id === selected.id ? ' selected' : ''}${outfit.id === equipped.id ? ' equipped' : ''}" data-select-outfit="${outfit.id}" role="option" aria-selected="${outfit.id === selected.id}" aria-label="${escapeHtml(outfit.name)}${outfit.id === equipped.id ? ', equipado' : ''}">
-          ${outfitFullBody(classId, outfit)}
-        </button>`
-        : `<button type="button" class="outfit-option outfit-option--locked" disabled role="option" aria-selected="false" aria-label="Outfit por descubrir"><span class="outfit-locked-mark" aria-hidden="true">?</span></button>`).join('')}
+    <div class="outfit-modal-tabs" role="tablist" aria-label="Secciones de outfits">
+      <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">CONSEGUIDOS</button>
+      <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">TEJER NUEVOS</button>
     </div>
-    <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${selected.id === equipped.id ? ' disabled' : ''}>${selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`;
-  return selected.id;
+    <div class="outfit-weave-resources" aria-label="Tus recursos">
+      ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
+      ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
+    </div>
+    ${section === 'owned' ? `
+      <div class="outfit-selector-grid" role="listbox" aria-label="Outfits conseguidos">
+        ${ownedOutfits.map((outfit) => `<button type="button" class="outfit-option${outfit.id === selected.id ? ' selected' : ''}${outfit.id === equipped.id ? ' equipped' : ''}${outfit.provisional ? ' outfit-option--arcane' : ''}" data-select-outfit="${outfit.id}" role="option" aria-selected="${outfit.id === selected.id}" aria-label="${escapeHtml(outfit.name)}${outfit.id === equipped.id ? ', equipado' : ''}">
+          ${outfitFullBody(classId, outfit)}
+        </button>`).join('')}
+      </div>
+      <section class="outfit-weave-detail outfit-owned-detail">
+        <h4>${escapeHtml(selected.name)}</h4>
+        <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
+        <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
+        <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${selected.id === equipped.id ? ' disabled' : ''}>${selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
+      </section>` : `
+      <div class="outfit-weave-grid" role="listbox" aria-label="Outfits para tejer">
+        ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option${outfit.id === selected.id ? ' selected' : ''}${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-selected="${outfit.id === selected.id}" aria-label="${escapeHtml(outfit.name)}">
+          ${outfitFullBody(classId, outfit)}
+        </button>`).join('')}
+        ${Array.from({ length: 2 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
+          <span aria-hidden="true">?</span>
+        </div>`).join('')}
+      </div>
+      ${selected ? `<section class="outfit-weave-detail">
+        <h4>${escapeHtml(selected.name)}</h4>
+        <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
+        <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
+        <div class="outfit-weave-cost">
+          ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
+          ${resourceValue('coin', recipe.coins, 'ORO')}
+        </div>
+        <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${alreadyOwned || !hasResources ? ' disabled' : ''}>${alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
+      </section>` : '<p class="outfit-weave-empty">Próximamente habrá nuevos outfits.</p>'}`}`;
+  return selected?.id || equipped.id;
 }
 
 function escapeHtml(value) {
@@ -382,6 +419,7 @@ export function renderInventoryView(document, lootState, options = {}) {
     <section class="inventory-resources">
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
+      ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
     </section>
     ${outfitCardMarkup(lootState)}
     <section class="inventory-section" id="inventoryEquippedSection">
@@ -749,6 +787,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     <section class="inventory-resources">
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
+      ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
     </section>
     <div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
     ${content}
@@ -778,7 +817,8 @@ export function renderLootNotice(document, lootState, notice) {
     </button>`;
   }).join('');
   const relicSlotCount = notice.relicIds.length + (notice.failedRelicIds || []).length;
-  const emptyRewards = Array.from({ length: Math.max(0, 2 - relicSlotCount) }, () =>
+  const fiberSlotCount = notice.arcaneFibers > 0 ? 1 : 0;
+  const emptyRewards = Array.from({ length: Math.max(0, 2 - relicSlotCount - fiberSlotCount) }, () =>
     '<span class="loot-reward-slot loot-reward-empty" aria-hidden="true"></span>').join('');
   const resourceRewards = `
     <div class="loot-reward-slot loot-resource-slot" aria-label="${notice.bossBlood} de Sangre de Jefe">
@@ -786,7 +826,10 @@ export function renderLootNotice(document, lootState, notice) {
     </div>
     <div class="loot-reward-slot loot-resource-slot" aria-label="${notice.coins} de oro">
       ${resourceIcon('coin')}<b>${notice.coins}</b>
-    </div>`;
+    </div>
+    ${notice.arcaneFibers > 0 ? `<div class="loot-reward-slot loot-resource-slot loot-resource-slot--arcane" aria-label="${notice.arcaneFibers} Fibras Arcanas">
+      ${resourceIcon('arcane-fiber')}<b>${notice.arcaneFibers}</b>
+    </div>` : ''}`;
   const retroactive = notice.source === 'retroactive';
   const bloodBonusMarkup = notice.bonusBossBlood > 0
     ? `<div class="loot-blood-bonus">¡GOLPE DE SUERTE! · SANGRE DOBLE (+${notice.bonusBossBlood})</div>`

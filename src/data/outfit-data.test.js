@@ -24,4 +24,12 @@ describe('outfits de héroe', () => {
     expect(heroSpriteSource('druid', 'happy', 'beta-tester')).toBe('outfits/beta-tester/druid_happy.png');
     expect(outfitUsesTransparentPortrait('beta-tester')).toBe(true);
   });
+
+  it('resuelve los recursos eléctricos del outfit crafteable', () => {
+    expect(heroFaceSource('knight', 'arcane-weave-01'))
+      .toBe('outfits/telecom-beta/knight_face.png');
+    expect(heroSpriteSource('knight', 'happy', 'arcane-weave-01'))
+      .toBe('outfits/telecom-beta/knight_happy.png');
+    expect(outfitUsesTransparentPortrait('arcane-weave-01')).toBe(true);
+  });
 });

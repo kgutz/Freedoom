@@ -354,6 +354,8 @@ export function renderTodayView({
 
   const heroFace = document.getElementById('hoyFace');
   if (heroFace) {
+    heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01');
+    heroFace.classList.add(`outfit-id-${game?.outfit || 'original'}`);
     heroFace.classList.toggle(
       'outfit-transparent-portrait',
       outfitUsesTransparentPortrait(game?.outfit),

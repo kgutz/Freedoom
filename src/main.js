@@ -123,7 +123,15 @@ import {
   migratePioneerRewardEligibility,
   shouldOfferPioneerReward,
 } from './domain/pioneer-reward-rules.js';
-import { isOutfitUnlocked } from './data/outfit-data.js';
+import { OUTFIT_DEFINITIONS, isOutfitUnlocked } from './data/outfit-data.js';
+import {
+  acknowledgeFiberCatchupNotice,
+  grantBossFiberReward,
+  pendingFiberCatchupNotice,
+  reconcileHistoricalBossFibers,
+  resolveHabitFiberDrop,
+  weaveOutfit,
+} from './domain/outfit-rules.js';
 import {
   STORAGE_KEY,
   createBrowserStore,
@@ -191,13 +199,14 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.90';
+const APP_VERSION='1.91';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
 );
@@ -212,11 +221,13 @@ const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
     ? `${STORAGE_KEY}:demo-paladin-effects-v3`
+    : LOCAL_DEMO_FIBER_OUTFIT
+    ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
     ? `${STORAGE_KEY}:demo-control-complete-v2`
     : LOCAL_DEMO_FUSIONS
@@ -258,8 +269,11 @@ let observedHeroLevel=null;
 let pendingHeroLevelUp=false;
 let pendingSkillCast=null;
 let selectedOutfitDraft=null;
+let outfitSelectorSection='owned';
 let pioneerRewardTimer=null;
 let pioneerRewardOpening=false;
+let fiberCatchupTimer=null;
+let fiberCatchupOpening=false;
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -475,12 +489,12 @@ async function load(){
   try{
     let r=LOCAL_DEMO_PALADIN_EFFECTS
       ? await store.get(STORAGE_KEY)
-      : LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null
+      : LOCAL_DEMO_FIBER_OUTFIT||LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null
         ? null
         : await store.get(ACTIVE_STORAGE_KEY);
     if(LOCAL_DEMO_PALADIN_EFFECTS) initializeLocalDemo=true;
     if(!r&&LOCAL_DEMO_BOSSES){
-      if(!LOCAL_DEMO_FUSIONS&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
+      if(!LOCAL_DEMO_FIBER_OUTFIT&&!LOCAL_DEMO_FUSIONS&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
       initializeLocalDemo=true;
     }
     if(r&&r.value){
@@ -705,6 +719,13 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
+  if(LOCAL_DEMO_FIBER_OUTFIT){
+    state.game={
+      ...state.game,
+      outfit:'original',
+      outfits:{owned:{}},
+    };
+  }
   const currentWeek=Math.max(0,weekIndexOf(currentDayDate()));
   state.game.bossCombat={
     version:2,
@@ -721,6 +742,7 @@ function prepareLocalBossDemo(){
     }))
   };
   Object.assign(state,emptyLootState());
+  state.economy.arcaneFibers=LOCAL_DEMO_FIBER_OUTFIT?0:8;
   if(LOCAL_DEMO_MIGRATION){
     scheduleSave({type:'demo:loot-migration',count:LOCAL_DEMO_MIGRATION});
     return;
@@ -951,6 +973,20 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
     potionBloodChanceByRewardId,
     nowTimestamp:Date.now()
   });
+  if(result.rewards.length){
+    let arcaneFibers=0;
+    for(const reward of result.rewards){
+      const pendingEntry=Object.entries(result.loot.bossFiberOutcomes||{}).find(([,outcome])=>
+        outcome?.bossIndex===reward.bossIndex&&!outcome?.notifiedAt
+      );
+      if(!pendingEntry) continue;
+      const [cycleId,outcome]=pendingEntry;
+      arcaneFibers+=Math.max(0,Number(outcome.granted)||0);
+      result.loot.bossFiberOutcomes[cycleId]={...outcome,notifiedAt:Date.now()};
+    }
+    const notice=result.loot.notices[result.loot.notices.length-1];
+    if(notice&&arcaneFibers>0) notice.arcaneFibers=arcaneFibers;
+  }
   applyLootSlices(result);
   if(source==='victory'&&result.rewards.length){
     state.inventory=consumePreparedBlood(state.inventory,result.rewards.map(reward=>reward.rewardId));
@@ -1324,6 +1360,12 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
       g.bonusXp=(g.bonusXp||0)+reward.xp;
       constancyXp+=reward.xp;
     }
+    applyLootSlices(grantBossFiberReward({
+      state,
+      cycleId,
+      bossIndex,
+      nowTimestamp:actualTimestamp
+    }));
   };
   for(const weekResult of result.weekResults){
     if(weekResult.won){
@@ -2160,6 +2202,34 @@ function queuePioneerReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
   clearTimeout(pioneerRewardTimer);
   if(!shouldDisplayPioneerReward()) return;
   pioneerRewardTimer=window.setTimeout(showPendingPioneerReward,delay);
+}
+async function showPendingFiberCatchup(){
+  fiberCatchupTimer=null;
+  const notice=pendingFiberCatchupNotice(state);
+  if(fiberCatchupOpening||!notice) return;
+  if(returnSplashPlaying||document.querySelector('.modal-bg.show:not(#fiberCatchupBg)')){
+    fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),500);
+    return;
+  }
+  fiberCatchupOpening=true;
+  try{
+    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+    const amount=document.getElementById('fiberCatchupAmount');
+    const message=document.getElementById('fiberCatchupMessage');
+    if(amount) amount.textContent=`+${notice.arcaneFibers}`;
+    if(message) message.textContent=notice.bossCount===1
+      ? 'Hemos reconocido un jefe que ya habías derrotado y recuperado su recompensa.'
+      : `Hemos reconocido ${notice.bossCount} jefes que ya habías derrotado y recuperado sus recompensas.`;
+    document.getElementById('fiberCatchupBg')?.classList.add('show');
+  }catch(error){
+    console.error('No se pudo asegurar la entrega retroactiva de Fibras',error);
+    fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),1000);
+  }finally{fiberCatchupOpening=false;}
+}
+function queueFiberCatchup(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
+  clearTimeout(fiberCatchupTimer);
+  if(!pendingFiberCatchupNotice(state)) return;
+  fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),delay);
 }
 function acknowledgeActiveLootNotice(){
   if(!activeLootNoticeId) return;
@@ -3320,6 +3390,14 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.inventory=potionResult.inventory;
     state.habits=potionResult.habitState;
     state.economy=potionResult.economy;
+    const fiberResult=resolveHabitFiberDrop({
+      state,
+      habit,
+      periodKey:result.entry.periodKey,
+      becameCompleted:result.becameCompleted,
+      nowTimestamp:Date.now()
+    });
+    applyLootSlices(fiberResult);
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
@@ -3358,11 +3436,13 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
       period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins+potionResult.coinDelta,
-      potionXpDelta:potionResult.xpDelta
+      potionXpDelta:potionResult.xpDelta,
+      arcaneFiberDelta:fiberResult.granted
     });
     renderAll();
     if(result.becameCompleted){
-      showToast(habitRewardToast('Hábito completado',totalRewardDelta),'heal');
+      const fiberNotice=fiberResult.granted?' · +1 Fibra Arcana':'';
+      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${fiberNotice}`,'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
@@ -3821,14 +3901,44 @@ function openShopPurchaseConfirmation(purchase){
   pendingShopPurchase=purchase;
   const body=document.getElementById('shopPurchaseConfirmBody');
   const accept=document.getElementById('shopPurchaseConfirmAccept');
+  const kicker=document.getElementById('shopPurchaseConfirmKicker');
+  const title=document.getElementById('shopPurchaseConfirmTitle');
   if(purchase.type==='potion'){
+    kicker.textContent='CONFIRMAR COMPRA';
+    title.textContent='¿Quieres comprarlo?';
     body.innerHTML=`<p><b>${purchase.name}</b> × ${purchase.quantity}</p><p>Se descontarán <b>${purchase.coinCost} de oro</b>.</p>`;
+    accept.textContent='COMPRAR';
+  }else if(purchase.type==='outfit'){
+    kicker.textContent='CONFIRMAR TEJIDO';
+    title.textContent='¿Quieres tejer este outfit?';
+    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.fiberCost} Fibras Arcanas</b> y <b>${purchase.coinCost} de oro</b>.</p>`;
+    accept.textContent='TEJER';
   }else{
+    kicker.textContent='CONFIRMAR COMPRA';
+    title.textContent='¿Quieres comprarlo?';
     body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.coinCost} de oro</b>${purchase.bloodCost?` y <b>${purchase.bloodCost} Sangre de Jefe</b>`:''}.</p>`;
+    accept.textContent='COMPRAR';
   }
   accept.disabled=false;
-  accept.textContent='COMPRAR';
   document.getElementById('shopPurchaseConfirmBg').classList.add('show');
+}
+
+function handleOutfitWeave(outfitId){
+  const operationId=`outfit-${outfitId}-${Date.now()}`;
+  const result=weaveOutfit({state,outfitId,operationId,nowTimestamp:Date.now()});
+  if(!result.ok){
+    showToast(result.reason==='resources'?'No tienes suficientes recursos':'Este outfit ya está conseguido','dmg');
+    return false;
+  }
+  applyLootSlices(result);
+  state.game=result.game;
+  outfitSelectorSection='owned';
+  selectedOutfitDraft=renderOutfitSelector(document,state,outfitId,{section:'owned'});
+  scheduleSave({type:'outfit:woven',outfitId,operationId});
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  showToast('Vestidura tejida. Ya es tuya para siempre','heal');
+  return true;
 }
 
 async function handleRelicPurchase(relicId){
@@ -3889,7 +3999,8 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
   const outfitShortcut=event.target.closest('[data-open-outfits]');
   if(outfitShortcut){
-    selectedOutfitDraft=renderOutfitSelector(document,state,state.game?.outfit);
+    outfitSelectorSection='owned';
+    selectedOutfitDraft=renderOutfitSelector(document,state,state.game?.outfit,{section:outfitSelectorSection});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -4034,9 +4145,34 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
 });
 
 document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
+  const sectionButton=event.target.closest('[data-outfit-section]');
+  if(sectionButton){
+    outfitSelectorSection=sectionButton.dataset.outfitSection==='weave'?'weave':'owned';
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
+    return;
+  }
   const option=event.target.closest('[data-select-outfit]');
   if(option){
-    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit);
+    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned'});
+    return;
+  }
+  const weaveOption=event.target.closest('[data-select-weave-outfit]');
+  if(weaveOption){
+    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave'});
+    return;
+  }
+  const weave=event.target.closest('[data-weave-outfit]');
+  if(weave&&!weave.disabled){
+    const outfitId=weave.dataset.weaveOutfit;
+    const outfit=OUTFIT_DEFINITIONS.find(item=>item.id===outfitId&&item.craftable&&item.recipe);
+    if(!outfit) return;
+    openShopPurchaseConfirmation({
+      type:'outfit',
+      outfitId,
+      name:outfit.name,
+      fiberCost:outfit.recipe.arcaneFibers,
+      coinCost:outfit.recipe.coins,
+    });
     return;
   }
   const equip=event.target.closest('[data-equip-outfit]');
@@ -4265,6 +4401,7 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   event.currentTarget.disabled=true;
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
   if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else await handleRelicPurchase(purchase.relicId);
 });
 document.getElementById('fusionConfirmBg').addEventListener('click',event=>{
@@ -4349,6 +4486,15 @@ document.getElementById('pioneerRewardContinue').addEventListener('click',()=>{
   document.getElementById('pioneerRewardBg').classList.remove('show');
   renderAll();
   showToast('Outfit Beta Tester y +130 de oro','heal');
+});
+document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
+  const notice=pendingFiberCatchupNotice(state);
+  if(!notice) return;
+  applyLootSlices(acknowledgeFiberCatchupNotice(state,notice.id));
+  document.getElementById('fiberCatchupBg').classList.remove('show');
+  scheduleSave({type:'reward:boss-fibers-catchup-acknowledged',arcaneFibers:notice.arcaneFibers});
+  renderAll();
+  showToast(`+${notice.arcaneFibers} Fibras Arcanas`,'heal');
 });
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
@@ -4624,6 +4770,19 @@ resetGuardContinue.addEventListener('click',()=>{
     registerDailyWakeEstimate();
     document.getElementById('app').style.display='block';
     document.getElementById('mainNav').classList.add('show');
+    const fiberCatchup=reconcileHistoricalBossFibers({
+      state,
+      bossesDown:totalBossesDown(),
+      nowTimestamp:Date.now()
+    });
+    applyLootSlices(fiberCatchup);
+    if(fiberCatchup.granted>0){
+      scheduleSave({
+        type:'reward:boss-fibers-catchup',
+        bosses:fiberCatchup.bossCount,
+        arcaneFibers:fiberCatchup.granted
+      });
+    }
     ensureHero();
     syncPeriodicRelicMana();
     renderAll();
@@ -4649,4 +4808,5 @@ resetGuardContinue.addEventListener('click',()=>{
     }else finishInitialReturnSplash();
   }
   queuePioneerReward();
+  queueFiberCatchup();
 })();

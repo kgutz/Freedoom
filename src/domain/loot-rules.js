@@ -56,12 +56,15 @@ export function fusionPairKey(leftId, rightId) {
 
 export function emptyLootState() {
   return {
-    economy: { coins: 0, bossBlood: 0, transactions: [] },
+    economy: { coins: 0, bossBlood: 0, arcaneFibers: 0, transactions: [] },
     loot: {
       schemaVersion: LOOT_SCHEMA_VERSION,
       claimedBossRewards: [],
       bossRelicOutcomes: {},
       earlyVictoryOutcomes: {},
+      habitFiberOutcomes: {},
+      bossFiberOutcomes: {},
+      fiberCatchupNotice: null,
       notices: [],
       migrationComplete: false,
     },
@@ -83,6 +86,7 @@ export function emptyLootState() {
       attempts: {},
       history: [],
       fusion: { discoveredRecipes: [], history: [], dailyActivations: {}, weeklyActivations: {} },
+      weaving: { history: [] },
     },
     shop: {
       schemaVersion: 1,
@@ -250,6 +254,7 @@ export function normalizeLootState(state = {}) {
     economy: {
       coins: Math.max(0, Math.trunc(Number(economy.coins) || 0)),
       bossBlood: Math.max(0, Math.trunc(Number(economy.bossBlood) || 0)),
+      arcaneFibers: Math.max(0, Math.trunc(Number(economy.arcaneFibers) || 0)),
       transactions: arrayOf(economy.transactions).slice(-200),
     },
     loot: {
@@ -260,8 +265,20 @@ export function normalizeLootState(state = {}) {
       claimedBossRewards: [...claimedBossRewards],
       bossRelicOutcomes,
       earlyVictoryOutcomes,
+      habitFiberOutcomes: { ...objectOf(loot.habitFiberOutcomes) },
+      bossFiberOutcomes: { ...objectOf(loot.bossFiberOutcomes) },
+      fiberCatchupNotice: loot.fiberCatchupNotice && typeof loot.fiberCatchupNotice === 'object'
+        ? {
+            id: String(loot.fiberCatchupNotice.id || 'boss-fiber-catchup-v1'),
+            arcaneFibers: Math.max(0, Math.trunc(Number(loot.fiberCatchupNotice.arcaneFibers) || 0)),
+            bossCount: Math.max(0, Math.trunc(Number(loot.fiberCatchupNotice.bossCount) || 0)),
+            acknowledged: loot.fiberCatchupNotice.acknowledged === true,
+            createdAt: Math.max(0, Number(loot.fiberCatchupNotice.createdAt) || 0),
+          }
+        : null,
       notices: arrayOf(loot.notices).map((notice) => ({
         ...notice,
+        arcaneFibers: Math.max(0, Math.trunc(Number(notice?.arcaneFibers) || 0)),
         relicIds: arrayOf(notice?.relicIds).filter((id) => Boolean(relicDefinition(id))),
         failedRelicIds: arrayOf(notice?.failedRelicIds)
           .filter((id) => Boolean(relicDefinition(id))),
@@ -336,6 +353,9 @@ export function normalizeLootState(state = {}) {
           weeklyActivations: { ...objectOf(fusion.weeklyActivations) },
         };
       })(),
+      weaving: {
+        history: arrayOf(forge.weaving?.history).map((entry) => ({ ...entry })).slice(-100),
+      },
     },
     shop: {
       schemaVersion: Math.max(1, Number(shop.schemaVersion) || 0),

@@ -136,7 +136,7 @@ export function renderHabitsView({
     ? ` compact-hero-intoxicated compact-intoxication-stage-${intoxicationStageValue}`
     : '';
   const outfitPortraitClass = outfitUsesTransparentPortrait(game?.outfit)
-    ? ' outfit-transparent-portrait'
+    ? ` outfit-transparent-portrait outfit-id-${game?.outfit || 'original'}`
     : '';
   const selectedFilter = ['daily', 'weekly'].includes(filter) ? filter : 'all';
   const visibleHabits = selectedFilter === 'all'

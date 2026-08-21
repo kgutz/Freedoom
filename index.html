@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v1.90</div>
+  <div class="ob-version" id="obVersion">v1.91</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,7 +390,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedoom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.90</span></p>
+        <p class="hint settings-version">Freedoom <span id="settingsVersion">v1.91</span></p>
       </div>
     </div>
   </div>
@@ -685,6 +685,24 @@
   </div>
 </div>
 
+<div class="modal-bg center pioneer-reward-bg" id="fiberCatchupBg" style="z-index:47">
+  <div class="modal pioneer-reward-modal fiber-catchup-modal" role="dialog" aria-modal="true" aria-labelledby="fiberCatchupTitle">
+    <section class="pioneer-reward-step pioneer-reward-reveal">
+      <span class="pioneer-reward-kicker">RECOMPENSA CONSEGUIDA</span>
+      <h3 id="fiberCatchupTitle">Tus victorias cuentan</h3>
+      <p id="fiberCatchupMessage">Hemos reconocido los jefes que ya habías derrotado.</p>
+      <div class="pioneer-reward-items fiber-catchup-items">
+        <div class="pioneer-reward-item fiber-catchup-item">
+          <span class="resource-icon resource-icon--arcane-fiber" role="img" aria-label="Fibra Arcana"></span>
+          <strong id="fiberCatchupAmount">+0</strong>
+          <small>FIBRAS ARCANAS</small>
+        </div>
+      </div>
+      <button type="button" class="pioneer-reward-action" id="fiberCatchupContinue">CONTINUAR</button>
+    </section>
+  </div>
+</div>
+
 <div class="modal-bg center" id="forgeResultBg" style="z-index:41">
   <div class="modal forge-result-modal">
     <div id="forgeResultBody"></div>
@@ -718,7 +736,7 @@
 
 <div class="modal-bg center" id="shopPurchaseConfirmBg" style="z-index:44">
   <div class="modal fusion-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="shopPurchaseConfirmTitle">
-    <span class="relic-effect-info-kicker">CONFIRMAR COMPRA</span>
+    <span class="relic-effect-info-kicker" id="shopPurchaseConfirmKicker">CONFIRMAR COMPRA</span>
     <h3 id="shopPurchaseConfirmTitle">¿Quieres comprarlo?</h3>
     <div id="shopPurchaseConfirmBody"></div>
     <div class="fusion-confirm-actions">

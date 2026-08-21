@@ -39,13 +39,18 @@ export function stateInformationProfile(state) {
     : 0;
   const earlyVictoryOutcomeCount = collectionSize(loot.earlyVictoryOutcomes);
   const economyValue = Math.max(0, Number(economy.coins) || 0) +
-    Math.max(0, Number(economy.bossBlood) || 0) * 25;
+    Math.max(0, Number(economy.bossBlood) || 0) * 25 +
+    Math.max(0, Number(economy.arcaneFibers) || 0) * 20;
   const forgeHistoryCount = Array.isArray(forge.history)
     ? forge.history.length
     : 0;
   const fusionHistoryCount = Array.isArray(forge.fusion?.history)
     ? forge.fusion.history.length
     : 0;
+  const weavingHistoryCount = Array.isArray(forge.weaving?.history)
+    ? forge.weaving.history.length
+    : 0;
+  const ownedOutfitCount = collectionSize(game.outfits?.owned);
   const bossesDown = Math.max(0, Number(combat.legacyBossesDown) || 0) +
     Math.max(0, Number(combat.defeated) || 0);
   const bossHistoryCount = Array.isArray(combat.history)
@@ -67,7 +72,9 @@ export function stateInformationProfile(state) {
     Math.min(60, earlyVictoryOutcomeCount * 10) +
     Math.min(80, Math.floor(economyValue / 10)) +
     Math.min(40, forgeHistoryCount * 5) +
-    Math.min(80, fusionHistoryCount * 10);
+    Math.min(80, fusionHistoryCount * 10) +
+    Math.min(60, weavingHistoryCount * 15) +
+    Math.min(60, ownedOutfitCount * 20);
 
   return {
     score,
@@ -85,6 +92,8 @@ export function stateInformationProfile(state) {
     economyValue,
     forgeHistoryCount,
     fusionHistoryCount,
+    weavingHistoryCount,
+    ownedOutfitCount,
     meaningful:
       (onboarded && hasHero) ||
       dayCount > 0 ||
@@ -97,7 +106,9 @@ export function stateInformationProfile(state) {
       earlyVictoryOutcomeCount > 0 ||
       economyValue > 0 ||
       forgeHistoryCount > 0 ||
-      fusionHistoryCount > 0,
+      fusionHistoryCount > 0 ||
+      weavingHistoryCount > 0 ||
+      ownedOutfitCount > 0,
   };
 }
 
