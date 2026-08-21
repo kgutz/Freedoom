@@ -3330,12 +3330,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       ? availableDailyEffectSources(state,'relic_02',dayKey)
       : [];
     if(manaSources.length){
-      let mana=manaSources.reduce((total,source)=>total+source.value,0);
+      let manaPercent=manaSources.reduce((total,source)=>total+source.value,0);
       if(canActivateFusionDaily(state,'fusion_01','first-habit-mana',dayKey)){
-        mana+=3;
+        manaPercent+=3;
         applyLootSlices(markFusionDaily(state,'fusion_01','first-habit-mana',dayKey,true));
       }
-      const recovered=recoverMana(mana);
+      const recovered=recoverMana(Math.max(1,Math.round(heroMaxes().maxMp*manaPercent/100)));
       applyLootSlices(markDailyEffectSources(state,'relic_02',dayKey,manaSources,true));
       if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_07')&&
           collarRecoverySourcesForKey(dayKey).some(source=>source.relicId==='fusion_07')){

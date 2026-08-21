@@ -45,7 +45,7 @@ function unlockedState(count = 3) {
 }
 
 describe('loot de bosses', () => {
-  it('regenera un porcentaje del Maná máximo cada tres horas sin concederlo al equipar', () => {
+  it('reparte el 30% diario en ciclos de media hora sin conceder Maná al equipar', () => {
     const start = 1_000;
     const state = emptyLootState();
     state.inventory.relics.relic_05 = {
@@ -60,11 +60,11 @@ describe('loot de bosses', () => {
     expect(equipped.manaRecovered).toBe(0);
 
     const recovered = advancePeriodicManaRecovery({
-      state: equipped, nowTimestamp: start + 3 * 60 * 60 * 1000, maxMana: 200, currentMana: 20,
+      state: equipped, nowTimestamp: start + 24 * 60 * 60 * 1000, maxMana: 200, currentMana: 20,
     });
-    expect(recovered.mana).toBe(30);
-    expect(recovered.manaRecovered).toBe(10);
-    expect(recovered.ticks).toBe(1);
+    expect(recovered.mana).toBe(80);
+    expect(recovered.manaRecovered).toBe(60);
+    expect(recovered.ticks).toBe(48);
   });
 
   it('acumula intervalos cerrada, respeta el máximo y reinicia el ciclo al cambiar la fuente', () => {
@@ -73,21 +73,44 @@ describe('loot de bosses', () => {
     state.inventory.relics.fusion_04 = {
       id: 'fusion_04', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
       inheritedEffects: { relic_03: 2, relic_05: 7 },
+      ingredientSnapshots: {
+        relic_03: { rank: 1, rarity: 'rare', affixes: [], effectValue: 2 },
+        relic_05: { rank: 2, rarity: 'rare', affixes: [], effectValue: 7 },
+      },
     };
     state.inventory.equipped = ['fusion_04'];
     const equipped = advancePeriodicManaRecovery({
       state, nowTimestamp: start, maxMana: 100, currentMana: 80,
     });
     const recovered = advancePeriodicManaRecovery({
-      state: equipped, nowTimestamp: start + 6 * 60 * 60 * 1000, maxMana: 100, currentMana: 80,
+      state: equipped, nowTimestamp: start + 60 * 60 * 1000, maxMana: 100, currentMana: 80,
     });
-    expect(recovered.mana).toBe(94);
+    expect(recovered.inventory.relics.fusion_04.inheritedEffects.relic_05).toBe(45);
+    expect(recovered.mana).toBe(81);
     expect(recovered.ticks).toBe(2);
     recovered.inventory.equipped = [];
     const unequipped = advancePeriodicManaRecovery({
-      state: recovered, nowTimestamp: start + 7 * 60 * 60 * 1000, maxMana: 100, currentMana: 94,
+      state: recovered, nowTimestamp: start + 70 * 60 * 1000, maxMana: 100, currentMana: 81,
     });
-    expect(unequipped.inventory.periodicEffects.manaRecovery).toBeUndefined();
+    expect(unequipped.inventory.periodicEffects.manaRecovery.timers.fusion_04).toMatchObject({
+      paused: true,
+      remainingMs: 20 * 60 * 1000,
+    });
+    unequipped.inventory.equipped = ['fusion_04'];
+    const reequipped = advancePeriodicManaRecovery({
+      state: unequipped, nowTimestamp: start + 5 * 60 * 60 * 1000, maxMana: 100, currentMana: 81,
+    });
+    const beforeDue = advancePeriodicManaRecovery({
+      state: reequipped, nowTimestamp: start + 5 * 60 * 60 * 1000 + 19 * 60 * 1000,
+      maxMana: 100, currentMana: 81,
+    });
+    expect(beforeDue.manaRecovered).toBe(0);
+    const resumed = advancePeriodicManaRecovery({
+      state: beforeDue, nowTimestamp: start + 5 * 60 * 60 * 1000 + 20 * 60 * 1000,
+      maxMana: 100, currentMana: 81,
+    });
+    expect(resumed.ticks).toBe(1);
+    expect(resumed.mana).toBe(82);
   });
 
   it('premia la lista completa como XP extraordinaria fuera del tope de hábitos', () => {

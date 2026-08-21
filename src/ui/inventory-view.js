@@ -252,8 +252,8 @@ export function nextFusionSelection({ leftId = null, rightId = null } = {}, reli
 
 function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
-  if (relicId === 'relic_02') return `${value} MANÁ`;
-  if (relicId === 'relic_05') return `${value}% MANÁ MÁX.`;
+  if (relicId === 'relic_02') return `${value}% MANÁ MÁX.`;
+  if (relicId === 'relic_05') return `${value}% MANÁ/DÍA`;
   const definition = relicDefinition(relicId);
   if (definition?.valueUnit) return `${value} ${definition.valueUnit}`;
   return `${value} XP`;
@@ -262,16 +262,13 @@ function relicEffectValue(relicId, value) {
 function fusionEffectDescription(definition, relic) {
   const value = (baseId) => Math.max(0, Number(relic.inheritedEffects?.[baseId]) || 0);
   if (definition.id === 'fusion_01') {
-    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. El primer hábito recupera ${value('relic_02') + 3} Maná.`;
+    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. El primer hábito recupera ${value('relic_02') + 3}% del Maná máximo.`;
   }
   if (definition.id === 'fusion_02') {
     return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. La Constancia concede ${value('relic_04')} XP y alcanzar seis días cumplidos otorga 20 XP adicionales.`;
   }
-  if (definition.id === 'fusion_03') {
-    return `El primer hábito recupera ${value('relic_02')} Maná. El primer hechizo cuesta ${value('relic_05')} Maná menos, o ${value('relic_05') + 3} menos si antes completas un hábito.`;
-  }
   if (definition.id === 'fusion_04') {
-    return `El primer hábito concede ${value('relic_03')} XP. Cada 3 horas recupera ${value('relic_05')}% del Maná máximo. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
+    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
   }
   if (definition.id === 'fusion_06') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
@@ -279,11 +276,11 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_07') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')} Maná. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
+    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
   }
   if (definition.id === 'fusion_08') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    return `Cada 3 horas recupera ${value('relic_05')}% del Maná máximo. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
+    return `Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
   }
   if (definition.id === 'fusion_05') {
     return `La Constancia concede ${value('relic_04')} XP y cada día cumplido otorga ${value('relic_06')} XP. Alcanzar seis días cumplidos concede 25 XP adicionales.`;

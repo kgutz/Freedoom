@@ -105,7 +105,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'spirit',
     effectFamily: 'mana',
     image: 'relics/relic_02_lagrima_espectro.png',
-    effectLabel: 'El primer hábito completado del día recupera Maná.',
+    effectLabel: 'El primer hábito completado del día recupera un porcentaje del Maná máximo.',
     affixPool: ['arcane', 'channeling', 'discipline'],
   },
   {
@@ -139,7 +139,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'vessel',
     effectFamily: 'mana',
     image: 'relics/relic_05_frasco_antojo_roto.png',
-    effectLabel: 'Cada 3 horas recupera un porcentaje de tu Maná máximo mientras está equipado.',
+    effectLabel: 'Recupera Maná cada 30 minutos mientras está equipado.',
     affixPool: ['arcane', 'channeling', 'fortune'],
   },
   {
@@ -235,7 +235,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Corazón Espectral',
     equipmentType: 'heart',
     image: 'relics/fusion_01_corazon_espectral.png',
-    effectLabel: 'Reduce la primera fuente de daño del día. El primer hábito recupera Maná y recibe 3 Maná adicionales.',
+    effectLabel: 'Reduce la primera fuente de daño del día. El primer hábito recupera un porcentaje del Maná máximo y recibe 3 puntos porcentuales adicionales.',
     synergy: { type: 'first-habit-mana', value: 3 },
   },
   {
@@ -255,7 +255,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Daga del Antojo',
     equipmentType: 'dagger',
     image: 'relics/fusion_04_daga_antojo.png',
-    effectLabel: 'El primer hábito concede XP y cada 3 horas recupera un porcentaje del Maná máximo. Completar todos los hábitos diarios otorga 5 XP adicionales.',
+    effectLabel: 'El primer hábito concede XP y recupera Maná cada 30 minutos. Completar todos los hábitos diarios otorga 5 XP adicionales.',
     synergy: { type: 'all-daily-habits-xp', value: 5 },
   },
   {
@@ -275,7 +275,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Brújula del Regreso',
     equipmentType: 'collar',
     image: 'relics/fusion_07_brujula_regreso.png',
-    effectLabel: 'El primer hábito recupera Maná y concede XP al recuperarse de un día fallido. Si recuperas Maná durante la recuperación y completas el día, obtienes 5 XP adicionales.',
+    effectLabel: 'El primer hábito recupera un porcentaje del Maná máximo y concede XP al recuperarse de un día fallido. Si recuperas Maná durante la recuperación y completas el día, obtienes 5 XP adicionales.',
     synergy: { type: 'recovery-mana-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -285,7 +285,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Brazal del Antojo Roto',
     equipmentType: 'collar',
     image: 'relics/fusion_08_brazal_antojo_roto.png',
-    effectLabel: 'Cada 3 horas recupera un porcentaje del Maná máximo y concede XP al recuperarse de un día fallido. Si recuperas Maná durante esa recuperación y completas el día, obtienes XP adicional.',
+    effectLabel: 'Recupera Maná cada 30 minutos y concede XP al recuperarse de un día fallido. Si recuperas Maná durante esa recuperación y completas el día, obtienes XP adicional.',
     synergy: { type: 'recovery-periodic-mana-xp', values: { 1: 10, 2: 14, 3: 18 } },
   },
 ];
@@ -308,7 +308,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_02: { 1: 5, 2: 7, 3: 10 },
   relic_03: { 1: 2, 2: 3, 3: 4 },
   relic_04: { 1: 20, 2: 30, 3: 45 },
-  relic_05: { 1: 5, 2: 7, 3: 10 },
+  relic_05: { 1: 30, 2: 45, 3: 60 },
   relic_06: { 1: 10, 2: 15, 3: 20 },
   relic_07: { 1: 20, 2: 30, 3: 45 },
   relic_08: { 1: 2, 2: 3, 3: 5 },

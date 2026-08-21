@@ -121,6 +121,16 @@ function normalizeRelicRecord(id, value) {
         }];
       }),
   );
+  if (fusion && definition.ingredientIds.includes('relic_05')) {
+    const oldManaValue = Math.max(0, Number(inheritedEffects.relic_05) || 0);
+    const inferredManaRank = oldManaValue <= 5 ? 1 : oldManaValue <= 7 ? 2 : 3;
+    const manaRank = ingredientSnapshots.relic_05?.rank || inferredManaRank;
+    const migratedManaValue = relicRankEffect('relic_05', manaRank);
+    inheritedEffects.relic_05 = migratedManaValue;
+    if (ingredientSnapshots.relic_05) {
+      ingredientSnapshots.relic_05.effectValue = migratedManaValue;
+    }
+  }
   const storedRank = Math.min(3, Math.max(1, Number(relic.rank) || 1));
   const normalizedRank = fusion
     ? Math.max(storedRank, ...Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank))
@@ -1313,7 +1323,9 @@ export function equippedRelicEffectSources(lootState, baseRelicId) {
   });
 }
 
-export const PERIODIC_MANA_RECOVERY_MS = 3 * 60 * 60 * 1000;
+export const PERIODIC_MANA_RECOVERY_MS = 30 * 60 * 1000;
+const PERIODIC_MANA_RECOVERY_TICKS_PER_DAY = 24 * 60 * 60 * 1000
+  / PERIODIC_MANA_RECOVERY_MS;
 
 export function advancePeriodicManaRecovery({
   state,
@@ -1326,55 +1338,99 @@ export function advancePeriodicManaRecovery({
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
   const safeMaxMana = Math.max(0, Number(maxMana) || 0);
   const safeCurrentMana = Math.max(0, Math.min(safeMaxMana, Number(currentMana) || 0));
-  const signature = sources
-    .map((source) => `${source.relicId}:${source.value}`)
-    .sort()
-    .join('|');
   const previous = objectOf(normalized.inventory.periodicEffects?.manaRecovery);
+  const timers = { ...objectOf(previous.timers) };
+  const activeIds = new Set(sources.map((source) => source.relicId));
 
-  if (!sources.length) {
-    delete normalized.inventory.periodicEffects.manaRecovery;
-    return { ...normalized, mana: safeCurrentMana, manaRecovered: 0, ticks: 0, sourceIds: [] };
+  // Migra el temporizador único de versiones anteriores sin perder su progreso.
+  if (!Object.keys(timers).length && previous.signature) {
+    const oldInterval = Math.max(1, Number(previous.intervalMs) || PERIODIC_MANA_RECOVERY_MS);
+    const oldRemaining = Math.max(0, Number(previous.nextAt) - safeNow);
+    String(previous.signature).split('|').forEach((part) => {
+      const [relicId, storedValue] = part.split(':');
+      if (!relicId) return;
+      timers[relicId] = {
+        intervalMs: oldInterval,
+        remainingMs: oldRemaining,
+        paused: !activeIds.has(relicId),
+        nextAt: activeIds.has(relicId) ? safeNow + oldRemaining : 0,
+        carry: Math.max(0, Number(previous.carry) || 0),
+        value: Math.max(0, Number(storedValue) || 0),
+      };
+    });
   }
 
-  if (previous.signature !== signature || !(Number(previous.nextAt) > 0)) {
-    normalized.inventory.periodicEffects.manaRecovery = {
-      signature,
-      nextAt: safeNow + PERIODIC_MANA_RECOVERY_MS,
-    };
-    return {
-      ...normalized,
-      mana: safeCurrentMana,
-      manaRecovered: 0,
-      ticks: 0,
-      sourceIds: sources.map((source) => source.relicId),
+  Object.entries(timers).forEach(([relicId, rawTimer]) => {
+    if (activeIds.has(relicId)) return;
+    const timer = objectOf(rawTimer);
+    const remainingMs = timer.paused
+      ? Math.max(0, Number(timer.remainingMs) || 0)
+      : Math.max(0, (Number(timer.nextAt) || safeNow) - safeNow);
+    timers[relicId] = { ...timer, paused: true, remainingMs, nextAt: 0 };
+  });
+
+  let mana = safeCurrentMana;
+  let totalTicks = 0;
+  for (const source of sources) {
+    let timer = objectOf(timers[source.relicId]);
+    if (!Object.keys(timer).length) {
+      timer = {
+        intervalMs: PERIODIC_MANA_RECOVERY_MS,
+        remainingMs: 0,
+        paused: false,
+        nextAt: safeNow + PERIODIC_MANA_RECOVERY_MS,
+        carry: 0,
+        value: source.value,
+      };
+    } else {
+      const oldInterval = Math.max(1, Number(timer.intervalMs) || PERIODIC_MANA_RECOVERY_MS);
+      const oldRemaining = timer.paused
+        ? Math.max(0, Number(timer.remainingMs) || 0)
+        : Math.max(0, (Number(timer.nextAt) || safeNow) - safeNow);
+      const adjustedRemaining = oldInterval === PERIODIC_MANA_RECOVERY_MS
+        ? oldRemaining
+        : PERIODIC_MANA_RECOVERY_MS * Math.min(1, oldRemaining / oldInterval);
+      if (timer.paused || oldInterval !== PERIODIC_MANA_RECOVERY_MS) {
+        timer = {
+          ...timer,
+          intervalMs: PERIODIC_MANA_RECOVERY_MS,
+          paused: false,
+          remainingMs: 0,
+          nextAt: safeNow + adjustedRemaining,
+        };
+      }
+    }
+
+    const nextAt = Number(timer.nextAt) || safeNow + PERIODIC_MANA_RECOVERY_MS;
+    if (safeNow >= nextAt) {
+      const ticks = Math.floor((safeNow - nextAt) / PERIODIC_MANA_RECOVERY_MS) + 1;
+      const rawRecovery = Math.max(0, Number(timer.carry) || 0)
+        + safeMaxMana * source.value / 100
+          * ticks / PERIODIC_MANA_RECOVERY_TICKS_PER_DAY;
+      const recovery = Math.floor(rawRecovery + Number.EPSILON);
+      mana = Math.min(safeMaxMana, mana + recovery);
+      totalTicks += ticks;
+      timer = {
+        ...timer,
+        carry: rawRecovery - recovery,
+        nextAt: nextAt + ticks * PERIODIC_MANA_RECOVERY_MS,
+      };
+    }
+    timers[source.relicId] = {
+      ...timer,
+      intervalMs: PERIODIC_MANA_RECOVERY_MS,
+      paused: false,
+      remainingMs: 0,
+      value: source.value,
     };
   }
 
-  const nextAt = Number(previous.nextAt);
-  if (safeNow < nextAt) {
-    return {
-      ...normalized,
-      mana: safeCurrentMana,
-      manaRecovered: 0,
-      ticks: 0,
-      sourceIds: sources.map((source) => source.relicId),
-    };
-  }
-
-  const ticks = Math.floor((safeNow - nextAt) / PERIODIC_MANA_RECOVERY_MS) + 1;
-  const recoveryPercent = sources.reduce((total, source) => total + source.value, 0);
-  const recoveryPerTick = Math.ceil(safeMaxMana * recoveryPercent / 100);
-  const mana = Math.min(safeMaxMana, safeCurrentMana + recoveryPerTick * ticks);
-  normalized.inventory.periodicEffects.manaRecovery = {
-    signature,
-    nextAt: nextAt + ticks * PERIODIC_MANA_RECOVERY_MS,
-  };
+  normalized.inventory.periodicEffects.manaRecovery = { timers };
   return {
     ...normalized,
     mana,
     manaRecovered: mana - safeCurrentMana,
-    ticks,
+    ticks: totalTicks,
     sourceIds: sources.map((source) => source.relicId),
   };
 }

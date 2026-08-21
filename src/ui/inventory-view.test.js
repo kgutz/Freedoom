@@ -202,6 +202,17 @@ describe('interfaz de inventario y botín', () => {
     expect(html).not.toContain('puntos porcentuales');
   });
 
+  it('mantiene conciso el efecto principal del Frasco del Antojo Roto', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(5);
+    expect(renderRelicDetail(document, state, 'relic_05')).toBe(true);
+    const html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('Recupera Maná cada 30 minutos mientras está equipado.');
+    expect(html).toContain('30% MANÁ/DÍA');
+    expect(html).not.toContain('hasta alcanzar su porcentaje diario');
+    expect(html).toContain('Valor actual: 30% MANÁ/DÍA');
+  });
+
   it.each([
     [0, 0], [1, 1], [2, 2], [3, 3], [4, 4], [5, 5], [6, 6],
   ])('representa %i/6 cargas en el indicador reutilizable', (charge, activeCount) => {
@@ -249,8 +260,8 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Pity');
     expect(html).toContain('Probabilidad <b>70%</b>');
     expect(html).toContain('RANGO 1 <i aria-hidden="true">→</i> RANGO 2');
-    expect(html).toContain('5 MANÁ');
-    expect(html).toContain('7 MANÁ');
+    expect(html).toContain('5% MANÁ MÁX.');
+    expect(html).toContain('7% MANÁ MÁX.');
     expect(html).toContain('La Sangre de Jefe solo se consume si la mejora tiene éxito');
     expect(html).toContain('class="forge-attempt"');
     expect(html).toContain('>FORJAR</button>');
@@ -302,9 +313,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
-    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
+    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8% del Maná máximo.');
     expect(document.elements.forgeBody.innerHTML).toContain('POTENCIA HEREDADA');
-    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 5 MANÁ');
+    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 5% MANÁ MÁX.');
     expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
@@ -393,7 +404,7 @@ describe('interfaz de inventario y botín', () => {
     expect(inventoryHtml).toContain('relic-art--fusion');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     const detail = document.elements.relicDetailBody.innerHTML;
-    expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8 Maná.');
+    expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8% del Maná máximo.');
     expect(detail).not.toContain('Corazón de Hollín:');
     expect(detail).not.toContain('Lágrima de Espectro:');
   });
