@@ -71,7 +71,7 @@ export const AFFIX_DEFINITIONS = {
   discipline: {
     id: 'discipline',
     name: 'Disciplina',
-    description: '+1 XP extra al completar hábitos. No cuenta para el límite de XP.',
+    description: '+1 XP extra al completar hábitos.',
     habitXpBonus: 1,
   },
   fortune: {

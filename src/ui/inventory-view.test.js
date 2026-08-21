@@ -430,7 +430,7 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.relics.relic_03.affixes = ['discipline'];
     renderRelicDetail(document, state, 'relic_03');
     expect(document.elements.relicDetailBody.innerHTML).toContain('Disciplina');
-    expect(document.elements.relicDetailBody.innerHTML).toContain('+1 XP extra al completar hábitos. No cuenta para el límite de XP.');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('+1 XP extra al completar hábitos.');
     expect(document.elements.relicDetailBody.innerHTML).toContain('relic-detail-art');
     expect(document.elements.relicDetailBody.innerHTML).toContain('data-open-forge-relic="relic_03"');
   });
