@@ -7,7 +7,7 @@ import {
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
 import { resourceIcon } from './resource-icons.js';
-import { normalizeTodoState, todoReward } from '../domain/todo-rules.js';
+import { normalizeTodoState, sortTodos, todoReward } from '../domain/todo-rules.js';
 import {
   HABIT_DIFFICULTIES,
   habitEntryFor,
@@ -105,20 +105,25 @@ function habitGroup({ habits, frequency, title, normalized, date, planStartDate,
 function todoRow(todo) {
   const difficulty = HABIT_DIFFICULTIES[todo.difficulty] || HABIT_DIFFICULTIES.easy;
   const reward = todoReward(todo);
-  const completed = todo.completed === true;
+  const target = Math.min(20, Math.max(1, Math.trunc(Number(todo.target) || 1)));
+  const count = Number.isFinite(Number(todo.count))
+    ? Math.min(target, Math.max(0, Math.trunc(Number(todo.count))))
+    : todo.completed === true ? target : 0;
+  const completed = count >= target;
   const earnedCopy = completed
     ? ` · +${Math.max(0, Number(todo.xpAwarded) || reward.xp)} XP · +${Math.max(0, Number(todo.coinsAwarded) || reward.coins)} ${resourceIcon('coin')}`
     : '';
   return `<article class="habit-row todo-row${completed ? ' completed' : ''}" data-todo-id="${escapeHtml(todo.id)}">
-    <button class="habit-adjust habit-minus" type="button" data-todo-completed="false" aria-label="Desmarcar tarea"${completed ? '' : ' disabled'}>−</button>
+    <button class="habit-adjust habit-minus" type="button" data-todo-delta="-1" aria-label="Restar progreso"${count <= 0 ? ' disabled' : ''}>−</button>
     <button class="habit-main" type="button" data-edit-todo="${escapeHtml(todo.id)}">
       <span class="habit-title">${escapeHtml(todo.title)}</span>
       ${todo.notes ? `<span class="habit-notes">${escapeHtml(todo.notes)}</span>` : ''}
       <span class="habit-meta">${difficulty.label} · ${reward.xp} XP + ${reward.coins} oro</span>
-      <span class="habit-progress"><i style="width:${completed ? 100 : 0}%"></i></span>
-      <span class="habit-count">${completed ? 1 : 0} / 1${earnedCopy}</span>
+      <span class="habit-progress"><i style="width:${Math.min(100, Math.round((count / target) * 100))}%"></i></span>
+      <span class="habit-count">${count} / ${target}${earnedCopy}</span>
     </button>
-    <button class="habit-adjust habit-plus" type="button" data-todo-completed="true" aria-label="Completar tarea"${completed ? ' disabled' : ''}>+</button>
+    <button class="habit-grip" type="button" data-todo-drag aria-label="Mantener pulsado para mover ${escapeHtml(todo.title)}" title="Mantén pulsado y arrastra para ordenar">⠿</button>
+    <button class="habit-adjust habit-plus" type="button" data-todo-delta="1" aria-label="Sumar progreso"${completed ? ' disabled' : ''}>+</button>
   </article>`;
 }
 
@@ -209,11 +214,12 @@ export function renderHabitsView({
     </div>`;
 
   if (selectedSection === 'todo') {
-    const todos = normalizeTodoState(todoState).items
-      .filter((todo) => todo.active !== false)
-      .sort((left, right) => Number(left.completed) - Number(right.completed) || (Number(left.createdAt) || 0) - (Number(right.createdAt) || 0));
+    const todos = sortTodos(normalizeTodoState(todoState).items
+      .filter((todo) => todo.active !== false));
     const todoList = todos.length
-      ? `<div class="habit-list todo-list">${todos.map(todoRow).join('')}</div>`
+      ? `<section class="habit-group todo-group" data-todo-group>
+          <div class="habit-group-list habit-list todo-list">${todos.map(todoRow).join('')}</div>
+        </section>`
       : `<div class="todo-list-preview" role="tabpanel">
           <div class="habit-empty-icon" aria-hidden="true">✓</div>
           <h3>Empieza con una tarea</h3>

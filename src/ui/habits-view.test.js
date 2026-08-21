@@ -47,7 +47,9 @@ describe('vista de hábitos', () => {
     );
     expect(html).toContain('data-todo-id="call"');
     expect(html).toContain('Difícil · 10 XP + 5 oro');
-    expect(html).toContain('data-todo-completed="true"');
+    expect(html).toContain('data-todo-delta="1"');
+    expect(html).toContain('data-todo-drag');
+    expect(html).toContain('Mantener pulsado para mover Llamar al médico');
   });
 
   it('muestra el estado vacío y el acceso para crear', () => {

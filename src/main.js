@@ -104,9 +104,11 @@ import {
   reorderHabits
 } from './domain/habit-rules.js';
 import {
-  adjustTodoCompletion,
+  adjustTodoProgress,
+  nextTodoOrder,
   normalizeTodoInput,
   normalizeTodoState,
+  reorderTodos,
 } from './domain/todo-rules.js';
 import {
   consumePreparedBlood,
@@ -3160,7 +3162,7 @@ function updateHabitEditor(){
   const isWeekly=habitDraftFrequency==='weekly';
   frequencySection.hidden=editingTodo;
   repeatRow.hidden=editingTodo||isWeekly;
-  targetRow.hidden=editingTodo;
+  targetRow.hidden=false;
   repeatToggle.classList.toggle('active',habitDraftRepeatable&&!isWeekly);
   repeatToggle.setAttribute('aria-pressed',String(habitDraftRepeatable&&!isWeekly));
   repeatToggle.textContent=habitDraftRepeatable&&!isWeekly?'Sí':'No';
@@ -3250,7 +3252,7 @@ function openTodoEditor(id=null){
   editingHabitId=todo?todo.id:null;
   habitDraftDifficulty=todo?.difficulty||'easy';
   habitDraftFrequency='daily';
-  habitDraftTarget=1;
+  habitDraftTarget=Math.min(20,Math.max(1,Math.trunc(Number(todo?.target)||1)));
   habitDraftRepeatable=false;
   document.getElementById('habitModalTitle').textContent=todo?'Editar tarea':'Nueva tarea';
   document.getElementById('habitTitle').value=todo?.title||'';
@@ -3269,6 +3271,7 @@ function saveTodoEditor(){
     title:document.getElementById('habitTitle').value,
     notes:document.getElementById('habitNotes').value,
     difficulty:habitDraftDifficulty,
+    target:habitDraftTarget,
   });
   if(!input.title){
     showToast('Escribe un nombre para la tarea','dmg');
@@ -3287,7 +3290,7 @@ function saveTodoEditor(){
       : 'todo-'+Date.now()+'-'+Math.random().toString(16).slice(2);
     normalized.items.push({
       id:savedId,...input,active:true,completed:false,xpAwarded:0,coinsAwarded:0,
-      createdAt:Date.now(),updatedAt:Date.now(),
+      count:0,order:nextTodoOrder(normalized),createdAt:Date.now(),updatedAt:Date.now(),
     });
   }
   state.todos=normalized;
@@ -3423,24 +3426,26 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     openTodoEditor();
     return;
   }
-  const todoCompletion=event.target.closest('[data-todo-completed]');
-  if(todoCompletion&&!todoCompletion.disabled){
-    const row=todoCompletion.closest('[data-todo-id]');
+  const todoProgress=event.target.closest('[data-todo-delta]');
+  if(todoProgress&&!todoProgress.disabled){
+    const row=todoProgress.closest('[data-todo-id]');
     const todoId=row?.dataset.todoId;
-    const completed=todoCompletion.dataset.todoCompleted==='true';
-    const result=adjustTodoCompletion(state.todos,todoId,completed,Date.now());
+    const delta=Number(todoProgress.dataset.todoDelta)||0;
+    const result=adjustTodoProgress(state.todos,todoId,delta,Date.now());
     if(!result.changed) return;
     ensureHero();
     state.todos=result.todoState;
     state.game.bonusXp=Math.max(0,(Number(state.game.bonusXp)||0)+result.xpDelta);
     state.economy.coins=Math.max(0,(Number(state.economy.coins)||0)+result.coinDelta);
-    scheduleSave({type:'todo:progress',id:todoId,completed,xpDelta:result.xpDelta,coinDelta:result.coinDelta});
+    scheduleSave({type:'todo:progress',id:todoId,count:result.item?.count||0,xpDelta:result.xpDelta,coinDelta:result.coinDelta});
     renderAll();
     showToast(
-      completed
-        ? `Tarea completada · +${result.xpDelta} XP · +${result.coinDelta} oro`
-        : `Tarea corregida · ${result.xpDelta} XP · ${result.coinDelta} oro`,
-      completed?'heal':'dmg',
+      result.xpDelta<0||result.coinDelta<0
+        ? `Tarea corregida · ${result.xpDelta} XP · ${result.coinDelta} oro`
+        : result.item?.completed
+          ? `Tarea completada · +${result.xpDelta} XP · +${result.coinDelta} oro`
+          : `Progreso de tarea · +${result.xpDelta} XP · +${result.coinDelta} oro`,
+      result.item?.completed?'heal':result.xpDelta<0||result.coinDelta<0?'dmg':'heal',
     );
     return;
   }
@@ -3576,16 +3581,26 @@ const HABIT_DRAG_HOLD_MS=450;
 const HABIT_DRAG_MOVE_TOLERANCE=8;
 let habitDrag=null;
 
-function orderedHabitIds(group){
-  return [...group.querySelectorAll('.habit-row')].map(row=>row.dataset.habitId);
+function orderedItemIds(group){
+  const isTodo=group?.hasAttribute('data-todo-group');
+  return [...group.querySelectorAll('.habit-row')]
+    .map(row=>isTodo?row.dataset.todoId:row.dataset.habitId)
+    .filter(Boolean);
 }
 
 function saveHabitOrder(group){
+  if(group?.hasAttribute('data-todo-group')){
+    const ids=orderedItemIds(group);
+    state.todos=reorderTodos(state.todos,ids);
+    scheduleSave({type:'todo:reorder',ids});
+    return 'tareas';
+  }
   const frequency=group?.dataset.habitGroup;
   if(!frequency) return;
-  const ids=orderedHabitIds(group);
+  const ids=orderedItemIds(group);
   state.habits=reorderHabits(state.habits,frequency,ids);
   scheduleSave({type:'habit:reorder',frequency,ids});
+  return 'hábitos';
 }
 
 function finishHabitDrag(event,cancelled=false){
@@ -3607,16 +3622,16 @@ function finishHabitDrag(event,cancelled=false){
     return;
   }
   if(!moved) return;
-  saveHabitOrder(group);
+  const orderedKind=saveHabitOrder(group);
   renderHabits();
-  showToast('Orden de hábitos guardado','heal');
+  showToast(`Orden de ${orderedKind||'elementos'} guardado`,'heal');
 }
 
 habitsView.addEventListener('pointerdown',event=>{
-  const handle=event.target.closest('[data-habit-drag]');
+  const handle=event.target.closest('[data-habit-drag],[data-todo-drag]');
   if(!handle||(event.pointerType==='mouse'&&event.button!==0)) return;
   const row=handle.closest('.habit-row');
-  const group=row?.closest('[data-habit-group]');
+  const group=row?.closest('[data-habit-group],[data-todo-group]');
   const list=group?.querySelector('.habit-group-list');
   if(!row||!group||!list) return;
   event.preventDefault();
@@ -3657,7 +3672,7 @@ window.addEventListener('pointermove',event=>{
   event.preventDefault();
   const {row,group,list}=habitDrag;
   const target=document.elementFromPoint(event.clientX,event.clientY)?.closest('.habit-row');
-  if(target&&target!==row&&target.closest('[data-habit-group]')===group){
+  if(target&&target!==row&&target.closest('[data-habit-group],[data-todo-group]')===group){
     const previousIndex=[...list.children].indexOf(row);
     const bounds=target.getBoundingClientRect();
     list.insertBefore(row,event.clientY<bounds.top+bounds.height/2?target:target.nextSibling);
@@ -3674,10 +3689,10 @@ window.addEventListener('pointerup',event=>finishHabitDrag(event));
 window.addEventListener('pointercancel',event=>finishHabitDrag(event,true));
 
 habitsView.addEventListener('keydown',event=>{
-  const handle=event.target.closest('[data-habit-drag]');
+  const handle=event.target.closest('[data-habit-drag],[data-todo-drag]');
   if(!handle||!['ArrowUp','ArrowDown'].includes(event.key)) return;
   const row=handle.closest('.habit-row');
-  const group=row?.closest('[data-habit-group]');
+  const group=row?.closest('[data-habit-group],[data-todo-group]');
   const list=group?.querySelector('.habit-group-list');
   if(!row||!group||!list) return;
   const sibling=event.key==='ArrowUp'?row.previousElementSibling:row.nextElementSibling;
@@ -3687,8 +3702,12 @@ habitsView.addEventListener('keydown',event=>{
   else list.insertBefore(sibling,row);
   saveHabitOrder(group);
   renderHabits();
-  const moved=[...habitsView.querySelectorAll('[data-habit-drag]')]
-    .find(button=>button.closest('.habit-row')?.dataset.habitId===row.dataset.habitId);
+  const moved=[...habitsView.querySelectorAll('[data-habit-drag],[data-todo-drag]')]
+    .find(button=>{
+      const movedRow=button.closest('.habit-row');
+      return (row.dataset.todoId&&movedRow?.dataset.todoId===row.dataset.todoId)
+        || (row.dataset.habitId&&movedRow?.dataset.habitId===row.dataset.habitId);
+    });
   moved?.focus();
 });
 document.getElementById('habitCancel').addEventListener('click',closeHabitEditor);
