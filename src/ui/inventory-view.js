@@ -80,8 +80,8 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   body.innerHTML = `
     <div class="outfit-modal-tabs" role="tablist" aria-label="Secciones de outfits">
-      <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">CONSEGUIDOS</button>
-      <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">TEJER NUEVOS</button>
+      <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Conseguidos</button>
+      <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">Tejer nuevos</button>
     </div>
     <div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}

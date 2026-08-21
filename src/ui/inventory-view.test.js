@@ -49,8 +49,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
     expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('original');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('CONSEGUIDOS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('TEJER NUEVOS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Conseguidos');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Tejer nuevos');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
