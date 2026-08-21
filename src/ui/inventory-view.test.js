@@ -48,8 +48,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo Original');
     expect(document.elements.inventoryBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
     expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
-    expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('original');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Conseguidos');
+    expect(renderOutfitSelector(document, state, 'beta-tester')).toBeNull();
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Colección');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-collection-empty/g)).toHaveLength(2);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Tejer nuevos');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
@@ -58,16 +59,22 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit="beta-tester"');
 
     state.game.pioneerReward = { claimedAt: 1234, outfitId: 'beta-tester', coins: 130 };
+    expect(renderOutfitSelector(document, state)).toBeNull();
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Colección de outfits"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-owned-detail');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('beta-tester');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Guardián de la Brasa');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Vestiduras nocturnas');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-outfit="beta-tester"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('sprites/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/sorcerer_happy.png');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.png');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option equipped');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option selected');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-outfit-collection-back');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-selector-preview');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('hero_background/');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>EQUIPADO</small>');

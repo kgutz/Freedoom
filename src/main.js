@@ -199,7 +199,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='1.93';
+const APP_VERSION='1.94';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
@@ -4000,7 +4000,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const outfitShortcut=event.target.closest('[data-open-outfits]');
   if(outfitShortcut){
     outfitSelectorSection='owned';
-    selectedOutfitDraft=renderOutfitSelector(document,state,state.game?.outfit,{section:outfitSelectorSection});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -4154,6 +4154,11 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   const option=event.target.closest('[data-select-outfit]');
   if(option){
     selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned'});
+    return;
+  }
+  const collectionBack=event.target.closest('[data-outfit-collection-back]');
+  if(collectionBack){
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned'});
     return;
   }
   const weaveOption=event.target.closest('[data-select-weave-outfit]');
