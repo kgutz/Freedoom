@@ -901,7 +901,7 @@
   .hero-resource-wallet:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-resource-wallet .resource-value{gap:3px;font-size:11px}
   .hero-resource-wallet .resource-value:nth-child(n+2){position:relative;left:-3px}
-  .hero-resource-wallet .resource-icon--boss-blood+b{margin-left:-2px}
+  .hero-resource-wallet .resource-icon--boss-blood+b{margin-left:-1px}
   .hero-resource-wallet .resource-icon--arcane-fiber+b{margin-left:1px}
   .hero-resource-wallet .resource-icon{transform:scale(.82)}
   .hero-summary{display:flex;flex-direction:column;gap:3px;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.3;transform:translateY(-1px)}
