@@ -14,6 +14,52 @@ export function bindNavigation({
   onHabits,
   onCalendar,
 }) {
+  const faqSearch = document.getElementById('faqSearch');
+  const faqSearchClear = document.getElementById('faqSearchClear');
+  const faqEmpty = document.getElementById('faqEmpty');
+  const faqCategories = [...document.querySelectorAll('.faq-category')];
+  const normalizeFaqText = (value = '') => value
+    .toLocaleLowerCase('es')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  const filterFaq = (rawQuery = '') => {
+    const query = normalizeFaqText(rawQuery);
+    let visibleItems = 0;
+
+    faqCategories.forEach((category) => {
+      const categoryMatch = query && normalizeFaqText(category.dataset.faqCategory).includes(query);
+      const items = [...category.querySelectorAll('.faq-item')];
+      let categoryItems = 0;
+
+      items.forEach((item) => {
+        const matches = !query || categoryMatch || normalizeFaqText(`${item.dataset.faqItem} ${item.textContent}`).includes(query);
+        item.hidden = !matches;
+        if (matches) {
+          categoryItems += 1;
+          visibleItems += 1;
+        }
+        if (!query) item.open = false;
+      });
+
+      category.hidden = categoryItems === 0;
+      category.open = Boolean(query && categoryItems);
+    });
+
+    if (faqSearchClear) faqSearchClear.hidden = !query;
+    if (faqEmpty) faqEmpty.hidden = visibleItems !== 0;
+  };
+
+  if (faqSearch) {
+    faqSearch.addEventListener('input', () => filterFaq(faqSearch.value));
+    faqSearchClear?.addEventListener('click', () => {
+      faqSearch.value = '';
+      filterFaq();
+      faqSearch.focus();
+    });
+  }
+
   const switchView = (viewId, buttonId) => {
     document
       .querySelectorAll('nav button, .gear-btn')
@@ -52,6 +98,10 @@ export function bindNavigation({
   document.getElementById('menuInstr').addEventListener('click', () => {
     document.getElementById('menuBg').classList.remove('show');
     document.getElementById('sheetInstr').classList.add('show');
+    if (faqSearch) {
+      faqSearch.value = '';
+      filterFaq();
+    }
   });
   document.getElementById('menuBg').addEventListener('click', (event) => {
     if (event.target.id === 'menuBg') event.target.classList.remove('show');

@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.01</div>
+  <div class="ob-version" id="obVersion">v2.02</div>
 </div>
 
 <div id="loading" class="loading">
@@ -390,153 +390,145 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.01</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.02</span></p>
       </div>
     </div>
   </div>
 </div>
 
-<!-- HOJA INSTRUCCIONES (superpuesta) -->
+<!-- CENTRO DE AYUDA (superpuesto) -->
 <div class="sheet-bg" id="sheetInstr">
-  <div class="sheet">
-    <div class="sheet-head"><h3>Instrucciones</h3><button class="sheet-close" data-sheet="sheetInstr">✕</button></div>
-    <div class="faq-list">
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">↟</span><span>Tu camino</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Freedom tiene tres puntos de partida. Puedes reducir progresivamente hasta llegar a cero, mantenerte completamente sin fumar o establecer un consumo controlado con días permitidos y un máximo semanal compartido.</p>
-          <p class="hint">En consumo controlado, los días permitidos muestran un contador de cigarros. En los demás debes confirmar si no fumaste. Superar el máximo semanal hace que los días permitidos de esa semana no cuenten como cumplidos.</p>
-          <p class="hint">Si comenzaste en el camino sin fumar y decides pasar a consumo controlado, puedes programarlo desde Ajustes. El cambio comienza con tu siguiente semana para no alterar el jefe actual, y los días anteriores conservan sus reglas originales.</p>
-          <p class="hint">Las cuatro clases adaptan sus habilidades al camino elegido. En reducción interactúan con el ritmo y los cigarros; los caminos sin fumar y controlado usan poderes centrados en confirmaciones, rachas, hábitos, vida, maná y defensa semanal.</p>
-          <p class="hint">El héroe del camino de reducción evoluciona al completar todo su plan y dejar de fumar. Quien empieza sin fumar o con consumo controlado evoluciona al derrotar al tercer jefe. Los hábitos y la XP no adelantan esta evolución.</p>
+  <div class="sheet faq-sheet">
+    <div class="sheet-head"><h3>Ayuda</h3><button class="sheet-close" data-sheet="sheetInstr" aria-label="Cerrar ayuda">✕</button></div>
+    <section class="faq-hero" aria-labelledby="faqHeading">
+      <span class="faq-eyebrow">CENTRO DE AYUDA</span>
+      <h4 id="faqHeading">¿Qué necesitas saber?</h4>
+      <p>Encuentra una respuesta rápida sin leer un manual.</p>
+      <label class="faq-search" for="faqSearch">
+        <span aria-hidden="true">⌕</span>
+        <input id="faqSearch" type="search" autocomplete="off" placeholder="Buscar en ayuda…">
+        <button id="faqSearchClear" type="button" aria-label="Borrar búsqueda" hidden>✕</button>
+      </label>
+    </section>
+
+    <div class="faq-categories" id="faqCategories">
+      <details class="faq-category" data-faq-category="primeros pasos camino plan semana despertar">
+        <summary><span class="faq-category-icon" aria-hidden="true">↟</span><span><b>Primeros pasos</b><small>Tu camino, semana y despertar</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="qué camino debo elegir reducción sin fumar control">
+            <summary><span>¿Qué camino debo elegir?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Reducción baja tu límite poco a poco. Sin fumar registra tus días limpios. Control te permite elegir días de consumo y un máximo semanal.</p><p>Puedes programar un cambio desde Ajustes; empezará la siguiente semana para no alterar tu progreso actual.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo funciona mi plan semana siete días límite">
+            <summary><span>¿Cómo funciona mi semana?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Tu semana dura siete días desde la fecha en la que empezaste. Cada camino evalúa el objetivo que elegiste y usa esos resultados para el combate semanal.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cuándo cambia mi día despertar cuatro madrugada medianoche hora">
+            <summary><span>¿Cuándo cambia mi día?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>En Reducción y Sin fumar cambia a las <b>04:00</b> por defecto. En Control, los días permitidos cambian a las <b>00:00</b>.</p><p>Puedes cambiar la hora desde Ajustes y corregir tu despertar de hoy sin modificar días anteriores.</p></div>
+          </details>
         </div>
       </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⏱</span><span>El ritmo del día</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">La barra de Hoy reparte tu límite diario entre tus horas despierto. La zona clara marca hasta dónde "tocaría" ir a esta hora; el color es lo que llevas: verde al principio, amarillo, naranja y rojo al acercarte al límite. Debajo, la app te aproxima la hora del siguiente repartiendo lo que te queda entre el tiempo que queda. La hora del "Último" es tocable por si apuntaste tarde.</p>
+
+      <details class="faq-category" data-faq-category="día ritmo daño curación borrachera cerveza">
+        <summary><span class="faq-category-icon" aria-hidden="true">☼</span><span><b>El día a día</b><small>Ritmo, vida y efectos</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="cómo funciona el ritmo barra siguiente aproximado último cigarro">
+            <summary><span>¿Cómo funciona el ritmo del día?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>La barra de Hoy reparte tu límite entre las horas que estarás despierto. La zona clara muestra el ritmo recomendado y «Siguiente aprox.» calcula cuándo te conviene registrar el próximo.</p><p>El primer cigarro del día inicia el cálculo: no cuenta como adelantado.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cuándo pierdo recupero vida daño curación armadura">
+            <summary><span>¿Cuándo pierdo o recupero vida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>En Reducción pierdes vida si fumas por delante del ritmo o superas tu límite. Esperar, cumplir el día y usar habilidades o reliquias de curación te ayuda a recuperarla.</p><p>La racha también genera Armadura y reduce el daño recibido.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="qué hace borrachera cerveza habilidades pasivas falla">
+            <summary><span>¿Qué hace la Borrachera?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Cada cerveza puede hacer fallar habilidades activas y reducir el efecto de las pasivas durante un tiempo. Cuantas más registres, mayor será la intoxicación.</p><p>Toca su indicador junto al héroe para consultar el porcentaje y el tiempo restante.</p></div>
+          </details>
         </div>
       </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🗓</span><span>El plan</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Las semanas van de 7 en 7 días desde tu propio día de inicio. En reducción, el límite diario baja un cigarro cada semana. En el camino sin fumar, el combate depende de tus confirmaciones. En consumo controlado, se comprueba que respetes los días elegidos y el máximo semanal. Las pastillas y las cervezas son opcionales y los datos se guardan en este dispositivo.</p>
+
+      <details class="faq-category" data-faq-category="héroe progreso experiencia oro maná habilidades jefes">
+        <summary><span class="faq-category-icon" aria-hidden="true">✦</span><span><b>Héroe y progreso</b><small>XP, habilidades y jefes</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="cómo gano oro y experiencia xp nivel recompensas">
+            <summary><span>¿Cómo gano XP y oro?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Cumple tu objetivo diario, completa hábitos o pendientes y derrota jefes. Algunas habilidades, reliquias y pociones añaden recompensas extra.</p><p>La recompensa exacta aparece antes de cada acción y en el resumen al completarla.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo funcionan vida maná clase nivel recuperar máximo">
+            <summary><span>¿Cómo funcionan la vida y el maná?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>La vida refleja el aguante de tu héroe; el maná permite usar habilidades. Sus máximos aumentan con el nivel y cambian según la clase.</p><p>Puedes recuperar ambas barras cumpliendo el día, usando habilidades o equipando reliquias.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo uso habilidades nivel dos ocho catorce ulti cooldown usos">
+            <summary><span>¿Cómo funcionan las habilidades?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Se desbloquean en los niveles 2, 8 y 14. Las de nivel 8 pueden usarse dos veces al día; tras completar el primer reto, esperan 60 segundos antes del segundo uso.</p><p>La definitiva puede usarse dos veces por semana. Toca la ⓘ del bloque de Habilidades para ver sus reglas y coste.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo derroto jefe semanal seis días vida golpes botín">
+            <summary><span>¿Cómo derroto al jefe semanal?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Cumple seis de los siete días para derrotarlo. Cada día válido le quita vida según las reglas de tu camino.</p><p>Si sobrevive, recupera toda su vida al comenzar la siguiente semana. Si lo derrotas, recibes XP, oro y recursos para el Inventario.</p></div>
+          </details>
         </div>
       </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🌅</span><span>Cambio de día y despertar</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">En reducción y en el camino sin fumar, el día de Freedom cambia por defecto a las <b style="color:var(--kodak)">04:00</b>. Lo registrado durante la madrugada sigue perteneciendo a la noche anterior. En consumo controlado, los días permitidos cambian por día natural a las <b style="color:var(--kodak)">00:00</b>, para que el contador se active en cuanto comienza uno de los días elegidos.</p>
-          <p class="hint">Puedes modificar la hora de cambio durante el onboarding o desde Ajustes. En la primera apertura posterior, Freedom estima automáticamente tu hora de despertar para ese día. La verás en Hoy como <b style="color:var(--text)">“Despertar de hoy”</b>; si abriste la app más tarde de lo que te levantaste, puedes corregirla allí mismo sin modificar los días anteriores.</p>
-          <p class="hint">Tu hora habitual de Ajustes se conserva como respaldo cuando todavía no existe una hora específica para ese día.</p>
+
+      <details class="faq-category" data-faq-category="hábitos pendientes to do list recompensas repetir completar">
+        <summary><span class="faq-category-icon" aria-hidden="true">✓</span><span><b>Hábitos y pendientes</b><small>Rutinas, tareas y recompensas</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="cómo funcionan hábitos diarios semanales objetivo repetible">
+            <summary><span>¿Cómo funcionan los hábitos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Los hábitos son rutinas diarias o semanales. Elige su dificultad y objetivo; si requieren varias repeticiones, la recompensa se reparte por fases.</p><p>Puedes corregir el progreso con + y −. Si lo deshaces, también se revierte lo concedido.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="qué diferencia hay pendiente to do list hábito tarea eliminar">
+            <summary><span>¿Qué diferencia hay entre un hábito y un pendiente?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Un hábito se repite; un pendiente es una tarea concreta. Ambos pueden tener dificultad y objetivo, pero al completar un pendiente Freedom te propone eliminarlo de la lista.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cuánto dan hábitos pendientes xp oro recompensa tope">
+            <summary><span>¿Cuánto recompensa cada uno?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>La recompensa depende de la dificultad, la frecuencia y el objetivo. La verás al crear la actividad y junto a su nombre, así siempre consultas el valor vigente.</p><p>Los hábitos tienen límites de XP para mantener el equilibrio; los pendientes muestran su progreso por separado.</p></div>
+          </details>
         </div>
       </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚔</span><span>Daño</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <div class="hint"><span class="faq-lead">En el camino de reducción, tu héroe pierde vida cuando fumas <b style="color:var(--text)">por delante del ritmo del día</b> (la zona clara de la barra en Hoy):</span><ul class="faq-bullets"><li>Un poco adelantado → <b style="color:var(--warn)">−8</b></li><li>Muy adelantado → <b style="color:var(--warn)">−15</b></li><li>Por encima del límite del día → <b style="color:var(--warn)">−25</b></li><li>Cada cerveza (en ambos caminos, si las registras) → <b style="color:var(--warn)">−5</b></li></ul></div>
-          <p class="hint">En reducción, fumar en ritmo o por detrás no causa daño, y esperar hasta la hora del "siguiente aprox." consigue un <b style="color:var(--kodak)">disparo perfecto</b>. En el camino sin fumar no existe contador: registrar “Hoy fumé” marca ese día como fallado.</p>
+
+      <details class="faq-category" data-faq-category="inventario reliquias botín tienda forja outfits fibras arcanas">
+        <summary><span class="faq-category-icon" aria-hidden="true">▣</span><span><b>Inventario</b><small>Reliquias, Forja y Outfits</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="cómo consigo botín reliquias jefe oro sangre rareza">
+            <summary><span>¿Cómo consigo reliquias y recursos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Los jefes pueden entregar reliquias y siempre conceden recursos al derrotarlos por primera vez. El cofre muestra todo lo conseguido.</p><p>La ficha de cada reliquia explica su rareza, efecto y rango.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="diferencia inventario colección equipar dos reliquias">
+            <summary><span>¿Qué diferencia hay entre Inventario y Colección?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Inventario contiene lo que posees y te permite equipar hasta dos reliquias compatibles. Colección registra todo lo que hayas descubierto, aunque ya no lo conserves.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo funcionan tienda forja mejorar fusionar reliquias">
+            <summary><span>¿Para qué sirven la Tienda y la Forja?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>La Tienda te permite comprar pociones y recuperar ciertas reliquias. En la Forja puedes mejorar una reliquia o fusionar dos compatibles para descubrir otra.</p><p>Antes de gastar recursos verás el coste, la probabilidad y una confirmación.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo consigo cambio outfit tejer fibras arcanas apariencia">
+            <summary><span>¿Cómo consigo y cambio Outfits?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Toca el Outfit desde Inventario para abrir su Colección. Allí puedes equipar los que ya tienes o entrar en «Tejer nuevos».</p><p>Los Outfits cambian la apariencia, no las estadísticas. Se tejen con Fibras Arcanas y oro.</p></div>
+          </details>
         </div>
       </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">♥</span><span>Curación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <ul class="hint faq-bullets"><li><b style="color:var(--ok)">+1</b> de vida cada 10 minutos sin fumar — aguantar cura, y fumar reinicia el reloj.</li><li>Completar todas las pastillas del día (las que te pautaron, ajustable en Ajustes) es tu poción: <b style="color:var(--ok)">+15</b> al tomar la última.</li><li>Descanso nocturno: día cumplido → amaneces a tu vida y maná <b style="color:var(--ok)">máximos</b>; día pasado → tu vida amanece al 75% de tu máximo (85% si eres Caballero nivel 12+), y tu maná no se toca.</li><li>La racha es armadura: <b style="color:var(--kodak)">−1 de daño</b> por cada 3 días seguidos cumpliendo (máx −5).</li></ul>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💧</span><span>Maná y hechizos</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">El maná es tu fuerza de voluntad acumulada. Su máximo sube con el nivel y depende de tu clase (los magos tienen mucho más; el caballero, poco). Completar las pastillas restaura <b style="color:var(--pill)">+15</b>. En reducción, un disparo perfecto restaura <b style="color:var(--pill)">+10</b>; en el camino sin fumar, algunas habilidades del Hechicero y el Druida permiten recuperarlo mediante hábitos. Tras un día cumplido amaneces con el maná <b style="color:var(--pill)">al máximo</b>; si fallas, conservas el que tuvieras.</p>
-          <p class="hint">Los hechizos activos se lanzan tocando directamente su icono en el bloque de Habilidades (la ⓘ abre el Libro de habilidades con el detalle completo de las 6). Se desbloquean a nivel 2, 8 y 14. El de nivel 14 es tu ULTI: solo 1 uso por semana. Además cada clase tiene 3 pasivas (nivel 1, 5 y 12) siempre activas. Los efectos temporales se ven como chips junto a tu héroe.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">🍺</span><span>Borrachera</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Cada cerveza añade un efecto independiente: <b style="color:var(--warn)">10%</b> durante 30 min, <b style="color:var(--warn)">25%</b> durante 45 min, <b style="color:var(--warn)">45%</b> durante 60 min, <b style="color:var(--warn)">70%</b> durante 75 min y <b style="color:var(--warn)">85%</b> durante 90 min a partir de la quinta.</p>
-          <p class="hint">La borrachera es la probabilidad de que falle una habilidad activa y el porcentaje que reduce las pasivas. Una habilidad fallida gasta maná, pero no consume la habilidad semanal. Cada efecto desaparece por separado al terminar su tiempo.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">✦</span><span>Cómo ganar experiencia</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <div class="hint"><span class="faq-lead">Recompensas compartidas por los tres caminos:</span><ul class="faq-bullets"><li>Cumplir el día, confirmarlo sin fumar o respetar el control establecido → <b style="color:var(--kodak)">50 XP</b></li><li>Completar las pastillas en un día cumplido → <b style="color:var(--kodak)">+10 XP</b></li><li>Completar hábitos → según su dificultad y frecuencia</li><li>Rachas de 7, 14 y 30 días → <b style="color:var(--kodak)">+75, +150 y +300 XP</b></li><li>Derrotar un jefe → <b style="color:var(--kodak)">+200 XP</b></li></ul></div>
-          <div class="hint"><span class="faq-lead">Recompensas exclusivas del camino de reducción:</span><ul class="faq-bullets"><li>Margen bajo el límite → <b style="color:var(--kodak)">+4 XP</b> por cada cigarro no consumido</li><li>Terminar usando como máximo la mitad del límite → <b style="color:var(--kodak)">+10 XP</b></li><li>Conseguir un nuevo mínimo personal → <b style="color:var(--kodak)">+25 XP</b></li><li>Disparo perfecto → <b style="color:var(--kodak)">+2 XP</b> al momento</li></ul></div>
-          <p class="hint">Algunas habilidades pueden mejorar o multiplicar estas recompensas. La XP aumenta el nivel, la vida y el maná, y desbloquea nuevas habilidades; no adelanta por sí sola la evolución visual del héroe.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💀</span><span>Jefes</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <div class="hint"><span class="faq-lead">Cada jefe tiene <b style="color:var(--warn)">150 HP</b>:</span><ul class="faq-bullets"><li>En reducción, cerrar dentro del límite causa <b style="color:var(--kodak)">−25 HP</b>; el margen, los perfectos y cerrar con cero pueden añadir daño.</li><li>En el camino sin fumar, cada día confirmado causa exactamente <b style="color:var(--kodak)">−25 HP</b>.</li><li>En consumo controlado, confirmar un día no permitido o cerrar un día permitido sin superar el máximo semanal causa <b style="color:var(--kodak)">−25 HP</b>.</li></ul></div>
-          <p class="hint">Las pastillas curan y restauran maná, pero no dañan al jefe. Las cervezas y las habilidades tampoco causan daño directo al jefe.</p>
-          <p class="hint">Para derrotarlo necesitas seis días cumplidos de siete: dentro del límite en reducción, confirmados sin fumar o respetando el consumo controlado. Si superas el máximo semanal, los días permitidos no rompen sellos. Si no derrotas al jefe, recupera toda su vida la semana siguiente.</p>
-          <p class="hint">Si termina la semana con vida, continúas contra el mismo jefe, pero recupera sus <b style="color:var(--warn)">150 HP completos</b>. Además recibes el golpe semanal: pierdes un <b style="color:var(--warn)">30%</b> de tu vida máxima y tu maná baja al <b style="color:var(--warn)">20%</b> del suyo.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">✓</span><span>Hábitos</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Crea hábitos positivos desde su pestaña y elige cuántas veces debes realizarlos. Puedes corregir el contador con los botones + y −. La XP se concede al alcanzar el objetivo completo, y se retira si lo deshaces durante ese mismo periodo.</p>
-          <div class="hint"><span class="faq-lead">Recompensas:</span><ul class="faq-bullets"><li>Diario fácil → <b style="color:var(--kodak)">3 XP</b>; medio → <b style="color:var(--kodak)">6 XP</b>; difícil → <b style="color:var(--kodak)">10 XP</b>.</li><li>Semanal fácil → <b style="color:var(--kodak)">9 XP</b>; medio → <b style="color:var(--kodak)">18 XP</b>; difícil → <b style="color:var(--kodak)">30 XP</b>.</li><li>El tope base es de <b style="color:var(--kodak)">25 XP diarios</b> y <b style="color:var(--kodak)">35 XP semanales</b>. Si configuras más hábitos activos, el tope aumenta automáticamente según su XP potencial, hasta un máximo de <b style="color:var(--kodak)">100 al día</b> y <b style="color:var(--kodak)">120 a la semana</b>.</li></ul></div>
-          <div class="hint"><span class="faq-lead">Oro por completar:</span><ul class="faq-bullets"><li>Hábitos diarios → <b style="color:var(--resource-coin)">1, 2 o 3 de oro</b> según sean fáciles, medios o difíciles.</li><li>Hábitos semanales → <b style="color:var(--resource-coin)">3, 5 u 8 de oro</b>.</li><li>Completar todos los hábitos diarios activos concede un bonus de <b style="color:var(--resource-coin)">+3 de oro</b>.</li></ul></div>
-          <p class="hint">Los hábitos aumentan la experiencia del héroe, pero no curan, no dan maná y no dañan al jefe. El progreso diario cambia junto al día de Freedom; el semanal se reinicia el mismo día que tu semana del plan.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">◆</span><span>Botín y reliquias</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Al derrotar a determinados jefes recibes oro y <b style="color:var(--resource-blood)">Sangre de Jefe</b>. Además, tienes un <b style="color:var(--kodak)">70% de probabilidad</b> de conseguir su reliquia exclusiva. No existen reliquias repetidas.</p>
-          <div class="hint"><span class="faq-lead">Rareza de una reliquia:</span><ul class="faq-bullets"><li>Rara: <b style="color:#80adc3">60%</b>, sin efectos extras.</li><li>Legendaria: <b style="color:#e2a74a">30%</b>, con 1 efecto extra.</li><li>Mítica: <b style="color:#c57ce8">10%</b>, con 2 efectos extras distintos.</li></ul></div>
-          <p class="hint">La recompensa de cada jefe solo puede recibirse una vez, incluso al importar o restaurar una partida. Si ya habías derrotado jefes antes de esta actualización, Freedom reconoce esas victorias y entrega el botín retroactivamente. La misma partida siempre recibe las mismas rarezas y efectos extras durante esta migración.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">▣</span><span>Inventario y equipamiento</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">En Héroe, el icono de la mochila abre <b style="color:var(--kodak)">Inventario, Colección, Forja y Tienda</b>. El Inventario contiene las reliquias que posees y puedes equipar; puedes llevar un máximo de <b style="color:var(--kodak)">dos activas</b> al mismo tiempo. Solo las equipadas aplican sus efectos.</p>
-          <p class="hint">Las dos reliquias activas deben ser de tipos diferentes: no puedes llevar dos yelmos, dos dagas, dos corazones ni dos objetos equivalentes al mismo tiempo.</p>
-          <p class="hint">La Colección registra permanentemente todo lo que hayas descubierto, aunque una reliquia ya no esté en tu Inventario. Las fusionadas se distinguen visualmente y las entradas futuras permanecen ocultas.</p>
-          <p class="hint">Cada reliquia proporciona efectos que pueden mejorar tu partida. Su nombre, poder y valores permanecen ocultos hasta que la consigues.</p>
-          <p class="hint">Cuando una reliquia tenga efectos extras, cada nombre aparecerá en amarillo con su explicación debajo. Solo puedes consultar los efectos de los objetos que ya hayas descubierto.</p>
-          <p class="hint">Puedes cambiar las reliquias equipadas cuando quieras. Un efecto diario o semanal que ya se haya utilizado no vuelve a activarse por desequipar y equipar el objeto.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">▤</span><span>Tienda</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Si no consigues la reliquia de un jefe, no la pierdes para siempre: queda desbloqueada para tu Tienda personal. Solo aparecen reliquias de jefes que ya hayas derrotado y cuyo drop haya fallado.</p>
-          <p class="hint">La selección cambia cada <b style="color:var(--kodak)">3 días</b> y muestra hasta tres reliquias. Comprarlas cuesta el doble del oro que entregó su jefe y la misma cantidad de Sangre de Jefe.</p>
-          <p class="hint">Una reliquia comprada entra directamente en el Inventario y desaparece de la Tienda. Si una reliquia fue consumida mediante Fusión, puede volver a la rotación conservando exactamente su rareza y efectos extras; recuperarla cuesta un <b style="color:var(--resource-coin)">25% más de oro</b>, pero la misma Sangre de Jefe.</p>
-          <p class="hint">Las compras, drops y rotaciones quedan guardados para que recargar o restaurar no vuelva a tirar sus resultados.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">⚒</span><span>Forja</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">La Forja tiene dos modos: <b style="color:var(--kodak)">Mejorar</b> aumenta el efecto principal de una reliquia desde el Rango I hasta el Rango III; <b style="color:var(--kodak)">Fusionar</b> combina dos reliquias base compatibles para descubrir una nueva.</p>
-          <p class="hint">Una Fusión cuesta <b style="color:var(--resource-coin)">100 de oro</b> y <b style="color:var(--resource-blood)">1 Sangre de Jefe</b>. Es 100% segura, pero consume permanentemente sus dos ingredientes. Antes de ejecutarla, Freedom muestra una confirmación explícita.</p>
-          <p class="hint">La reliquia fusionada nunca baja de la rareza más alta de sus ingredientes. Conserva sus efectos extras sin duplicarlos: un efecto garantiza rareza Legendaria y dos o más garantizan rareza Mítica.</p>
-          <p class="hint">Las recetas desconocidas ocultan su resultado hasta completar la primera Fusión. No todas las parejas son compatibles y las reliquias fusionadas no se pueden mejorar de rango por ahora.</p>
-          <div class="hint"><span class="faq-lead">Costes y probabilidades:</span><ul class="faq-bullets"><li>Rango I → II: cada intento cuesta <b style="color:var(--resource-coin)">50 de oro</b>, necesita <b style="color:var(--resource-blood)">1 Sangre de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">70% → 85% → 100%</b>.</li><li>Rango II → III: cada intento cuesta <b style="color:var(--resource-coin)">100 de oro</b>, necesita <b style="color:var(--resource-blood)">2 Sangres de Jefe</b> y sus probabilidades son <b style="color:var(--kodak)">45% → 60% → 75% → 90% → 100%</b>.</li></ul></div>
-          <div class="hint"><span class="faq-lead">Cómo se consumen los recursos:</span><ul class="faq-bullets"><li>El oro se gasta siempre que realizas un intento.</li><li>La Sangre de Jefe solo se consume cuando la mejora tiene éxito: 1 para alcanzar el Rango II y 2 para alcanzar el Rango III.</li><li>Si la Forja falla, conservas toda la Sangre y la reliquia mantiene su rango.</li><li>No puedes intentar una mejora si no tienes suficiente oro o Sangre para completarla.</li></ul></div>
-          <p class="hint">Cada fallo aumenta el pity y mejora la probabilidad del siguiente intento hasta garantizar el éxito. Una operación ya registrada no puede descontar oro o Sangre dos veces, y el saldo se conserva al exportar, importar o restaurar una copia.</p>
-          <p class="hint">Cada jefe derrotado entrega Sangre de Jefe garantizada. La cantidad aumenta provisionalmente con la progresión del jefe y existe un <b style="color:var(--resource-blood)">2% de probabilidad</b> de recibir el doble. El resultado se guarda y no puede repetirse recargando la app.</p>
-          <p class="hint">La Sangre es un recurso estratégico: puedes mejorar reliquias, recuperarlas en la Tienda, guardarla para el futuro o pagar <b style="color:var(--resource-blood)">1 Sangre</b> para cambiar la clase de un héroe ya creado. La clase inicial siempre es gratuita.</p>
-          <p class="hint">Algunos efectos extras pueden mejorar ligeramente la probabilidad de la Forja mientras la reliquia que los contiene está equipada.</p>
-        </div>
-      </details>
-      <details class="faq-item">
-        <summary><span class="faq-title"><span class="faq-topic-icon" aria-hidden="true">💾</span><span>Guardado y recuperación</span></span><span class="faq-icon" aria-hidden="true"></span></summary>
-        <div class="faq-answer">
-          <p class="hint">Freedom guarda cada cambio inmediatamente en este dispositivo y comprueba que se haya escrito correctamente. Además de las copias recientes, conserva una <b style="color:var(--text)">copia diaria protegida</b> y otra <b style="color:var(--text)">semanal</b>, separadas de la rotación normal.</p>
-          <p class="hint">Si una partida nueva aparece casi vacía pero existe otra con héroe, días, hábitos o jefes, Freedom bloquea ese guardado y recupera la versión con información. Los reinicios, importaciones y restauraciones que confirmes voluntariamente sí se respetan.</p>
-          <p class="hint">Desde el menú hamburguesa puedes abrir <b style="color:var(--text)">Copias de seguridad</b> y restaurar las copias automáticas. Freedom marca como recomendada la <b style="color:var(--kodak)">última partida con información</b>, que se conserva fuera de la rotación y solo se actualiza si el nuevo estado supera la detección de regresión.</p>
-          <p class="hint">Si aparece un aviso de que el último cambio no se guardó, no cierres ni reinicies la app: libera espacio si fuera necesario y revisa tus copias de seguridad. Los datos de la app instalada y los del navegador pueden pertenecer a almacenamientos separados.</p>
+
+      <details class="faq-category" data-faq-category="cuenta datos guardado copias seguridad recuperar restaurar dispositivo">
+        <summary><span class="faq-category-icon" aria-hidden="true">▤</span><span><b>Cuenta y datos</b><small>Guardado y recuperación</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="dónde guarda mi partida dispositivo automáticamente">
+            <summary><span>¿Dónde se guarda mi partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Freedom guarda cada cambio automáticamente en este dispositivo. La app instalada y el navegador pueden utilizar almacenamientos diferentes.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo recupero partida copia seguridad restaurar">
+            <summary><span>¿Cómo recupero una partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Abre el menú y entra en «Copias de seguridad». Freedom conserva copias recientes y versiones protegidas para ayudarte a recuperar una partida con progreso.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="qué hago cambio no se guardó error espacio cerrar">
+            <summary><span>¿Qué hago si un cambio no se guardó?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>No cierres ni reinicies la aplicación. Comprueba el espacio disponible y revisa «Copias de seguridad» antes de continuar.</p></div>
+          </details>
         </div>
       </details>
     </div>
+    <p class="faq-empty" id="faqEmpty" hidden>No encontramos esa respuesta. Prueba con otra palabra.</p>
     <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
   </div>
 </div>
@@ -825,7 +817,7 @@
     <h3 id="menuTitle" style="display:none">Menú</h3>
     <button class="menu-item" id="menuInstr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>
-      Instrucciones
+      Ayuda
     </button>
     <button class="menu-item" id="menuAjustes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
