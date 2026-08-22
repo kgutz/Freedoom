@@ -213,9 +213,25 @@ export function renderHabitsView({
       <button class="habit-create" type="button" ${selectedSection === 'habits' ? 'data-add-habit aria-label="Crear hábito"' : 'data-add-todo aria-label="Crear tarea"'}>+</button>
     </div>`;
 
+  const heroCard = ({ earnedLabel, limitLabel = '' }) => `
+    <div class="habit-hero-card">
+      <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
+      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></button>
+      <div class="habit-hero-info">
+        <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>${escapeHtml(earnedLabel)}</b></div>
+        <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
+        <div class="habit-xp-label"><span>${xp} / ${nextXp} XP</span>${limitLabel ? `<span>${escapeHtml(limitLabel)}</span>` : ''}</div>
+      </div>
+    </div>`;
+
   if (selectedSection === 'todo') {
-    const todos = sortTodos(normalizeTodoState(todoState).items
+    const normalizedTodos = normalizeTodoState(todoState);
+    const todos = sortTodos(normalizedTodos.items
       .filter((todo) => todo.active !== false));
+    const todoXpEarned = normalizedTodos.items.reduce(
+      (total, todo) => total + Math.max(0, Number(todo.xpAwarded) || 0),
+      0,
+    );
     const todoList = todos.length
       ? `<section class="habit-group todo-group" data-todo-group>
           <div class="habit-group-list habit-list todo-list">${todos.map(todoRow).join('')}</div>
@@ -227,20 +243,13 @@ export function renderHabitsView({
           <button type="button" data-add-todo>Crear mi primera tarea</button>
         </div>`;
     root.innerHTML = `${tabs}
+      ${heroCard({ earnedLabel: `+${todoXpEarned} XP To Do` })}
       ${todoList}`;
     return;
   }
 
   root.innerHTML = `${tabs}
-    <div class="habit-hero-card">
-      <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></button>
-      <div class="habit-hero-info">
-        <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>+${earnedNow} XP hábitos</b></div>
-        <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
-        <div class="habit-xp-label"><span>${xp} / ${nextXp} XP</span><span>Topes ${dailyXpCap}/día · ${weeklyXpCap}/sem.</span></div>
-      </div>
-    </div>
+    ${heroCard({ earnedLabel: `+${earnedNow} XP hábitos`, limitLabel: `Topes ${dailyXpCap}/día · ${weeklyXpCap}/sem.` })}
     <div class="habit-filter" role="group" aria-label="Filtrar hábitos">
       <button type="button" data-habit-filter="all" class="${selectedFilter === 'all' ? 'active' : ''}" aria-pressed="${selectedFilter === 'all'}">Todos</button>
       <button type="button" data-habit-filter="daily" class="${selectedFilter === 'daily' ? 'active' : ''}" aria-pressed="${selectedFilter === 'daily'}">Diarios</button>

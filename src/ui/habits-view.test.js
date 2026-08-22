@@ -32,8 +32,26 @@ describe('vista de hábitos', () => {
     expect(html).toContain('data-habit-section="todo" class="active"');
     expect(html).toContain('data-add-todo');
     expect(html).toContain('Crear mi primera tarea');
-    expect(html).not.toContain('habit-hero-card');
+    expect(html).toContain('habit-hero-card');
+    expect(html).toContain('+0 XP To Do');
+    expect(html).not.toContain('Topes ');
     expect(html).not.toContain('data-add-habit');
+  });
+
+  it('muestra en To Do la XP total recibida, incluso de tareas ya retiradas', () => {
+    const html = render(
+      { items: [], entries: {} },
+      'all',
+      undefined,
+      null,
+      'todo',
+      { items: [
+        { id: 'active', title: 'Activa', difficulty: 'easy', active: true, xpAwarded: 3 },
+        { id: 'archived', title: 'Archivada', difficulty: 'hard', active: false, xpAwarded: 10 },
+      ] },
+    );
+    expect(html).toContain('+13 XP To Do');
+    expect(html).not.toContain('Topes ');
   });
 
   it('renderiza las tareas con la misma recompensa base que los hábitos', () => {
