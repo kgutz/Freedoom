@@ -383,9 +383,11 @@ export function renderTodayView({
       `hero_background/${model.hero.classId}_today_bg.png`;
     document.getElementById('hoyHeroName').textContent = model.hero.name;
     document.getElementById('hoyHeroCls').textContent = model.hero.className;
+    const faceSource = heroFaceSource(model.hero.classId, game?.outfit);
+    const spriteFallback = heroSpriteSource(model.hero.classId, 'happy', game?.outfit);
     document.getElementById('hoyFace').innerHTML =
-      `<img src="${heroFaceSource(model.hero.classId, game?.outfit)}" alt="" ` +
-      `onerror="this.onerror=null;this.src='${heroSpriteSource(model.hero.classId, 'happy', game?.outfit)}';this.className='face-full'">`;
+      `<img src="${faceSource}" alt="" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full'">` +
+      `<img class="inventory-shortcut-shimmer-layer" src="${faceSource}" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full inventory-shortcut-shimmer-layer'">`;
     const fill = document.getElementById('hoyHpFill');
     fill.style.width = `${model.hero.hpPercent}%`;
     fill.className = `stat-fill ${model.hero.hpClass}`;

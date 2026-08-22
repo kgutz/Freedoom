@@ -208,8 +208,12 @@ import {
 } from './ui/splash-assets.js';
 
 const APP_VERSION='2.02';
-const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v1';
+const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
+const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
+const dismissedInventoryShortcutHints=new Set();
+const AUREO_NOTICE_KEY='freedoom:aureo-notice-seen:v1';
+const AUREO_NOTICE_TARGETS=['outfits','weave'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -2126,30 +2130,55 @@ function handleFilledFusionSlotTap(slot){
   },ACTIVE_RELIC_DOUBLE_TAP_MS);
   pendingFusionSlotTap=pending;
 }
+function inventoryShortcutHintClass(surface){
+  return `inventory-shortcut-unseen-${surface}`;
+}
+function aureoNoticeClass(target){
+  return `aureo-notice-${target}-unseen`;
+}
+function aureoNoticeSeen(target){
+  try{ return localStorage.getItem(`${AUREO_NOTICE_KEY}:${target}`)==='1'; }catch{}
+  return false;
+}
+function syncAureoNotices(){
+  AUREO_NOTICE_TARGETS.forEach(target=>{
+    document.documentElement.classList.toggle(aureoNoticeClass(target),!aureoNoticeSeen(target));
+  });
+}
+function dismissAureoNotice(target){
+  if(!AUREO_NOTICE_TARGETS.includes(target)) return;
+  try{ localStorage.setItem(`${AUREO_NOTICE_KEY}:${target}`,'1'); }catch{}
+  document.documentElement.classList.remove(aureoNoticeClass(target));
+}
+function inventoryShortcutHintSeen(surface){
+  if(FORCE_INVENTORY_SHORTCUT_HINT&&!dismissedInventoryShortcutHints.has(surface)) return false;
+  try{ return localStorage.getItem(`${INVENTORY_SHORTCUT_HINT_KEY}:${surface}`)==='1'; }catch{}
+  return false;
+}
 function syncInventoryShortcutHint(){
-  let seen=false;
-  try{ seen=localStorage.getItem(INVENTORY_SHORTCUT_HINT_KEY)==='1'; }catch{}
-  if(FORCE_INVENTORY_SHORTCUT_HINT) seen=false;
-  document.documentElement.classList.toggle('inventory-shortcut-unseen',!seen);
+  INVENTORY_SHORTCUT_SURFACES.forEach(surface=>{
+    document.documentElement.classList.toggle(inventoryShortcutHintClass(surface),!inventoryShortcutHintSeen(surface));
+  });
 }
-function dismissInventoryShortcutHint(){
-  try{ localStorage.setItem(INVENTORY_SHORTCUT_HINT_KEY,'1'); }catch{}
-  document.documentElement.classList.remove('inventory-shortcut-unseen');
+function dismissInventoryShortcutHint(surface){
+  if(!INVENTORY_SHORTCUT_SURFACES.includes(surface)) return;
+  dismissedInventoryShortcutHints.add(surface);
+  try{ localStorage.setItem(`${INVENTORY_SHORTCUT_HINT_KEY}:${surface}`,'1'); }catch{}
+  document.documentElement.classList.remove(inventoryShortcutHintClass(surface));
 }
-function restartInventoryShortcutHint(){
-  let seen=false;
-  try{ seen=localStorage.getItem(INVENTORY_SHORTCUT_HINT_KEY)==='1'; }catch{}
-  if(FORCE_INVENTORY_SHORTCUT_HINT) seen=false;
-  if(seen) return;
-  document.documentElement.classList.remove('inventory-shortcut-unseen');
+function restartInventoryShortcutHint(surface){
+  if(!INVENTORY_SHORTCUT_SURFACES.includes(surface)||inventoryShortcutHintSeen(surface)) return;
+  const className=inventoryShortcutHintClass(surface);
+  document.documentElement.classList.remove(className);
   void document.documentElement.offsetWidth;
-  document.documentElement.classList.add('inventory-shortcut-unseen');
+  document.documentElement.classList.add(className);
 }
 function openInventoryFromShortcut(){
-  dismissInventoryShortcutHint();
+  dismissInventoryShortcutHint('today');
   openInventory();
 }
 syncInventoryShortcutHint();
+syncAureoNotices();
 let inventoryPositionFrame=0;
 function scheduleInventorySheetPosition(){
   if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
@@ -2837,12 +2866,17 @@ const navigation=bindNavigation({
 document.getElementById('navHero').addEventListener('click',()=>{
   renderHero();
 });
-['navHoy','navHabits','navHero'].forEach(id=>{
-  document.getElementById(id)?.addEventListener('click',restartInventoryShortcutHint);
+Object.entries({navHoy:'today',navHabits:'habits',navHero:'hero'}).forEach(([id,surface])=>{
+  document.getElementById(id)?.addEventListener('click',()=>restartInventoryShortcutHint(surface));
 });
 function switchView(viewId,buttonId){
   navigation.switchView(viewId,buttonId);
-  if(viewId==='view-hoy'||viewId==='view-habits'||viewId==='view-hero') restartInventoryShortcutHint();
+  const surface={
+    'view-hoy':'today',
+    'view-habits':'habits',
+    'view-hero':'hero'
+  }[viewId];
+  if(surface) restartInventoryShortcutHint(surface);
 }
 
 /* controles de la gráfica */
@@ -3435,7 +3469,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     return;
   }
   if(event.target.closest('[data-open-inventory]')){
-    if(event.target.closest('[data-inventory-shortcut]')) dismissInventoryShortcutHint();
+    const shortcut=event.target.closest('[data-inventory-shortcut]');
+    if(shortcut) dismissInventoryShortcutHint(shortcut.dataset.inventoryShortcut);
     openInventory();
     return;
   }
@@ -3865,7 +3900,8 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('[data-open-inventory]')){
-    if(e.target.closest('[data-inventory-shortcut]')) dismissInventoryShortcutHint();
+    const shortcut=e.target.closest('[data-inventory-shortcut]');
+    if(shortcut) dismissInventoryShortcutHint(shortcut.dataset.inventoryShortcut);
     openInventory();
     return;
   }
@@ -4182,6 +4218,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
   const outfitShortcut=event.target.closest('[data-open-outfits]');
   if(outfitShortcut){
+    dismissAureoNotice('outfits');
     outfitSelectorSection='owned';
     selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
     document.getElementById('outfitSelectorBg').classList.add('show');
@@ -4331,6 +4368,7 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   const sectionButton=event.target.closest('[data-outfit-section]');
   if(sectionButton){
     outfitSelectorSection=sectionButton.dataset.outfitSection==='weave'?'weave':'owned';
+    if(outfitSelectorSection==='weave') dismissAureoNotice('weave');
     selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
     return;
   }

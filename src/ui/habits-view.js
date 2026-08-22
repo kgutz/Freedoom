@@ -216,7 +216,7 @@ export function renderHabitsView({
   const heroCard = ({ earnedLabel, limitLabel = '' }) => `
     <div class="habit-hero-card">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></button>
+      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut="habits" aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"><img class="inventory-shortcut-shimmer-layer" src="${heroFaceSource(classId, game?.outfit)}" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full inventory-shortcut-shimmer-layer'"></button>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>${escapeHtml(earnedLabel)}</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
