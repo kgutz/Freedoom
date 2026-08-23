@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeSpellStatus,
+  cooldownStatusLabel,
   createHeroModel,
   didHeroLevelUp,
   heroEnergyBaseline,
   heroEnergyModel,
+  nextLogicalDayStart,
   renderHeroView,
   renderSkillsView,
   spellUnavailableAfterUse,
@@ -126,6 +128,100 @@ describe('modelo de Héroe', () => {
       nowTimestamp: now,
       today: '2026-07-26',
     })).toBeNull();
+  });
+
+  it('formatea el enfriamiento corto y el reinicio del siguiente día lógico', () => {
+    expect(cooldownStatusLabel(30_000)).toBe('30s');
+    expect(cooldownStatusLabel(15 * 60_000)).toBe('15m');
+    expect(cooldownStatusLabel(15.2 * 3_600_000)).toBe('16h');
+    expect(nextLogicalDayStart(new Date(2026, 6, 26, 12), '04:00'))
+      .toBe(new Date(2026, 6, 27, 4).getTime());
+  });
+
+  it('muestra en gris y sobre el icono todos los poderes de nivel 8 en enfriamiento', () => {
+    const now = new Date(2026, 6, 26, 12);
+    const heroContent = { innerHTML: '' };
+    const heroSkillsModalBody = { innerHTML: '' };
+    renderHeroView({
+      document: {
+        getElementById(id) {
+          if (id === 'heroContent') return heroContent;
+          if (id === 'heroSkillsModalBody') return heroSkillsModalBody;
+          return null;
+        },
+      },
+      ...base({
+        now,
+        dayKey: '2026-07-26',
+        config: { wakeTime: '07:00', startLimit: 20, dayStartTime: '04:00' },
+        game: {
+          ...base().game,
+          powerProgress: {
+            spellCooldowns: { luz: now.getTime() + 3_000 },
+            challengeDayUses: {
+              '2026-07-26:certero': {
+                count: 1,
+                lastCompletedAt: now.getTime() - 30_000,
+              },
+            },
+          },
+        },
+        stats: { ...base().stats, lvl: 9 },
+        boss: {
+          ...base().boss,
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+    });
+
+    expect(heroContent.innerHTML).toContain('hero-skill-slot on spell-cooldown');
+    expect(heroContent.innerHTML).toContain('data-cast="certero"');
+    expect(heroContent.innerHTML).toContain('Luz Sanadora · Enfriamiento 3s');
+    expect(heroContent.innerHTML).toContain('>3s</span>');
+    expect(heroContent.innerHTML).toContain('data-cooldown-until=');
+    expect(heroContent.innerHTML).toContain('>30s</span>');
+    expect(heroContent.innerHTML).toContain('disabled');
+    expect(heroSkillsModalBody.innerHTML).toContain('skill-box on spell-cooldown');
+  });
+
+  it('cuenta hasta el día siguiente después de agotar los dos usos diarios', () => {
+    const now = new Date(2026, 6, 26, 12);
+    const heroContent = { innerHTML: '' };
+    renderHeroView({
+      document: { getElementById: (id) => id === 'heroContent' ? heroContent : null },
+      ...base({
+        now,
+        dayKey: '2026-07-26',
+        config: { wakeTime: '07:00', startLimit: 20, dayStartTime: '04:00' },
+        game: {
+          ...base().game,
+          powerProgress: {
+            challengeDayUses: {
+              '2026-07-26:certero': { count: 2, lastCompletedAt: now.getTime() },
+            },
+          },
+        },
+        stats: { ...base().stats, lvl: 9 },
+        boss: {
+          ...base().boss,
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+    });
+
+    expect(heroContent.innerHTML).toContain('hero-skill-slot on spell-cooldown');
+    expect(heroContent.innerHTML).toContain('>16h</span>');
+    expect(heroContent.innerHTML).not.toContain('hero-skill-used">HOY');
   });
 
   it('apaga el reto completado y bloquea la habilidad tras dos usos diarios', () => {

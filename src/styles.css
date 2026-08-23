@@ -947,13 +947,17 @@
   .hero-skill-slot:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}
   .hero-skill-slot.spell-effect-active{border-color:var(--kodak);box-shadow:0 0 10px rgba(232,180,74,.32);animation:activeSpellGlow 2.8s ease-in-out infinite}
   .hero-skill-slot.spell-week-used{border-color:#51483d;filter:saturate(.35);opacity:.62;box-shadow:none;animation:none}
+  .hero-skill-slot.spell-cooldown{border-color:#51483d;filter:grayscale(1) brightness(.58);opacity:.76;box-shadow:none;animation:none;cursor:not-allowed}
   .hero-skill-slot .hero-skill-timer{right:3px;bottom:3px;font-size:9px}
+  .hero-skill-slot.spell-cooldown .hero-skill-timer{left:auto;right:3px;top:auto;bottom:3px;transform:none;min-width:26px;padding:3px 4px;border-radius:5px;background:rgba(8,7,6,.86);color:#fff;font-size:10px;text-align:center;text-shadow:0 1px 2px #000}
   .hero-skill-used{right:2px;bottom:3px;font-size:7px}
-  .hero-skill-slot.cast-confirm{z-index:2;animation:heroCastConfirm .9s ease-out 1}
+  .hero-skill-slot.cast-confirm:not(.spell-cooldown){z-index:2;animation:heroCastConfirm .9s ease-out 1}
+  .hero-skill-slot.spell-cooldown.cast-confirm{z-index:2;animation:heroCooldownConfirm .36s ease-out 1}
   .stat-bar.stat-cast-feedback .stat-track{animation:heroStatFeedback .9s ease-out 1}
   .stat-bar.hp-feedback .stat-track{--stat-feedback:#8fae6b}
   .stat-bar.mana-feedback .stat-track{--stat-feedback:#7fa0b8}
   @keyframes heroCastConfirm{0%{transform:scale(.88);filter:brightness(1)}28%{transform:scale(1.08);filter:brightness(1.55);box-shadow:0 0 0 2px rgba(232,180,74,.72),0 0 18px rgba(232,180,74,.58)}100%{transform:scale(1);filter:brightness(1)}}
+  @keyframes heroCooldownConfirm{0%{transform:scale(.9);filter:grayscale(1) brightness(.58)}35%{transform:scale(1.07);filter:grayscale(1) brightness(.92);box-shadow:0 0 0 2px rgba(232,180,74,.72),0 0 16px rgba(232,180,74,.56)}100%{transform:scale(1);filter:grayscale(1) brightness(.58);box-shadow:none}}
   @keyframes heroStatFeedback{0%,100%{box-shadow:none;filter:brightness(1)}32%{box-shadow:0 0 0 1px var(--stat-feedback),0 0 13px var(--stat-feedback);filter:brightness(1.45)}}
   .hero-skill-fallback{width:100%;height:100%;align-items:center;justify-content:center}
   .cast-btn{margin-top:8px;display:inline-block}
@@ -1123,6 +1127,8 @@
     animation:activeSpellGlow 2.8s ease-in-out infinite;
   }
   .skill-box.spell-week-used{border-color:#51483d;filter:saturate(.35);opacity:.62;box-shadow:none;animation:none}
+  .skill-box.spell-cooldown{border-color:#51483d;filter:grayscale(1) brightness(.58);opacity:.76;box-shadow:none;animation:none;cursor:not-allowed}
+  .skill-box.spell-cooldown .skill-cooldown-timer{left:auto;right:4px;top:auto;bottom:4px;transform:none;min-width:30px;padding:4px 5px;border-radius:5px;background:rgba(8,7,6,.86);color:#fff;text-align:center;text-shadow:0 1px 2px #000}
   .skill-box.passive-effect-active{
     animation:passiveBorderGlow 2.8s ease-in-out infinite;
   }

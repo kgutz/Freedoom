@@ -51,6 +51,7 @@ import {
   LEVEL_EIGHT_COOLDOWN_MS,
   castSpellEffect,
   levelEightSpellAvailability,
+  levelTwoSpellAvailability,
   ultimateHabitReward,
   ultimateSpellAvailability,
 } from './domain/spell-rules.js';
@@ -218,6 +219,9 @@ const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
+  ? Math.max(1,Math.min(100,parseInt(LOCAL_DEMO_PARAMS.get('demoLevel')||'1',10)||1))
+  : null;
 const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
@@ -241,7 +245,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v2`
+    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -912,8 +916,8 @@ function prepareLocalBossDemo(){
     state.game={
       ...state.game,
       cls:'paladin',
-      name:'Héroe de control',
-      bonusXp:250000,
+      name:LOCAL_DEMO_LEVEL?`Héroe de prueba · Nv ${LOCAL_DEMO_LEVEL}`:'Héroe de control',
+      bonusXp:LOCAL_DEMO_LEVEL?35*(LOCAL_DEMO_LEVEL-1)*(LOCAL_DEMO_LEVEL-1):250000,
       buffs:{},
       day:todayKey()
     };
@@ -1753,6 +1757,10 @@ function castSpell(id,options={}){
   }
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const spellDayKey=todayKey();
+  if(sp.lvl===2&&!sp.ulti){
+    const availability=levelTwoSpellAvailability({game:g,spellId:sp.id,nowTimestamp:Date.now()});
+    if(availability.cooldownRemainingMs>0) return;
+  }
   if(sp.ulti&&sp.modern){
     const availability=ultimateSpellAvailability({game:g,currentWeek:w,today:spellDayKey});
     if(availability.exhausted){
@@ -1771,7 +1779,6 @@ function castSpell(id,options={}){
   if(sp.lvl===8&&!sp.ulti){
     const availability=levelEightSpellAvailability({game:g,spellId:sp.id,today:spellDayKey,nowTimestamp:Date.now()});
     if(availability.exhausted){
-      openUsedSkillModal(sp);
       return;
     }
     if(availability.challengeActive){
@@ -1779,8 +1786,6 @@ function castSpell(id,options={}){
       return;
     }
     if(availability.cooldownRemainingMs>0){
-      const seconds=Math.max(1,Math.ceil(availability.cooldownRemainingMs/1000));
-      openUsedSkillModal(sp,{message:`Esta habilidad se está recargando. Podrás volver a usarla en ${seconds} s.`});
       return;
     }
   }
@@ -1824,6 +1829,7 @@ function castSpell(id,options={}){
     else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó dos veces hoy','dmg');
     else if(result.reason==='challenge-active') showToast('Completa primero el reto activo','dmg');
     else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
+    else if(result.reason==='spell-cooldown') return;
     else if(result.reason==='habits') showToast('No hay suficientes hábitos diarios pendientes','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
@@ -4888,6 +4894,23 @@ function checkDay(){
   else{renderHoy();renderHero();}
 }
 setInterval(checkDay,60000);
+function visibleCooldownLabel(remainingMs){
+  const safeMs=Math.max(0,Number(remainingMs)||0);
+  if(safeMs<60000) return `${Math.max(1,Math.ceil(safeMs/1000))}s`;
+  if(safeMs<3600000) return `${Math.ceil(safeMs/60000)}m`;
+  return `${Math.ceil(safeMs/3600000)}h`;
+}
+function refreshVisibleSkillCooldowns(){
+  let expired=false;
+  document.querySelectorAll('#view-hero [data-cooldown-until]').forEach(timer=>{
+    const remaining=Number(timer.dataset.cooldownUntil)-Date.now();
+    if(remaining<=0){ expired=true; return; }
+    timer.textContent=visibleCooldownLabel(remaining);
+    timer.setAttribute('aria-label',`Enfriamiento: ${timer.textContent}`);
+  });
+  if(expired&&document.getElementById('view-hero')?.classList.contains('active')) renderHero();
+}
+setInterval(refreshVisibleSkillCooldowns,1000);
 /* al volver la app de segundo plano (iOS la congela), refrescar al instante:
    si ya es otro día, los contadores vuelven a 0 sin esperar */
 function resumeApp(){

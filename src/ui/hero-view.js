@@ -17,7 +17,11 @@ import {
 } from '../domain/journey-mode-rules.js';
 import { weekIndexFor } from '../domain/plan-rules.js';
 import { intoxicationStage } from '../domain/intoxication-rules.js';
-import { levelEightSpellAvailability, ultimateSpellAvailability } from '../domain/spell-rules.js';
+import {
+  levelEightSpellAvailability,
+  levelTwoSpellAvailability,
+  ultimateSpellAvailability,
+} from '../domain/spell-rules.js';
 import { heroSpriteSource } from '../data/outfit-data.js';
 import { resourceValue } from './inventory-view.js';
 
@@ -262,11 +266,27 @@ export function spellUnavailableAfterUse({ ability, game, currentWeek, today }) 
   return levelEightSpellAvailability({ game, spellId: ability.id, today }).exhausted;
 }
 
-function skillIcon(classId, level, ability, type, status = null, used = false) {
+export function cooldownStatusLabel(remainingMs = 0) {
+  const safeMs = Math.max(0, Number(remainingMs) || 0);
+  if (safeMs < 60_000) return `${Math.max(1, Math.ceil(safeMs / 1000))}s`;
+  if (safeMs < 3_600_000) return `${Math.ceil(safeMs / 60_000)}m`;
+  return `${Math.ceil(safeMs / 3_600_000)}h`;
+}
+
+export function nextLogicalDayStart(now = new Date(), dayStartTime = '04:00') {
+  const [hours, minutes] = String(dayStartTime).split(':').map(Number);
+  const next = new Date(now);
+  next.setHours(Number.isFinite(hours) ? hours : 4, Number.isFinite(minutes) ? minutes : 0, 0, 0);
+  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+  return next.getTime();
+}
+
+function skillIcon(classId, level, ability, type, status = null, used = false, cooldown = false, cooldownUntil = 0) {
   const active = level >= ability.lvl;
   const ultimateClass = ability.ulti ? ' ulti' : '';
-  const statusClass = status ? ' spell-effect-active' : '';
+  const statusClass = status && !cooldown ? ' spell-effect-active' : '';
   const usedClass = used ? ' spell-week-used' : '';
+  const cooldownClass = cooldown ? ' spell-cooldown' : '';
   const passiveActiveClass = type === 'pas' && active ? ' passive-effect-active' : '';
   const source =
     `spells/${classId}_spells/` +
@@ -276,22 +296,22 @@ function skillIcon(classId, level, ability, type, status = null, used = false) {
     type === 'act'
       ? `data-cast="${ability.id}"`
       : `data-pas-name="${ability.name}" data-pas-lvl="${ability.lvl}"`;
-  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${usedClass}${passiveActiveClass}" ${attributes}>
+  return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${usedClass}${cooldownClass}${passiveActiveClass}" ${attributes}${cooldown ? ' aria-disabled="true"' : ''}>
       <span class="sk-lv">Nv ${ability.lvl}</span>
       <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="sk-fallback" style="display:none">${fallback}</span>
-      ${status ? `<span class="skill-active-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
+      ${status ? `<span class="skill-active-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
       ${used ? `<span class="skill-used-label" aria-label="Habilidad usada">${ability.ulti ? 'USADA' : 'USADA HOY'}</span>` : ''}
     </div>`;
 }
 
-function quickSkillIcon(classId, level, ability, status = null, used = false) {
+function quickSkillIcon(classId, level, ability, status = null, used = false, cooldown = false, cooldownUntil = 0) {
   const unlocked = level >= ability.lvl;
   const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.png`;
-  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada dos veces esta semana' : ' · Usada hoy') : ''}" title="${ability.name}">
+  return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status && !cooldown ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}${cooldown ? ' spell-cooldown' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada dos veces esta semana' : ' · Usada hoy') : ''}${cooldown ? ` · Enfriamiento ${status}` : ''}" title="${ability.name}"${cooldown ? ' disabled' : ''}>
     <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
-    ${status ? `<span class="skill-active-timer hero-skill-timer" aria-label="Efecto activo: ${status}">${status}</span>` : ''}
+    ${status ? `<span class="skill-active-timer hero-skill-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
     ${used ? `<span class="skill-used-label hero-skill-used">${ability.ulti ? 'USADA' : 'HOY'}</span>` : ''}
   </button>`;
 }
@@ -417,7 +437,24 @@ export function renderHeroView({
     : 0;
   const abilityUiState = (ability) => {
     const today = dayKey || keyOf(now);
-    const status = activeSpellStatus({
+    const levelEightAvailability = ability.lvl === 8 && !ability.ulti
+      ? levelEightSpellAvailability({ game, spellId: ability.id, today, nowTimestamp: now.getTime() })
+      : null;
+    const levelTwoAvailability = ability.lvl === 2 && !ability.ulti
+      ? levelTwoSpellAvailability({ game, spellId: ability.id, nowTimestamp: now.getTime() })
+      : null;
+    let cooldownUntil = 0;
+    if (levelTwoAvailability?.cooldownRemainingMs > 0) {
+      cooldownUntil = levelTwoAvailability.cooldownUntil;
+    } else if (levelEightAvailability?.exhausted) {
+      cooldownUntil = nextLogicalDayStart(now, config.dayStartTime || '04:00');
+    } else if (levelEightAvailability?.cooldownRemainingMs > 0) {
+      cooldownUntil = levelEightAvailability.cooldownUntil;
+    }
+    const cooldown = cooldownUntil > now.getTime();
+    const status = cooldown
+      ? cooldownStatusLabel(cooldownUntil - now.getTime())
+      : activeSpellStatus({
         spellId: ability.id,
         game,
         nowTimestamp: now.getTime(),
@@ -426,19 +463,21 @@ export function renderHeroView({
       });
     return {
       status,
-      used: !status && spellUnavailableAfterUse({ ability, game, currentWeek, today }),
+      cooldown,
+      cooldownUntil,
+      used: !cooldown && !status && spellUnavailableAfterUse({ ability, game, currentWeek, today }),
     };
   };
   const activeIcons = classData.act
     .map((ability) => {
       const ui = abilityUiState(ability);
-      return skillIcon(classId, heroStats.lvl, ability, 'act', ui.status, ui.used);
+      return skillIcon(classId, heroStats.lvl, ability, 'act', ui.status, ui.used, ui.cooldown, ui.cooldownUntil);
     })
     .join('');
   const quickActiveIcons = classData.act
     .map((ability) => {
       const ui = abilityUiState(ability);
-      return quickSkillIcon(classId, heroStats.lvl, ability, ui.status, ui.used);
+      return quickSkillIcon(classId, heroStats.lvl, ability, ui.status, ui.used, ui.cooldown, ui.cooldownUntil);
     })
     .join('');
   const futureActiveIcons = Array.from({ length: Math.max(0, 6 - classData.act.length) }, (_, index) =>

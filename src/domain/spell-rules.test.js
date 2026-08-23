@@ -63,6 +63,24 @@ describe('validación de hechizos', () => {
     expect(result.ok).toBe(true);
     expect(result.game.buffs.shield).toBe(2);
   });
+
+  it('aplica tres segundos de cooldown a todas las activas de nivel 2', () => {
+    const first = cast(spell('luz'));
+    expect(first).toMatchObject({ ok: true, cooldownUntil: 1_003_000 });
+    expect(first.game.powerProgress.spellCooldowns.luz).toBe(1_003_000);
+    expect(cast(spell('luz'), {
+      game: { ...first.game, mp: 100 },
+      nowTimestamp: 1_001_000,
+    })).toMatchObject({
+      ok: false,
+      reason: 'spell-cooldown',
+      cooldownRemainingMs: 2_000,
+    });
+    expect(cast(spell('luz'), {
+      game: { ...first.game, mp: 100 },
+      nowTimestamp: 1_003_001,
+    }).ok).toBe(true);
+  });
 });
 
 describe('efectos temporales y defensivos', () => {

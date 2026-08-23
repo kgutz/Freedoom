@@ -4,6 +4,7 @@ function cappedHealth(hp, maxHp) {
 
 export const LEVEL_EIGHT_DAILY_USES = 2;
 export const LEVEL_EIGHT_COOLDOWN_MS = 60_000;
+export const LEVEL_TWO_COOLDOWN_MS = 3_000;
 export const ULTIMATE_HABIT_XP = 10;
 export const ULTIMATE_HABIT_GOLD = 4;
 export const ULTIMATE_COMPLETION_XP = 10;
@@ -68,6 +69,17 @@ export function levelEightSpellAvailability({ game, spellId, today, nowTimestamp
   };
 }
 
+export function levelTwoSpellAvailability({ game, spellId, nowTimestamp = Date.now() }) {
+  const cooldownUntil = Math.max(
+    0,
+    Number(game?.powerProgress?.spellCooldowns?.[spellId]) || 0,
+  );
+  return {
+    cooldownUntil,
+    cooldownRemainingMs: Math.max(0, cooldownUntil - nowTimestamp),
+  };
+}
+
 export function castSpellEffect({
   game,
   spell,
@@ -107,6 +119,17 @@ export function castSpellEffect({
       return {
         ok: false,
         reason: 'challenge-cooldown',
+        cooldownRemainingMs: availability.cooldownRemainingMs,
+        cooldownUntil: availability.cooldownUntil,
+      };
+    }
+  }
+  if (spell.lvl === 2 && !spell.ulti) {
+    const availability = levelTwoSpellAvailability({ game, spellId: spell.id, nowTimestamp });
+    if (availability.cooldownRemainingMs > 0) {
+      return {
+        ok: false,
+        reason: 'spell-cooldown',
         cooldownRemainingMs: availability.cooldownRemainingMs,
         cooldownUntil: availability.cooldownUntil,
       };
@@ -154,6 +177,7 @@ export function castSpellEffect({
     ...(game.powerProgress || {}),
     challengeWeekUses: { ...(game.powerProgress?.challengeWeekUses || {}) },
     challengeDayUses: { ...(game.powerProgress?.challengeDayUses || {}) },
+    spellCooldowns: { ...(game.powerProgress?.spellCooldowns || {}) },
     ultimateWeekUses: { ...(game.powerProgress?.ultimateWeekUses || {}) },
   };
 
@@ -361,6 +385,10 @@ export function castSpellEffect({
     };
     result.dailyUses = previousUse.count + 1;
     result.cooldownUntil = nowTimestamp + LEVEL_EIGHT_COOLDOWN_MS;
+  }
+  if (spell.lvl === 2 && !spell.ulti) {
+    result.cooldownUntil = nowTimestamp + LEVEL_TWO_COOLDOWN_MS;
+    nextGame.powerProgress.spellCooldowns[spell.id] = result.cooldownUntil;
   }
 
   return result;
