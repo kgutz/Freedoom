@@ -1,7 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
-import { waitForImageAsset, waitForSplashAssets } from './splash-assets.js';
+import {
+  SPLASH_ASSET_TIMEOUT_MS,
+  SPLASH_FADE_MS,
+  SPLASH_MIN_VISIBLE_MS,
+  waitForImageAsset,
+  waitForSplashAssets,
+} from './splash-assets.js';
 
 describe('recursos de la pantalla de entrada', () => {
+  it('mantiene una entrada breve y limita la espera de imágenes', () => {
+    expect(SPLASH_MIN_VISIBLE_MS).toBe(1_200);
+    expect(SPLASH_FADE_MS).toBe(300);
+    expect(SPLASH_ASSET_TIMEOUT_MS).toBe(2_000);
+  });
+
   it('espera a que una imagen cargada termine de decodificarse', async () => {
     const decode = vi.fn().mockResolvedValue(undefined);
     const image = { complete: true, naturalWidth: 320, decode };

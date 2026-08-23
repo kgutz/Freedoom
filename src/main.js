@@ -186,6 +186,7 @@ import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
+import { scheduleStartupPreload } from './ui/startup-render-scheduler.js';
 import { setTextWithResourceIcons } from './ui/resource-icons.js';
 import { habitRewardToast } from './ui/habit-feedback.js';
 import {
@@ -614,6 +615,29 @@ function currentIntoxication(nowTimestamp=Date.now()){
 
 /* ---------- render ---------- */
 function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();queueLootNotice();}
+function renderStartupPrimary(){
+  applyPendingJourneyTransition();
+  repairJourneyTransitionHistory();
+  renderHoy();
+  renderStorageHealth();
+  queueLootNotice();
+}
+function preloadStartupViews(){
+  scheduleStartupPreload({
+    window,
+    renderSecondary:()=>{
+      renderHabits();
+      renderHero();
+      renderSettings();
+    },
+    afterSecondary:()=>scheduleSave({type:'storage:checkpoint'}),
+    renderHeavy:()=>{
+      renderCal();
+      renderWeeks();
+      renderGraf();
+    }
+  });
+}
 
 function renderHoy(){
   let stats=null;
@@ -5029,8 +5053,8 @@ resetGuardContinue.addEventListener('click',()=>{
     }
     ensureHero();
     syncPeriodicRelicMana();
-    renderAll();
-    scheduleSave({type:'storage:checkpoint'});
+    renderStartupPrimary();
+    preloadStartupViews();
     showPendingWeekResult();
     if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();

@@ -1,6 +1,6 @@
-export const SPLASH_MIN_VISIBLE_MS = 2000;
-export const SPLASH_FADE_MS = 400;
-export const SPLASH_ASSET_TIMEOUT_MS = 4000;
+export const SPLASH_MIN_VISIBLE_MS = 1200;
+export const SPLASH_FADE_MS = 300;
+export const SPLASH_ASSET_TIMEOUT_MS = 2000;
 
 function timeoutResult(timeoutMs) {
   return new Promise((resolve) => {
