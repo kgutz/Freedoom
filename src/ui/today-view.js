@@ -386,8 +386,7 @@ export function renderTodayView({
     const faceSource = heroFaceSource(model.hero.classId, game?.outfit);
     const spriteFallback = heroSpriteSource(model.hero.classId, 'happy', game?.outfit);
     document.getElementById('hoyFace').innerHTML =
-      `<img src="${faceSource}" alt="" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full'">` +
-      `<img class="inventory-shortcut-shimmer-layer" src="${faceSource}" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full inventory-shortcut-shimmer-layer'">`;
+      `<img src="${faceSource}" alt="" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full'">`;
     const fill = document.getElementById('hoyHpFill');
     fill.style.width = `${model.hero.hpPercent}%`;
     fill.className = `stat-fill ${model.hero.hpClass}`;

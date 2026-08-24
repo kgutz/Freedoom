@@ -220,13 +220,14 @@ const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
   ? Math.max(1,Math.min(100,parseInt(LOCAL_DEMO_PARAMS.get('demoLevel')||'1',10)||1))
   : null;
 const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
-);
+)&&!LOCAL_DEMO_ALL_OUTFITS;
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -246,7 +247,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}`
+    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -939,12 +940,32 @@ function prepareLocalBossDemo(){
     };
     state.game={
       ...state.game,
-      cls:'paladin',
+      cls:LOCAL_DEMO_ALL_OUTFITS?'sorcerer':'paladin',
       name:LOCAL_DEMO_LEVEL?`Héroe de prueba · Nv ${LOCAL_DEMO_LEVEL}`:'Héroe de control',
       bonusXp:LOCAL_DEMO_LEVEL?35*(LOCAL_DEMO_LEVEL-1)*(LOCAL_DEMO_LEVEL-1):250000,
       buffs:{},
       day:todayKey()
     };
+    if(LOCAL_DEMO_ALL_OUTFITS){
+      const acquiredAt=Date.now();
+      state.game={
+        ...state.game,
+        outfit:'arcane-weave-01',
+        pioneerReward:{
+          ...(state.game.pioneerReward||{}),
+          claimedAt:state.game.pioneerReward?.claimedAt||acquiredAt,
+          outfitId:'beta-tester'
+        },
+        outfits:{
+          ...(state.game.outfits||{}),
+          owned:{
+            ...(state.game.outfits?.owned||{}),
+            'beta-tester':{acquiredAt,source:'demo'},
+            'arcane-weave-01':{acquiredAt,source:'demo'}
+          }
+        }
+      };
+    }
     const demoMaxes=heroMaxes();
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
@@ -3779,6 +3800,13 @@ window.addEventListener('pointerup',event=>finishHabitDrag(event));
 window.addEventListener('pointercancel',event=>finishHabitDrag(event,true));
 
 habitsView.addEventListener('keydown',event=>{
+  const inventoryShortcut=event.target.closest('[data-open-inventory]');
+  if(inventoryShortcut&&['Enter',' '].includes(event.key)){
+    event.preventDefault();
+    dismissInventoryShortcutHint(inventoryShortcut.dataset.inventoryShortcut);
+    openInventory();
+    return;
+  }
   const handle=event.target.closest('[data-habit-drag],[data-todo-drag]');
   if(!handle||!['ArrowUp','ArrowDown'].includes(event.key)) return;
   const row=handle.closest('.habit-row');

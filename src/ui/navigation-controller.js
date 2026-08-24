@@ -82,7 +82,12 @@ export function bindNavigation({
   });
 
   document.getElementById('view-hoy').addEventListener('click', (event) => {
-    if (event.target.closest('.hoy-face')) onOpenInventory();
+    if (event.target.closest('.hoy-hero[data-open-inventory]')) onOpenInventory();
+  });
+  document.getElementById('view-hoy').addEventListener('keydown', (event) => {
+    if (!event.target.closest('.hoy-hero[data-open-inventory]') || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault();
+    onOpenInventory();
   });
   document.getElementById('navMenu').addEventListener('click', () => {
     document.getElementById('menuBg').classList.add('show');

@@ -214,9 +214,10 @@ export function renderHabitsView({
     </div>`;
 
   const heroCard = ({ earnedLabel, limitLabel = '' }) => `
-    <div class="habit-hero-card">
+    <div class="habit-hero-card" data-open-inventory data-inventory-shortcut="habits" role="button" tabindex="0" aria-label="Abrir inventario">
       <img class="habit-hero-bg" src="backgrounds/habits_training_bg.png" alt="" aria-hidden="true">
-      <button class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" type="button" data-open-inventory data-inventory-shortcut="habits" aria-label="Abrir inventario"><img src="${heroFaceSource(classId, game?.outfit)}" alt="${escapeHtml(className)}" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"><img class="inventory-shortcut-shimmer-layer" src="${heroFaceSource(classId, game?.outfit)}" alt="" aria-hidden="true" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full inventory-shortcut-shimmer-layer'"></button>
+      <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
+      <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>${escapeHtml(earnedLabel)}</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>
