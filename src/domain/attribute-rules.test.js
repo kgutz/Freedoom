@@ -4,6 +4,7 @@ import {
   attributeSheet,
   availableAttributePoints,
   earnedAttributePoints,
+  resetAttributeAllocation,
 } from './attribute-rules.js';
 
 describe('attribute rules', () => {
@@ -28,5 +29,15 @@ describe('attribute rules', () => {
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('insufficient-points');
     expect(availableAttributePoints({ level: 2, allocation: { power: 6 } })).toBe(0);
+  });
+
+  it('devuelve todos los atributos asignados a cero al resetear', () => {
+    expect(resetAttributeAllocation()).toEqual({
+      strength: 0,
+      defense: 0,
+      dexterity: 0,
+      power: 0,
+      constitution: 0,
+    });
   });
 });

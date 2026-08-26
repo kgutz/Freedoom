@@ -42,7 +42,7 @@ import {
   regenerateHealth,
   weeklyBossPenalty
 } from './domain/hero-rules.js';
-import { allocateAttributePoint, attributeSheet } from './domain/attribute-rules.js';
+import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from './domain/attribute-rules.js';
 import {
   HUNT_DIFFICULTIES,
   grantHabitHuntEnergy,
@@ -2044,6 +2044,7 @@ function renderHero(){
     config:state.config,
     days:state.days
   });
+  const hunt=normalizeHuntState(state.game.hunt,now.getTime(),huntBaseEnergyForToday(now));
   renderHeroView({
     document,
     now,
@@ -2056,6 +2057,8 @@ function renderHero(){
     intoxication,
     dayKey,
     lootState:state,
+    huntEnergy:hunt.energy,
+    huntEnergyMax:hunt.baseEnergy+hunt.bonusEnergyEarned,
     levelUp
   });
 }
@@ -4254,6 +4257,14 @@ function openClassChangeConfirmation(selectedClass){
 }
 
 document.getElementById('view-hero').addEventListener('click',e=>{
+  if(e.target.closest('[data-open-hunt-from-hero]')){
+    habitViewSection='hunt';
+    dismissFeatureDiscovery('hunt-tab');
+    document.getElementById('huntContent').dataset.huntScreen='map';
+    switchView('view-habits','navHabits');
+    renderHabits();
+    return;
+  }
   const quickCast=e.target.closest('.hero-skill-hotbar [data-cast]');
   if(quickCast){
     castSpell(quickCast.dataset.cast);
@@ -4732,6 +4743,16 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
 });
 
 document.getElementById('sheetCharacter').addEventListener('click',event=>{
+  const resetAttributes=event.target.closest('[data-character-reset-attributes]');
+  if(resetAttributes&&!resetAttributes.disabled){
+    if(!confirm('¿Resetear todos los atributos? Recuperarás todos los puntos asignados para repartirlos de nuevo.')) return;
+    state.game.attributes=resetAttributeAllocation();
+    scheduleSave({type:'hero:attributes-reset'});
+    renderCurrentCharacterSheet();
+    renderHunt();
+    showToast('Atributos reseteados','ok');
+    return;
+  }
   const attribute=event.target.closest('[data-character-attribute]');
   if(attribute&&!attribute.disabled){
     const result=allocateAttributePoint({classId:state.game.cls,level:gameStats().lvl,allocation:state.game.attributes,attributeId:attribute.dataset.characterAttribute});

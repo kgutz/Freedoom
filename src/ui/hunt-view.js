@@ -34,6 +34,7 @@ export function renderHuntMonsterDetail({ document, enemyId }) {
 
 function reportMarkup(report) {
   if (!report) return '';
+  const canDropBossBlood = report.difficultyId === 'hard';
   const rows = report.encounters.map((encounter) => `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
     <span>${encounter.role} · ${encounter.name}</span>
     <b>${encounter.won ? 'VICTORIA' : 'DERROTA'}</b>
@@ -46,9 +47,9 @@ function reportMarkup(report) {
     <div class="hunt-report-list">${rows}</div>
     <div class="hunt-rewards">
       <span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>
-      <span>🪙 <b>${rewards.gold}</b> oro</span>
-      <span>🧵 <b>${rewards.arcaneFibers}</b> fibra</span>
-      <span>🩸 <b>${rewards.bossBlood}</b> sangre</span>
+      <span aria-label="Oro obtenido">🪙 <b>${rewards.gold}</b></span>
+      <span aria-label="Fibra Arcana obtenida">🧵 <b>${rewards.arcaneFibers}</b></span>
+      ${canDropBossBlood ? `<span aria-label="Sangre de Jefe obtenida">🩸 <b>${rewards.bossBlood}</b></span>` : ''}
     </div>
   </section>`;
 }
@@ -97,7 +98,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const difficulties = Object.values(HUNT_DIFFICULTIES).map((difficulty) => {
     const levelLocked = heroLevel < difficulty.minLevel;
     return `<button type="button" class="hunt-difficulty ${difficulty.id}${levelLocked ? ' level-locked' : ''}" data-start-hunt="${difficulty.id}" ${active || levelLocked || hunt.energy < difficulty.energyCost ? 'disabled' : ''}>
-    <span>${difficulty.name}</span><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : difficulty.energyCost}</b>
+    <span>${difficulty.name}</span><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : `<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost}`}</b>
   </button>`;
   }).join('');
   root.innerHTML = `<button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>Campos de la Bruma</h2><div class="hunt-map-energy" aria-label="Energía de Cacería: ${hunt.energy} de 5"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${hunt.energy}/5</strong></div></div><p>Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.</p></div>

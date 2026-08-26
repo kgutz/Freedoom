@@ -84,3 +84,7 @@ export function allocateAttributePoint({ classId, level, allocation, attributeId
     sheet: attributeSheet({ classId, level, allocation: nextAllocation }),
   };
 }
+
+export function resetAttributeAllocation() {
+  return normalizeAttributeAllocation();
+}

@@ -359,6 +359,8 @@ export function renderHeroView({
   intoxication,
   dayKey,
   lootState,
+  huntEnergy = 0,
+  huntEnergyMax = 5,
   classChange = false,
   currentClass = null,
   levelUp = false,
@@ -631,6 +633,9 @@ export function renderHeroView({
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
+            <button class="hero-hunt-energy-shortcut" type="button" data-open-hunt-from-hero aria-label="Energía de Cacería: ${huntEnergy} de ${huntEnergyMax}. Abrir Cacería">
+              <span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><b>${huntEnergy}/${huntEnergyMax}</b>
+            </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
