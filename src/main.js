@@ -2340,6 +2340,28 @@ function dismissFeatureDiscovery(target){
   try{localStorage.setItem(`${FEATURE_DISCOVERY_KEY}:${target}`,'1');}catch{}
   document.documentElement.classList.remove(featureDiscoveryClass(target));
 }
+function dismissDiscoveryNoticesFromClick(target){
+  if(!target?.closest) return;
+  if(target.closest('[data-open-character-sheet]')){
+    dismissFeatureDiscovery('character-entry');
+    const surface={
+      'view-hoy':'today',
+      'view-habits':'habits',
+      'view-hero':'hero'
+    }[target.closest('.view')?.id];
+    if(surface) dismissInventoryShortcutHint(surface);
+  }
+  if(target.closest('[data-character-bag]')) dismissFeatureDiscovery('character-bag');
+  if(target.closest('[data-character-outfit]')) dismissFeatureDiscovery('character-hero');
+  if(target.closest('#navHabits')) dismissFeatureDiscovery('nav-habits');
+  if(target.closest('[data-habit-section="hunt"]')) dismissFeatureDiscovery('hunt-tab');
+  if(target.closest('[data-open-hunt-from-hero]')){
+    dismissFeatureDiscovery('hero-energy');
+    dismissFeatureDiscovery('hunt-tab');
+  }
+  if(target.closest('[data-open-outfits]')) dismissAureoNotice('outfits');
+  if(target.closest('[data-outfit-section="weave"]')) dismissAureoNotice('weave');
+}
 function inventoryShortcutHintSeen(surface){
   if(FORCE_INVENTORY_SHORTCUT_HINT&&!dismissedInventoryShortcutHints.has(surface)) return false;
   try{ return localStorage.getItem(`${INVENTORY_SHORTCUT_HINT_KEY}:${surface}`)==='1'; }catch{}
@@ -2370,6 +2392,7 @@ function openInventoryFromShortcut(){
 syncInventoryShortcutHint();
 syncAureoNotices();
 syncFeatureDiscovery();
+document.addEventListener('click',event=>dismissDiscoveryNoticesFromClick(event.target),true);
 let inventoryPositionFrame=0;
 function scheduleInventorySheetPosition(){
   if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
