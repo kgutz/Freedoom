@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { castSpellEffect, ultimateHabitReward } from './spell-rules.js';
+import { castSpellEffect, completeLevelEightHabitChallenge, ultimateHabitReward } from './spell-rules.js';
 
 const spell = (id, overrides = {}) => ({
   id,
@@ -21,6 +21,50 @@ const cast = (selectedSpell, overrides = {}) =>
   });
 
 describe('validación de hechizos', () => {
+  it('cierra el reto de nivel 8 al completar los hábitos y habilita el siguiente uso',()=>{
+    const started=cast(spell('certero',{
+      lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
+    }),{
+      game:{hp:100,mp:200,buffs:{}},selectedHabitIds:['a','b'],
+    });
+    const first=completeLevelEightHabitChallenge({
+      progress:started.game.powerProgress,habitId:'a',today:'2026-07-26',completedAt:1_050_000,
+    });
+    expect(first).toMatchObject({advanced:true,completed:false,completedCount:1,target:2});
+    expect(first.progress.habitChallenge.completedIds).toEqual(['a']);
+    const second=completeLevelEightHabitChallenge({
+      progress:first.progress,habitId:'b',today:'2026-07-26',completedAt:1_060_000,
+    });
+    expect(second).toMatchObject({advanced:true,completed:true,completedCount:2,target:2});
+    expect(second.progress.habitChallenge).toBeUndefined();
+    expect(second.progress.challengeDayUses['2026-07-26:certero'].lastCompletedAt).toBe(1_060_000);
+    expect(cast(spell('certero',{
+      lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
+    }),{
+      game:{...started.game,mp:200,powerProgress:second.progress},
+      nowTimestamp:1_120_001,selectedHabitIds:['c','d'],
+    })).toMatchObject({ok:true,dailyUses:2});
+  });
+
+  it.each(['muro','certero','ceniza','regen'])('comparte la limpieza del reto completado para %s',(spellId)=>{
+    const progress={
+      habitChallenge:{spellId,habitIds:['a','b'],completedIds:['a'],day:'2026-07-26',week:3},
+      challengeDayUses:{[`2026-07-26:${spellId}`]:{count:1,lastUsedAt:1_000_000,lastCompletedAt:0}},
+    };
+    const result=completeLevelEightHabitChallenge({progress,habitId:'b',today:'2026-07-26',completedAt:1_100_000});
+    expect(result.completed).toBe(true);
+    expect(result.progress.habitChallenge).toBeUndefined();
+    expect(result.progress.challengeDayUses[`2026-07-26:${spellId}`].lastCompletedAt).toBe(1_100_000);
+  });
+
+  it('solo avanza el reto automático cuando el hábito queda realmente completado',()=>{
+    const progress={habitChallenge:{spellId:'ceniza',habitIds:[],autoNextHabitCount:2,completedIds:[],day:'2026-07-26'}};
+    const first=completeLevelEightHabitChallenge({progress,habitId:'a',today:'2026-07-26'});
+    const duplicate=completeLevelEightHabitChallenge({progress:first.progress,habitId:'a',today:'2026-07-26'});
+    expect(first).toMatchObject({advanced:true,completed:false});
+    expect(duplicate).toMatchObject({advanced:false,completed:false});
+  });
+
   it('rechaza nivel insuficiente, maná insuficiente y ulti repetida', () => {
     expect(
       cast(spell('muro', { lvl: 8 }), { level: 7 }),

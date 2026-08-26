@@ -59,6 +59,7 @@ import {
 import {
   LEVEL_EIGHT_COOLDOWN_MS,
   castSpellEffect,
+  completeLevelEightHabitChallenge,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
@@ -3369,18 +3370,19 @@ let habitEditorResizeHandler=null;
 
 function applyClassHabitRewards({result,habit}){
   const g=state.game;
-  if(!g||!g.cls||result.xpDelta<=0) return '';
+  if(!g||!g.cls) return '';
+  const rewardedProgress=result.xpDelta>0;
   const key=todayKey();
   const lvl=gameStats().lvl;
   const {maxHp,maxMp}=heroMaxes();
   const week=Math.max(0,weekIndexOf(currentDayDate()));
-  const rewards=g.powerProgress=g.powerProgress||{};
+  let rewards=g.powerProgress=g.powerProgress||{};
   rewards.habitEntries=rewards.habitEntries||{};
   const entryKey=`${result.entry.habitId}|${result.entry.periodKey}|${result.entry.count}`;
   if(rewards.habitEntries[entryKey]) return '';
   rewards.habitEntries[entryKey]=true;
   const notices=[];
-  if(g.cls==='sorcerer'&&lvl>=1){
+  if(rewardedProgress&&g.cls==='sorcerer'&&lvl>=1){
     rewards.sorcererManaDays=rewards.sorcererManaDays||[];
     if(!rewards.sorcererManaDays.includes(key)){
       const recovered=recoverMana(Math.max(1,Math.round(maxMp*0.05)));
@@ -3388,12 +3390,12 @@ function applyClassHabitRewards({result,habit}){
       if(recovered>0) notices.push('+'+recovered+' 💧 Absorber Esencia');
     }
   }
-  if(g.cls==='paladin'&&g.buffs?.paladinManaHabit){
+  if(rewardedProgress&&g.cls==='paladin'&&g.buffs?.paladinManaHabit){
     const recovered=recoverMana(Math.max(1,Math.round(maxMp*0.05)));
     g.buffs.paladinManaHabit=false;
     if(recovered>0) notices.push('+'+recovered+' 💧 Luz Sanadora');
   }
-  if((g.cls==='sorcerer'||g.cls==='druid')&&lvl>=5){
+  if(rewardedProgress&&(g.cls==='sorcerer'||g.cls==='druid')&&lvl>=5){
     const counterKey=`harvest:${week}`;
     const rewardKey=`harvest-rewards:${week}`;
     rewards[counterKey]=(Number(rewards[counterKey])||0)+1;
@@ -3405,42 +3407,30 @@ function applyClassHabitRewards({result,habit}){
       notices.push(g.cls==='sorcerer'?'+5 XP Cosecha Oscura':'+5 XP Raíces Profundas');
     }
   }
-  const challenge=rewards.habitChallenge;
-  const autoChallengeAvailable=challenge?.autoNextHabitCount>0&&
-    challenge.completedIds.length<challenge.autoNextHabitCount&&
-    !challenge.completedIds.includes(habit.id);
-  const selectedChallengeAvailable=challenge?.habitIds?.includes(habit.id)&&
-    !challenge.completedIds.includes(habit.id);
-  if(challenge&&challenge.day===key&&(autoChallengeAvailable||selectedChallengeAvailable)){
-    challenge.completedIds.push(habit.id);
+  const challengeResult=result.becameCompleted
+    ?completeLevelEightHabitChallenge({progress:rewards,habitId:habit.id,today:key,completedAt:Date.now()})
+    :{advanced:false,completed:false,progress:rewards};
+  if(challengeResult.advanced){
+    rewards=g.powerProgress=challengeResult.progress;
+    const challengeSpellId=challengeResult.spellId;
     g.bonusXp=(g.bonusXp||0)+5;
-    if(challenge.spellId==='muro'){
+    if(challengeSpellId==='muro'){
       g.buffs.shield=(g.buffs.shield||0)+1;
       notices.push('+5 XP · +1 Escudo');
-    }else if(challenge.spellId==='ceniza'){
+    }else if(challengeSpellId==='ceniza'){
       const recovered=recoverMana(5);
       notices.push(`+5 XP · +${recovered} 💧`);
-    }else if(challenge.spellId==='regen'){
+    }else if(challengeSpellId==='regen'){
       const before=g.hp;
       g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
       notices.push(`+5 XP · +${g.hp-before} ♥`);
     }else notices.push('+5 XP');
-    const challengeTarget=challenge.autoNextHabitCount||challenge.habitIds.length;
-    if(challenge.completedIds.length===challengeTarget&&!challenge.coinRewarded){
-      challenge.coinRewarded=true;
+    if(challengeResult.completed){
       state.economy.coins+=2;
       notices.push('+2 🪙');
-      const challengeUseKey=`${key}:${challenge.spellId}`;
+      const challengeUseKey=`${key}:${challengeSpellId}`;
       const recordedUse=rewards.challengeDayUses?.[challengeUseKey];
-      const completedAt=Date.now();
-      if(recordedUse&&typeof recordedUse==='object'){
-        recordedUse.lastCompletedAt=completedAt;
-        if((Number(recordedUse.count)||0)<2){
-          window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
-        }
-      }else{
-        rewards.challengeDayUses=rewards.challengeDayUses||{};
-        rewards.challengeDayUses[challengeUseKey]={count:1,lastUsedAt:0,lastCompletedAt:completedAt};
+      if((Number(recordedUse?.count)||0)<2){
         window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
       }
     }
@@ -3919,7 +3909,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
     }
     if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
-    if(result.xpDelta>0) applyClassHabitRewards({result,habit});
+    if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit});
     const rewardTotalsAfter={
       xp:gameStats().xp,
       coins:Number(state.economy?.coins)||0

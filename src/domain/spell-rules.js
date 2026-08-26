@@ -69,6 +69,49 @@ export function levelEightSpellAvailability({ game, spellId, today, nowTimestamp
   };
 }
 
+export function completeLevelEightHabitChallenge({
+  progress,
+  habitId,
+  today,
+  completedAt = Date.now(),
+}) {
+  const current = progress || {};
+  const challenge = current.habitChallenge;
+  const completedIds = Array.isArray(challenge?.completedIds) ? challenge.completedIds : [];
+  const selected = Array.isArray(challenge?.habitIds) && challenge.habitIds.includes(habitId);
+  const automatic = Number(challenge?.autoNextHabitCount) > 0;
+  const target = Math.max(1, Number(challenge?.autoNextHabitCount) || challenge?.habitIds?.length || 2);
+  if (!challenge || challenge.day !== today || (!selected && !automatic) || completedIds.includes(habitId)) {
+    return { progress: current, advanced: false, completed: false };
+  }
+
+  const nextCompletedIds = [...completedIds, habitId];
+  const completed = nextCompletedIds.length >= target;
+  const nextProgress = {
+    ...current,
+    challengeDayUses: { ...(current.challengeDayUses || {}) },
+    habitChallenge: { ...challenge, completedIds: nextCompletedIds },
+  };
+  if (completed) {
+    const useKey = `${today}:${challenge.spellId}`;
+    const recordedUse = normalizedLevelEightUse(nextProgress.challengeDayUses[useKey]);
+    nextProgress.challengeDayUses[useKey] = {
+      ...recordedUse,
+      count: Math.max(1, recordedUse.count),
+      lastCompletedAt: completedAt,
+    };
+    delete nextProgress.habitChallenge;
+  }
+  return {
+    progress: nextProgress,
+    advanced: true,
+    completed,
+    spellId: challenge.spellId,
+    completedCount: nextCompletedIds.length,
+    target,
+  };
+}
+
 export function levelTwoSpellAvailability({ game, spellId, nowTimestamp = Date.now() }) {
   const cooldownUntil = Math.max(
     0,
