@@ -42,6 +42,15 @@ import {
   regenerateHealth,
   weeklyBossPenalty
 } from './domain/hero-rules.js';
+import { allocateAttributePoint, attributeSheet } from './domain/attribute-rules.js';
+import {
+  HUNT_DIFFICULTIES,
+  grantHabitHuntEnergy,
+  pveHeroStats,
+  normalizeHuntState,
+  resolveHunt,
+  startHunt,
+} from './domain/pve-combat-rules.js';
 import {
   evaluateSmoke,
   perfectShotRewards,
@@ -156,6 +165,7 @@ import {
 import { renderChartView } from './ui/chart-view.js';
 import { renderTodayView } from './ui/today-view.js';
 import {
+  createHeroModel,
   didHeroLevelUp,
   renderHeroView,
   renderSkillsView,
@@ -163,6 +173,8 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
+import { renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
   forgeResultMarkup,
@@ -216,9 +228,12 @@ const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('de
 const dismissedInventoryShortcutHints=new Set();
 const AUREO_NOTICE_KEY='freedoom:aureo-notice-seen:v1';
 const AUREO_NOTICE_TARGETS=['outfits','weave'];
+const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
+const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-hero','nav-habits','hunt-tab'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
@@ -247,7 +262,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}`
+    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -293,6 +308,9 @@ let pioneerRewardTimer=null;
 let pioneerRewardOpening=false;
 let fiberCatchupTimer=null;
 let fiberCatchupOpening=false;
+let progressionUpdateTimer=null;
+let progressionUpdateOpening=false;
+const PROGRESSION_UPDATE_NOTICE_ID='attributes-hunt-v1';
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
@@ -615,7 +633,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderSettings();renderStorageHealth();queueLootNotice();}
+function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderHunt();renderSettings();renderStorageHealth();queueLootNotice();}
 function renderStartupPrimary(){
   applyPendingJourneyTransition();
   repairJourneyTransitionHistory();
@@ -623,12 +641,40 @@ function renderStartupPrimary(){
   renderStorageHealth();
   queueLootNotice();
 }
+function previousDayExceededConsumptionLimit(now=new Date()){
+  const previousDate=currentDayDate(now);
+  previousDate.setDate(previousDate.getDate()-1);
+  const previousKey=keyOf(previousDate);
+  const previousConfig=journeyConfigForDate(state.config,previousDate);
+  const record=getDay(previousKey);
+  if(isSmokeFreeMode(previousConfig)){
+    return smokeFreeStatusOf(record)===SMOKE_FREE_STATUS_SMOKED;
+  }
+  if(isControlledMode(previousConfig)){
+    if(!isControlledSmokingDay(previousConfig,previousDate)){
+      return smokeFreeStatusOf(record)===SMOKE_FREE_STATUS_SMOKED;
+    }
+    const week=Math.max(0,weekIndexOf(previousDate));
+    const [first]=weekRange(week);
+    let used=0;
+    for(let cursor=new Date(first);cursor<=previousDate;cursor.setDate(cursor.getDate()+1)){
+      const cursorConfig=journeyConfigForDate(state.config,cursor);
+      if(isControlledSmokingDay(cursorConfig,cursor)) used+=Math.max(0,getDay(keyOf(cursor)).c||0);
+    }
+    return used>controlledWeeklyLimitOf(previousConfig);
+  }
+  return Math.max(0,record.c||0)>limitOfDate(previousDate);
+}
+function huntBaseEnergyForToday(now=new Date()){
+  return previousDayExceededConsumptionLimit(now)?2:5;
+}
 function preloadStartupViews(){
   scheduleStartupPreload({
     window,
     renderSecondary:()=>{
       renderHabits();
       renderHero();
+      renderHunt();
       renderSettings();
     },
     afterSecondary:()=>scheduleSave({type:'storage:checkpoint'}),
@@ -691,6 +737,11 @@ function renderHabits(){
     filter:habitViewFilter,
     section:habitViewSection
   });
+  const huntContent=document.getElementById('huntContent');
+  if(huntContent){
+    huntContent.hidden=habitViewSection!=='hunt';
+    if(habitViewSection==='hunt') renderHunt();
+  }
 }
 
 function renderWeeks(){
@@ -946,6 +997,17 @@ function prepareLocalBossDemo(){
       buffs:{},
       day:todayKey()
     };
+    if(LOCAL_PROGRESSION_UPDATE_PREVIEW&&LOCAL_DEMO_LEVEL){
+      state.config={...state.config,startDate:todayKey()};
+      state.days={};
+      state.habits={items:[],entries:{}};
+      state.game={
+        ...state.game,
+        bossCombat:null,
+        bonusXp:35*(LOCAL_DEMO_LEVEL-1)*(LOCAL_DEMO_LEVEL-1)
+      };
+      state.inventory.dailyActivations={};
+    }
     if(LOCAL_DEMO_ALL_OUTFITS){
       const acquiredAt=Date.now();
       state.game={
@@ -970,7 +1032,7 @@ function prepareLocalBossDemo(){
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
     state.economy={...state.economy,coins:9999,bossBlood:99};
-    if(!normalizeHabitState(state.habits).items.some(habit=>habit.active!==false)){
+    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!normalizeHabitState(state.habits).items.some(habit=>habit.active!==false)){
       const now=Date.now();
       state.habits={items:[
         {id:'demo-water',title:'Beber agua',difficulty:'easy',frequency:'daily',target:1,repeatable:false,active:true,order:0,createdAt:now,updatedAt:now},
@@ -1399,7 +1461,12 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     now:nowDate,
     config:state.config,
     days:state.days,
-    legacyBossesDown
+    legacyBossesDown,
+    criticalChance:pveHeroStats({
+      classId:g.cls,
+      level:gameStats().lvl,
+      allocation:g.attributes
+    }).criticalChance
   });
   g.bossCombat=result.combat;
   const totalBossesDown=
@@ -2068,8 +2135,8 @@ function positionInventorySheetFromForge(){
   }
 }
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
+  if(panel==='inventory') panel='collection';
   if(panel!=='forge') clearFusionFeedback();
-  const inventorySelected=panel==='inventory';
   const collectionSelected=panel==='collection';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
@@ -2077,26 +2144,20 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const collectionBody=document.getElementById('collectionBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
-  const inventoryTab=document.getElementById('inventoryTab');
   const collectionTab=document.getElementById('collectionTab');
   const forgeTab=document.getElementById('forgeTab');
   const shopTab=document.getElementById('shopTab');
-  inventoryBody.hidden=!inventorySelected;
+  inventoryBody.hidden=true;
   collectionBody.hidden=!collectionSelected;
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
-  inventoryTab.classList.toggle('active',inventorySelected);
   collectionTab.classList.toggle('active',collectionSelected);
   forgeTab.classList.toggle('active',forgeSelected);
   shopTab.classList.toggle('active',shopSelected);
-  inventoryTab.setAttribute('aria-selected',String(inventorySelected));
   collectionTab.setAttribute('aria-selected',String(collectionSelected));
   forgeTab.setAttribute('aria-selected',String(forgeSelected));
   shopTab.setAttribute('aria-selected',String(shopSelected));
-  if(inventorySelected){
-    renderInventoryView(document,state,potionViewOptions());
-    if(scrollToEquipped) requestAnimationFrame(()=>document.getElementById('inventoryEquippedSection')?.scrollIntoView({block:'start'}));
-  }else if(collectionSelected){
+  if(collectionSelected){
     renderCollectionView(document,state);
   }else if(forgeSelected){
     selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
@@ -2114,15 +2175,59 @@ function openInventory(){
   fusionRightId=null;
   clearFusionFeedback();
   forgePickerTarget=null;
-  const inventoryBody=document.getElementById('inventoryBody');
-  if(inventoryBody) inventoryBody.scrollTop=0;
-  showInventoryPanel('inventory');
+  const collectionBody=document.getElementById('collectionBody');
+  if(collectionBody) collectionBody.scrollTop=0;
+  showInventoryPanel('collection');
   document.getElementById('sheetInventory').classList.add('show');
   positionInventorySheetFromForge();
   requestAnimationFrame(()=>{
-    const refreshedInventoryBody=document.getElementById('inventoryBody');
-    if(refreshedInventoryBody) refreshedInventoryBody.scrollTop=0;
+    const refreshedCollectionBody=document.getElementById('collectionBody');
+    if(refreshedCollectionBody) refreshedCollectionBody.scrollTop=0;
   });
+}
+
+function openCharacterSheet(){
+  if(!state.game?.cls) return;
+  dismissFeatureDiscovery('character-entry');
+  ensureHero();
+  renderCurrentCharacterSheet();
+  document.getElementById('sheetCharacter').classList.add('show');
+}
+
+function renderCurrentCharacterSheet(){
+  if(!state.game?.cls) return;
+  ensureHero();
+  const now=new Date();
+  const dayDate=currentDayDate(now);
+  const dayKey=todayKey(now);
+  const stats=gameStats();
+  const intoxication=currentIntoxication(now.getTime());
+  const heroModel=createHeroModel({
+    now,
+    config:{...state.config,wakeTime:wakeTimeForDay(dayKey)},
+    days:state.days,
+    game:state.game,
+    stats,
+    boss:calculateBossCombatStatus({combat:state.game.bossCombat,now:dayDate,config:state.config,days:state.days}),
+    armor:heroArmor(),
+    intoxication,
+    dayKey,
+  });
+  renderCharacterSheet({document,state,stats,heroModel});
+}
+
+function renderHunt(){
+  const game=state.game||{};
+  const stats=game.cls?gameStats():null;
+  if(game.cls){
+    const nowTimestamp=Date.now();
+    const normalized=normalizeHuntState(game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)));
+    if(JSON.stringify(normalized)!==JSON.stringify(game.hunt||null)){
+      game.hunt=normalized;
+      scheduleSave();
+    }
+  }
+  renderHuntView({document,game,stats,intoxication:currentIntoxication(),nowTimestamp:Date.now()});
 }
 function unequipInventoryRelic(relicId){
   let result=unequipRelic(state,relicId);
@@ -2201,6 +2306,21 @@ function dismissAureoNotice(target){
   try{ localStorage.setItem(`${AUREO_NOTICE_KEY}:${target}`,'1'); }catch{}
   document.documentElement.classList.remove(aureoNoticeClass(target));
 }
+function featureDiscoveryClass(target){return `feature-discovery-${target}-unseen`;}
+function featureDiscoverySeen(target){
+  try{return localStorage.getItem(`${FEATURE_DISCOVERY_KEY}:${target}`)==='1';}catch{}
+  return false;
+}
+function syncFeatureDiscovery(){
+  FEATURE_DISCOVERY_TARGETS.forEach(target=>{
+    document.documentElement.classList.toggle(featureDiscoveryClass(target),!featureDiscoverySeen(target));
+  });
+}
+function dismissFeatureDiscovery(target){
+  if(!FEATURE_DISCOVERY_TARGETS.includes(target)) return;
+  try{localStorage.setItem(`${FEATURE_DISCOVERY_KEY}:${target}`,'1');}catch{}
+  document.documentElement.classList.remove(featureDiscoveryClass(target));
+}
 function inventoryShortcutHintSeen(surface){
   if(FORCE_INVENTORY_SHORTCUT_HINT&&!dismissedInventoryShortcutHints.has(surface)) return false;
   try{ return localStorage.getItem(`${INVENTORY_SHORTCUT_HINT_KEY}:${surface}`)==='1'; }catch{}
@@ -2230,6 +2350,7 @@ function openInventoryFromShortcut(){
 }
 syncInventoryShortcutHint();
 syncAureoNotices();
+syncFeatureDiscovery();
 let inventoryPositionFrame=0;
 function scheduleInventorySheetPosition(){
   if(!document.getElementById('sheetInventory')?.classList.contains('show')) return;
@@ -2321,6 +2442,35 @@ function queueFiberCatchup(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
   clearTimeout(fiberCatchupTimer);
   if(!pendingFiberCatchupNotice(state)) return;
   fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),delay);
+}
+function progressionUpdateAcknowledged(){
+  return Boolean(state.game?.updateNotices?.[PROGRESSION_UPDATE_NOTICE_ID]?.acknowledgedAt);
+}
+function shouldDisplayProgressionUpdate(){
+  if(LOCAL_PROGRESSION_UPDATE_PREVIEW) return Boolean(state.onboarded&&state.game?.cls);
+  return Boolean(state.onboarded&&state.game?.cls&&!progressionUpdateAcknowledged());
+}
+function showPendingProgressionUpdate(){
+  progressionUpdateTimer=null;
+  if(progressionUpdateOpening||!shouldDisplayProgressionUpdate()) return;
+  if(returnSplashPlaying||document.querySelector('.modal-bg.show:not(#progressionUpdateBg)')){
+    progressionUpdateTimer=window.setTimeout(showPendingProgressionUpdate,500);
+    return;
+  }
+  progressionUpdateOpening=true;
+  const stats=gameStats();
+  const sheet=attributeSheet({classId:state.game.cls,level:stats.lvl,allocation:state.game.attributes});
+  const hunt=normalizeHuntState(state.game.hunt,Date.now(),huntBaseEnergyForToday(new Date()));
+  document.getElementById('progressionUpdateLevel').textContent=`NIVEL ${stats.lvl}`;
+  document.getElementById('progressionUpdatePoints').textContent=String(sheet.availablePoints);
+  document.getElementById('progressionUpdateEnergy').textContent=`${hunt.energy}/${hunt.baseEnergy+hunt.bonusEnergyEarned}`;
+  document.getElementById('progressionUpdateBg')?.classList.add('show');
+  progressionUpdateOpening=false;
+}
+function queueProgressionUpdate(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
+  clearTimeout(progressionUpdateTimer);
+  if(!shouldDisplayProgressionUpdate()) return;
+  progressionUpdateTimer=window.setTimeout(showPendingProgressionUpdate,delay);
 }
 function acknowledgeActiveLootNotice(){
   if(!activeLootNoticeId) return;
@@ -2906,6 +3056,7 @@ const navigation=bindNavigation({
   window,
   onOpenSettings:openAjustes,
   onOpenInventory:openInventoryFromShortcut,
+  onOpenCharacterSheet:openCharacterSheet,
   onOpenRecoveries:openRecoveryModal,
   onHabits:renderHabits,
   onCalendar:()=>{
@@ -2918,7 +3069,10 @@ document.getElementById('navHero').addEventListener('click',()=>{
   renderHero();
 });
 Object.entries({navHoy:'today',navHabits:'habits',navHero:'hero'}).forEach(([id,surface])=>{
-  document.getElementById(id)?.addEventListener('click',()=>restartInventoryShortcutHint(surface));
+  document.getElementById(id)?.addEventListener('click',()=>{
+    restartInventoryShortcutHint(surface);
+    if(id==='navHabits') dismissFeatureDiscovery('nav-habits');
+  });
 });
 function switchView(viewId,buttonId){
   navigation.switchView(viewId,buttonId);
@@ -2929,6 +3083,114 @@ function switchView(viewId,buttonId){
   }[viewId];
   if(surface) restartInventoryShortcutHint(surface);
 }
+
+let pendingHuntDifficultyId=null;
+
+function closeHuntConfirmation(){
+  pendingHuntDifficultyId=null;
+  document.getElementById('huntConfirmBg').classList.remove('show');
+}
+
+function openHuntConfirmation(difficultyId){
+  const difficulty=HUNT_DIFFICULTIES[difficultyId];
+  if(!difficulty) return;
+  const hunt=normalizeHuntState(state.game.hunt,Date.now());
+  const heroLevel=gameStats().lvl;
+  if(hunt.active){showToast('Ya hay una cacería en curso','bad');return;}
+  if(heroLevel<difficulty.minLevel){showToast(`Necesitas nivel ${difficulty.minLevel}`,'bad');return;}
+  if(hunt.energy<difficulty.energyCost){showToast('No tienes energía suficiente','bad');return;}
+  pendingHuntDifficultyId=difficultyId;
+  document.getElementById('huntConfirmTitle').textContent=`¿Iniciar en ${difficulty.name}?`;
+  document.getElementById('huntConfirmBody').innerHTML=`<div class="hunt-confirm-summary">
+    <div><span>Dificultad</span><b>${difficulty.name}</b></div>
+    <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
+    <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
+    <div><span>Recompensa</span><b>✦ ${difficulty.xp} XP · 🪙 ${difficulty.gold[0]}–${difficulty.gold[1]}</b></div>
+  </div>`;
+  document.getElementById('huntConfirmBg').classList.add('show');
+}
+
+function confirmHuntStart(){
+  if(!pendingHuntDifficultyId) return;
+  const difficultyId=pendingHuntDifficultyId;
+  closeHuntConfirmation();
+  const result=startHunt({hunt:state.game.hunt,difficultyId,level:gameStats().lvl,nowTimestamp:Date.now()});
+  if(!result.ok){
+    showToast(result.reason==='insufficient-energy'?'No tienes energía suficiente':result.reason==='level-locked'?`Necesitas nivel ${result.requiredLevel}`:'Ya hay una cacería en curso','bad');
+    return;
+  }
+  state.game.hunt=result.hunt;
+  scheduleSave({type:'hunt:start',difficultyId});
+  renderHunt();
+  const durationMinutes=HUNT_DIFFICULTIES[difficultyId].durationMinutes;
+  showToast(`Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
+}
+
+document.getElementById('huntConfirmCancel').addEventListener('click',closeHuntConfirmation);
+document.getElementById('huntConfirmAccept').addEventListener('click',confirmHuntStart);
+document.getElementById('huntConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='huntConfirmBg') closeHuntConfirmation();
+});
+
+document.getElementById('view-habits').addEventListener('click',event=>{
+  if(!state.game?.cls) return;
+  if(event.target.closest('[data-open-character-sheet]')){
+    openCharacterSheet();
+    return;
+  }
+  if(event.target.closest('[data-open-hunt-region]')){
+    document.getElementById('huntContent').dataset.huntScreen='region';
+    renderHunt();
+    return;
+  }
+  if(event.target.closest('[data-back-hunt-map]')){
+    document.getElementById('huntContent').dataset.huntScreen='map';
+    renderHunt();
+    return;
+  }
+  const monster=event.target.closest('[data-hunt-monster]');
+  if(monster&&renderHuntMonsterDetail({document,enemyId:monster.dataset.huntMonster})){
+    document.getElementById('sheetHuntMonster').classList.add('show');
+    return;
+  }
+  const startButton=event.target.closest('[data-start-hunt]');
+  if(startButton){
+    openHuntConfirmation(startButton.dataset.startHunt);
+    return;
+  }
+  if(event.target.closest('[data-resolve-hunt]')){
+    const result=resolveHunt({
+      hunt:state.game.hunt,
+      classId:state.game.cls,
+      level:gameStats().lvl,
+      allocation:state.game.attributes,
+      nowTimestamp:Date.now()
+    });
+    if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
+    state.game.hunt=result.hunt;
+    state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
+    state.economy=state.economy||{coins:0,bossBlood:0,arcaneFibers:0,transactions:[]};
+    state.economy.coins=Math.max(0,Number(state.economy.coins)||0)+result.report.rewards.gold;
+    state.economy.arcaneFibers=Math.max(0,Number(state.economy.arcaneFibers)||0)+result.report.rewards.arcaneFibers;
+    state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
+    state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
+    state.economy.transactions.push({id:`hunt:${result.report.id}`,type:'hunt',at:Date.now(),...result.report.rewards});
+    state.economy.transactions=state.economy.transactions.slice(-200);
+    scheduleSave({type:'hunt:resolve',won:result.report.won});
+    renderHunt();
+    showToast(result.report.won?'Cacería superada · recompensas recibidas':'Tu héroe ha tenido que retirarse',result.report.won?'heal':'bad');
+  }
+});
+
+document.getElementById('view-habits').addEventListener('keydown',event=>{
+  if(!event.target.closest('[data-open-character-sheet]')||!['Enter',' '].includes(event.key)) return;
+  event.preventDefault();
+  openCharacterSheet();
+});
+
+window.setInterval(()=>{
+  if(document.getElementById('view-habits')?.classList.contains('active')&&habitViewSection==='hunt') updateHuntCountdown(document,Date.now());
+},1000);
 
 /* controles de la gráfica */
 function showHistoryPanel(panel,weekIndex=null){
@@ -3510,6 +3772,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   const section=event.target.closest('[data-habit-section]');
   if(section){
     habitViewSection=section.dataset.habitSection;
+    if(habitViewSection==='hunt') dismissFeatureDiscovery('hunt-tab');
+    if(habitViewSection==='hunt') document.getElementById('huntContent').dataset.huntScreen='map';
     renderHabits();
     return;
   }
@@ -3625,6 +3889,13 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
+    const huntEnergyResult=grantHabitHuntEnergy({
+      hunt:state.game.hunt,
+      rewardKey:`${habit.id}|${result.entry.periodKey}`,
+      becameCompleted:result.becameCompleted,
+      nowTimestamp:Date.now()
+    });
+    state.game.hunt=huntEnergyResult.hunt;
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
     }
@@ -3666,7 +3937,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     renderAll();
     if(result.becameCompleted){
       const fiberNotice=fiberResult.granted?' · +1 Fibra Arcana':'';
-      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${fiberNotice}`,'heal');
+      const energyNotice=huntEnergyResult.granted?' · +1 Energía de Cacería':'';
+      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${fiberNotice}${energyNotice}`,'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
@@ -3955,6 +4227,10 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   if(e.target.closest('[data-future-skill]')){
     showToast('Próximamente','heal');
+    return;
+  }
+  if(e.target.closest('[data-open-character-sheet]')){
+    openCharacterSheet();
     return;
   }
   if(e.target.closest('[data-open-inventory]')){
@@ -4270,7 +4546,6 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
   }
-  if(event.target.closest('#inventoryTab')){ showInventoryPanel('inventory'); return; }
   if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
@@ -4422,6 +4697,42 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
 });
 
+document.getElementById('sheetCharacter').addEventListener('click',event=>{
+  const attribute=event.target.closest('[data-character-attribute]');
+  if(attribute&&!attribute.disabled){
+    const result=allocateAttributePoint({classId:state.game.cls,level:gameStats().lvl,allocation:state.game.attributes,attributeId:attribute.dataset.characterAttribute});
+    if(!result.ok){showToast('No tienes puntos disponibles','dmg');return;}
+    state.game.attributes=result.sheet.allocation;
+    scheduleSave({type:'hero:attribute',attributeId:attribute.dataset.characterAttribute});
+    renderCurrentCharacterSheet();
+    renderHunt();
+    return;
+  }
+  const relicSlot=event.target.closest('[data-character-relic-slot]');
+  if(relicSlot){
+    forgePickerTarget={mode:'equip',slot:Number(relicSlot.dataset.characterRelicSlot),source:'character'};
+    renderForgeRelicPicker(document,state,forgePickerTarget);
+    document.getElementById('forgeRelicPickerBg').classList.add('show');
+    return;
+  }
+  if(event.target.closest('[data-character-bag]')){
+    dismissFeatureDiscovery('character-bag');
+    openInventory();
+    return;
+  }
+  if(event.target.closest('[data-character-outfit]')){
+    dismissFeatureDiscovery('character-hero');
+    outfitSelectorSection='owned';
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned'});
+    document.getElementById('outfitSelectorBg').classList.add('show');
+    return;
+  }
+  if(event.target.closest('[data-character-skills]')){
+    showHeroSkillsPanel();
+    document.getElementById('sheetHeroSkills').classList.add('show');
+  }
+});
+
 document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   const sectionButton=event.target.closest('[data-outfit-section]');
   if(sectionButton){
@@ -4466,6 +4777,9 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
     renderHero();
     renderHoy();
     renderHabits();
+    if(document.getElementById('sheetCharacter')?.classList.contains('show')){
+      renderCurrentCharacterSheet();
+    }
     showToast('Outfit equipado','heal');
     return;
   }
@@ -4476,6 +4790,19 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
 });
 document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   if(event.target.id==='forgeRelicPickerBg'){event.currentTarget.classList.remove('show');return;}
+  const unequipChoice=event.target.closest('[data-picker-unequip]');
+  if(unequipChoice&&forgePickerTarget?.mode==='equip'){
+    const returnToCharacter=forgePickerTarget.source==='character';
+    if(!unequipInventoryRelic(unequipChoice.dataset.pickerUnequip)) return;
+    event.currentTarget.classList.remove('show');
+    forgePickerTarget=null;
+    if(returnToCharacter){
+      document.getElementById('sheetInventory').classList.remove('show');
+      document.getElementById('sheetCharacter').classList.add('show');
+      renderCurrentCharacterSheet();
+    }
+    return;
+  }
   const filter=event.target.closest('[data-picker-filter]');
   if(filter){
     const kind=filter.dataset.pickerFilter;
@@ -4492,8 +4819,10 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
     applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
     scheduleSave({type:'loot:equip',relicId});
     event.currentTarget.classList.remove('show');
+    const returnToCharacter=forgePickerTarget.source==='character';
     forgePickerTarget=null;
     renderInventoryView(document,state,potionViewOptions()); renderHero();
+    if(returnToCharacter) renderCurrentCharacterSheet();
     showToast('Reliquia equipada','heal');
     return;
   }
@@ -4775,6 +5104,20 @@ document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   renderAll();
   showToast(`+${notice.arcaneFibers} Fibras Arcanas`,'heal');
 });
+document.getElementById('progressionUpdateContinue').addEventListener('click',()=>{
+  state.game={
+    ...state.game,
+    updateNotices:{
+      ...(state.game.updateNotices||{}),
+      [PROGRESSION_UPDATE_NOTICE_ID]:{acknowledgedAt:Date.now()}
+    }
+  };
+  document.getElementById('progressionUpdateBg').classList.remove('show');
+  scheduleSave({type:'update:progression-notice-acknowledged',noticeId:PROGRESSION_UPDATE_NOTICE_ID});
+  switchView('view-hero','navHero');
+  renderHero();
+  openCharacterSheet();
+});
 document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
   const shop=event.target.closest('[data-loot-shop]');
@@ -4941,7 +5284,7 @@ function checkDay(){
     lastDay=todayKey();
     scheduleSave({type:'storage:daily-checkpoint',day:lastDay});
     renderAll();
-    showPendingWeekResult();
+    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW) showPendingWeekResult();
   }
   else{renderHoy();renderHero();}
 }
@@ -5087,7 +5430,7 @@ resetGuardContinue.addEventListener('click',()=>{
     if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();
       await showPendingLootNotice();
-    }else if(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null||LOCAL_DEMO_PALADIN_EFFECTS){
+    }else if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null||LOCAL_DEMO_PALADIN_EFFECTS)){
       await finishInitialReturnSplash();
       switchView('view-hero','navHero');
       renderHero();
@@ -5103,6 +5446,9 @@ resetGuardContinue.addEventListener('click',()=>{
       }
     }else finishInitialReturnSplash();
   }
-  queuePioneerReward();
-  queueFiberCatchup();
+  if(!LOCAL_PROGRESSION_UPDATE_PREVIEW){
+    queuePioneerReward();
+    queueFiberCatchup();
+  }
+  queueProgressionUpdate();
 })();

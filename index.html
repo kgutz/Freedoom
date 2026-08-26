@@ -151,7 +151,7 @@
       </label>
     </div>
 
-    <div class="hoy-hero" data-open-inventory data-inventory-shortcut="today" role="button" tabindex="0" aria-label="Abrir inventario">
+    <div class="hoy-hero" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
       <img class="hoy-hero-bg" id="hoyHeroBg" alt="" aria-hidden="true">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
       <div class="hoy-hero-top">
@@ -242,6 +242,7 @@
   <!-- VISTA HÁBITOS -->
   <section id="view-habits" class="view">
     <div id="habitsContent"></div>
+    <div id="huntContent" hidden></div>
   </section>
 
   <!-- VISTA HÉROE -->
@@ -535,17 +536,23 @@
 </div>
 
 <!-- GRIMORIO (detalle de habilidades) -->
+<div class="sheet-bg" id="sheetCharacter" style="z-index:27">
+  <div class="sheet character-sheet">
+    <div class="sheet-head sk-head-center"><h3>Ficha de personaje</h3><button class="sheet-close" data-sheet="sheetCharacter">✕</button></div>
+    <div id="characterSheetBody"></div>
+  </div>
+</div>
+
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Inventario, Colección, Forja y Tienda">
-      <button type="button" class="active" id="inventoryTab" role="tab" aria-selected="true">Inventario</button>
-      <button type="button" id="collectionTab" role="tab" aria-selected="false">Colección</button>
+    <div class="inventory-tabs" role="tablist" aria-label="Colección, Forja y Tienda">
+      <button type="button" class="active" id="collectionTab" role="tab" aria-selected="true">Colección</button>
       <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>
       <button type="button" id="shopTab" role="tab" aria-selected="false">Tienda</button>
     </div>
-    <div id="inventoryBody"></div>
-    <div id="collectionBody" hidden></div>
+    <div id="inventoryBody" hidden></div>
+    <div id="collectionBody"></div>
     <div id="forgeBody" hidden></div>
     <div id="shopBody" hidden></div>
   </div>
@@ -577,10 +584,17 @@
   </div>
 </div>
 
-<div class="sheet-bg" id="sheetHeroSkills" style="z-index:26">
+<div class="sheet-bg" id="sheetHeroSkills" style="z-index:29">
   <div class="sheet hero-skills-sheet">
     <div class="sheet-head sk-head-center"><h3>Libro de habilidades</h3><button class="sheet-close" data-sheet="sheetHeroSkills">✕</button></div>
     <div class="card hero-skills-book" id="skillsBody"></div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetHuntMonster" style="z-index:29">
+  <div class="sheet hunt-monster-detail-sheet">
+    <div class="sheet-head sk-head-center"><h3>Bestiario</h3><button class="sheet-close" data-sheet="sheetHuntMonster">✕</button></div>
+    <div id="huntMonsterBody"></div>
   </div>
 </div>
 
@@ -696,6 +710,42 @@
   </div>
 </div>
 
+<div class="modal-bg center" id="huntConfirmBg" style="z-index:41">
+  <div class="modal fusion-confirm-modal hunt-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="huntConfirmTitle">
+    <span class="relic-effect-info-kicker">CONFIRMAR CACERÍA</span>
+    <h3 id="huntConfirmTitle">¿Iniciar esta expedición?</h3>
+    <div id="huntConfirmBody"></div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="huntConfirmCancel">CANCELAR</button>
+      <button type="button" id="huntConfirmAccept">EMPEZAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg center progression-update-bg" id="progressionUpdateBg" style="z-index:48">
+  <div class="modal pioneer-reward-modal progression-update-modal" role="dialog" aria-modal="true" aria-labelledby="progressionUpdateTitle">
+    <section class="pioneer-reward-step pioneer-reward-reveal">
+      <span class="pioneer-reward-kicker">NUEVA PROGRESIÓN · <b id="progressionUpdateLevel">NIVEL 1</b></span>
+      <h3 id="progressionUpdateTitle">Tu nivel ahora tiene poder</h3>
+      <p>Has recibido 3 puntos por cada nivel alcanzado, empezando desde el nivel 1.</p>
+      <div class="pioneer-reward-items progression-update-items">
+        <div class="pioneer-reward-item progression-update-item">
+          <span class="resource-icon resource-icon--attribute-points progression-update-icon" role="img" aria-label="Puntos de atributo"></span>
+          <strong id="progressionUpdatePoints">0</strong>
+          <small>PUNTOS DISPONIBLES</small>
+        </div>
+        <div class="pioneer-reward-item progression-update-item progression-update-energy">
+          <span class="resource-icon resource-icon--hunt-energy progression-update-icon" role="img" aria-label="Energía de Cacería"></span>
+          <strong id="progressionUpdateEnergy">5/5</strong>
+          <small>ENERGÍA DE CACERÍA</small>
+        </div>
+      </div>
+      <p class="progression-update-copy">Reparte tus puntos entre los cinco atributos desde la Ficha de personaje. La energía se renueva cada día y te permite enviar a tu héroe de Cacería.</p>
+      <button type="button" class="pioneer-reward-action" id="progressionUpdateContinue">VER MI FICHA</button>
+    </section>
+  </div>
+</div>
+
 <div class="modal-bg center" id="forgeResultBg" style="z-index:41">
   <div class="modal forge-result-modal">
     <div id="forgeResultBody"></div>
@@ -779,7 +829,7 @@
 
 <div class="modal-bg center" id="forgeRelicPickerBg" style="z-index:43">
   <div class="modal forge-relic-picker-modal" role="dialog" aria-modal="true" aria-labelledby="forgeRelicPickerTitle">
-    <div class="forge-picker-head"><h3 id="forgeRelicPickerTitle">Elegir reliquia</h3><button type="button" id="forgeRelicPickerClose" aria-label="Cerrar">✕</button></div>
+    <div class="forge-picker-head"><h3 id="forgeRelicPickerTitle">Elegir reliquia</h3><button type="button" class="forge-picker-unequip" id="forgeRelicPickerUnequip" hidden>DESEQUIPAR</button><button type="button" id="forgeRelicPickerClose" aria-label="Cerrar">✕</button></div>
     <div id="forgeRelicPickerBody"></div>
   </div>
 </div>

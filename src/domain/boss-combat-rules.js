@@ -20,6 +20,7 @@ import {
 export const BOSS_MAX_HP = 150;
 export const BOSS_REQUIRED_DAYS = 6;
 export const BOSS_DAY_DAMAGE = 25;
+export const BOSS_CRITICAL_DAMAGE = 10;
 export const BOSS_MARGIN_DAMAGE = 2;
 export const BOSS_MARGIN_DAMAGE_CAP = 10;
 export const BOSS_PERFECT_DAMAGE = 1;
@@ -127,7 +128,7 @@ export function createBossCombat({
 }) {
   const safeLegacy = Math.min(maxBosses, Math.max(0, legacyBossesDown || 0));
   return {
-    version: 3,
+    version: 4,
     startedWeek: currentWeek,
     legacyBossesDown: safeLegacy,
     defeated: 0,
@@ -137,6 +138,7 @@ export function createBossCombat({
     victoryRecorded: false,
     earlyVictory: null,
     spellHits: [],
+    criticalHits: [],
     history: [],
   };
 }
@@ -147,6 +149,7 @@ export function calculateWeekBossDamage({
   config,
   days,
   spellHits = [],
+  criticalHits = [],
   settleAll = false,
 }) {
   const limit = limitForWeek(config.startLimit, week);
@@ -200,7 +203,7 @@ export function calculateWeekBossDamage({
     const isToday = dayKey === today && !settleAll;
     const future = !settleAll && dayKey > today;
     const record = recordOf(days, dayKey);
-    const damage = calculateDailyBossDamage({
+    const baseDamage = calculateDailyBossDamage({
       record,
       limit,
       settled,
@@ -210,6 +213,10 @@ export function calculateWeekBossDamage({
       controlledAllowedDay,
       controlledBudgetExceeded,
     });
+    const critical = settled && baseDamage.completed && criticalHits.some((hit) => (
+      hit?.week === week && hit?.key === dayKey && hit?.critical === true
+    )) ? BOSS_CRITICAL_DAMAGE : 0;
+    const damage = { ...baseDamage, critical, total: baseDamage.total + critical };
 
     let status = 'pend';
     if (settled) status = damage.completed ? 'hit' : 'fail';
@@ -228,6 +235,7 @@ export function calculateWeekBossDamage({
           ...damage,
           pills: 0,
           perfect: 0,
+          critical: 0,
           total: 0,
         }
       : damage;
@@ -272,6 +280,7 @@ export function calculateBossCombatStatus({
     config,
     days,
     spellHits: combat.spellHits,
+    criticalHits: combat.criticalHits,
   });
   const rawHp = campaignComplete
     ? 0
@@ -327,6 +336,7 @@ export function calculateBossCombatStatus({
       margin: day.margin,
       pills: day.pills,
       perfect: day.perfect,
+      critical: day.critical,
       zero: day.zero,
     }));
 
@@ -345,6 +355,7 @@ export function calculateBossCombatStatus({
       margin: 0,
       pills: 0,
       perfect: 0,
+      critical: 0,
       zero: 0,
       total: 0,
     },
@@ -390,6 +401,8 @@ export function reconcileBossCombat({
   config,
   days,
   legacyBossesDown = 0,
+  criticalChance = 0,
+  roll = Math.random,
 }) {
   const currentWeek = Math.max(
     0,
@@ -401,6 +414,7 @@ export function reconcileBossCombat({
     ? {
         ...combat,
         spellHits: [...(combat.spellHits || [])],
+        criticalHits: [...(combat.criticalHits || [])],
         history: [...(combat.history || [])],
       }
     : createBossCombat({
@@ -434,15 +448,42 @@ export function reconcileBossCombat({
     next.earlyVictory = null;
     next.version = 3;
   }
+  if ((next.version || 3) < 4) {
+    next.criticalHits = [];
+    next.version = 4;
+  }
   const weekResults = [];
 
+  const registerCriticalHits = (week, settleAll = false) => {
+    const baseline = calculateWeekBossDamage({
+      week,
+      now,
+      config,
+      days,
+      spellHits: next.spellHits,
+      criticalHits: [],
+      settleAll,
+    });
+    for (const day of baseline.daily) {
+      if (!day.settled || day.status !== 'hit') continue;
+      if (next.criticalHits.some((hit) => hit?.week === week && hit?.key === day.key)) continue;
+      next.criticalHits.push({
+        week,
+        key: day.key,
+        critical: roll() < Math.max(0, Math.min(0.25, Number(criticalChance) || 0)),
+      });
+    }
+  };
+
   while (next.week < currentWeek && !next.completed) {
+    registerCriticalHits(next.week, true);
     const damage = calculateWeekBossDamage({
       week: next.week,
       now,
       config,
       days,
       spellHits: next.spellHits,
+      criticalHits: next.criticalHits,
       settleAll: true,
     });
     const rawRemainingHp = Math.max(
@@ -505,6 +546,11 @@ export function reconcileBossCombat({
   next.spellHits = next.spellHits.filter(
     (hit) => hit && hit.week >= next.week,
   );
+  next.criticalHits = next.criticalHits.filter(
+    (hit) => hit && hit.week >= next.week,
+  );
+
+  registerCriticalHits(next.week);
 
   let status = calculateBossCombatStatus({
     combat: next,

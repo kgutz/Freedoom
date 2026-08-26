@@ -470,11 +470,10 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('data-open-current-boss-medal="1"');
     expect(heroContent.innerHTML).toContain('aria-label="Abrir medallón de Espectro"');
     expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
-    expect(heroContent.innerHTML).toContain('data-open-hero-skills');
-    expect(heroContent.innerHTML.indexOf('data-open-inventory'))
-      .toBeLessThan(heroContent.innerHTML.indexOf('data-open-hero-skills'));
+    expect(heroContent.innerHTML).not.toContain('data-open-hero-skills');
+    expect(heroContent.innerHTML).not.toContain('hero-quick-actions');
     expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
-    expect(heroContent.innerHTML).toContain('aria-label="Abrir libro de habilidades"');
+    expect(heroContent.innerHTML).not.toContain('aria-label="Abrir libro de habilidades"');
     expect(heroContent.innerHTML).not.toContain('data-jump-to-boss');
     expect(heroContent.innerHTML).toContain('id="heroBossCard"');
     expect((heroContent.innerHTML.match(/data-cast=/g) || []).length).toBe(3);

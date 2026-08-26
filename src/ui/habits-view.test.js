@@ -100,7 +100,7 @@ describe('vista de hábitos', () => {
     });
 
     expect(html).toContain('Beber agua');
-    expect(html).toContain('data-open-inventory');
+    expect(html).toContain('data-open-character-sheet');
     expect(html).toContain('<span class="habit-meta">Media · 6 XP + 3 oro</span>');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).not.toContain('🪙');

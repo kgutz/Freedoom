@@ -10,6 +10,7 @@ export function bindNavigation({
   window,
   onOpenSettings,
   onOpenInventory,
+  onOpenCharacterSheet,
   onOpenRecoveries,
   onHabits,
   onCalendar,
@@ -82,12 +83,12 @@ export function bindNavigation({
   });
 
   document.getElementById('view-hoy').addEventListener('click', (event) => {
-    if (event.target.closest('.hoy-hero[data-open-inventory]')) onOpenInventory();
+    if (event.target.closest('.hoy-hero[data-open-character-sheet]')) onOpenCharacterSheet();
   });
   document.getElementById('view-hoy').addEventListener('keydown', (event) => {
-    if (!event.target.closest('.hoy-hero[data-open-inventory]') || !['Enter', ' '].includes(event.key)) return;
+    if (!event.target.closest('.hoy-hero[data-open-character-sheet]') || !['Enter', ' '].includes(event.key)) return;
     event.preventDefault();
-    onOpenInventory();
+    onOpenCharacterSheet();
   });
   document.getElementById('navMenu').addEventListener('click', () => {
     document.getElementById('menuBg').classList.add('show');

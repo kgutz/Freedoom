@@ -148,7 +148,7 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
-function relicArt(definition, overlay = '') {
+export function relicArt(definition, overlay = '') {
   if (definition.ingredientIds?.length === 2 && !definition.image) {
     const ingredients = definition.ingredientIds.map((id) => relicDefinition(id));
     return `<div class="relic-art relic-art--fusion relic-art--${definition.id}">
@@ -411,20 +411,6 @@ export function inventoryAccessMarkup(lootState) {
 export function renderInventoryView(document, lootState, options = {}) {
   const normalized = normalizeLootState(lootState);
   const equipped = normalized.inventory.equipped;
-  const equippedSlots = [0, 1].map((slot) => {
-    const relicId = equipped[slot];
-    const relic = normalized.inventory.relics[relicId];
-    const definition = relicDefinition(relicId);
-    return relic && definition
-      ? relicCardMarkup({
-          definition,
-          relic,
-          equipped: true,
-          slot,
-          chargeState: normalized.inventory.constancy,
-        })
-      : `<button type="button" class="relic-slot-empty" data-open-equip-picker="${slot}" aria-label="Elegir reliquia para el slot ${slot + 1}"><span>SLOT ${slot + 1}</span><b>VACÍO</b></button>`;
-  }).join('');
   const inventory = ALL_RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id])
     .map((definition) => relicCollectionItemMarkup({
@@ -442,10 +428,6 @@ export function renderInventoryView(document, lootState, options = {}) {
       ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
     </section>
     ${outfitCardMarkup(lootState)}
-    <section class="inventory-section" id="inventoryEquippedSection">
-      <div class="inventory-section-head"><span>RELIQUIAS ACTIVAS</span><small>2 MÁXIMO</small></div>
-      <div class="equipped-relics">${equippedSlots}</div>
-    </section>
     <section class="inventory-section">
       <div class="inventory-section-head"><span>INVENTARIO</span><small>${Object.keys(normalized.inventory.relics).length}</small></div>
       <div class="relic-kind-filters" role="group" aria-label="Filtrar reliquias">
@@ -649,14 +631,21 @@ export function renderForgeRelicPicker(document, lootState, { mode = 'upgrade', 
   const normalized = normalizeLootState(lootState);
   const title = document.getElementById('forgeRelicPickerTitle');
   const body = document.getElementById('forgeRelicPickerBody');
+  const unequipButton = document.getElementById('forgeRelicPickerUnequip');
   if (!title || !body) return;
   title.textContent = mode === 'fusion'
     ? `Elegir reliquia · Slot ${slot === 'right' ? 'B' : 'A'}`
     : mode === 'equip'
-      ? `Elegir reliquia · Slot ${Number(slot) + 1}`
+      ? `Slot ${Number(slot) + 1}`
       : 'Elegir reliquia para mejorar';
   const otherSlotId = mode === 'fusion' ? (slot === 'right' ? leftId : rightId) : null;
   const currentSlotId = mode === 'fusion' ? (slot === 'right' ? rightId : leftId) : null;
+  const equippedSlotId = mode === 'equip' ? normalized.inventory.equipped[Number(slot)] : null;
+  if (unequipButton) {
+    unequipButton.hidden = !equippedSlotId;
+    if (equippedSlotId) unequipButton.setAttribute('data-picker-unequip', equippedSlotId);
+    else unequipButton.removeAttribute('data-picker-unequip');
+  }
   const cards = ALL_RELIC_DEFINITIONS.filter((definition) => normalized.inventory.relics[definition.id]).map((definition) => {
     const relic = normalized.inventory.relics[definition.id];
     const fusion = Boolean(definition.recipeId);

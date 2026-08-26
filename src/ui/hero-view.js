@@ -130,6 +130,37 @@ function heroEnergyMarkup(energy) {
   };
 }
 
+export function heroVisualMarkup({
+  classId,
+  mood = 'happy',
+  outfitId = 'original',
+  progress = 0,
+  level = 1,
+  levelUp = false,
+  intoxication = null,
+  interactive = true,
+} = {}) {
+  const energy = heroEnergyModel({ progress, level, classId, levelUp });
+  const energyView = heroEnergyMarkup(energy);
+  const intoxicated = Number(intoxication?.level) > 0;
+  const intoxicationStageValue = intoxicated ? intoxicationStage(intoxication) : 0;
+  const intoxicationParticles = intoxicated
+    ? `<span class="hero-intoxication-particles hero-intoxication-particles--stage-${intoxicationStageValue}" aria-hidden="true">
+        ${Array.from({ length: 8 }, (_, index) => `<i class="hero-intoxication-particle p${index + 1}"></i>`).join('')}
+      </span>`
+    : '';
+  const sleeping = mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
+  const interaction = interactive
+    ? ` data-open-character-sheet data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir ficha de personaje"`
+    : ' aria-label="Vista animada del héroe"';
+  return `<div class="sprite-box ${energyView.classes}${intoxicated ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}"${interaction}>
+    <img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">
+    ${energyView.markup}
+    ${spriteImage(classId, mood, '', outfitId)}
+    ${sleeping}${intoxicationParticles}
+  </div>`;
+}
+
 export function createHeroModel({
   now,
   config,
@@ -381,14 +412,6 @@ export function renderHeroView({
     boss: bossState,
   } = model;
   const intoxicationEffect = model.skillEffects.find((effect) => effect.kind === 'intoxication');
-  const intoxicationStageValue = intoxicationEffect
-    ? intoxicationStage(model.intoxication)
-    : 0;
-  const intoxicationParticlesHtml = intoxicationEffect
-    ? `<span class="hero-intoxication-particles hero-intoxication-particles--stage-${intoxicationStageValue}" aria-hidden="true">
-        ${Array.from({ length: 8 }, (_, index) => `<i class="hero-intoxication-particle p${index + 1}"></i>`).join('')}
-      </span>`
-    : '';
   const skillEffectsHtml = model.skillEffects
     .map((effect) => {
       const intoxicationEffect = effect.kind === 'intoxication';
@@ -483,14 +506,6 @@ export function renderHeroView({
   const futureActiveIcons = Array.from({ length: Math.max(0, 6 - classData.act.length) }, (_, index) =>
     `<button type="button" class="hero-skill-slot future" data-future-skill aria-label="Habilidad futura ${index + 1}" title="Próximamente">?</button>`,
   ).join('');
-  const energy = heroEnergyModel({
-    progress: heroStats.prog,
-    level: heroStats.lvl,
-    classId,
-    levelUp,
-  });
-  const energyView = heroEnergyMarkup(energy);
-  const sleeping = model.mood === 'sleep' ? '<span class="sprite-zzz">z z</span>' : '';
   const todayBreakdown = [
     ['Día', bossState.breakdownToday.completion],
     ['Margen', bossState.breakdownToday.margin],
@@ -610,20 +625,12 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top${chipsHtml ? ' hero-top--with-effects' : ''}">
         <div class="hero-visual-column">
-          <div class="sprite-box ${energyView.classes}${intoxicationEffect ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}" data-open-inventory data-inventory-shortcut="hero" data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir inventario"><img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">${energyView.markup}${spriteImage(classId, model.mood, '', game?.outfit)}${sleeping}${intoxicationParticlesHtml}</div>
+          ${heroVisualMarkup({classId,mood:model.mood,outfitId:game?.outfit,progress:heroStats.prog,level:heroStats.lvl,levelUp,intoxication:model.intoxication})}
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
-          </div>
-          <div class="hero-quick-actions">
-            <button class="hero-quick-action hero-inventory-jump" type="button" data-open-inventory aria-label="Abrir inventario y forja" title="Abrir inventario y forja">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 7V5.5a4 4 0 0 1 8 0V7M7 7h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm1 5h8v5H8v-5ZM5 11H3.5v6H5m14-6h1.5v6H19"/></svg>
-            </button>
-            <button class="hero-quick-action" type="button" data-open-hero-skills aria-label="Abrir libro de habilidades" title="Abrir libro de habilidades">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h5.25A2.75 2.75 0 0 1 12 7.25V20a3.5 3.5 0 0 0-3.5-3.5H4V4.5Zm16 0h-5.25A2.75 2.75 0 0 0 12 7.25V20a3.5 3.5 0 0 1 3.5-3.5H20V4.5Z"/></svg>
-            </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>

@@ -55,4 +55,5 @@ describe('modo de recuperación de emergencia', () => {
     expect(JSON.stringify(gameState)).toBe(serializedBefore);
     expect(serializedBefore).not.toContain('recoveryMode');
   });
+
 });

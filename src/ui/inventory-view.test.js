@@ -151,7 +151,7 @@ describe('interfaz de inventario y botín', () => {
     expect(resourceIcon('coin')).not.toContain('<img');
   });
 
-  it('muestra recursos y separa las seis reliquias poseídas de la colección', () => {
+  it('muestra recursos y las seis reliquias poseídas sin duplicar las ranuras activas', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     renderInventoryView(document, state);
@@ -169,8 +169,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('Lágrima de Espectro');
     expect(document.elements.inventoryBody.innerHTML).toContain('relic_04_yelmo_ultima_brasa.png');
     expect(document.elements.inventoryBody.innerHTML).toContain('relic_06_colmillo_nicotina.png');
-    expect(document.elements.inventoryBody.innerHTML).toContain('data-open-equip-picker="0"');
-    expect(document.elements.inventoryBody.innerHTML).toContain('data-open-equip-picker="1"');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('RELIQUIAS ACTIVAS');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('data-open-equip-picker');
   });
 
   it('distingue visual y semánticamente una reliquia equipada dentro del inventario', () => {
@@ -181,14 +181,14 @@ describe('interfaz de inventario y botín', () => {
     renderInventoryView(document, state);
     const html = document.elements.inventoryBody.innerHTML;
     expect(html).toContain('aria-label="Lágrima de Espectro, MÍTICO, rango 1, Equipada"');
-    expect(html).toContain('data-double-tap-unequip="relic_02"');
-    expect(html).toContain('MÍTICO - RANGO 1');
+    expect(html).not.toContain('data-double-tap-unequip="relic_02"');
+    expect(html).not.toContain('RELIQUIAS ACTIVAS');
     expect(html).toContain('<span>INVENTARIO</span><small>3</small>');
     const collectionHtml = html.slice(html.indexOf('<div class="relic-grid">'));
     expect(collectionHtml).not.toContain('relic-card-copy');
     expect(collectionHtml).not.toContain('relic-card-meta');
     expect(collectionHtml).toContain('relic-collection-item');
-    expect(html).toContain('data-open-equip-picker="1"');
+    expect(html).not.toContain('data-open-equip-picker');
   });
 
   it('abre un selector de equipamiento para el slot vacío', () => {
@@ -196,7 +196,7 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(6);
     state.inventory.equipped = ['relic_01'];
     renderForgeRelicPicker(document, state, { mode: 'equip', slot: 1 });
-    expect(document.elements.forgeRelicPickerTitle.textContent).toBe('Elegir reliquia · Slot 2');
+    expect(document.elements.forgeRelicPickerTitle.textContent).toBe('Slot 2');
     const html = document.elements.forgeRelicPickerBody.innerHTML;
     expect(html).toContain('data-picker-filter="fusion"');
     expect(html).toContain('EQUIPADA');
@@ -252,7 +252,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain(`Constancia: ${charge} de 6`);
   });
 
-  it('deriva el color de la rareza real, anima solo el punto nuevo y no aparece en otras reliquias', () => {
+  it('deriva el color de la rareza real y anima solo el punto nuevo sin duplicarlo en Inventario', () => {
     const indicator = chargeIndicatorMarkup({
       mechanicId: 'constancy',
       chargeState: { charge: 2, lastIncreaseAt: 900, lastIncreaseCharge: 2 },
@@ -269,9 +269,8 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.constancy = { cycleId: 'week-3:boss-3', charge: 2 };
     renderInventoryView(document, state);
     const html = document.elements.inventoryBody.innerHTML;
-    expect(html.match(/relic-charge-indicator/g)).toHaveLength(1);
+    expect(html).not.toContain('relic-charge-indicator');
     expect(html).toContain('rarity-mythic');
-    expect(html.indexOf('relic-charge-indicator')).toBeLessThan(html.indexOf('relic-card-copy'));
   });
 
   it('muestra selección, requisitos, pity y probabilidad en la vista de Forja', () => {

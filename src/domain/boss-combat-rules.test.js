@@ -16,6 +16,18 @@ const config = {
 };
 
 describe('daño diario al jefe', () => {
+  it('añade diez de daño cuando el golpe diario guardado fue crítico', () => {
+    const result = calculateWeekBossDamage({
+      week: 0,
+      now: new Date(2026, 6, 18, 12),
+      config,
+      days: { '2026-07-17': { c: 20 } },
+      criticalHits: [{ week: 0, key: '2026-07-17', critical: true }],
+      settleAll: true,
+    });
+    expect(result.daily[0]).toMatchObject({ completion: 25, critical: 10, total: 35 });
+  });
+
   it('en el camino sin fumar solo daña al confirmar el día', () => {
     expect(
       calculateDailyBossDamage({
@@ -533,7 +545,7 @@ describe('combate semanal', () => {
       days: {},
     });
 
-    expect(migrated.combat.version).toBe(3);
+    expect(migrated.combat.version).toBe(4);
     expect(migrated.combat.hpAtWeekStart).toBe(90);
   });
 

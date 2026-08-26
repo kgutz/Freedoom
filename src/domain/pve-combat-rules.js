@@ -1,0 +1,212 @@
+import { attributeSheet } from './attribute-rules.js';
+
+export const DAILY_HUNT_ENERGY = 5;
+export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const BRUMA_ENEMY_TEMPLATES = [
+  { id: 'blighted-harvester', role: 'Soldado', name: 'Brote Engañoso', lore: 'Parece una planta joven e inofensiva, pero sus hojas dentadas se alimentan de la voluntad de quien se acerca. Es la primera mentira que susurra el cultivo.', attributes: { strength: 3, defense: 3, dexterity: 4, power: 1, constitution: 4 } },
+  { id: 'spore-overseer', role: 'Líder', name: 'Segador de la Bruma', lore: 'Creció respirando los vapores tóxicos del campo hasta adoptar una silueta casi humana. Sus esporas nublan el juicio y guían a los brotes menores.', attributes: { strength: 3, defense: 6, dexterity: 7, power: 5, constitution: 8 } },
+  { id: 'mist-mother', role: 'Minijefe', name: 'Madre del Cultivo', lore: 'Sus raíces recorren toda la plantación y alimentan la bruma fluorescente. Cada criatura del campo es una extensión de su hambre antigua.', attributes: { strength: 6, defense: 9, dexterity: 10, power: 7, constitution: 13 } },
+];
+
+function enemyStatsFromAttributes(definition, attributes = definition.attributes) {
+  const attackType = attributes.power > attributes.strength ? 'magic' : 'physical';
+  return {
+    ...definition,
+    attributes: { ...attributes },
+    maxHp: 20 + attributes.constitution * 6,
+    physicalAttack: Math.round(3 + attributes.strength * 1.5),
+    magicAttack: Math.round(3 + attributes.power * 1.5),
+    defense: attributes.defense,
+    criticalChance: clamp(0.025 + attributes.dexterity * 0.003, 0, 0.18),
+    dodgeChance: clamp(attributes.dexterity * 0.0015, 0, 0.1),
+    attackType,
+  };
+}
+
+export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
+export const HUNT_DIFFICULTIES = Object.freeze({
+  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0.25, fiberAmount: [1, 1] }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.5, fiberAmount: [1, 1] }),
+  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2] }),
+});
+
+const safeInteger = (value) => Math.max(0, Math.floor(Number(value) || 0));
+
+export function localHuntDayKey(timestamp = Date.now()) {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEnergy = DAILY_HUNT_ENERGY) {
+  const energyDay = localHuntDayKey(nowTimestamp);
+  const sameDay = hunt?.energyDay === energyDay;
+  const baseEnergy = sameDay
+    ? clamp(safeInteger(hunt?.baseEnergy) || safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY)
+    : clamp(safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY);
+  const bonusEnergyEarned = sameDay
+    ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
+    : 0;
+  return {
+    energyDay,
+    baseEnergy,
+    bonusEnergyEarned,
+    habitEnergyRolls: sameDay && Array.isArray(hunt?.habitEnergyRolls) ? hunt.habitEnergyRolls.slice(-60) : [],
+    energy: sameDay ? clamp(safeInteger(hunt?.energy), 0, baseEnergy + bonusEnergyEarned) : baseEnergy,
+    active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
+    lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
+    history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],
+  };
+}
+
+export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTimestamp = Date.now(), roll = Math.random }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  if (!becameCompleted || !rewardKey || normalized.habitEnergyRolls.some((entry) => entry?.key === rewardKey)) {
+    return { granted: 0, chance: 0, hunt: normalized };
+  }
+  if (normalized.bonusEnergyEarned >= DAILY_HUNT_BONUS_ENERGY_CAP) {
+    return { granted: 0, chance: 0, hunt: normalized };
+  }
+  const chance = normalized.bonusEnergyEarned === 0 ? 0.1 : 0.08;
+  const granted = roll() < chance ? 1 : 0;
+  return {
+    granted,
+    chance,
+    hunt: {
+      ...normalized,
+      bonusEnergyEarned: normalized.bonusEnergyEarned + granted,
+      energy: normalized.energy + granted,
+      habitEnergyRolls: [...normalized.habitEnergyRolls, { key: rewardKey, granted }].slice(-60),
+    },
+  };
+}
+
+export function fiberChanceForHunt({ hunt, difficultyId, nowTimestamp = Date.now() }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const difficulty = HUNT_DIFFICULTIES[difficultyId];
+  if (!difficulty) return 0;
+  const dropsToday = normalized.history.filter((report) => (
+    Number(report?.rewards?.arcaneFibers) > 0
+    && localHuntDayKey(report.completedAt) === normalized.energyDay
+  )).length;
+  return Math.max(0.01, difficulty.fiberChance - dropsToday * 0.06);
+}
+
+export function pveHeroStats({ classId, level, allocation }) {
+  const a = attributeSheet({ classId, level, allocation }).attributes;
+  return {
+    attributes: a,
+    maxHp: 70 + a.constitution * 6,
+    maxMana: 35 + a.power * 5,
+    physicalAttack: 4 + a.strength * 2,
+    magicAttack: 4 + a.power * 2,
+    defense: a.defense,
+    criticalChance: clamp(0.04 + a.dexterity * 0.004, 0.04, 0.25),
+    dodgeChance: clamp(a.dexterity * 0.002, 0, 0.12),
+  };
+}
+
+export function resolvePveAttack({ attacker, defender, attackType = 'physical', roll = Math.random }) {
+  if (roll() < (defender.dodgeChance || 0)) return { damage: 0, critical: false, dodged: true };
+  const attack = attackType === 'magic' ? (attacker.magicAttack ?? attacker.attack ?? 1) : (attacker.physicalAttack ?? attacker.attack ?? 1);
+  const critical = roll() < (attacker.criticalChance || 0);
+  const damage = Math.max(1, Math.round(attack * (critical ? 1.6 : 1) - (defender.defense || 0) * 0.65));
+  return { damage, critical, dodged: false };
+}
+
+export function simulatePveCombat({ hero, enemy, attackType = 'physical', roll = Math.random, maxRounds = 30 }) {
+  let heroHp = Math.max(1, hero.maxHp);
+  let enemyHp = Math.max(1, enemy.maxHp);
+  const log = [];
+  for (let round = 1; round <= maxRounds && heroHp > 0 && enemyHp > 0; round += 1) {
+    const heroHit = resolvePveAttack({ attacker: hero, defender: enemy, attackType, roll });
+    enemyHp = Math.max(0, enemyHp - heroHit.damage);
+    log.push({ round, actor: 'hero', ...heroHit, remainingHp: enemyHp });
+    if (enemyHp <= 0) break;
+    const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
+    heroHp = Math.max(0, heroHp - enemyHit.damage);
+    log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
+  }
+  return { won: enemyHp <= 0 && heroHp > 0, heroHp, enemyHp, rounds: log.at(-1)?.round || 0, log };
+}
+
+function seededRoll(seed) {
+  let value = safeInteger(seed) || 1;
+  return () => {
+    value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
+    return value / 4294967296;
+  };
+}
+
+function scaledEnemy(enemy, difficulty) {
+  const scale = difficulty.multiplier;
+  const attributes = Object.fromEntries(Object.entries(enemy.attributes)
+    .map(([id, value]) => [id, Math.max(1, Math.round(value * scale))]));
+  return enemyStatsFromAttributes(enemy, attributes);
+}
+
+function splitEncounterReward(total) {
+  const first = Math.floor(total * 0.25);
+  const second = Math.floor(total * 0.3);
+  return [first, second, Math.max(0, total - first - second)];
+}
+
+export function startHunt({ hunt, difficultyId, level = 1, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const difficulty = HUNT_DIFFICULTIES[difficultyId];
+  if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
+  if (safeInteger(level) < difficulty.minLevel) return { ok: false, reason: 'level-locked', requiredLevel: difficulty.minLevel, hunt: normalized };
+  if (normalized.active) return { ok: false, reason: 'hunt-active', hunt: normalized };
+  if (normalized.energy < difficulty.energyCost) return { ok: false, reason: 'insufficient-energy', hunt: normalized };
+  const active = { id: `hunt-${nowTimestamp}-${safeInteger(seed)}`, regionId: 'fields-of-mist', difficultyId, startedAt: nowTimestamp, endsAt: nowTimestamp + difficulty.durationMinutes * 60_000, seed: safeInteger(seed) };
+  return { ok: true, reason: null, hunt: { ...normalized, energy: normalized.energy - difficulty.energyCost, active } };
+}
+
+export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = Date.now() }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const active = normalized.active;
+  if (!active) return { ok: false, reason: 'no-active-hunt', hunt: normalized };
+  if (nowTimestamp < active.endsAt) return { ok: false, reason: 'hunt-in-progress', remainingMs: active.endsAt - nowTimestamp, hunt: normalized };
+  const difficulty = HUNT_DIFFICULTIES[active.difficultyId] || HUNT_DIFFICULTIES.easy;
+  const random = seededRoll(active.seed);
+  const hero = pveHeroStats({ classId, level, allocation });
+  let currentHp = hero.maxHp;
+  const encounters = [];
+  for (const definition of BRUMA_ENEMIES) {
+    const enemy = scaledEnemy(definition, difficulty);
+    const result = simulatePveCombat({ hero: { ...hero, maxHp: currentHp }, enemy, attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical', roll: random });
+    currentHp = result.heroHp;
+    encounters.push({ id: enemy.id, role: enemy.role, name: enemy.name, won: result.won, rounds: result.rounds, heroHp: currentHp, damageDealt: enemy.maxHp - result.enemyHp });
+    if (!result.won) break;
+  }
+  const won = encounters.length === BRUMA_ENEMIES.length && encounters.every((encounter) => encounter.won);
+  const [minGold, maxGold] = difficulty.gold;
+  const fullGold = minGold + Math.floor(random() * (maxGold - minGold + 1));
+  const goldByEnemy = splitEncounterReward(fullGold);
+  const xpByEnemy = splitEncounterReward(difficulty.xp);
+  encounters.forEach((encounter, index) => {
+    encounter.rewards = {
+      xp: encounter.won ? xpByEnemy[index] : 0,
+      gold: encounter.won ? goldByEnemy[index] : 0,
+      arcaneFibers: 0,
+      bossBlood: 0,
+    };
+  });
+  const bossRewards = encounters[2]?.rewards;
+  if (won && bossRewards) {
+    const fiberChance = fiberChanceForHunt({ hunt: normalized, difficultyId: difficulty.id, nowTimestamp });
+    if (random() < fiberChance) {
+      const [minFiber, maxFiber] = difficulty.fiberAmount;
+      bossRewards.arcaneFibers = minFiber + Math.floor(random() * (maxFiber - minFiber + 1));
+    }
+    bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
+  }
+  const rewards = {
+    xp: encounters.reduce((total, encounter) => total + encounter.rewards.xp, 0),
+    gold: encounters.reduce((total, encounter) => total + encounter.rewards.gold, 0),
+    arcaneFibers: bossRewards?.arcaneFibers || 0,
+    bossBlood: bossRewards?.bossBlood || 0,
+  };
+  const report = { id: active.id, regionId: active.regionId, difficultyId: difficulty.id, startedAt: active.startedAt, completedAt: nowTimestamp, won, heroMaxHp: hero.maxHp, heroHp: currentHp, encounters, rewards };
+  return { ok: true, reason: null, report, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
+}
