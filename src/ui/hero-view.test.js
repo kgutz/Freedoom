@@ -240,7 +240,7 @@ describe('modelo de Héroe', () => {
 
     expect(activeSpellStatus({
       spellId: 'certero', game, nowTimestamp: now, today: '2026-07-26',
-    })).toBeNull();
+    })).toBe('2/2');
     expect(spellUnavailableAfterUse({
       ability: { id: 'certero', lvl: 8, habitChallenge: true }, game, currentWeek: 3, today: '2026-07-26',
     })).toBe(true);

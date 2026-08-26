@@ -100,7 +100,10 @@ export function completeLevelEightHabitChallenge({
       count: Math.max(1, recordedUse.count),
       lastCompletedAt: completedAt,
     };
-    delete nextProgress.habitChallenge;
+    nextProgress.habitChallenge = {
+      ...nextProgress.habitChallenge,
+      completedAt,
+    };
   }
   return {
     progress: nextProgress,

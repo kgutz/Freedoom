@@ -41,7 +41,7 @@ describe('validación de hechizos', () => {
       progress:first.progress,habitId:'b',today:'2026-07-26',completedAt:1_060_000,
     });
     expect(second).toMatchObject({advanced:true,completed:true,completedCount:2,target:2});
-    expect(second.progress.habitChallenge).toBeUndefined();
+    expect(second.progress.habitChallenge).toMatchObject({completedIds:['a','b'],completedAt:1_060_000});
     expect(second.progress.challengeDayUses['2026-07-26:certero'].lastCompletedAt).toBe(1_060_000);
     expect(cast(spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
@@ -58,7 +58,7 @@ describe('validación de hechizos', () => {
     };
     const result=completeLevelEightHabitChallenge({progress,habitId:'b',today:'2026-07-26',completedAt:1_100_000});
     expect(result.completed).toBe(true);
-    expect(result.progress.habitChallenge).toBeUndefined();
+    expect(result.progress.habitChallenge).toMatchObject({completedIds:['a','b'],completedAt:1_100_000});
     expect(result.progress.challengeDayUses[`2026-07-26:${spellId}`].lastCompletedAt).toBe(1_100_000);
   });
 
@@ -81,7 +81,7 @@ describe('validación de hechizos', () => {
       progress,habitId:'pasos',today:'2026-08-26',completedAt:0,
     });
     expect(recovered).toMatchObject({advanced:true,completed:true,spellId:'certero'});
-    expect(recovered.progress.habitChallenge).toBeUndefined();
+    expect(recovered.progress.habitChallenge).toMatchObject({completedIds:['agua','pasos'],completedAt:0});
     expect(recovered.progress.challengeDayUses['2026-08-26:certero']).toEqual({
       count:1,lastUsedAt:1_787_737_244_349,lastCompletedAt:0,
     });

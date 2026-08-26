@@ -5300,6 +5300,8 @@ bindBackupControls({
     store.authorizeDestructiveSave('import');
     const imported={...importedState,...initializeForgeSeed(importedState)};
     state=migratePioneerRewardEligibility(imported,{existingProfile:true}).state;
+    ensureHero();
+    reconcileStoredLevelEightHabitChallenge();
     registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
