@@ -97,7 +97,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const difficulties = Object.values(HUNT_DIFFICULTIES).map((difficulty) => {
     const levelLocked = heroLevel < difficulty.minLevel;
     return `<button type="button" class="hunt-difficulty ${difficulty.id}${levelLocked ? ' level-locked' : ''}" data-start-hunt="${difficulty.id}" ${active || levelLocked || hunt.energy < difficulty.energyCost ? 'disabled' : ''}>
-    <span>${difficulty.name}</span><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : `<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía`}</b>
+    <span>${difficulty.name}</span><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : difficulty.energyCost}</b>
   </button>`;
   }).join('');
   root.innerHTML = `<button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>Campos de la Bruma</h2><div class="hunt-map-energy" aria-label="Energía de Cacería: ${hunt.energy} de 5"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${hunt.energy}/5</strong></div></div><p>Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.</p></div>

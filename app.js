@@ -509,7 +509,7 @@
     <p>Tu h\xE9roe atraviesa los Campos de la Bruma. Puedes cerrar la aplicaci\xF3n.</p>
     <button type="button" data-resolve-hunt ${a<i.endsAt?"disabled":""}>${a<i.endsAt?"Informe disponible al terminar":"VER INFORME"}</button>
   </section>`:"",f=Object.values(ht).map(v=>{let p=u<v.minLevel;return`<button type="button" class="hunt-difficulty ${v.id}${p?" level-locked":""}" data-start-hunt="${v.id}" ${i||p||s.energy<v.energyCost?"disabled":""}>
-    <span>${v.name}</span><b>${p?`\u{1F512} Nivel ${v.minLevel}`:`<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${v.energyCost} energ\xEDa`}</b>
+    <span>${v.name}</span><b>${p?`\u{1F512} Nivel ${v.minLevel}`:v.energyCost}</b>
   </button>`}).join("");r.innerHTML=`<button type="button" class="hunt-map-back" data-back-hunt-map>\u2039 VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>Campos de la Bruma</h2><div class="hunt-map-energy" aria-label="Energ\xEDa de Cacer\xEDa: ${s.energy} de 5"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${s.energy}/5</strong></div></div><p>Cultivos corrompidos alimentan una niebla que doblega la voluntad. Env\xEDa a tu h\xE9roe a purificarlos.</p></div>
     <div class="hunt-region-art"><img src="hunt/fields-of-mist/region.png" alt="Campos de la Bruma" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">CAMPOS DE LA BRUMA<br><small>ARTE DE REGI\xD3N PENDIENTE</small></span></div>
     ${m}
