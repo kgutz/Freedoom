@@ -44,36 +44,68 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
   const baseEnergy = sameDay
     ? clamp(safeInteger(hunt?.baseEnergy) || safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY)
     : clamp(safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY);
-  const bonusEnergyEarned = sameDay
+  const storedEnergy = sameDay ? safeInteger(hunt?.energy) : baseEnergy;
+  const rawHabitEnergyRolls = sameDay && Array.isArray(hunt?.habitEnergyRolls)
+    ? hunt.habitEnergyRolls.slice(-60)
+    : [];
+  const storedBonusEnergyEarned = sameDay
     ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
     : 0;
-  const storedEnergy = sameDay ? safeInteger(hunt?.energy) : baseEnergy;
+  const legacyBonusFromEnergy = sameDay ? Math.max(0, storedEnergy - baseEnergy) : 0;
+  const legacyGrantedBonuses = rawHabitEnergyRolls.filter((entry) => entry?.granted).length;
+  const bonusEnergyEarned = sameDay
+    ? clamp(
+      Math.max(storedBonusEnergyEarned, legacyBonusFromEnergy, legacyGrantedBonuses),
+      0,
+      DAILY_HUNT_BONUS_ENERGY_CAP,
+    )
+    : 0;
+  const recoverableGrantedBonuses = rawHabitEnergyRolls
+    .filter((entry) => entry?.granted && entry?.status !== 'revoked').length;
+  const missingRecordedBonuses = Math.max(0, bonusEnergyEarned - storedBonusEnergyEarned);
+  const recoverableMissingBonuses = Math.min(missingRecordedBonuses, recoverableGrantedBonuses);
+  const storedBonusEnergyRemaining = sameDay
+    ? (hunt?.bonusEnergyRemaining == null
+      ? legacyBonusFromEnergy
+      : safeInteger(hunt.bonusEnergyRemaining))
+    : 0;
+  const statusAvailableBonuses = rawHabitEnergyRolls
+    .filter((entry) => entry?.granted && entry?.status === 'available').length;
+  const representedAvailableBonuses = Math.max(
+    storedBonusEnergyRemaining,
+    legacyBonusFromEnergy,
+    statusAvailableBonuses,
+  );
   const bonusEnergyRemaining = sameDay
     ? clamp(
-      hunt?.bonusEnergyRemaining == null
-        ? Math.max(0, storedEnergy - baseEnergy)
-        : safeInteger(hunt.bonusEnergyRemaining),
+      Math.max(representedAvailableBonuses, recoverableMissingBonuses),
       0,
       bonusEnergyEarned,
     )
     : 0;
-  let legacyAvailable = bonusEnergyRemaining;
-  const habitEnergyRolls = sameDay && Array.isArray(hunt?.habitEnergyRolls)
-    ? hunt.habitEnergyRolls.slice(-60).map((entry) => {
-      if (['available', 'spent', 'revoked', 'missed'].includes(entry?.status)) return { ...entry };
-      if (!entry?.granted) return { ...entry, status: 'missed' };
-      const status = legacyAvailable > 0 ? 'available' : 'spent';
-      legacyAvailable = Math.max(0, legacyAvailable - 1);
-      return { ...entry, status };
-    })
-    : [];
+  const recoveredAvailableBonuses = Math.max(0, bonusEnergyRemaining - representedAvailableBonuses);
+  const normalizedEnergy = sameDay
+    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, baseEnergy + bonusEnergyEarned)
+    : baseEnergy;
+  const activeGrantedRolls = rawHabitEnergyRolls.filter((entry) => entry?.granted && entry?.status !== 'revoked');
+  const availableEntries = new Set([
+    ...activeGrantedRolls.filter((entry) => entry?.status === 'available'),
+    ...activeGrantedRolls.filter((entry) => !['available', 'spent'].includes(entry?.status)),
+    ...activeGrantedRolls.filter((entry) => entry?.status === 'spent'),
+  ].slice(0, bonusEnergyRemaining));
+  const habitEnergyRolls = rawHabitEnergyRolls.map((entry) => {
+    if (!entry?.granted) return { ...entry, status: 'missed' };
+    if (entry?.status === 'revoked') return { ...entry };
+    return { ...entry, status: availableEntries.has(entry) ? 'available' : 'spent' };
+  });
   return {
     energyDay,
     baseEnergy,
     bonusEnergyEarned,
     bonusEnergyRemaining,
+    bonusEnergyLedgerVersion: 1,
     habitEnergyRolls,
-    energy: sameDay ? clamp(storedEnergy, 0, baseEnergy + bonusEnergyEarned) : baseEnergy,
+    energy: normalizedEnergy,
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
     history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],

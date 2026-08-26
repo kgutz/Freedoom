@@ -29,9 +29,10 @@ describe('informe de Cacería', () => {
   it('muestra únicamente las recompensas obtenidas', () => {
     const html = renderReport({ xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 });
     expect(html).toContain('5</b> XP');
-    expect(html).toContain('Oro obtenido');
-    expect(html).not.toContain('Fibra Arcana obtenida');
-    expect(html).not.toContain('Sangre de Jefe obtenida');
+    expect(html).toContain('resource-icon--coin');
+    expect(html).not.toContain('resource-icon--arcane-fiber');
+    expect(html).not.toContain('resource-icon--boss-blood');
+    expect(html).not.toContain('🪙');
   });
 
   it('no anuncia una expedición activa cuando no existe', () => {
@@ -60,9 +61,32 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).not.toContain('6/6');
   });
 
+  it('muestra de nuevo una carga antigua que había quedado borrada', () => {
+    const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: {
+        cls: 'paladin',
+        hunt: {
+          energyDay: '2026-08-26',
+          baseEnergy: 5,
+          energy: 5,
+          bonusEnergyEarned: 0,
+          bonusEnergyRemaining: 0,
+          habitEnergyRolls: [{ key: 'habit-legacy', granted: 1, status: 'spent' }],
+        },
+      },
+      stats: { lvl: 20 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('<strong>5/5<em>+1</em></strong>');
+  });
+
   it('muestra fibra y sangre cuando realmente caen', () => {
     const html = renderReport({ xp: 22, gold: 24, arcaneFibers: 2, bossBlood: 1 }, 'hard');
-    expect(html).toContain('Fibra Arcana obtenida');
-    expect(html).toContain('Sangre de Jefe obtenida');
+    expect(html).toContain('resource-icon--arcane-fiber');
+    expect(html).toContain('resource-icon--boss-blood');
+    expect(html).not.toContain('🧵');
+    expect(html).not.toContain('🩸');
   });
 });

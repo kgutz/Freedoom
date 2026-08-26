@@ -5,6 +5,21 @@ export const VIEW_BY_NAVIGATION = {
   navCal: 'view-cal',
 };
 
+export function resetSheetScroll(sheet) {
+  const panel = sheet?.querySelector?.(':scope > .sheet');
+  if (!panel) return;
+  panel.scrollTop = 0;
+  panel.querySelectorAll?.('#characterSheetBody, #inventoryBody, #collectionBody, #forgeBody, #shopBody, .hero-skills-book, .outfit-selector-scroll-content')
+    .forEach((scrollable) => { scrollable.scrollTop = 0; });
+}
+
+export function showSheet(document, sheetId) {
+  const sheet = document.getElementById(sheetId);
+  if (!sheet) return;
+  resetSheetScroll(sheet);
+  sheet.classList.add('show');
+}
+
 export function bindNavigation({
   document,
   window,
@@ -103,7 +118,7 @@ export function bindNavigation({
   });
   document.getElementById('menuInstr').addEventListener('click', () => {
     document.getElementById('menuBg').classList.remove('show');
-    document.getElementById('sheetInstr').classList.add('show');
+    showSheet(document, 'sheetInstr');
     if (faqSearch) {
       faqSearch.value = '';
       filterFaq();
@@ -114,12 +129,17 @@ export function bindNavigation({
   });
   document.querySelectorAll('.sheet-close').forEach((button) => {
     button.addEventListener('click', () => {
-      document.getElementById(button.dataset.sheet).classList.remove('show');
+      const sheet = document.getElementById(button.dataset.sheet);
+      sheet.classList.remove('show');
+      resetSheetScroll(sheet);
     });
   });
   document.querySelectorAll('.sheet-bg').forEach((sheet) => {
     sheet.addEventListener('click', (event) => {
-      if (event.target === sheet) sheet.classList.remove('show');
+      if (event.target === sheet) {
+        sheet.classList.remove('show');
+        resetSheetScroll(sheet);
+      }
     });
   });
 

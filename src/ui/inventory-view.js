@@ -86,6 +86,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Colección</button>
       <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">Tejer nuevos</button>
     </div>
+    <div class="outfit-selector-scroll-content">
     <div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
@@ -136,7 +137,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         ${Array.from({ length: 2 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
           <span aria-hidden="true">?</span>
         </div>`).join('')}
-      </div>`)}`;
+      </div>`)}</div>`;
   return selected?.id || null;
 }
 

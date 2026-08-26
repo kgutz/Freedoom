@@ -10,6 +10,12 @@ export function resourceValue(type, value, label = '') {
 export function setTextWithResourceIcons(element, text) {
   if (!element) return;
   element.textContent = String(text ?? '');
-  if (!String(text ?? '').includes('🪙')) return;
-  element.innerHTML = element.innerHTML.replaceAll('🪙', resourceIcon('coin'));
+  const iconTokens = {
+    '🪙': 'coin',
+    '🧵': 'arcane-fiber',
+    '🩸': 'boss-blood',
+  };
+  Object.entries(iconTokens).forEach(([token, type]) => {
+    element.innerHTML = element.innerHTML.replaceAll(token, resourceIcon(type));
+  });
 }

@@ -199,10 +199,10 @@ import { bindBackupControls } from './ui/backup-controller.js';
 import { createRecoveryModeController } from './ui/recovery-mode-controller.js';
 import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
-import { bindNavigation } from './ui/navigation-controller.js';
+import { bindNavigation, showSheet } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
 import { scheduleStartupPreload } from './ui/startup-render-scheduler.js';
-import { setTextWithResourceIcons } from './ui/resource-icons.js';
+import { resourceIcon, setTextWithResourceIcons } from './ui/resource-icons.js';
 import { habitRewardToast } from './ui/habit-feedback.js';
 import {
   DEFAULT_DAY_START_TIME,
@@ -544,6 +544,17 @@ async function load(){
       state={...state,...initializeForgeSeed(state)};
       const pioneerMigration=migratePioneerRewardEligibility(state,{existingProfile:true});
       state=pioneerMigration.state;
+      const huntBeforeMigration=state.game?.hunt;
+      const normalizedHunt=huntBeforeMigration
+        ? normalizeHuntState(huntBeforeMigration,Date.now(),huntBaseEnergyForToday(new Date()))
+        : null;
+      const huntEnergyMigrationChanged=Boolean(normalizedHunt)&&(
+        huntBeforeMigration.bonusEnergyLedgerVersion!==normalizedHunt.bonusEnergyLedgerVersion||
+        Number(huntBeforeMigration.energy)!==normalizedHunt.energy||
+        Number(huntBeforeMigration.bonusEnergyEarned)!==normalizedHunt.bonusEnergyEarned||
+        Number(huntBeforeMigration.bonusEnergyRemaining)!==normalizedHunt.bonusEnergyRemaining
+      );
+      if(normalizedHunt) state.game.hunt=normalizedHunt;
       setStorageHealth({
         state:'saved',
         revision:r.revision||0,
@@ -562,8 +573,8 @@ async function load(){
         }
         scheduleSave();
       }
-      else if(pioneerMigration.changed){
-        scheduleSave({type:'reward:pioneer-eligibility-migrated'});
+      else if(pioneerMigration.changed||huntEnergyMigrationChanged){
+        scheduleSave({type:huntEnergyMigrationChanged?'hunt:energy-ledger-migrated':'reward:pioneer-eligibility-migrated'});
       }
     }
   }catch(e){
@@ -2186,7 +2197,7 @@ function openInventory(){
   const collectionBody=document.getElementById('collectionBody');
   if(collectionBody) collectionBody.scrollTop=0;
   showInventoryPanel('collection');
-  document.getElementById('sheetInventory').classList.add('show');
+  showSheet(document,'sheetInventory');
   positionInventorySheetFromForge();
   requestAnimationFrame(()=>{
     const refreshedCollectionBody=document.getElementById('collectionBody');
@@ -2199,7 +2210,7 @@ function openCharacterSheet(){
   dismissFeatureDiscovery('character-entry');
   ensureHero();
   renderCurrentCharacterSheet();
-  document.getElementById('sheetCharacter').classList.add('show');
+  showSheet(document,'sheetCharacter');
 }
 
 function renderCurrentCharacterSheet(){
@@ -2247,7 +2258,7 @@ function unequipInventoryRelic(relicId){
   applyLootSlices(result); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
   scheduleSave({type:'loot:unequip',relicId});
   document.getElementById('sheetRelicDetail').classList.remove('show');
-  document.getElementById('sheetInventory').classList.add('show');
+  showSheet(document,'sheetInventory');
   showInventoryPanel('inventory',true); renderHero();
   showToast('Reliquia desequipada','heal');
   return true;
@@ -2369,7 +2380,7 @@ window.addEventListener('resize',scheduleInventorySheetPosition);
 window.visualViewport?.addEventListener('resize',scheduleInventorySheetPosition);
 function openRelicDetail(relicId){
   if(!renderRelicDetail(document,state,relicId)) return;
-  document.getElementById('sheetRelicDetail').classList.add('show');
+  showSheet(document,'sheetRelicDetail');
 }
 async function showPendingLootNotice(){
   if(lootNoticeOpening||document.getElementById('lootNoticeBg').classList.contains('show')) return;
@@ -3057,7 +3068,7 @@ document.getElementById('beerNo').addEventListener('click',()=>{
 
 function openAjustes(){
   renderSettings();
-  document.getElementById('sheetSet').classList.add('show');
+  showSheet(document,'sheetSet');
 }
 const navigation=bindNavigation({
   document,
@@ -3094,6 +3105,26 @@ function switchView(viewId,buttonId){
 
 let pendingHuntDifficultyId=null;
 
+function huntPotentialRewardsMarkup(difficulty){
+  const fiberMax=Math.max(0,Number(difficulty?.fiberAmount?.[1])||0);
+  return [
+    `✦ ${difficulty.xp} XP`,
+    `${resourceIcon('coin')} ${difficulty.gold[0]}–${difficulty.gold[1]}`,
+    fiberMax?`${resourceIcon('arcane-fiber')} 0–${fiberMax}`:'',
+    difficulty.id==='hard'?`${resourceIcon('boss-blood')} 0–1`:'',
+  ].filter(Boolean).join(' · ');
+}
+
+function huntRewardNotice(report){
+  const rewards=report?.rewards||{};
+  return [
+    Number(rewards.xp)>0?`✦ ${rewards.xp} XP`:'',
+    Number(rewards.gold)>0?`🪙 ${rewards.gold}`:'',
+    Number(rewards.arcaneFibers)>0?`🧵 ${rewards.arcaneFibers}`:'',
+    Number(rewards.bossBlood)>0?`🩸 ${rewards.bossBlood}`:'',
+  ].filter(Boolean).join(' · ');
+}
+
 function closeHuntConfirmation(){
   pendingHuntDifficultyId=null;
   document.getElementById('huntConfirmBg').classList.remove('show');
@@ -3113,7 +3144,7 @@ function openHuntConfirmation(difficultyId){
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
     <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
-    <div><span>Recompensa</span><b>✦ ${difficulty.xp} XP · 🪙 ${difficulty.gold[0]}–${difficulty.gold[1]}</b></div>
+    <div><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
   </div>`;
   document.getElementById('huntConfirmBg').classList.add('show');
 }
@@ -3169,7 +3200,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   }
   const monster=event.target.closest('[data-hunt-monster]');
   if(monster&&renderHuntMonsterDetail({document,enemyId:monster.dataset.huntMonster})){
-    document.getElementById('sheetHuntMonster').classList.add('show');
+    showSheet(document,'sheetHuntMonster');
     return;
   }
   const startButton=event.target.closest('[data-start-hunt]');
@@ -3201,7 +3232,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy.transactions=state.economy.transactions.slice(-200);
     scheduleSave({type:'hunt:resolve',won:result.report.won});
     renderHunt();
-    showToast(result.report.won?'Cacería superada · recompensas recibidas':'Tu héroe ha tenido que retirarse',result.report.won?'heal':'bad');
+    const rewardNotice=huntRewardNotice(result.report);
+    showToast(`${result.report.won?'Cacería superada':'Tu héroe ha tenido que retirarse'}${rewardNotice?` · ${rewardNotice}`:''}`,result.report.won?'heal':'bad');
   }
 });
 
@@ -4315,11 +4347,11 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   if(e.target.closest('[data-open-hero-skills]')){
     showHeroSkillsPanel();
-    document.getElementById('sheetHeroSkills').classList.add('show');
+    showSheet(document,'sheetHeroSkills');
     return;
   }
   if(e.target.closest('#bossInfoBtn')){
-    document.getElementById('sheetBossHistory').classList.add('show');
+    showSheet(document,'sheetBossHistory');
     return;
   }
   const currentBossMedal=e.target.closest('[data-open-current-boss-medal]');
@@ -4706,7 +4738,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const shopPotionOpen=event.target.closest('[data-open-shop-potion]');
   if(shopPotionOpen){
     if(renderPotionDetail(document,state,shopPotionOpen.dataset.openShopPotion,{...potionViewOptions(),mode:'shop',nowTimestamp:Date.now()})){
-      document.getElementById('sheetRelicDetail').classList.add('show');
+      showSheet(document,'sheetRelicDetail');
     }
     return;
   }
@@ -4718,7 +4750,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const potionOpen=event.target.closest('[data-open-potion]');
   if(potionOpen){
     if(renderPotionDetail(document,state,potionOpen.dataset.openPotion,{...potionViewOptions(),nowTimestamp:Date.now()})){
-      document.getElementById('sheetRelicDetail').classList.add('show');
+      showSheet(document,'sheetRelicDetail');
     }
     return;
   }
@@ -4813,7 +4845,7 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
   }
   if(event.target.closest('[data-character-skills]')){
     showHeroSkillsPanel();
-    document.getElementById('sheetHeroSkills').classList.add('show');
+    showSheet(document,'sheetHeroSkills');
   }
 });
 
@@ -4882,7 +4914,7 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
     forgePickerTarget=null;
     if(returnToCharacter){
       document.getElementById('sheetInventory').classList.remove('show');
-      document.getElementById('sheetCharacter').classList.add('show');
+      showSheet(document,'sheetCharacter');
       renderCurrentCharacterSheet();
     }
     return;
@@ -4956,7 +4988,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     selectedForgeRelicId=forgeShortcut.dataset.openForgeRelic;
     forgeMode='upgrade';
     document.getElementById('sheetRelicDetail').classList.remove('show');
-    document.getElementById('sheetInventory').classList.add('show');
+    showSheet(document,'sheetInventory');
     showInventoryPanel('forge');
     return;
   }
@@ -4981,7 +5013,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
     scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
     document.getElementById('sheetRelicDetail').classList.remove('show');
-    document.getElementById('sheetInventory').classList.add('show');
+    showSheet(document,'sheetInventory');
     showInventoryPanel('inventory',true); renderHero();
     showToast('Reliquia equipada','heal');
     return;
@@ -5283,7 +5315,7 @@ function openBossMedalDetail(bossIndex,bossFile){
   document.getElementById('bossMedalDetailLock').textContent=defeated?'':'Derrota a este jefe para conseguir, descargar y compartir su medallón.';
   document.getElementById('bossMedalDetailActions').hidden=!defeated;
   detail.classList.toggle('in-combat',!defeated);
-  document.getElementById('sheetBossMedal').classList.add('show');
+  showSheet(document,'sheetBossMedal');
 }
 
 document.getElementById('sheetBossHistory').addEventListener('click',async e=>{

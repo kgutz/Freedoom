@@ -124,6 +124,50 @@ describe('PvE combat rules', () => {
     expect(started.hunt).toMatchObject({ energy: 5, baseEnergy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
   });
 
+  it('migra una carga extra del formato anterior sin convertirla en capacidad permanente', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const migrated = normalizeHuntState({
+      energyDay: '2026-08-26',
+      energy: 6,
+      habitEnergyRolls: [{ key: 'habit-legacy', granted: 1 }],
+    }, nowTimestamp);
+    expect(migrated).toMatchObject({
+      energy: 6,
+      baseEnergy: 5,
+      bonusEnergyEarned: 1,
+      bonusEnergyRemaining: 1,
+      bonusEnergyLedgerVersion: 1,
+    });
+    expect(migrated.habitEnergyRolls[0].status).toBe('available');
+  });
+
+  it('repara una carga borrada por la migración anterior cuando el premio sigue registrado', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const repaired = normalizeHuntState({
+      energyDay: '2026-08-26',
+      energy: 5,
+      bonusEnergyEarned: 0,
+      bonusEnergyRemaining: 0,
+      habitEnergyRolls: [{ key: 'habit-repair', granted: 1, status: 'spent' }],
+    }, nowTimestamp);
+    expect(repaired).toMatchObject({ energy: 6, bonusEnergyEarned: 1, bonusEnergyRemaining: 1 });
+    expect(repaired.habitEnergyRolls[0].status).toBe('available');
+  });
+
+  it('no devuelve una carga que sí fue gastada con el nuevo registro', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const spent = normalizeHuntState({
+      energyDay: '2026-08-26',
+      energy: 5,
+      bonusEnergyEarned: 1,
+      bonusEnergyRemaining: 0,
+      bonusEnergyLedgerVersion: 1,
+      habitEnergyRolls: [{ key: 'habit-spent', granted: 1, status: 'spent' }],
+    }, nowTimestamp);
+    expect(spent).toMatchObject({ energy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
+    expect(spent.habitEnergyRolls[0].status).toBe('spent');
+  });
+
   it('retira la energía extra al deshacer el hábito y la restaura sin repetir el sorteo', () => {
     const rewarded = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0 });
     const revoked = revokeHabitHuntEnergy({ hunt: rewarded.hunt, rewardKey: 'habit-1', becameIncomplete: true });

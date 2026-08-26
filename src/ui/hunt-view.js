@@ -3,6 +3,7 @@ import {
   HUNT_DIFFICULTIES,
   normalizeHuntState,
 } from '../domain/pve-combat-rules.js';
+import { resourceIcon, resourceValue } from './resource-icons.js';
 
 function remainingLabel(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -48,14 +49,14 @@ function reportMarkup(report) {
   const rows = report.encounters.map((encounter) => `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
     <span>${encounter.role} · ${encounter.name}</span>
     <b>${encounter.won ? 'VICTORIA' : 'DERROTA'}</b>
-    <small>${encounter.rounds} rondas · ${encounter.damageDealt} daño · ${encounter.heroHp} HP restante${encounter.won ? ` · +${encounter.rewards?.xp || 0} XP · +${encounter.rewards?.gold || 0} oro${encounter.rewards?.arcaneFibers ? ` · +${encounter.rewards.arcaneFibers} fibra${encounter.rewards.arcaneFibers === 1 ? '' : 's'}` : ''}${encounter.rewards?.bossBlood ? ' · +1 sangre' : ''}` : ''}</small>
+    <small>${encounter.rounds} rondas · ${encounter.damageDealt} daño · ${encounter.heroHp} HP restante${encounter.won ? ` · ✦ +${encounter.rewards?.xp || 0} XP · ${resourceIcon('coin')} +${encounter.rewards?.gold || 0}${encounter.rewards?.arcaneFibers ? ` · ${resourceIcon('arcane-fiber')} +${encounter.rewards.arcaneFibers}` : ''}${encounter.rewards?.bossBlood ? ` · ${resourceIcon('boss-blood')} +${encounter.rewards.bossBlood}` : ''}` : ''}</small>
   </div>`).join('');
   const rewards = report.rewards;
   const rewardItems = [
     Number(rewards.xp) > 0 ? `<span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>` : '',
-    Number(rewards.gold) > 0 ? `<span aria-label="Oro obtenido">🪙 <b>${rewards.gold}</b></span>` : '',
-    Number(rewards.arcaneFibers) > 0 ? `<span aria-label="Fibra Arcana obtenida">🧵 <b>${rewards.arcaneFibers}</b></span>` : '',
-    Number(rewards.bossBlood) > 0 ? `<span aria-label="Sangre de Jefe obtenida">🩸 <b>${rewards.bossBlood}</b></span>` : '',
+    Number(rewards.gold) > 0 ? resourceValue('coin', rewards.gold) : '',
+    Number(rewards.arcaneFibers) > 0 ? resourceValue('arcane-fiber', rewards.arcaneFibers) : '',
+    Number(rewards.bossBlood) > 0 ? resourceValue('boss-blood', rewards.bossBlood) : '',
   ].filter(Boolean).join('');
   return `<section class="card hunt-report">
     <div class="hunt-section-title"><span>Último informe</span><b>${report.won ? 'EXPEDICIÓN SUPERADA' : 'EXPEDICIÓN FALLIDA'}</b></div>
