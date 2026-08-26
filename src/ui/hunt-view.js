@@ -44,6 +44,25 @@ export function renderHuntMonsterDetail({ document, enemyId }) {
   return true;
 }
 
+export function huntResultRewardsMarkup(rewards = {}) {
+  const items = [
+    Number(rewards.xp) > 0
+      ? `<div class="hunt-result-reward-slot"><span class="hunt-result-xp-icon" aria-hidden="true">✦</span><b>${Math.max(0, Number(rewards.xp) || 0)}<small> XP</small></b></div>`
+      : '',
+    Number(rewards.gold) > 0
+      ? `<div class="hunt-result-reward-slot">${resourceIcon('coin')}<b>${Math.max(0, Number(rewards.gold) || 0)}</b></div>`
+      : '',
+    Number(rewards.arcaneFibers) > 0
+      ? `<div class="hunt-result-reward-slot">${resourceIcon('arcane-fiber')}<b>${Math.max(0, Number(rewards.arcaneFibers) || 0)}</b></div>`
+      : '',
+    Number(rewards.bossBlood) > 0
+      ? `<div class="hunt-result-reward-slot">${resourceIcon('boss-blood')}<b>${Math.max(0, Number(rewards.bossBlood) || 0)}</b></div>`
+      : '',
+  ].filter(Boolean);
+  if (!items.length) return '<div class="hunt-result-no-loot">Sin botín obtenido</div>';
+  return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>`;
+}
+
 function reportMarkup(report) {
   if (!report) return '';
   const rows = report.encounters.map((encounter) => `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">

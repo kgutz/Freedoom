@@ -176,7 +176,7 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
-import { renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { huntResultRewardsMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
 import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
@@ -3138,14 +3138,14 @@ function huntPotentialRewardsMarkup(difficulty){
   ].filter(Boolean).join(' · ');
 }
 
-function huntRewardNotice(report){
-  const rewards=report?.rewards||{};
-  return [
-    Number(rewards.xp)>0?`✦ ${rewards.xp} XP`:'',
-    Number(rewards.gold)>0?`🪙 ${rewards.gold}`:'',
-    Number(rewards.arcaneFibers)>0?`🧵 ${rewards.arcaneFibers}`:'',
-    Number(rewards.bossBlood)>0?`🩸 ${rewards.bossBlood}`:'',
-  ].filter(Boolean).join(' · ');
+function openHuntResultModal(report){
+  const won=Boolean(report?.won);
+  document.getElementById('huntResultTitle').textContent=won?'Cacería superada':'Cacería finalizada';
+  document.getElementById('huntResultMessage').textContent=won
+    ? 'La bruma retrocede. Este es el botín que tu héroe ha traído de vuelta.'
+    : 'Tu héroe tuvo que retirarse, pero conserva el botín de los enemigos derrotados.';
+  document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
+  document.getElementById('huntResultBg').classList.add('show');
 }
 
 function closeHuntConfirmation(){
@@ -3204,6 +3204,12 @@ document.getElementById('huntConfirmAccept').addEventListener('click',confirmHun
 document.getElementById('huntConfirmBg').addEventListener('click',event=>{
   if(event.target.id==='huntConfirmBg') closeHuntConfirmation();
 });
+document.getElementById('huntResultClose').addEventListener('click',()=>{
+  document.getElementById('huntResultBg').classList.remove('show');
+});
+document.getElementById('huntResultBg').addEventListener('click',event=>{
+  if(event.target.id==='huntResultBg') event.currentTarget.classList.remove('show');
+});
 
 document.getElementById('view-habits').addEventListener('click',event=>{
   if(!state.game?.cls) return;
@@ -3255,8 +3261,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy.transactions=state.economy.transactions.slice(-200);
     scheduleSave({type:'hunt:resolve',won:result.report.won});
     renderHunt();
-    const rewardNotice=huntRewardNotice(result.report);
-    showToast(`${result.report.won?'Cacería superada':'Tu héroe ha tenido que retirarse'}${rewardNotice?` · ${rewardNotice}`:''}`,result.report.won?'heal':'bad');
+    openHuntResultModal(result.report);
   }
 });
 

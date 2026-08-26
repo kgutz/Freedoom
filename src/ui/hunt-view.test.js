@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderHuntView } from './hunt-view.js';
+import { huntResultRewardsMarkup, renderHuntView } from './hunt-view.js';
 
 function renderReport(rewards, difficultyId = 'easy') {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
@@ -26,6 +26,20 @@ function renderReport(rewards, difficultyId = 'easy') {
 }
 
 describe('informe de Cacería', () => {
+  it('prepara el botín final como casillas visuales con icono y cantidad', () => {
+    const html = huntResultRewardsMarkup({ xp: 12, gold: 14, arcaneFibers: 1, bossBlood: 0 });
+    expect(html).toContain('hunt-result-reward-grid items-3');
+    expect(html).toContain('hunt-result-xp-icon');
+    expect(html).toContain('12<small> XP</small>');
+    expect(html).toContain('resource-icon--coin');
+    expect(html).toContain('resource-icon--arcane-fiber');
+    expect(html).not.toContain('resource-icon--boss-blood');
+  });
+
+  it('muestra una casilla vacía cuando no se obtiene botín', () => {
+    expect(huntResultRewardsMarkup({})).toContain('Sin botín obtenido');
+  });
+
   it('muestra únicamente las recompensas obtenidas', () => {
     const html = renderReport({ xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 });
     expect(html).toContain('5</b> XP');
