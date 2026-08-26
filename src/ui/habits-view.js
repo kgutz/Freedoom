@@ -75,7 +75,7 @@ export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, li
   const outfitPortraitClass = outfitUsesTransparentPortrait(game?.outfit)
     ? ` outfit-transparent-portrait outfit-id-${game?.outfit || 'original'}`
     : '';
-  return `<div class="habit-hero-card${variantClass ? ` ${escapeHtml(variantClass)}` : ''}" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
+  return `<div class="habit-hero-card${intoxicationStageValue > 0 ? ' hero-card--intoxicated' : ''}${variantClass ? ` ${escapeHtml(variantClass)}` : ''}" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
       <img class="habit-hero-bg" src="${escapeHtml(backgroundSrc)}" alt="" aria-hidden="true">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
       <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>

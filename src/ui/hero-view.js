@@ -161,6 +161,15 @@ export function heroVisualMarkup({
   </div>`;
 }
 
+export function heroIntoxicationBadgeMarkup(intoxication, extraClass = '') {
+  if (!(Number(intoxication?.level) > 0)) return '';
+  const minutes = Math.max(1, Math.ceil(Number(intoxication?.remainingMinutes) || 0));
+  return `<span class="hero-intoxication-badge${extraClass ? ` ${extraClass}` : ''}" title="Borrachera: ${minutes} minutos restantes" aria-label="Borrachera: ${minutes} minutos restantes">
+    <img src="spells/effect_icons/beer_effect_intoxication.png" alt="">
+    <b>${minutes} min</b>
+  </span>`;
+}
+
 export function createHeroModel({
   now,
   config,
@@ -361,6 +370,7 @@ export function renderHeroView({
   lootState,
   huntEnergy = 0,
   huntEnergyMax = 5,
+  huntEnergyBonus = 0,
   classChange = false,
   currentClass = null,
   levelUp = false,
@@ -413,22 +423,13 @@ export function renderHeroView({
     stats: heroStats,
     boss: bossState,
   } = model;
-  const intoxicationEffect = model.skillEffects.find((effect) => effect.kind === 'intoxication');
-  const skillEffectsHtml = model.skillEffects
+  const visibleSkillEffects = model.skillEffects.filter((effect) => effect.kind !== 'intoxication');
+  const skillEffectsHtml = visibleSkillEffects
     .map((effect) => {
-      const intoxicationEffect = effect.kind === 'intoxication';
-      const source = intoxicationEffect
-        ? 'spells/effect_icons/beer_effect_intoxication.png'
-        : `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
-      const effectLabel = intoxicationEffect
-        ? `${effect.name} ${effect.level}%: ${effect.remaining} restantes`
-        : `${effect.name}: ${effect.remaining} restantes`;
-      const modifier = intoxicationEffect ? ' skill-buff--intoxication' : '';
-      const iconModifier = intoxicationEffect
-        ? ' skill-buff-icon--intoxication'
-        : '';
-      return `<span class="skill-buff${modifier}" aria-label="${effectLabel}">
-      <span class="skill-buff-icon${iconModifier}">
+      const source = `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
+      const effectLabel = `${effect.name}: ${effect.remaining} restantes`;
+      return `<span class="skill-buff" aria-label="${effectLabel}">
+      <span class="skill-buff-icon">
         <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="sk-fallback" style="display:none">${effect.name.charAt(0)}</span>
       </span>
@@ -443,7 +444,7 @@ export function renderHeroView({
   const potionEffectHtml=potionRemaining&&['fortune','experience'].includes(potionActive.id)
     ? `<span class="skill-buff skill-buff--potion" aria-label="Poción de ${potionActive.id==='fortune'?'Fortuna':'Experiencia'}: ${potionRemaining} restantes"><span class="skill-buff-icon skill-buff-icon--potion"><img src="potions/potion_${potionActive.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${potionActive.id==='fortune'?'¤':'✦'}</span></span><b>${potionRemaining}</b></span>`
     : '';
-  const visibleEffectCount=model.skillEffects.length+(potionEffectHtml?1:0);
+  const visibleEffectCount=visibleSkillEffects.length+(potionEffectHtml?1:0);
   const chipsHtml = skillEffectsHtml||potionEffectHtml
     ? `<div class="buff-row${visibleEffectCount>2?' buff-row--compact':''}">${skillEffectsHtml}${potionEffectHtml}</div>`
     : '';
@@ -633,8 +634,8 @@ export function renderHeroView({
         <div class="hero-id">
           <div class="hero-rank-row">
             <div class="rango">${classData.name}</div>
-            <button class="hero-hunt-energy-shortcut" type="button" data-open-hunt-from-hero aria-label="Energía de Cacería: ${huntEnergy} de ${huntEnergyMax}. Abrir Cacería">
-              <span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><b>${huntEnergy}/${huntEnergyMax}</b>
+            <button class="hero-hunt-energy-shortcut" type="button" data-open-hunt-from-hero aria-label="Energía de Cacería: ${Math.max(0, huntEnergy - huntEnergyBonus)} de ${huntEnergyMax}${huntEnergyBonus ? `, más ${huntEnergyBonus} extra` : ''}. Abrir Cacería">
+              <span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><b>${Math.max(0, huntEnergy - huntEnergyBonus)}/${huntEnergyMax}${huntEnergyBonus ? `<em>+${huntEnergyBonus}</em>` : ''}</b>
             </button>
           </div>
           <div class="nombre">${game?.name || classData.name}</div>

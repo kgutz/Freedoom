@@ -484,7 +484,8 @@ describe('modelo de Héroe', () => {
       }),
       intoxication: { level: 25, remainingMinutes: 41 },
       huntEnergy: 4,
-      huntEnergyMax: 7,
+      huntEnergyMax: 5,
+      huntEnergyBonus: 1,
       levelUp: true,
     });
 
@@ -493,8 +494,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('aria-label="Abrir medallón de Espectro"');
     expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
     expect(heroContent.innerHTML).toContain('data-open-hunt-from-hero');
-    expect(heroContent.innerHTML).toContain('Energía de Cacería: 4 de 7. Abrir Cacería');
-    expect(heroContent.innerHTML).toContain('<b>4/7</b>');
+    expect(heroContent.innerHTML).toContain('Energía de Cacería: 3 de 5, más 1 extra. Abrir Cacería');
+    expect(heroContent.innerHTML).toContain('<b>3/5<em>+1</em></b>');
     expect(heroContent.innerHTML).not.toContain('data-open-hero-skills');
     expect(heroContent.innerHTML).not.toContain('hero-quick-actions');
     expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
@@ -515,17 +516,17 @@ describe('modelo de Héroe', () => {
     expect(heroSkillsModalBody.innerHTML).toContain('spell-effect-active');
     expect(heroSkillsModalBody.innerHTML).toContain('>30m</span>');
     expect((heroSkillsModalBody.innerHTML.match(/passive-effect-active/g) || []).length).toBe(2);
-    expect(heroContent.innerHTML).toContain('skill-buff-icon--intoxication');
+    expect(heroContent.innerHTML).not.toContain('skill-buff-icon--intoxication');
     expect(heroContent.innerHTML).not.toContain('hero-intoxication-overlay');
     expect(heroContent.innerHTML).toContain('sprite-box--intoxicated');
     expect(heroContent.innerHTML).toContain('hero-intoxication-particles--stage-2');
-    expect(heroContent.innerHTML).toContain('class="hero-visual-effects"');
-    expect(heroContent.innerHTML).toContain('hero-top hero-top--with-effects');
+    expect(heroContent.innerHTML).not.toContain('class="hero-visual-effects"');
+    expect(heroContent.innerHTML).not.toContain('hero-top hero-top--with-effects');
     expect(heroContent.innerHTML).not.toContain('Ojo Certero: 30m restantes');
     expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.png');
-    expect(heroContent.innerHTML).toContain('effect_icons/beer_effect_intoxication.png');
-    expect(heroContent.innerHTML).toContain('skill-buff--intoxication');
-    expect(heroContent.innerHTML).toContain('Borrachera 25%: 41m restantes');
+    expect(heroContent.innerHTML).not.toContain('effect_icons/beer_effect_intoxication.png');
+    expect(heroContent.innerHTML).not.toContain('skill-buff--intoxication');
+    expect(heroContent.innerHTML).not.toContain('Borrachera 25%: 41m restantes');
     expect(heroContent.innerHTML).not.toContain('🍺');
     expect(heroContent.innerHTML).toContain('hero-energy--paladin');
     expect(heroContent.innerHTML).toContain('hero-energy--stage-3');

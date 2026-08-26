@@ -8,6 +8,7 @@ import {
   pveHeroStats,
   resolveHunt,
   resolvePveAttack,
+  revokeHabitHuntEnergy,
   simulatePveCombat,
   startHunt,
 } from './pve-combat-rules.js';
@@ -38,6 +39,32 @@ describe('PvE combat rules', () => {
     expect(result.won).toBe(true);
     expect(result.enemyHp).toBe(0);
     expect(result.rounds).toBeGreaterThan(0);
+    expect(result.heroMana).toBeLessThan(hero.maxMana);
+  });
+
+  it('entra con la vida y el maná actuales y conserva el desgaste en el informe', () => {
+    const now = 20_000;
+    const started = startHunt({
+      hunt: null,
+      difficultyId: 'easy',
+      level: 20,
+      currentHp: 50,
+      maxHp: 100,
+      currentMana: 20,
+      maxMana: 100,
+      nowTimestamp: now,
+      seed: 8,
+    });
+    expect(started.hunt.active).toMatchObject({ entryHpRatio: 0.5, entryManaRatio: 0.2 });
+    const result = resolveHunt({
+      hunt: started.hunt,
+      classId: 'knight',
+      level: 20,
+      allocation: { strength: 20, defense: 15, constitution: 10 },
+      nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
+    });
+    expect(result.report.heroHp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.5));
+    expect(result.report.heroMana).toBeLessThan(Math.round(result.report.heroMaxMana * 0.2));
   });
 
   it('deriva el estilo de combate de los cinco atributos del enemigo', () => {
@@ -80,12 +107,38 @@ describe('PvE combat rules', () => {
     const first = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0.09 });
     expect(first).toMatchObject({ granted: 1, chance: 0.1 });
     expect(first.hunt.energy).toBe(6);
+    expect(first.hunt.bonusEnergyRemaining).toBe(1);
     const second = grantHabitHuntEnergy({ hunt: first.hunt, rewardKey: 'habit-2', becameCompleted: true, roll: () => 0.07 });
     expect(second).toMatchObject({ granted: 1, chance: 0.08 });
     expect(second.hunt.energy).toBe(7);
+    expect(second.hunt.bonusEnergyRemaining).toBe(2);
     const capped = grantHabitHuntEnergy({ hunt: second.hunt, rewardKey: 'habit-3', becameCompleted: true, roll: () => 0 });
     expect(capped.granted).toBe(0);
     expect(capped.hunt.energy).toBe(7);
+  });
+
+  it('consume primero la carga extra sin ampliar permanentemente la energía base', () => {
+    const rewarded = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0 });
+    const started = startHunt({ hunt: rewarded.hunt, difficultyId: 'easy', level: 3, nowTimestamp: Date.now() });
+    expect(started.ok).toBe(true);
+    expect(started.hunt).toMatchObject({ energy: 5, baseEnergy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
+  });
+
+  it('retira la energía extra al deshacer el hábito y la restaura sin repetir el sorteo', () => {
+    const rewarded = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0 });
+    const revoked = revokeHabitHuntEnergy({ hunt: rewarded.hunt, rewardKey: 'habit-1', becameIncomplete: true });
+    expect(revoked).toMatchObject({ revoked: 1 });
+    expect(revoked.hunt).toMatchObject({ energy: 5, bonusEnergyRemaining: 0 });
+    expect(revoked.hunt.habitEnergyRolls[0].status).toBe('revoked');
+
+    const restored = grantHabitHuntEnergy({ hunt: revoked.hunt, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0.99 });
+    expect(restored).toMatchObject({ granted: 1 });
+    expect(restored.hunt).toMatchObject({ energy: 6, bonusEnergyRemaining: 1 });
+
+    const spent = startHunt({ hunt: restored.hunt, difficultyId: 'easy', level: 3 });
+    const cannotRevokeSpent = revokeHabitHuntEnergy({ hunt: spent.hunt, rewardKey: 'habit-1', becameIncomplete: true });
+    expect(cannotRevokeSpent).toMatchObject({ revoked: 0 });
+    expect(cannotRevokeSpent.hunt.energy).toBe(5);
   });
 
   it('aplica una duración de uno, tres o cinco minutos según la dificultad', () => {

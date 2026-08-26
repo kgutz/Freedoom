@@ -42,6 +42,41 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(retry.economy.arcaneFibers).toBe(0);
   });
 
+  it('retira la Fibra al deshacer el hábito y restaura el mismo resultado al recompletarlo', () => {
+    const initial = stateWithGame();
+    const rewarded = resolveHabitFiberDrop({
+      state: initial,
+      habit: { id: 'water', difficulty: 'hard' },
+      periodKey: 'd:2026-08-21',
+      becameCompleted: true,
+      randomValue: 0,
+      nowTimestamp: 10,
+    });
+    expect(rewarded.economy.arcaneFibers).toBe(1);
+
+    const revoked = resolveHabitFiberDrop({
+      state: { ...initial, ...rewarded },
+      habit: { id: 'water', difficulty: 'hard' },
+      periodKey: 'd:2026-08-21',
+      becameCompleted: false,
+      becameIncomplete: true,
+      nowTimestamp: 20,
+    });
+    expect(revoked).toMatchObject({ granted: 0, revoked: 1 });
+    expect(revoked.economy.arcaneFibers).toBe(0);
+
+    const restored = resolveHabitFiberDrop({
+      state: { ...initial, ...revoked },
+      habit: { id: 'water', difficulty: 'hard' },
+      periodKey: 'd:2026-08-21',
+      becameCompleted: true,
+      randomValue: 0.99,
+      nowTimestamp: 30,
+    });
+    expect(restored).toMatchObject({ granted: 1, revoked: 0 });
+    expect(restored.economy.arcaneFibers).toBe(1);
+  });
+
   it('entrega la Fibra del jefe una sola vez por ciclo', () => {
     const first = grantBossFiberReward({ state: stateWithGame(), cycleId: 'week-2:boss-2', bossIndex: 2, randomValue: 0.1 });
     expect(first.granted).toBe(4);

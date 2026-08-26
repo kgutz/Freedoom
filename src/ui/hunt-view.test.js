@@ -1,0 +1,68 @@
+import { describe, expect, it } from 'vitest';
+import { renderHuntView } from './hunt-view.js';
+
+function renderReport(rewards, difficultyId = 'easy') {
+  const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
+  renderHuntView({
+    document: { getElementById: () => root },
+    game: {
+      cls: 'paladin',
+      hunt: {
+        energyDay: '2026-08-26',
+        energy: 4,
+        lastReport: {
+          difficultyId,
+          won: true,
+          encounters: [],
+          rewards,
+        },
+      },
+    },
+    stats: { lvl: 20 },
+    intoxication: null,
+    nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+  });
+  return root.innerHTML;
+}
+
+describe('informe de Cacería', () => {
+  it('muestra únicamente las recompensas obtenidas', () => {
+    const html = renderReport({ xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 });
+    expect(html).toContain('5</b> XP');
+    expect(html).toContain('Oro obtenido');
+    expect(html).not.toContain('Fibra Arcana obtenida');
+    expect(html).not.toContain('Sangre de Jefe obtenida');
+  });
+
+  it('no anuncia una expedición activa cuando no existe', () => {
+    const html = renderReport({ xp: 0, gold: 0, arcaneFibers: 0, bossBlood: 0 });
+    expect(html).not.toContain('Una expedición activa');
+  });
+
+  it('muestra la energía extra como una carga separada y consumible', () => {
+    const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: {
+        cls: 'paladin',
+        hunt: {
+          energyDay: '2026-08-26',
+          baseEnergy: 5,
+          energy: 6,
+          bonusEnergyEarned: 1,
+          bonusEnergyRemaining: 1,
+        },
+      },
+      stats: { lvl: 20 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('<strong>5/5<em>+1</em></strong>');
+    expect(root.innerHTML).not.toContain('6/6');
+  });
+
+  it('muestra fibra y sangre cuando realmente caen', () => {
+    const html = renderReport({ xp: 22, gold: 24, arcaneFibers: 2, bossBlood: 1 }, 'hard');
+    expect(html).toContain('Fibra Arcana obtenida');
+    expect(html).toContain('Sangre de Jefe obtenida');
+  });
+});

@@ -3,7 +3,7 @@ import { RARITIES, relicDefinition } from '../data/loot-data.js';
 import { equippedOutfit } from '../data/outfit-data.js';
 import { ATTRIBUTE_IDS, attributeSheet } from '../domain/attribute-rules.js';
 import { pveHeroStats } from '../domain/pve-combat-rules.js';
-import { heroVisualMarkup } from './hero-view.js';
+import { heroIntoxicationBadgeMarkup, heroVisualMarkup } from './hero-view.js';
 import { relicArt } from './inventory-view.js';
 
 const ATTRIBUTE_COPY = {
@@ -62,8 +62,9 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
         ${equippedRelicMarkup(state, equipped[0], 0)}
         ${equippedRelicMarkup(state, equipped[1], 1)}
       </div>
-      <div class="character-hero-art">
+      <div class="character-hero-art${heroModel?.intoxication?.level > 0 ? ' hero-card--intoxicated' : ''}">
         ${heroVisualMarkup({classId:game.cls,mood:heroModel?.mood||'happy',outfitId:outfit.id,progress:stats.prog,level:stats.lvl,intoxication:heroModel?.intoxication,interactive:false})}
+        ${heroIntoxicationBadgeMarkup(heroModel?.intoxication)}
         <button type="button" class="character-outfit-trigger" data-character-outfit aria-label="Cambiar outfit. Actual: ${outfit.name}"></button>
       </div>
     </section>

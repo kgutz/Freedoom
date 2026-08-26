@@ -22,21 +22,47 @@ export function bossFiberBase(bossIndex = 0) {
   return Math.min(6, 3 + Math.floor(Math.max(0, Number(bossIndex) || 0) / 4));
 }
 
-export function resolveHabitFiberDrop({ state, habit, periodKey, becameCompleted, randomValue = null, nowTimestamp = Date.now() }) {
+export function resolveHabitFiberDrop({ state, habit, periodKey, becameCompleted, becameIncomplete = false, randomValue = null, nowTimestamp = Date.now() }) {
   const normalized = normalizeLootState(state);
-  if (!becameCompleted || !habit?.id || !periodKey) return { ...slices(normalized), granted: 0 };
+  if ((!becameCompleted && !becameIncomplete) || !habit?.id || !periodKey) return { ...slices(normalized), granted: 0, revoked: 0 };
   const outcomeId = `${habit.id}|${periodKey}`;
-  if (normalized.loot.habitFiberOutcomes[outcomeId]) return { ...slices(normalized), granted: 0 };
+  const previous = normalized.loot.habitFiberOutcomes[outcomeId];
+  if (previous) {
+    const previousStatus = previous.status || (previous.granted ? 'available' : 'missed');
+    if (becameIncomplete && previous.granted && previousStatus === 'available') {
+      const revoked = normalized.economy.arcaneFibers > 0 ? 1 : 0;
+      normalized.loot.habitFiberOutcomes[outcomeId] = {
+        ...previous,
+        status: revoked ? 'revoked' : 'spent',
+        revokedAt: nowTimestamp,
+      };
+      if (revoked) {
+        normalized.economy.arcaneFibers -= 1;
+        normalized.economy.transactions.push({ id: `habit-fiber-revoke:${outcomeId}:${nowTimestamp}`, type: 'habit-fiber-revoke', arcaneFibers: -1, at: nowTimestamp });
+        normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+      }
+      return { ...slices(normalized), granted: 0, revoked };
+    }
+    if (becameCompleted && previous.granted && previousStatus === 'revoked') {
+      normalized.loot.habitFiberOutcomes[outcomeId] = { ...previous, status: 'available', restoredAt: nowTimestamp };
+      normalized.economy.arcaneFibers += 1;
+      normalized.economy.transactions.push({ id: `habit-fiber-restore:${outcomeId}:${nowTimestamp}`, type: 'habit-fiber-restore', arcaneFibers: 1, at: nowTimestamp });
+      normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+      return { ...slices(normalized), granted: 1, revoked: 0 };
+    }
+    return { ...slices(normalized), granted: 0, revoked: 0 };
+  }
+  if (!becameCompleted) return { ...slices(normalized), granted: 0, revoked: 0 };
   const rate = HABIT_FIBER_DROP_RATES[habit.difficulty] || 0;
   const roll = randomValue === null ? deterministicRoll(`${normalized.forge.seed}|habit-fiber|${outcomeId}`) : Number(randomValue);
   const granted = roll < rate ? 1 : 0;
-  normalized.loot.habitFiberOutcomes[outcomeId] = { habitId: habit.id, periodKey, rate, roll, granted, resolvedAt: nowTimestamp };
+  normalized.loot.habitFiberOutcomes[outcomeId] = { habitId: habit.id, periodKey, rate, roll, granted, status: granted ? 'available' : 'missed', resolvedAt: nowTimestamp };
   if (granted) {
     normalized.economy.arcaneFibers += granted;
     normalized.economy.transactions.push({ id: `habit-fiber:${outcomeId}`, type: 'habit-fiber', arcaneFibers: granted, at: nowTimestamp });
     normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   }
-  return { ...slices(normalized), granted };
+  return { ...slices(normalized), granted, revoked: 0 };
 }
 
 export function grantBossFiberReward({ state, cycleId, bossIndex = 0, randomValue = null, nowTimestamp = Date.now() }) {

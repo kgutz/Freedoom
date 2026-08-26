@@ -353,6 +353,12 @@ export function renderTodayView({
   }
 
   const heroFace = document.getElementById('hoyFace');
+  const todayHeroCard = document.querySelector('.hoy-hero');
+  if (todayHeroCard) {
+    const intoxicated = Number(model.intoxication?.level) > 0;
+    todayHeroCard.classList.toggle('hero-card--intoxicated', intoxicated);
+    todayHeroCard.querySelector('.hero-intoxication-badge')?.remove();
+  }
   if (heroFace) {
     heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01');
     heroFace.classList.add(`outfit-id-${game?.outfit || 'original'}`);

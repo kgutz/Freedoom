@@ -131,6 +131,8 @@ describe('vista de hábitos', () => {
       { level: 45, activeBeers: 3 },
     );
     expect(html).toContain('habit-hero-sprite compact-hero-intoxicated compact-intoxication-stage-3');
+    expect(html).toContain('habit-hero-card hero-card--intoxicated');
+    expect(html).not.toContain('hero-intoxication-badge');
   });
 
   it('muestra el retrato transparente del outfit de beta tester sin el círculo', () => {

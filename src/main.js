@@ -46,6 +46,7 @@ import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from
 import {
   HUNT_DIFFICULTIES,
   grantHabitHuntEnergy,
+  revokeHabitHuntEnergy,
   pveHeroStats,
   normalizeHuntState,
   resolveHunt,
@@ -223,7 +224,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.03';
+const APP_VERSION='2.04';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -231,7 +232,7 @@ const dismissedInventoryShortcutHints=new Set();
 const AUREO_NOTICE_KEY='freedoom:aureo-notice-seen:v1';
 const AUREO_NOTICE_TARGETS=['outfits','weave'];
 const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
-const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-hero','nav-habits','hunt-tab'];
+const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-hero','nav-habits','hunt-tab','hero-energy'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -2058,7 +2059,8 @@ function renderHero(){
     dayKey,
     lootState:state,
     huntEnergy:hunt.energy,
-    huntEnergyMax:hunt.baseEnergy+hunt.bonusEnergyEarned,
+    huntEnergyMax:hunt.baseEnergy,
+    huntEnergyBonus:hunt.bonusEnergyRemaining,
     levelUp
   });
 }
@@ -3120,7 +3122,18 @@ function confirmHuntStart(){
   if(!pendingHuntDifficultyId) return;
   const difficultyId=pendingHuntDifficultyId;
   closeHuntConfirmation();
-  const result=startHunt({hunt:state.game.hunt,difficultyId,level:gameStats().lvl,nowTimestamp:Date.now()});
+  ensureHero();
+  const stats=gameStats();
+  const result=startHunt({
+    hunt:state.game.hunt,
+    difficultyId,
+    level:stats.lvl,
+    currentHp:state.game.hp,
+    maxHp:stats.maxHp,
+    currentMana:state.game.mp,
+    maxMana:stats.maxMp,
+    nowTimestamp:Date.now()
+  });
   if(!result.ok){
     showToast(result.reason==='insufficient-energy'?'No tienes energía suficiente':result.reason==='level-locked'?`Necesitas nivel ${result.requiredLevel}`:'Ya hay una cacería en curso','bad');
     return;
@@ -3165,15 +3178,19 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     return;
   }
   if(event.target.closest('[data-resolve-hunt]')){
+    ensureHero();
+    const stats=gameStats();
     const result=resolveHunt({
       hunt:state.game.hunt,
       classId:state.game.cls,
-      level:gameStats().lvl,
+      level:stats.lvl,
       allocation:state.game.attributes,
       nowTimestamp:Date.now()
     });
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
     state.game.hunt=result.hunt;
+    state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
+    state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
     state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
     state.economy=state.economy||{coins:0,bossBlood:0,arcaneFibers:0,transactions:[]};
     state.economy.coins=Math.max(0,Number(state.economy.coins)||0)+result.report.rewards.gold;
@@ -3920,18 +3937,27 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       habit,
       periodKey:result.entry.periodKey,
       becameCompleted:result.becameCompleted,
+      becameIncomplete:result.becameIncomplete,
       nowTimestamp:Date.now()
     });
     applyLootSlices(fiberResult);
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
-    const huntEnergyResult=grantHabitHuntEnergy({
-      hunt:state.game.hunt,
-      rewardKey:`${habit.id}|${result.entry.periodKey}`,
-      becameCompleted:result.becameCompleted,
-      nowTimestamp:Date.now()
-    });
+    const huntEnergyRewardKey=`${habit.id}|${result.entry.periodKey}`;
+    const huntEnergyResult=result.becameIncomplete
+      ? revokeHabitHuntEnergy({
+        hunt:state.game.hunt,
+        rewardKey:huntEnergyRewardKey,
+        becameIncomplete:true,
+        nowTimestamp:Date.now()
+      })
+      : grantHabitHuntEnergy({
+        hunt:state.game.hunt,
+        rewardKey:huntEnergyRewardKey,
+        becameCompleted:result.becameCompleted,
+        nowTimestamp:Date.now()
+      });
     state.game.hunt=huntEnergyResult.hunt;
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
@@ -3969,7 +3995,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       type:'habit:progress',id:habit.id,count:result.entry.count,
       period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins+potionResult.coinDelta,
       potionXpDelta:potionResult.xpDelta,
-      arcaneFiberDelta:fiberResult.granted
+      arcaneFiberDelta:fiberResult.granted-(fiberResult.revoked||0)
     });
     renderAll();
     if(result.becameCompleted){
@@ -3980,8 +4006,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
     }
-    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0){
-      showToast(habitRewardToast('Progreso corregido',totalRewardDelta),'dmg');
+    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0||fiberResult.revoked||huntEnergyResult.revoked){
+      const fiberNotice=fiberResult.revoked?' · −1 Fibra Arcana':'';
+      const energyNotice=huntEnergyResult.revoked?' · −1 Energía de Cacería':'';
+      showToast(`${habitRewardToast('Progreso corregido',totalRewardDelta)}${fiberNotice}${energyNotice}`,'dmg');
     }
     else if(result.completed) showToast('Límite de recompensas alcanzado','heal');
     return;
@@ -4259,6 +4287,7 @@ function openClassChangeConfirmation(selectedClass){
 document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-hunt-from-hero]')){
     habitViewSection='hunt';
+    dismissFeatureDiscovery('hero-energy');
     dismissFeatureDiscovery('hunt-tab');
     document.getElementById('huntContent').dataset.huntScreen='map';
     switchView('view-habits','navHabits');

@@ -47,12 +47,33 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
   const bonusEnergyEarned = sameDay
     ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
     : 0;
+  const storedEnergy = sameDay ? safeInteger(hunt?.energy) : baseEnergy;
+  const bonusEnergyRemaining = sameDay
+    ? clamp(
+      hunt?.bonusEnergyRemaining == null
+        ? Math.max(0, storedEnergy - baseEnergy)
+        : safeInteger(hunt.bonusEnergyRemaining),
+      0,
+      bonusEnergyEarned,
+    )
+    : 0;
+  let legacyAvailable = bonusEnergyRemaining;
+  const habitEnergyRolls = sameDay && Array.isArray(hunt?.habitEnergyRolls)
+    ? hunt.habitEnergyRolls.slice(-60).map((entry) => {
+      if (['available', 'spent', 'revoked', 'missed'].includes(entry?.status)) return { ...entry };
+      if (!entry?.granted) return { ...entry, status: 'missed' };
+      const status = legacyAvailable > 0 ? 'available' : 'spent';
+      legacyAvailable = Math.max(0, legacyAvailable - 1);
+      return { ...entry, status };
+    })
+    : [];
   return {
     energyDay,
     baseEnergy,
     bonusEnergyEarned,
-    habitEnergyRolls: sameDay && Array.isArray(hunt?.habitEnergyRolls) ? hunt.habitEnergyRolls.slice(-60) : [],
-    energy: sameDay ? clamp(safeInteger(hunt?.energy), 0, baseEnergy + bonusEnergyEarned) : baseEnergy,
+    bonusEnergyRemaining,
+    habitEnergyRolls,
+    energy: sameDay ? clamp(storedEnergy, 0, baseEnergy + bonusEnergyEarned) : baseEnergy,
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
     history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],
@@ -61,8 +82,26 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
 
 export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTimestamp = Date.now(), roll = Math.random }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
-  if (!becameCompleted || !rewardKey || normalized.habitEnergyRolls.some((entry) => entry?.key === rewardKey)) {
+  if (!becameCompleted || !rewardKey) {
     return { granted: 0, chance: 0, hunt: normalized };
+  }
+  const previous = normalized.habitEnergyRolls.find((entry) => entry?.key === rewardKey);
+  if (previous) {
+    if (previous.granted && previous.status === 'revoked') {
+      return {
+        granted: 1,
+        chance: previous.chance || 0,
+        hunt: {
+          ...normalized,
+          bonusEnergyRemaining: normalized.bonusEnergyRemaining + 1,
+          energy: normalized.energy + 1,
+          habitEnergyRolls: normalized.habitEnergyRolls.map((entry) => (
+            entry?.key === rewardKey ? { ...entry, status: 'available' } : entry
+          )),
+        },
+      };
+    }
+    return { granted: 0, chance: previous.chance || 0, hunt: normalized };
   }
   if (normalized.bonusEnergyEarned >= DAILY_HUNT_BONUS_ENERGY_CAP) {
     return { granted: 0, chance: 0, hunt: normalized };
@@ -75,8 +114,34 @@ export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTime
     hunt: {
       ...normalized,
       bonusEnergyEarned: normalized.bonusEnergyEarned + granted,
+      bonusEnergyRemaining: normalized.bonusEnergyRemaining + granted,
       energy: normalized.energy + granted,
-      habitEnergyRolls: [...normalized.habitEnergyRolls, { key: rewardKey, granted }].slice(-60),
+      habitEnergyRolls: [...normalized.habitEnergyRolls, {
+        key: rewardKey,
+        granted,
+        chance,
+        status: granted ? 'available' : 'missed',
+      }].slice(-60),
+    },
+  };
+}
+
+export function revokeHabitHuntEnergy({ hunt, rewardKey, becameIncomplete, nowTimestamp = Date.now() }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  if (!becameIncomplete || !rewardKey) return { revoked: 0, hunt: normalized };
+  const previous = normalized.habitEnergyRolls.find((entry) => entry?.key === rewardKey);
+  if (!previous?.granted || previous.status !== 'available' || normalized.bonusEnergyRemaining < 1) {
+    return { revoked: 0, hunt: normalized };
+  }
+  return {
+    revoked: 1,
+    hunt: {
+      ...normalized,
+      energy: Math.max(0, normalized.energy - 1),
+      bonusEnergyRemaining: normalized.bonusEnergyRemaining - 1,
+      habitEnergyRolls: normalized.habitEnergyRolls.map((entry) => (
+        entry?.key === rewardKey ? { ...entry, status: 'revoked' } : entry
+      )),
     },
   };
 }
@@ -106,28 +171,37 @@ export function pveHeroStats({ classId, level, allocation }) {
   };
 }
 
-export function resolvePveAttack({ attacker, defender, attackType = 'physical', roll = Math.random }) {
+export function resolvePveAttack({ attacker, defender, attackType = 'physical', attackMultiplier = 1, roll = Math.random }) {
   if (roll() < (defender.dodgeChance || 0)) return { damage: 0, critical: false, dodged: true };
   const attack = attackType === 'magic' ? (attacker.magicAttack ?? attacker.attack ?? 1) : (attacker.physicalAttack ?? attacker.attack ?? 1);
   const critical = roll() < (attacker.criticalChance || 0);
-  const damage = Math.max(1, Math.round(attack * (critical ? 1.6 : 1) - (defender.defense || 0) * 0.65));
+  const damage = Math.max(1, Math.round(attack * Math.max(0, Number(attackMultiplier) || 0) * (critical ? 1.6 : 1) - (defender.defense || 0) * 0.65));
   return { damage, critical, dodged: false };
 }
 
-export function simulatePveCombat({ hero, enemy, attackType = 'physical', roll = Math.random, maxRounds = 30 }) {
-  let heroHp = Math.max(1, hero.maxHp);
+export function simulatePveCombat({ hero, enemy, heroHp: startingHeroHp, heroMana: startingHeroMana, attackType = 'physical', roll = Math.random, maxRounds = 30 }) {
+  let heroHp = Math.max(0, Number.isFinite(startingHeroHp) ? startingHeroHp : hero.maxHp);
+  let heroMana = Math.max(0, Number.isFinite(startingHeroMana) ? startingHeroMana : hero.maxMana);
   let enemyHp = Math.max(1, enemy.maxHp);
   const log = [];
   for (let round = 1; round <= maxRounds && heroHp > 0 && enemyHp > 0; round += 1) {
-    const heroHit = resolvePveAttack({ attacker: hero, defender: enemy, attackType, roll });
+    const manaSpent = Math.min(2, heroMana);
+    const heroHit = resolvePveAttack({
+      attacker: hero,
+      defender: enemy,
+      attackType,
+      attackMultiplier: manaSpent > 0 ? 1 : 0.72,
+      roll,
+    });
+    heroMana = Math.max(0, heroMana - manaSpent);
     enemyHp = Math.max(0, enemyHp - heroHit.damage);
-    log.push({ round, actor: 'hero', ...heroHit, remainingHp: enemyHp });
+    log.push({ round, actor: 'hero', ...heroHit, manaSpent, remainingMana: heroMana, remainingHp: enemyHp });
     if (enemyHp <= 0) break;
     const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
     heroHp = Math.max(0, heroHp - enemyHit.damage);
     log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
   }
-  return { won: enemyHp <= 0 && heroHp > 0, heroHp, enemyHp, rounds: log.at(-1)?.round || 0, log };
+  return { won: enemyHp <= 0 && heroHp > 0, heroHp, heroMana, enemyHp, rounds: log.at(-1)?.round || 0, log };
 }
 
 function seededRoll(seed) {
@@ -151,15 +225,51 @@ function splitEncounterReward(total) {
   return [first, second, Math.max(0, total - first - second)];
 }
 
-export function startHunt({ hunt, difficultyId, level = 1, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+function resourceRatio(current, maximum) {
+  const max = Number(maximum);
+  const value = Number(current);
+  return Number.isFinite(value) && Number.isFinite(max) && max > 0
+    ? clamp(value / max, 0, 1)
+    : 1;
+}
+
+export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
   if (safeInteger(level) < difficulty.minLevel) return { ok: false, reason: 'level-locked', requiredLevel: difficulty.minLevel, hunt: normalized };
   if (normalized.active) return { ok: false, reason: 'hunt-active', hunt: normalized };
   if (normalized.energy < difficulty.energyCost) return { ok: false, reason: 'insufficient-energy', hunt: normalized };
-  const active = { id: `hunt-${nowTimestamp}-${safeInteger(seed)}`, regionId: 'fields-of-mist', difficultyId, startedAt: nowTimestamp, endsAt: nowTimestamp + difficulty.durationMinutes * 60_000, seed: safeInteger(seed) };
-  return { ok: true, reason: null, hunt: { ...normalized, energy: normalized.energy - difficulty.energyCost, active } };
+  const bonusEnergySpent = Math.min(normalized.bonusEnergyRemaining, difficulty.energyCost);
+  let remainingBonusToSpend = bonusEnergySpent;
+  const habitEnergyRolls = normalized.habitEnergyRolls.map((entry) => {
+    if (remainingBonusToSpend > 0 && entry?.granted && entry.status === 'available') {
+      remainingBonusToSpend -= 1;
+      return { ...entry, status: 'spent' };
+    }
+    return entry;
+  });
+  const active = {
+    id: `hunt-${nowTimestamp}-${safeInteger(seed)}`,
+    regionId: 'fields-of-mist',
+    difficultyId,
+    startedAt: nowTimestamp,
+    endsAt: nowTimestamp + difficulty.durationMinutes * 60_000,
+    seed: safeInteger(seed),
+    entryHpRatio: resourceRatio(currentHp, maxHp),
+    entryManaRatio: resourceRatio(currentMana, maxMana),
+  };
+  return {
+    ok: true,
+    reason: null,
+    hunt: {
+      ...normalized,
+      energy: normalized.energy - difficulty.energyCost,
+      bonusEnergyRemaining: normalized.bonusEnergyRemaining - bonusEnergySpent,
+      habitEnergyRolls,
+      active,
+    },
+  };
 }
 
 export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = Date.now() }) {
@@ -170,13 +280,19 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
   const difficulty = HUNT_DIFFICULTIES[active.difficultyId] || HUNT_DIFFICULTIES.easy;
   const random = seededRoll(active.seed);
   const hero = pveHeroStats({ classId, level, allocation });
-  let currentHp = hero.maxHp;
+  let currentHp = Number.isFinite(active.entryHpRatio)
+    ? Math.max(0, Math.round(hero.maxHp * clamp(active.entryHpRatio, 0, 1)))
+    : hero.maxHp;
+  let currentMana = Number.isFinite(active.entryManaRatio)
+    ? Math.max(0, Math.round(hero.maxMana * clamp(active.entryManaRatio, 0, 1)))
+    : hero.maxMana;
   const encounters = [];
   for (const definition of BRUMA_ENEMIES) {
     const enemy = scaledEnemy(definition, difficulty);
-    const result = simulatePveCombat({ hero: { ...hero, maxHp: currentHp }, enemy, attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical', roll: random });
+    const result = simulatePveCombat({ hero, enemy, heroHp: currentHp, heroMana: currentMana, attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical', roll: random });
     currentHp = result.heroHp;
-    encounters.push({ id: enemy.id, role: enemy.role, name: enemy.name, won: result.won, rounds: result.rounds, heroHp: currentHp, damageDealt: enemy.maxHp - result.enemyHp });
+    currentMana = result.heroMana;
+    encounters.push({ id: enemy.id, role: enemy.role, name: enemy.name, won: result.won, rounds: result.rounds, heroHp: currentHp, heroMana: currentMana, damageDealt: enemy.maxHp - result.enemyHp });
     if (!result.won) break;
   }
   const won = encounters.length === BRUMA_ENEMIES.length && encounters.every((encounter) => encounter.won);
@@ -207,6 +323,6 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
     arcaneFibers: bossRewards?.arcaneFibers || 0,
     bossBlood: bossRewards?.bossBlood || 0,
   };
-  const report = { id: active.id, regionId: active.regionId, difficultyId: difficulty.id, startedAt: active.startedAt, completedAt: nowTimestamp, won, heroMaxHp: hero.maxHp, heroHp: currentHp, encounters, rewards };
+  const report = { id: active.id, regionId: active.regionId, difficultyId: difficulty.id, startedAt: active.startedAt, completedAt: nowTimestamp, won, heroMaxHp: hero.maxHp, heroHp: currentHp, heroMaxMana: hero.maxMana, heroMana: currentMana, encounters, rewards };
   return { ok: true, reason: null, report, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
 }
