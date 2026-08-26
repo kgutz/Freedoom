@@ -261,9 +261,9 @@ export function activeSpellStatus({
     const challenge = powers.habitChallenge;
     const completed = challenge.completedIds?.length || 0;
     const target = challenge.autoNextHabitCount || challenge.habitIds?.length || 2;
-    return challenge.day === today
-      ? `${Math.min(completed, target)}/${target}`
-      : null;
+    if (challenge.day === today && completed < target) {
+      return `${completed}/${target}`;
+    }
   }
   const levelEightUse = levelEightSpellAvailability({ game, spellId, today, nowTimestamp });
   if (levelEightUse.count === 1 && levelEightUse.cooldownRemainingMs > 0) {

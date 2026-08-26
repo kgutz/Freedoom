@@ -3381,9 +3381,20 @@ function applyClassHabitRewards({result,habit}){
   let rewards=g.powerProgress=g.powerProgress||{};
   rewards.habitEntries=rewards.habitEntries||{};
   const entryKey=`${result.entry.habitId}|${result.entry.periodKey}|${result.entry.count}`;
-  if(rewards.habitEntries[entryKey]) return '';
-  rewards.habitEntries[entryKey]=true;
+  const entryAlreadyRewarded=Boolean(rewards.habitEntries[entryKey]);
   const notices=[];
+  if(result.becameCompleted){
+    const challengeNotice=applyLevelEightChallengeHabitCompletion({
+      habitId:habit.id,
+      key,
+      completedAt:Date.now()
+    });
+    if(challengeNotice) notices.push(challengeNotice);
+    rewards=g.powerProgress||rewards;
+  }
+  if(entryAlreadyRewarded) return notices.length?' · '+notices.join(' · '):'';
+  rewards.habitEntries=rewards.habitEntries||{};
+  rewards.habitEntries[entryKey]=true;
   if(rewardedProgress&&g.cls==='sorcerer'&&lvl>=1){
     rewards.sorcererManaDays=rewards.sorcererManaDays||[];
     if(!rewards.sorcererManaDays.includes(key)){
@@ -3408,15 +3419,6 @@ function applyClassHabitRewards({result,habit}){
       g.bonusXp=(g.bonusXp||0)+5;
       notices.push(g.cls==='sorcerer'?'+5 XP Cosecha Oscura':'+5 XP Raíces Profundas');
     }
-  }
-  if(result.becameCompleted){
-    const challengeNotice=applyLevelEightChallengeHabitCompletion({
-      habitId:habit.id,
-      key,
-      completedAt:Date.now()
-    });
-    if(challengeNotice) notices.push(challengeNotice);
-    rewards=g.powerProgress||rewards;
   }
   const ultimate=rewards.ultimateChallenge;
   if(ultimate&&ultimate.day===key&&ultimate.habitIds.includes(habit.id)&&!ultimate.completedIds.includes(habit.id)){

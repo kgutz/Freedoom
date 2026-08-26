@@ -240,13 +240,33 @@ describe('modelo de Héroe', () => {
 
     expect(activeSpellStatus({
       spellId: 'certero', game, nowTimestamp: now, today: '2026-07-26',
-    })).toBe('2/2');
+    })).toBeNull();
     expect(spellUnavailableAfterUse({
       ability: { id: 'certero', lvl: 8, habitChallenge: true }, game, currentWeek: 3, today: '2026-07-26',
     })).toBe(true);
     expect(spellUnavailableAfterUse({
       ability: { id: 'certero', lvl: 8, habitChallenge: true }, game, currentWeek: 3, today: '2026-07-27',
     })).toBe(false);
+  });
+
+  it('muestra el cooldown tras completar el primer reto en vez de mantener 2/2', () => {
+    const now = new Date(2026, 6, 26, 12).getTime();
+    const game = {
+      powerProgress: {
+        habitChallenge: {
+          spellId: 'certero',
+          habitIds: ['a', 'b'],
+          completedIds: ['a', 'b'],
+          day: '2026-07-26',
+          completedAt: now,
+        },
+        challengeDayUses: { '2026-07-26:certero': { count: 1, lastUsedAt: now, lastCompletedAt: now } },
+      },
+    };
+
+    expect(activeSpellStatus({
+      spellId: 'certero', game, nowTimestamp: now, today: '2026-07-26',
+    })).toBe('60s');
   });
 
   it('muestra el progreso de la ulti y la apaga al cobrarla',()=>{
