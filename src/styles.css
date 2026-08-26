@@ -917,7 +917,7 @@
   .hero-id{position:relative;flex:1;min-width:0}
   .hero-rank-row{min-height:12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
   .hero-id .rango{font-size:12px;line-height:1;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-  .hero-hunt-energy-shortcut{display:inline-flex;align-items:center;justify-content:center;gap:2px;margin-top:-5px;padding:2px 6px 2px 3px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#d8e6bd;cursor:pointer;transform:translateX(2px)}.hero-hunt-energy-shortcut .resource-icon--hunt-energy{width:21px;height:21px}.hero-hunt-energy-shortcut b{font:400 11px/1 var(--font-display)}.hero-hunt-energy-shortcut:active{opacity:.72}.hero-hunt-energy-shortcut:focus-visible{outline:2px solid #9fbd62;outline-offset:2px}
+  .hero-hunt-energy-shortcut{display:inline-flex;align-items:center;justify-content:center;gap:2px;margin-top:-5px;padding:2px 6px 2px 3px;border:0;border-radius:0;background:transparent;box-shadow:none;color:#d8e6bd;cursor:pointer;transform:translateX(2px)}.hero-hunt-energy-shortcut .resource-icon--hunt-energy{width:20px;height:20px}.hero-hunt-energy-shortcut b{font:400 11px/1 var(--font-display)}.hero-hunt-energy-shortcut:active{opacity:.72}.hero-hunt-energy-shortcut:focus-visible{outline:2px solid #9fbd62;outline-offset:2px}
   .hero-id .nombre{font-size:21px;font-weight:400;letter-spacing:-.02em;margin:7px 0 4px}
   .hero-id .nivel{font-family:var(--font-display);font-size:14px;color:var(--kodak);transform:translateY(-3px)}
   .hero-resource-wallet{display:inline-flex;align-items:center;gap:12px;margin:7px 0 0;padding:2px 0;border:0;background:transparent;color:var(--text);cursor:pointer;transform:translate(-1px,-3px)}
