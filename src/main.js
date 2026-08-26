@@ -106,6 +106,7 @@ import {
   adjustHabitProgress,
   applyHabitCoinRewards,
   habitCoinReward,
+  habitEntryFor,
   habitProgressCoinSchedule,
   habitProgressXpSchedule,
   habitReward,
@@ -1870,6 +1871,7 @@ function castSpell(id,options={}){
   }
   const w=Math.max(0,weekIndexOf(currentDayDate()));
   const spellDayKey=todayKey();
+  reconcileStoredLevelEightHabitChallenge();
   if(sp.lvl===2&&!sp.ulti){
     const availability=levelTwoSpellAvailability({game:g,spellId:sp.id,nowTimestamp:Date.now()});
     if(availability.cooldownRemainingMs>0) return;
@@ -3407,33 +3409,14 @@ function applyClassHabitRewards({result,habit}){
       notices.push(g.cls==='sorcerer'?'+5 XP Cosecha Oscura':'+5 XP Raíces Profundas');
     }
   }
-  const challengeResult=result.becameCompleted
-    ?completeLevelEightHabitChallenge({progress:rewards,habitId:habit.id,today:key,completedAt:Date.now()})
-    :{advanced:false,completed:false,progress:rewards};
-  if(challengeResult.advanced){
-    rewards=g.powerProgress=challengeResult.progress;
-    const challengeSpellId=challengeResult.spellId;
-    g.bonusXp=(g.bonusXp||0)+5;
-    if(challengeSpellId==='muro'){
-      g.buffs.shield=(g.buffs.shield||0)+1;
-      notices.push('+5 XP · +1 Escudo');
-    }else if(challengeSpellId==='ceniza'){
-      const recovered=recoverMana(5);
-      notices.push(`+5 XP · +${recovered} 💧`);
-    }else if(challengeSpellId==='regen'){
-      const before=g.hp;
-      g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
-      notices.push(`+5 XP · +${g.hp-before} ♥`);
-    }else notices.push('+5 XP');
-    if(challengeResult.completed){
-      state.economy.coins+=2;
-      notices.push('+2 🪙');
-      const challengeUseKey=`${key}:${challengeSpellId}`;
-      const recordedUse=rewards.challengeDayUses?.[challengeUseKey];
-      if((Number(recordedUse?.count)||0)<2){
-        window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
-      }
-    }
+  if(result.becameCompleted){
+    const challengeNotice=applyLevelEightChallengeHabitCompletion({
+      habitId:habit.id,
+      key,
+      completedAt:Date.now()
+    });
+    if(challengeNotice) notices.push(challengeNotice);
+    rewards=g.powerProgress||rewards;
   }
   const ultimate=rewards.ultimateChallenge;
   if(ultimate&&ultimate.day===key&&ultimate.habitIds.includes(habit.id)&&!ultimate.completedIds.includes(habit.id)){
@@ -3477,6 +3460,65 @@ function applyClassHabitRewards({result,habit}){
     }
   }
   return notices.length?' · '+notices.join(' · '):'';
+}
+
+function applyLevelEightChallengeHabitCompletion({habitId,key=todayKey(),completedAt=Date.now()}){
+  const g=state.game;
+  if(!g) return '';
+  const maxHp=heroMaxes().maxHp;
+  const challengeResult=completeLevelEightHabitChallenge({
+    progress:g.powerProgress||{},
+    habitId,
+    today:key,
+    completedAt
+  });
+  if(!challengeResult.advanced) return '';
+  const notices=[];
+  const challengeSpellId=challengeResult.spellId;
+  const rewards=g.powerProgress=challengeResult.progress;
+  g.bonusXp=(g.bonusXp||0)+5;
+  if(challengeSpellId==='muro'){
+    g.buffs.shield=(g.buffs.shield||0)+1;
+    notices.push('+5 XP · +1 Escudo');
+  }else if(challengeSpellId==='ceniza'){
+    const recovered=recoverMana(5);
+    notices.push(`+5 XP · +${recovered} 💧`);
+  }else if(challengeSpellId==='regen'){
+    const before=g.hp;
+    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
+    notices.push(`+5 XP · +${g.hp-before} ♥`);
+  }else notices.push('+5 XP');
+  if(challengeResult.completed){
+    state.economy.coins+=2;
+    notices.push('+2 🪙');
+    const recordedUse=rewards.challengeDayUses?.[`${key}:${challengeSpellId}`];
+    if(completedAt>0&&(Number(recordedUse?.count)||0)<2){
+      window.setTimeout(()=>renderHero(),LEVEL_EIGHT_COOLDOWN_MS+80);
+    }
+  }
+  return notices.join(' · ');
+}
+
+function reconcileStoredLevelEightHabitChallenge(){
+  const challenge=state.game?.powerProgress?.habitChallenge;
+  const key=todayKey();
+  if(!challenge||challenge.day!==key||!Array.isArray(challenge.habitIds)||!challenge.habitIds.length) return false;
+  const date=currentDayDate();
+  let changed=false;
+  for(const habitId of challenge.habitIds){
+    const active=state.game?.powerProgress?.habitChallenge;
+    if(!active) break;
+    if(active.completedIds?.includes(habitId)) continue;
+    const habit=state.habits?.items?.find(candidate=>candidate?.id===habitId);
+    if(!habit) continue;
+    const entry=habitEntryFor(state.habits,habit,date,state.config.startDate);
+    if((Number(entry.count)||0)<Math.max(1,Number(habit.target)||1)) continue;
+    changed=Boolean(applyLevelEightChallengeHabitCompletion({habitId,key,completedAt:0}))||changed;
+  }
+  if(changed){
+    scheduleSave({type:'spell:challenge-reconciled',spellId:challenge.spellId});
+  }
+  return changed;
 }
 
 function activeHabitById(id){
@@ -5413,6 +5455,7 @@ resetGuardContinue.addEventListener('click',()=>{
       });
     }
     ensureHero();
+    reconcileStoredLevelEightHabitChallenge();
     syncPeriodicRelicMana();
     renderStartupPrimary();
     preloadStartupViews();

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { castSpellEffect, completeLevelEightHabitChallenge, ultimateHabitReward } from './spell-rules.js';
+import {
+  castSpellEffect,
+  completeLevelEightHabitChallenge,
+  levelEightSpellAvailability,
+  ultimateHabitReward,
+} from './spell-rules.js';
 
 const spell = (id, overrides = {}) => ({
   id,
@@ -63,6 +68,26 @@ describe('validación de hechizos', () => {
     const duplicate=completeLevelEightHabitChallenge({progress:first.progress,habitId:'a',today:'2026-07-26'});
     expect(first).toMatchObject({advanced:true,completed:false});
     expect(duplicate).toMatchObject({advanced:false,completed:false});
+  });
+
+  it('recupera una partida antigua cuyo segundo hábito ya estaba completado',()=>{
+    const progress={
+      challengeDayUses:{'2026-08-26:certero':{count:1,lastUsedAt:1_787_737_244_349,lastCompletedAt:0}},
+      habitChallenge:{
+        spellId:'certero',habitIds:['agua','pasos'],completedIds:['agua'],day:'2026-08-26',week:3,
+      },
+    };
+    const recovered=completeLevelEightHabitChallenge({
+      progress,habitId:'pasos',today:'2026-08-26',completedAt:0,
+    });
+    expect(recovered).toMatchObject({advanced:true,completed:true,spellId:'certero'});
+    expect(recovered.progress.habitChallenge).toBeUndefined();
+    expect(recovered.progress.challengeDayUses['2026-08-26:certero']).toEqual({
+      count:1,lastUsedAt:1_787_737_244_349,lastCompletedAt:0,
+    });
+    expect(levelEightSpellAvailability({
+      game:{powerProgress:recovered.progress},spellId:'certero',today:'2026-08-26',nowTimestamp:1_787_743_600_000,
+    })).toMatchObject({challengeActive:false,remainingUses:1,cooldownRemainingMs:0});
   });
 
   it('rechaza nivel insuficiente, maná insuficiente y ulti repetida', () => {
