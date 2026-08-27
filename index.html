@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.15</div>
+  <div class="ob-version" id="obVersion">v2.16</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.15</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.16</span></p>
       </div>
     </div>
   </div>
@@ -540,6 +540,18 @@
   <div class="sheet character-sheet">
     <div class="sheet-head sk-head-center"><h3>Ficha de personaje</h3><button class="sheet-close" data-sheet="sheetCharacter">✕</button></div>
     <div id="characterSheetBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="attributeResetConfirmBg" style="z-index:47">
+  <div class="modal fusion-confirm-modal attribute-reset-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="attributeResetConfirmTitle">
+    <span class="relic-effect-info-kicker">REASIGNAR PUNTOS</span>
+    <h3 id="attributeResetConfirmTitle">¿Resetear tus atributos?</h3>
+    <p>Recuperarás <b id="attributeResetConfirmPoints">0 puntos</b> para repartirlos de nuevo. Tu nivel y progreso no cambiarán.</p>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="attributeResetConfirmCancel">CANCELAR</button>
+      <button type="button" id="attributeResetConfirmAccept">RESETEAR ATRIBUTOS</button>
+    </div>
   </div>
 </div>
 

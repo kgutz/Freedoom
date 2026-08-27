@@ -540,6 +540,7 @@ export function renderHeroView({
   const totalBosses = bossCountForJourney(config, BOSSES.length);
   const defeatedBosses = Math.min(totalBosses, heroStats.bossesDown);
   const currentBossIndex = Math.min(totalBosses - 1, bossState.bossNum - 1);
+  const currentBossFile = `boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.webp`;
   const remainingBosses = Math.max(0, totalBosses - defeatedBosses);
   const revealedBossCount = Math.min(
     totalBosses,
@@ -632,8 +633,10 @@ export function renderHeroView({
         <div class="boss-medals-grid">${bossMedals}</div>
       </section>
       <section class="boss-history-panel boss-history-combat" data-boss-history-panel="combat">
-      <h4 class="boss-combat-head">Combate actual</h4>
-      <p class="boss-history-intro">Consulta el intercambio real con ${bossState.name}: cuánto daño causas y cuánto devuelve el jefe.</p>
+      <button class="boss-combat-current" type="button" data-open-boss-medal="${currentBossIndex}" data-boss-file="${currentBossFile}" aria-label="Abrir ficha de ${bossState.name}">
+        <span class="boss-combat-current-art"><img src="bosses/${currentBossFile}" alt="${bossState.name}" loading="eager" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none" aria-hidden="true">💀</i></span>
+        <span class="boss-combat-current-copy"><small>JEFE ACTUAL</small><strong>${bossState.name}</strong><em>Ver ficha del jefe</em></span>
+      </button>
       <div class="boss-gate">
         <span>SELLOS DE VICTORIA</span>
         <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>

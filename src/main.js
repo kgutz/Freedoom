@@ -4961,15 +4961,37 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
 });
 
+function closeAttributeResetConfirmation(){
+  document.getElementById('attributeResetConfirmBg').classList.remove('show');
+}
+
+function openAttributeResetConfirmation(){
+  const stats=gameStats();
+  const sheet=attributeSheet({classId:state.game.cls,level:stats.lvl,allocation:state.game.attributes});
+  if(!sheet.spentPoints) return;
+  document.getElementById('attributeResetConfirmPoints').textContent=`${sheet.spentPoints} ${sheet.spentPoints===1?'punto':'puntos'}`;
+  document.getElementById('attributeResetConfirmBg').classList.add('show');
+}
+
+function confirmAttributeReset(){
+  closeAttributeResetConfirmation();
+  state.game.attributes=resetAttributeAllocation();
+  scheduleSave({type:'hero:attributes-reset'});
+  renderCurrentCharacterSheet();
+  renderHunt();
+  showToast('Atributos reseteados','ok');
+}
+
+document.getElementById('attributeResetConfirmCancel').addEventListener('click',closeAttributeResetConfirmation);
+document.getElementById('attributeResetConfirmAccept').addEventListener('click',confirmAttributeReset);
+document.getElementById('attributeResetConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='attributeResetConfirmBg') closeAttributeResetConfirmation();
+});
+
 document.getElementById('sheetCharacter').addEventListener('click',event=>{
   const resetAttributes=event.target.closest('[data-character-reset-attributes]');
   if(resetAttributes&&!resetAttributes.disabled){
-    if(!confirm('¿Resetear todos los atributos? Recuperarás todos los puntos asignados para repartirlos de nuevo.')) return;
-    state.game.attributes=resetAttributeAllocation();
-    scheduleSave({type:'hero:attributes-reset'});
-    renderCurrentCharacterSheet();
-    renderHunt();
-    showToast('Atributos reseteados','ok');
+    openAttributeResetConfirmation();
     return;
   }
   const attribute=event.target.closest('[data-character-attribute]');

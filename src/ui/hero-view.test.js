@@ -599,6 +599,8 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="combat"');
     expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="medals" hidden');
+    expect(bossHistoryBody.innerHTML).toContain('class="boss-combat-current"');
+    expect(bossHistoryBody.innerHTML).toContain('aria-label="Abrir ficha de Espectro"');
     expect(bossHistoryBody.innerHTML).not.toContain('1 / 20');
     expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');
     expect(bossHistoryBody.innerHTML).not.toContain('data-share-boss="1"');
