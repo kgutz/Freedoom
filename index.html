@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.13</div>
+  <div class="ob-version" id="obVersion">v2.14</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.13</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.14</span></p>
       </div>
     </div>
   </div>
@@ -602,8 +602,12 @@
 
 <!-- COLECCIÓN Y COMBATE DE JEFES -->
 <div class="sheet-bg" id="sheetBossHistory">
-  <div class="sheet">
+  <div class="sheet boss-history-sheet">
     <div class="sheet-head sk-head-center"><h3>Jefes de la campaña</h3><button class="sheet-close" data-sheet="sheetBossHistory">✕</button></div>
+    <div class="inventory-tabs boss-history-tabs" role="tablist" aria-label="Combate y medallones">
+      <button type="button" class="active" data-boss-history-tab="combat" role="tab" aria-selected="true">Combate</button>
+      <button type="button" data-boss-history-tab="medals" role="tab" aria-selected="false">Medallones</button>
+    </div>
     <div class="card" id="bossHistoryBody"></div>
   </div>
 </div>

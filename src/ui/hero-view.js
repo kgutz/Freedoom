@@ -619,14 +619,14 @@ export function renderHeroView({
   const bossHistoryBody = document.getElementById('bossHistoryBody');
   if (bossHistoryBody) {
     bossHistoryBody.innerHTML = `
-      <section class="boss-medals">
+      <section class="boss-medals boss-history-panel" data-boss-history-panel="medals" hidden>
         <div class="boss-medals-head">
           <h4>Medallones de victoria · ${defeatedBosses}</h4>
           <p>Cada jefe derrotado revela su medallón. La incógnita representa los rivales que aún permanecen ocultos.</p>
         </div>
         <div class="boss-medals-grid">${bossMedals}</div>
       </section>
-      <div class="boss-history-divider"></div>
+      <section class="boss-history-panel boss-history-combat" data-boss-history-panel="combat">
       <h4 class="boss-combat-head">Combate actual</h4>
       <p class="boss-history-intro">Consulta el intercambio real con ${bossState.name}: cuánto daño causas y cuánto devuelve el jefe.</p>
       <div class="boss-gate">
@@ -664,7 +664,8 @@ export function renderHeroView({
         : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'}
       ${pastCombatReports
         ? `<div class="boss-past-combats"><div class="boss-log-title">COMBATES CERRADOS</div>${pastCombatReports}</div>`
-        : ''}`;
+        : ''}
+      </section>`;
   }
 
   box.innerHTML = `

@@ -235,7 +235,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.09';
+const APP_VERSION='2.14';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -3248,9 +3248,11 @@ function huntPotentialRewardsMarkup(difficulty){
 
 function openHuntResultModal(report){
   const won=Boolean(report?.won);
+  const recoveredHp=Math.max(0,Number(report?.recovery?.hp)||0);
+  const recoveredMana=Math.max(0,Number(report?.recovery?.mana)||0);
   document.getElementById('huntResultTitle').textContent=won?'Cacería superada':'Cacería finalizada';
   document.getElementById('huntResultMessage').textContent=won
-    ? 'La bruma retrocede. Este es el botín que tu héroe ha traído de vuelta.'
+    ? `La bruma retrocede. Tu héroe recupera ${recoveredHp} de vida y ${recoveredMana} de maná antes de regresar con el botín.`
     : 'Tu héroe tuvo que retirarse, pero conserva el botín de los enemigos derrotados.';
   document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
   document.getElementById('huntResultBg').classList.add('show');
@@ -4487,6 +4489,7 @@ document.getElementById('view-hero').addEventListener('click',e=>{
     return;
   }
   if(e.target.closest('#bossInfoBtn')){
+    showBossHistoryPanel('combat');
     showSheet(document,'sheetBossHistory');
     return;
   }
@@ -5551,7 +5554,26 @@ function openBossMedalDetail(bossIndex,bossFile){
   showSheet(document,'sheetBossMedal');
 }
 
+function showBossHistoryPanel(panel='combat'){
+  const selected=panel==='medals'?'medals':'combat';
+  document.querySelectorAll('[data-boss-history-tab]').forEach(button=>{
+    const active=button.dataset.bossHistoryTab===selected;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-selected',String(active));
+  });
+  document.querySelectorAll('[data-boss-history-panel]').forEach(section=>{
+    section.hidden=section.dataset.bossHistoryPanel!==selected;
+  });
+  const body=document.getElementById('bossHistoryBody');
+  if(body) body.scrollTop=0;
+}
+
 document.getElementById('sheetBossHistory').addEventListener('click',async e=>{
+  const historyTab=e.target.closest('[data-boss-history-tab]');
+  if(historyTab){
+    showBossHistoryPanel(historyTab.dataset.bossHistoryTab);
+    return;
+  }
   const medal=e.target.closest('[data-open-boss-medal]');
   if(medal){
     openBossMedalDetail(parseInt(medal.dataset.openBossMedal,10),medal.dataset.bossFile);

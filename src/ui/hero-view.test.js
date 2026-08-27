@@ -575,6 +575,8 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('−30 HP');
     expect(bossHistoryBody.innerHTML).toContain('−24 MANÁ');
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
+    expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="combat"');
+    expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="medals" hidden');
     expect(bossHistoryBody.innerHTML).not.toContain('1 / 20');
     expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');
     expect(bossHistoryBody.innerHTML).not.toContain('data-share-boss="1"');

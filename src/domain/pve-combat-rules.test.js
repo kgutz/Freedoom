@@ -43,7 +43,7 @@ describe('PvE combat rules', () => {
     expect(result.heroMana).toBeLessThan(hero.maxMana);
   });
 
-  it('entra con la vida y el maná actuales y conserva el desgaste en el informe', () => {
+  it('entra con la vida y el maná actuales y recupera parte de ambos al vencer', () => {
     const now = 20_000;
     const started = startHunt({
       hunt: null,
@@ -64,8 +64,31 @@ describe('PvE combat rules', () => {
       allocation: { strength: 20, defense: 15, constitution: 10 },
       nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
     });
-    expect(result.report.heroHp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.5));
-    expect(result.report.heroMana).toBeLessThan(Math.round(result.report.heroMaxMana * 0.2));
+    expect(result.report.won).toBe(true);
+    expect(result.report.heroHpBeforeRecovery).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.5));
+    expect(result.report.heroManaBeforeRecovery).toBeLessThan(Math.round(result.report.heroMaxMana * 0.2));
+    expect(result.report.heroHp).toBeGreaterThan(result.report.heroHpBeforeRecovery);
+    expect(result.report.heroMana).toBeGreaterThan(result.report.heroManaBeforeRecovery);
+    expect(result.report.heroHp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.8));
+    expect(result.report.heroMana).toBeLessThanOrEqual(Math.round(result.report.heroMaxMana * 0.6));
+    expect(result.report.recovery.hp).toBe(result.report.heroHp - result.report.heroHpBeforeRecovery);
+    expect(result.report.recovery.mana).toBe(result.report.heroMana - result.report.heroManaBeforeRecovery);
+  });
+
+  it('no concede recuperación si el héroe pierde la cacería', () => {
+    const now = 30_000;
+    const started = startHunt({ hunt: null, difficultyId: 'hard', level: 12, nowTimestamp: now, seed: 8 });
+    const result = resolveHunt({
+      hunt: started.hunt,
+      classId: 'sorcerer',
+      level: 12,
+      allocation: {},
+      nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
+    });
+    expect(result.report.won).toBe(false);
+    expect(result.report.recovery).toEqual({ hp: 0, mana: 0 });
+    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery);
+    expect(result.report.heroMana).toBe(result.report.heroManaBeforeRecovery);
   });
 
   it('deriva el estilo de combate de los cinco atributos del enemigo', () => {

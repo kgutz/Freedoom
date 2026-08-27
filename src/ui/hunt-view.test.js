@@ -115,6 +115,33 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('<strong>5/5<em>+1</em></strong>');
   });
 
+  it('integra la cacería activa sobre la imagen de la región sin crear otra tarjeta', () => {
+    const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: {
+        cls: 'paladin',
+        hunt: {
+          energyDay: '2026-08-26',
+          energy: 4,
+          active: {
+            difficultyId: 'easy',
+            startedAt: nowTimestamp,
+            endsAt: nowTimestamp + 60_000,
+          },
+        },
+      },
+      stats: { lvl: 20 },
+      nowTimestamp,
+    });
+    expect(root.innerHTML).toContain('hunt-region-art');
+    expect(root.innerHTML).toContain('hunt-region-active');
+    expect(root.innerHTML).toContain('CACERÍA EN CURSO · Fácil');
+    expect(root.innerHTML).toContain('data-hunt-countdown');
+    expect(root.innerHTML).not.toContain('card hunt-active');
+  });
+
   it('muestra fibra y sangre cuando realmente caen', () => {
     const html = renderReport({ xp: 22, gold: 24, arcaneFibers: 2, bossBlood: 1 }, 'hard');
     expect(html).toContain('resource-icon--arcane-fiber');

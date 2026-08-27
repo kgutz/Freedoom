@@ -2,6 +2,12 @@ import { attributeSheet } from './attribute-rules.js';
 
 export const DAILY_HUNT_ENERGY = 5;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
+export const HUNT_VICTORY_RECOVERY = Object.freeze({
+  hpPercent: 0.25,
+  manaPercent: 0.15,
+  hpCapPercent: 0.8,
+  manaCapPercent: 0.6,
+});
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const BRUMA_ENEMY_TEMPLATES = [
   { id: 'blighted-harvester', role: 'Soldado', name: 'Brote Engañoso', lore: 'Parece una planta joven e inofensiva, pero sus hojas dentadas se alimentan de la voluntad de quien se acerca. Es la primera mentira que susurra el cultivo.', attributes: { strength: 3, defense: 3, dexterity: 4, power: 1, constitution: 4 } },
@@ -383,6 +389,40 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
     arcaneFibers: bossRewards?.arcaneFibers || 0,
     bossBlood: bossRewards?.bossBlood || 0,
   };
-  const report = { id: active.id, regionId: active.regionId, difficultyId: difficulty.id, startedAt: active.startedAt, completedAt: nowTimestamp, won, heroMaxHp: hero.maxHp, heroHp: currentHp, heroMaxMana: hero.maxMana, heroMana: currentMana, encounters, rewards };
+  const heroHpBeforeRecovery = currentHp;
+  const heroManaBeforeRecovery = currentMana;
+  if (won) {
+    const hpRecoveryLimit = Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpCapPercent);
+    const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaCapPercent);
+    currentHp = Math.max(currentHp, Math.min(
+      hpRecoveryLimit,
+      currentHp + Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpPercent),
+    ));
+    currentMana = Math.max(currentMana, Math.min(
+      manaRecoveryLimit,
+      currentMana + Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaPercent),
+    ));
+  }
+  const recovery = {
+    hp: Math.max(0, currentHp - heroHpBeforeRecovery),
+    mana: Math.max(0, currentMana - heroManaBeforeRecovery),
+  };
+  const report = {
+    id: active.id,
+    regionId: active.regionId,
+    difficultyId: difficulty.id,
+    startedAt: active.startedAt,
+    completedAt: nowTimestamp,
+    won,
+    heroMaxHp: hero.maxHp,
+    heroHp: currentHp,
+    heroHpBeforeRecovery,
+    heroMaxMana: hero.maxMana,
+    heroMana: currentMana,
+    heroManaBeforeRecovery,
+    recovery,
+    encounters,
+    rewards,
+  };
   return { ok: true, reason: null, report, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
 }

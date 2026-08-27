@@ -72,6 +72,11 @@ function reportMarkup(report) {
     <small>${encounter.rounds} rondas · ${encounter.damageDealt} daño · ${encounter.heroHp} HP restante${encounter.won ? ` · ✦ +${encounter.rewards?.xp || 0} XP · ${resourceIcon('coin')} +${encounter.rewards?.gold || 0}${encounter.rewards?.arcaneFibers ? ` · ${resourceIcon('arcane-fiber')} +${encounter.rewards.arcaneFibers}` : ''}${encounter.rewards?.bossBlood ? ` · ${resourceIcon('boss-blood')} +${encounter.rewards.bossBlood}` : ''}` : ''}</small>
   </div>`).join('');
   const rewards = report.rewards;
+  const recoveredHp = Math.max(0, Number(report.recovery?.hp) || 0);
+  const recoveredMana = Math.max(0, Number(report.recovery?.mana) || 0);
+  const recoveryMarkup = report.won
+    ? `<small class="hunt-report-recovery">Recuperación de victoria · +${recoveredHp} VIDA · +${recoveredMana} MANÁ</small>`
+    : '';
   const rewardItems = [
     Number(rewards.xp) > 0 ? `<span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>` : '',
     Number(rewards.gold) > 0 ? resourceValue('coin', rewards.gold) : '',
@@ -80,7 +85,7 @@ function reportMarkup(report) {
   ].filter(Boolean).join('');
   return `<section class="card hunt-report">
     <div class="hunt-section-title"><span>Último informe</span><b>${report.won ? 'EXPEDICIÓN SUPERADA' : 'EXPEDICIÓN FALLIDA'}</b></div>
-    <div class="hunt-report-result ${report.won ? 'won' : 'lost'}">${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}</div>
+    <div class="hunt-report-result ${report.won ? 'won' : 'lost'}">${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}${recoveryMarkup}</div>
     <div class="hunt-report-list">${rows}</div>
     <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}</div>
   </section>`;
@@ -123,21 +128,19 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const energy = huntEnergyDisplay(hunt);
   const heroLevel = Math.max(1, Number(stats?.lvl) || 1);
   const activeDifficulty = active ? HUNT_DIFFICULTIES[active.difficultyId] : null;
-  const activeMarkup = active ? `<section class="card hunt-active">
+  const activeMarkup = active ? `<div class="hunt-region-active" aria-label="Cacería en curso">
     <span>CACERÍA EN CURSO · ${activeDifficulty.name}</span>
     <strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>
-    <p>Tu héroe atraviesa los Campos de la Bruma. Puedes cerrar la aplicación.</p>
     <button type="button" data-resolve-hunt ${nowTimestamp < active.endsAt ? 'disabled' : ''}>${nowTimestamp < active.endsAt ? 'Informe disponible al terminar' : 'VER INFORME'}</button>
-  </section>` : '';
+  </div>` : '';
   const difficulties = Object.values(HUNT_DIFFICULTIES).map((difficulty) => {
     const levelLocked = heroLevel < difficulty.minLevel;
     return `<button type="button" class="hunt-difficulty ${difficulty.id}${levelLocked ? ' level-locked' : ''}" data-start-hunt="${difficulty.id}" ${active || levelLocked || hunt.energy < difficulty.energyCost ? 'disabled' : ''}>
-    <span>${difficulty.name}</span><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : `<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost}`}</b>
+    <span>${difficulty.name}</span><i class="hunt-difficulty-separator" aria-hidden="true">-</i><b>${levelLocked ? `🔒 Nivel ${difficulty.minLevel}` : `<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost}`}</b>
   </button>`;
   }).join('');
   root.innerHTML = `<button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>Campos de la Bruma</h2><div class="hunt-map-energy" aria-label="${energy.aria}"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${energy.html}</strong></div></div><p>Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.</p></div>
-    <div class="hunt-region-art"><img src="hunt/fields-of-mist/region.webp" alt="Campos de la Bruma" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">CAMPOS DE LA BRUMA<br><small>ARTE DE REGIÓN PENDIENTE</small></span></div>
-    ${activeMarkup}
+    <div class="hunt-region-art"><img src="hunt/fields-of-mist/region.webp" alt="Campos de la Bruma" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">CAMPOS DE LA BRUMA<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}</div>
     <section class="card hunt-roster"><div class="hunt-section-title"><span>Enemigos</span></div><div class="hunt-monsters">${BRUMA_ENEMIES.map(monsterCard).join('')}</div></section>
     <section class="card hunt-launch"><div class="hunt-section-title"><span>Elegir dificultad</span>${active ? '<b>Una expedición activa</b>' : ''}</div><div class="hunt-difficulties">${difficulties}</div><small>La energía se recupera al comenzar un nuevo día. La Sangre de Jefe solo puede caer en Difícil.</small></section>
     ${reportMarkup(hunt.lastReport)}`;
