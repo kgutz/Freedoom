@@ -495,6 +495,18 @@ describe('modelo de Héroe', () => {
               total: 27,
             },
           ],
+          history: [
+            {
+              week: 0,
+              bossIndex: 0,
+              won: false,
+              damage: 91,
+              heroDamage: 91,
+              bossDamage: 30,
+              manaDamage: 24,
+              remainingHp: 59,
+            },
+          ],
         },
       }),
       intoxication: { level: 25, remainingMinutes: 41 },
@@ -558,6 +570,10 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');
+    expect(bossHistoryBody.innerHTML).toContain('TU HÉROE → JEFE');
+    expect(bossHistoryBody.innerHTML).toContain('JEFE → TÚ');
+    expect(bossHistoryBody.innerHTML).toContain('−30 HP');
+    expect(bossHistoryBody.innerHTML).toContain('−24 MANÁ');
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).not.toContain('1 / 20');
     expect(bossHistoryBody.innerHTML).toContain('data-share-boss="0"');

@@ -581,7 +581,39 @@ export function renderHeroView({
         hit.perfect ? `perfectos ${hit.perfect}` : '',
         hit.zero ? `cero ${hit.zero}` : '',
       ].filter(Boolean);
-      return `<div class="boss-log-row"><span>${hit.key.slice(8, 10)}/${hit.key.slice(5, 7)} · ${parts.join(' + ')}</span><b>−${hit.total} HP</b></div>`;
+      return `<div class="boss-combat-report-row">
+        <div class="boss-combat-report-copy">
+          <b>${hit.key.slice(8, 10)}/${hit.key.slice(5, 7)} · Golpe del héroe</b>
+          <small>${parts.join(' + ')}</small>
+        </div>
+        <strong class="boss-combat-report-damage dealt">−${hit.total} HP</strong>
+      </div>`;
+    })
+    .join('');
+  const pastCombatReports = [...(bossState.history || [])]
+    .slice(-4)
+    .reverse()
+    .map((battle) => {
+      const heroDamage = Math.max(0, Number(battle.heroDamage ?? battle.damage) || 0);
+      const bossDamage = Math.max(0, Number(battle.bossDamage) || 0);
+      const manaDamage = Math.max(0, Number(battle.manaDamage) || 0);
+      const resultLabel = battle.won ? 'VICTORIA' : 'DERROTA';
+      const counterLabel = battle.shielded
+        ? 'BLOQUEADO'
+        : bossDamage > 0
+          ? `−${bossDamage} HP`
+          : 'SIN DAÑO';
+      return `<div class="boss-week-report ${battle.won ? 'won' : 'lost'}">
+        <div class="boss-week-report-head">
+          <span>SEMANA ${Math.max(0, Number(battle.week) || 0) + 1}</span>
+          <b>${resultLabel}</b>
+        </div>
+        <div class="boss-week-exchange">
+          <span><small>TÚ → JEFE</small><b>−${heroDamage} HP</b></span>
+          <i aria-hidden="true">VS</i>
+          <span><small>JEFE → TÚ</small><b>${counterLabel}</b>${manaDamage ? `<em>−${manaDamage} MANÁ</em>` : ''}</span>
+        </div>
+      </div>`;
     })
     .join('');
   const bossHistoryBody = document.getElementById('bossHistoryBody');
@@ -596,14 +628,15 @@ export function renderHeroView({
       </section>
       <div class="boss-history-divider"></div>
       <h4 class="boss-combat-head">Combate actual</h4>
-      <p class="boss-history-intro">Aquí puedes consultar los golpes registrados contra ${bossState.name} durante esta semana.</p>
+      <p class="boss-history-intro">Consulta el intercambio real con ${bossState.name}: cuánto daño causas y cuánto devuelve el jefe.</p>
       <div class="boss-gate">
         <span>SELLOS DE VICTORIA</span>
         <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
       </div>
-      <div class="boss-damage-summary">
-        <span>Daño esta semana <b>${bossState.damageThisWeek}</b></span>
-        <span>Daño hoy <b>${bossState.damageToday}</b></span>
+      <div class="boss-duel-summary">
+        <span class="hero-side"><small>TU HÉROE → JEFE</small><b>−${bossState.damageThisWeek} HP</b><em>esta semana</em></span>
+        <i aria-hidden="true">VS</i>
+        <span class="boss-side"><small>JEFE → TU HÉROE</small><b>0 HP</b><em>contraataca al perder la semana</em></span>
       </div>
       ${bossState.earlyVictoryActive && !bossState.won
         ? '<div class="boss-early-victory-badge">VICTORIA ANTICIPADA · BONUS PENDIENTE</div>'
@@ -626,11 +659,12 @@ export function renderHeroView({
           ? `<div class="boss-projection">${smokeFreeMode ? 'Si confirmas el día sin fumar' : controlledMode ? 'Si cumples el objetivo de hoy' : 'Si cerraras el día así'}: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
-      ${
-        combatLog
-          ? `<div class="boss-log boss-log-sheet"><div class="boss-log-title">Últimos golpes</div>${combatLog}</div>`
-          : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'
-      }`;
+      ${combatLog
+        ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>Últimos golpes · esta semana</span><b>DAÑO DE HOY · ${bossState.damageToday}</b></div>${combatLog}</div>`
+        : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'}
+      ${pastCombatReports
+        ? `<div class="boss-past-combats"><div class="boss-log-title">COMBATES CERRADOS</div>${pastCombatReports}</div>`
+        : ''}`;
   }
 
   box.innerHTML = `

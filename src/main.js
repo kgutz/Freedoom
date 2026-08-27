@@ -1387,9 +1387,11 @@ function renderWeekResultModal(){
     const lastLim=limitOfWeek(wr.weekIdx);
     const newWeekIdx=wr.weekIdx+1;
     const smokeFreeMode=usesSmokeFreeSkills(state.config);
+    const hpDamage=Math.max(0,Number(wr.penalty?.hpDamage)||0);
+    const manaLost=Math.max(0,Number(wr.penalty?.manaLost)||0);
     const penaltyText=wr.penalty?.shielded
-      ? 'Muro de Escudos bloqueó el golpe a tu vida; tu maná bajó al 20%.'
-      : `Por el golpe recibido, tu vida bajó un ${Math.round((wr.penalty?.hpRate??0.3)*100)}% y tu maná al 20% — se recupera con el tiempo.`;
+      ? `Muro de Escudos bloqueó el golpe a tu vida${manaLost?`, pero perdiste ${manaLost} de maná`:''}.`
+      : `El jefe te devolvió el golpe: <b>−${hpDamage} HP</b>${manaLost?` y <b>−${manaLost} de maná</b>`:''}. Se recuperan con el tiempo.`;
     const limitAdjustment=smokeFreeMode?'':`
       <div class="ob-field" style="text-align:left;margin-bottom:14px">
         <label style="display:block;margin-bottom:8px">¿Quieres ajustar tu límite para esta semana, o seguir con la reducción automática de −1?</label>
@@ -1578,10 +1580,22 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     if(!weekResult.won){
       const mx=heroMaxes();
       const smokeFreeMode=usesSmokeFreeSkills(state.config);
+      const hpBefore=Math.max(0,Number(g.hp)||0);
+      const mpBefore=Math.max(0,Number(g.mp)||0);
       if(smokeFreeMode&&(g.buffs?.shield||0)>0){
         g.buffs.shield--;
         g.mp=Math.round(mx.maxMp*0.2);
-        weekResult.penalty={shielded:true,hpRate:0,mpRate:0.2};
+        weekResult.penalty={
+          shielded:true,
+          hpRate:0,
+          mpRate:0.2,
+          hpBefore,
+          hpAfter:g.hp,
+          hpDamage:0,
+          mpBefore,
+          mpAfter:g.mp,
+          manaLost:Math.max(0,mpBefore-g.mp)
+        };
       }else{
         const lvl=gameStats().lvl;
         const knightReduction=smokeFreeMode&&g.cls==='knight'&&lvl>=5
@@ -1599,8 +1613,27 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
         });
         g.hp=penalty.hp;
         g.mp=penalty.mp;
-        weekResult.penalty={shielded:false,hpRate:damageRate,mpRate:0.2};
+        weekResult.penalty={
+          shielded:false,
+          hpRate:damageRate,
+          mpRate:0.2,
+          hpBefore,
+          hpAfter:g.hp,
+          hpDamage:Math.max(0,hpBefore-g.hp),
+          mpBefore,
+          mpAfter:g.mp,
+          manaLost:Math.max(0,mpBefore-g.mp)
+        };
       }
+    }
+    const storedBattle=[...(g.bossCombat?.history||[])].reverse().find(entry=>(
+      entry?.week===weekResult.weekIdx&&entry?.bossIndex===weekResult.bossIndex
+    ));
+    if(storedBattle){
+      storedBattle.heroDamage=Math.max(0,Number(weekResult.damage)||0);
+      storedBattle.bossDamage=Math.max(0,Number(weekResult.penalty?.hpDamage)||0);
+      storedBattle.manaDamage=Math.max(0,Number(weekResult.penalty?.manaLost)||0);
+      storedBattle.shielded=Boolean(weekResult.penalty?.shielded);
     }
     g.weekResult=weekResult;
     g.weekModalPending=true;
