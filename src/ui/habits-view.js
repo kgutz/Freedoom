@@ -229,7 +229,7 @@ export function renderHabitsView({
       <div class="habit-section-tabs" role="tablist" aria-label="Organización">
         <button type="button" data-habit-section="habits" class="${selectedSection === 'habits' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'habits'}">Hábitos</button>
         <button type="button" data-habit-section="todo" class="${selectedSection === 'todo' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'todo'}">To Do List</button>
-        <button type="button" data-habit-section="hunt" class="${selectedSection === 'hunt' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'hunt'}"><span class="habit-section-icon" aria-hidden="true">⚔</span><span>Cacería</span></button>
+        <button type="button" data-habit-section="hunt" class="${selectedSection === 'hunt' ? 'active' : ''}" role="tab" aria-selected="${selectedSection === 'hunt'}"><span>Cacería</span></button>
       </div>
       ${selectedSection === 'hunt' ? '' : `<button class="habit-create" type="button" ${selectedSection === 'habits' ? 'data-add-habit aria-label="Crear hábito"' : 'data-add-todo aria-label="Crear tarea"'}>+</button>`}
     </div>`;

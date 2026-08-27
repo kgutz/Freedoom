@@ -296,7 +296,12 @@ export function renderTodayView({
     const statusCopy = {
       pending: ['Día en curso', 'Cuando termine tu día, registra cómo ha ido.'],
       success: ['Te mantuviste sin fumar', '✓ Este día ya golpea al jefe.'],
-      smoked: ['Hoy fumaste', 'Puedes corregirlo antes del cambio de día.'],
+      smoked: [
+        'Hoy fumaste',
+        model.controlledMode && !model.controlledAllowedToday
+          ? 'Vida máxima −15% hoy · mañana empezarás con 2/5 de energía.'
+          : 'Puedes corregirlo antes del cambio de día.',
+      ],
     }[model.smokeFreeStatus];
     document.getElementById('smokeFreeStatusTitle').textContent = statusCopy[0];
     document.getElementById('smokeFreeStatusNote').textContent = statusCopy[1];

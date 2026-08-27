@@ -43,6 +43,31 @@ describe('progreso completo', () => {
     expect(stats.streak).toBe(1);
   });
 
+  it('reduce un 15% la vida máxima al fumar en un día prohibido de Control', () => {
+    const controlledConfig = {
+      ...config,
+      journeyMode: 'controlled',
+      controlledDays: [5, 6, 0],
+      controlledWeeklyLimit: 3,
+    };
+    const smoked = calculateGameStats({
+      now: new Date(2026, 7, 3, 12),
+      config: controlledConfig,
+      days: { '2026-08-03': { sf: 'smoked' } },
+      game: { cls: 'knight' },
+    });
+    const compliant = calculateGameStats({
+      now: new Date(2026, 7, 3, 12),
+      config: controlledConfig,
+      days: { '2026-08-03': { sf: 'success' } },
+      game: { cls: 'knight' },
+    });
+
+    expect(smoked.maxHpPenaltyPercent).toBe(15);
+    expect(smoked.maxHp).toBe(Math.round(compliant.maxHp * 0.85));
+    expect(compliant.maxHpPenaltyPercent).toBe(0);
+  });
+
   it('en modo sin fumar solo recompensa confirmaciones explícitas', () => {
     const smokeFreeConfig = { ...config, journeyMode: 'smoke_free' };
     const stats = calculateGameStats({

@@ -1728,6 +1728,11 @@ function ensureHero(){
     dirty=true;
   }
   syncBossCombat(currentDayDate(new Date(now)),now);
+  const effectiveMaxHp=heroMaxes().maxHp;
+  if(g.hp>effectiveMaxHp){
+    g.hp=effectiveMaxHp;
+    dirty=true;
+  }
   const regenerated=regenerateHealth({
     hp:g.hp,
     hpTimestamp:g.hpT,
@@ -3048,12 +3053,22 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
       ensureHero();
       state.game.hpT=Date.now();
     }
+    const forbiddenControlledSmoke=isControlledMode(state.config)
+      && !isControlledSmokingDay(state.config,logicalToday)
+      && status===SMOKE_FREE_STATUS_SMOKED;
+    if(forbiddenControlledSmoke&&state.game){
+      ensureHero();
+      state.game.hp=Math.min(state.game.hp,heroMaxes().maxHp);
+      state.game.hpT=Date.now();
+    }
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
         ? (isControlledMode(state.config)
             ? '✓ Día completado · −25 HP al jefe · XP del día'
             : '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice)
-        : 'Día registrado. Mañana continúa tu camino.',
+        : forbiddenControlledSmoke
+          ? 'Incumplimiento · −15% de vida máxima hoy · mañana 2/5 de energía'
+          : 'Día registrado. Mañana continúa tu camino.',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
     );
   }

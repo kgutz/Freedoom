@@ -9,6 +9,7 @@ import {
   weekRangeFor,
 } from './plan-rules.js';
 import {
+  SMOKE_FREE_STATUS_SMOKED,
   SMOKE_FREE_STATUS_SUCCESS,
   controlledWeeklyLimitOf,
   isControlledMode,
@@ -20,6 +21,7 @@ import {
 } from './journey-mode-rules.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
+export const CONTROLLED_FORBIDDEN_DAY_MAX_HP_PENALTY_PERCENT = 15;
 
 function dayRecord(days, key) {
   return days[key] || EMPTY_DAY;
@@ -229,9 +231,17 @@ export function calculateGameStats({
   );
   const tier = level >= 15 ? 3 : level >= 10 ? 2 : level >= 5 ? 1 : 0;
   const baseMaxes = classMaxes(game?.cls, level);
-  const maxHp = Math.round(baseMaxes.maxHp * (
+  const baseMaxHp = Math.round(baseMaxes.maxHp * (
     1 + Math.max(0, Number(relicBonuses.maxHpPercent) || 0) / 100
   ));
+  const currentConfig = journeyConfigForDate(config, now);
+  const forbiddenControlledDaySmoked = isControlledMode(currentConfig)
+    && !isControlledSmokingDay(currentConfig, now)
+    && smokeFreeStatusOf(dayRecord(days, keyOf(now))) === SMOKE_FREE_STATUS_SMOKED;
+  const maxHpPenaltyPercent = forbiddenControlledDaySmoked
+    ? CONTROLLED_FORBIDDEN_DAY_MAX_HP_PENALTY_PERCENT
+    : 0;
+  const maxHp = Math.max(1, Math.round(baseMaxHp * (1 - maxHpPenaltyPercent / 100)));
   const maxMp = Math.round(baseMaxes.maxMp * (
     1 + Math.max(0, Number(relicBonuses.maxManaPercent) || 0) / 100
   ));
@@ -251,6 +261,7 @@ export function calculateGameStats({
     tier,
     evolutionUnlocked,
     maxHp,
+    maxHpPenaltyPercent,
     maxMp,
   };
 }

@@ -27,6 +27,14 @@ describe('vista de hábitos', () => {
     expect(html).not.toContain('Construye una rutina que acompañe tu camino.');
   });
 
+  it('muestra Cacería sin icono y sin reservar espacio delante del texto', () => {
+    const html = render({ items: [], entries: {} }, 'all', undefined, null, 'hunt');
+    expect(html).toContain('data-habit-section="hunt" class="active"');
+    expect(html).toContain('<span>Cacería</span>');
+    expect(html).not.toContain('habit-section-icon');
+    expect(html).not.toContain('⚔');
+  });
+
   it('muestra el espacio independiente de To Do List', () => {
     const html = render({ items: [], entries: {} }, 'all', undefined, null, 'todo');
     expect(html).toContain('data-habit-section="todo" class="active"');
