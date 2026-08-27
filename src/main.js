@@ -244,6 +244,7 @@ const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
+const LOCAL_DEMO_QUIET=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoQuiet')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
   ? Math.max(1,Math.min(100,parseInt(LOCAL_DEMO_PARAMS.get('demoLevel')||'1',10)||1))
   : null;
@@ -5713,8 +5714,10 @@ resetGuardContinue.addEventListener('click',()=>{
     syncPeriodicRelicMana();
     renderStartupPrimary();
     preloadStartupViews();
-    showPendingWeekResult();
-    if(LOCAL_LOOT_NOTICE_PREVIEW){
+    if(!LOCAL_DEMO_QUIET) showPendingWeekResult();
+    if(LOCAL_DEMO_QUIET){
+      await finishInitialReturnSplash();
+    }else if(LOCAL_LOOT_NOTICE_PREVIEW){
       await finishInitialReturnSplash();
       await showPendingLootNotice();
     }else if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&(LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null||LOCAL_DEMO_PALADIN_EFFECTS)){
@@ -5733,10 +5736,12 @@ resetGuardContinue.addEventListener('click',()=>{
       }
     }else finishInitialReturnSplash();
   }
-  if(!LOCAL_PROGRESSION_UPDATE_PREVIEW){
-    queuePioneerReward();
-    queueBetaTesterReward();
-    queueFiberCatchup();
+  if(!LOCAL_DEMO_QUIET){
+    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW){
+      queuePioneerReward();
+      queueBetaTesterReward();
+      queueFiberCatchup();
+    }
+    queueProgressionUpdate();
   }
-  queueProgressionUpdate();
 })();
