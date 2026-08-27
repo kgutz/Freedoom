@@ -33,14 +33,14 @@ describe('outfits de héroe', () => {
     expect(outfitUsesTransparentPortrait('arcane-weave-01')).toBe(true);
   });
 
-  it('impide mostrar o equipar el Forjador del Crisol antes de publicarlo', () => {
+  it('resuelve los recursos del Forjador del Crisol publicado', () => {
     const previouslyOwned = { outfits: { owned: { 'arcane-weave-02': { acquiredAt: 1 } } } };
-    expect(isOutfitUnlocked('arcane-weave-02', previouslyOwned)).toBe(false);
-    expect(equippedOutfit('arcane-weave-02', previouslyOwned).id).toBe('original');
+    expect(isOutfitUnlocked('arcane-weave-02', previouslyOwned)).toBe(true);
+    expect(equippedOutfit('arcane-weave-02', previouslyOwned).id).toBe('arcane-weave-02');
     expect(heroFaceSource('paladin', 'arcane-weave-02'))
-      .toBe('hero_face/paladin_face.webp');
+      .toBe('outfits/welder-beta/paladin_face.webp');
     expect(heroSpriteSource('paladin', 'happy', 'arcane-weave-02'))
-      .toBe('sprites/paladin_happy.webp');
+      .toBe('outfits/welder-beta/paladin_happy.webp');
     expect(outfitUsesTransparentPortrait('arcane-weave-02')).toBe(true);
   });
 });

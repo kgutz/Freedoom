@@ -28,7 +28,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'arcane-weave-02',
     name: 'Forjador del Crisol',
-    released: false,
+    released: true,
     unlocked: false,
     craftable: true,
     assetId: 'welder-beta',
