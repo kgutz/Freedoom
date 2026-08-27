@@ -13,7 +13,7 @@ function remainingLabel(milliseconds) {
 function monsterCard(enemy) {
   return `<button type="button" class="hunt-monster ${enemy.id}" data-hunt-monster="${enemy.id}" aria-label="Ver historia de ${enemy.name}">
     <div class="hunt-monster-art">
-      <img src="hunt/fields-of-mist/${enemy.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+      <img src="hunt/fields-of-mist/${enemy.id}.webp" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
       <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
     <span>${enemy.role}</span><b>${enemy.name}</b>
@@ -37,7 +37,7 @@ export function renderHuntMonsterDetail({ document, enemyId }) {
   const root = document.getElementById('huntMonsterBody');
   if (!enemy || !root) return false;
   root.innerHTML = `<div class="hunt-monster-detail-art ${enemy.id}">
-      <img src="hunt/fields-of-mist/${enemy.id}.png" alt="${enemy.name}">
+      <img src="hunt/fields-of-mist/${enemy.id}.webp" alt="${enemy.name}" loading="lazy" decoding="async">
     </div>
     <span class="hunt-monster-detail-role">${enemy.role}</span>
     <h2>${enemy.name}</h2>
@@ -97,7 +97,7 @@ function regionMapMarkup(hunt) {
     <p>Cada región guarda enemigos, recursos y peligros diferentes.</p>
   </div>
   <section class="hunt-world-map" aria-label="Mapa de zonas de caza">
-    <img src="hunt/world-map.jpg" alt="Mapa de zonas de caza" onerror="this.style.display='none'">
+    <img src="hunt/world-map.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <button type="button" class="hunt-map-zone" data-open-hunt-region>
       Campos de la Bruma
     </button>
@@ -136,7 +136,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   </button>`;
   }).join('');
   root.innerHTML = `<button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>Campos de la Bruma</h2><div class="hunt-map-energy" aria-label="${energy.aria}"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${energy.html}</strong></div></div><p>Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.</p></div>
-    <div class="hunt-region-art"><img src="hunt/fields-of-mist/region.png" alt="Campos de la Bruma" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">CAMPOS DE LA BRUMA<br><small>ARTE DE REGIÓN PENDIENTE</small></span></div>
+    <div class="hunt-region-art"><img src="hunt/fields-of-mist/region.webp" alt="Campos de la Bruma" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">CAMPOS DE LA BRUMA<br><small>ARTE DE REGIÓN PENDIENTE</small></span></div>
     ${activeMarkup}
     <section class="card hunt-roster"><div class="hunt-section-title"><span>Enemigos</span></div><div class="hunt-monsters">${BRUMA_ENEMIES.map(monsterCard).join('')}</div></section>
     <section class="card hunt-launch"><div class="hunt-section-title"><span>Elegir dificultad</span>${active ? '<b>Una expedición activa</b>' : ''}</div><div class="hunt-difficulties">${difficulties}</div><small>La energía se recupera al comenzar un nuevo día. La Sangre de Jefe solo puede caer en Difícil.</small></section>

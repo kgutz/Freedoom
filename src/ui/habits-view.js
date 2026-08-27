@@ -83,9 +83,9 @@ export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, li
     game,
   );
   return `<div class="habit-hero-card${intoxicationStageValue > 0 ? ' hero-card--intoxicated' : ''}${variantClass ? ` ${escapeHtml(variantClass)}` : ''}" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
-      <img class="habit-hero-bg" src="${escapeHtml(resolvedBackgroundSrc)}" alt="" aria-hidden="true">
+      <img class="habit-hero-bg" src="${escapeHtml(resolvedBackgroundSrc)}" alt="" aria-hidden="true" loading="lazy" decoding="async">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
-      <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
+      <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>${escapeHtml(earnedLabel)}</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>

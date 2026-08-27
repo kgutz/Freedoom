@@ -9,8 +9,8 @@ import {
 
 describe('outfits de héroe', () => {
   it('mantiene los recursos originales para el outfit original', () => {
-    expect(heroFaceSource('knight', 'original')).toBe('hero_face/knight_face.png');
-    expect(heroSpriteSource('knight', 'happy', 'original')).toBe('sprites/knight_happy.png');
+    expect(heroFaceSource('knight', 'original')).toBe('hero_face/knight_face.webp');
+    expect(heroSpriteSource('knight', 'happy', 'original')).toBe('sprites/knight_happy.webp');
     expect(outfitUsesTransparentPortrait('original')).toBe(true);
   });
 
@@ -20,16 +20,16 @@ describe('outfits de héroe', () => {
     const claimedGame = { pioneerReward: { claimedAt: 1234 } };
     expect(isOutfitUnlocked('beta-tester', claimedGame)).toBe(true);
     expect(equippedOutfit('beta-tester', claimedGame).id).toBe('beta-tester');
-    expect(heroFaceSource('druid', 'beta-tester')).toBe('outfits/beta-tester/druid_face.png');
-    expect(heroSpriteSource('druid', 'happy', 'beta-tester')).toBe('outfits/beta-tester/druid_happy.png');
+    expect(heroFaceSource('druid', 'beta-tester')).toBe('outfits/beta-tester/druid_face.webp');
+    expect(heroSpriteSource('druid', 'happy', 'beta-tester')).toBe('outfits/beta-tester/druid_happy.webp');
     expect(outfitUsesTransparentPortrait('beta-tester')).toBe(true);
   });
 
   it('resuelve los recursos eléctricos del outfit crafteable', () => {
     expect(heroFaceSource('knight', 'arcane-weave-01'))
-      .toBe('outfits/telecom-beta/knight_face.png');
+      .toBe('outfits/telecom-beta/knight_face.webp');
     expect(heroSpriteSource('knight', 'happy', 'arcane-weave-01'))
-      .toBe('outfits/telecom-beta/knight_happy.png');
+      .toBe('outfits/telecom-beta/knight_happy.webp');
     expect(outfitUsesTransparentPortrait('arcane-weave-01')).toBe(true);
   });
 });

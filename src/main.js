@@ -208,6 +208,11 @@ import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation, showSheet } from './ui/navigation-controller.js';
 import { showToast as renderToast } from './ui/toast.js';
 import { scheduleStartupPreload } from './ui/startup-render-scheduler.js';
+import {
+  createImagePreloader,
+  scheduleImagePreloadPhases,
+  startupImagePhases,
+} from './ui/startup-image-preloader.js';
 import { resourceIcon, setTextWithResourceIcons } from './ui/resource-icons.js';
 import { habitRewardToast } from './ui/habit-feedback.js';
 import {
@@ -694,6 +699,12 @@ function huntBaseEnergyForToday(now=new Date()){
   return previousDayExceededConsumptionLimit(now)?2:5;
 }
 function preloadStartupViews(){
+  const imagePreloader=createImagePreloader({window,concurrency:2});
+  scheduleImagePreloadPhases({
+    window,
+    phases:startupImagePhases(state.game),
+    preloader:imagePreloader
+  });
   scheduleStartupPreload({
     window,
     renderSecondary:()=>{
@@ -1341,7 +1352,7 @@ function renderWeekResultModal(){
   const g=state.game;
   const wr=g.weekResult; if(!wr) return;
   const body=document.getElementById('weekResultModal');
-  const bossImg=(num,slug)=>`<div class="boss-box" style="margin:14px auto"><img src="bosses/boss_${String(num).padStart(2,'0')}_${slug}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="boss-fallback" style="display:none">💀</span></div>`;
+  const bossImg=(num,slug)=>`<div class="boss-box" style="margin:14px auto"><img src="bosses/boss_${String(num).padStart(2,'0')}_${slug}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="boss-fallback" style="display:none">💀</span></div>`;
 
   if(wr.won){
     const beatenIdx=Number.isFinite(wr.bossIndex)
@@ -2474,7 +2485,7 @@ function showPendingPioneerReward(){
   resetPioneerRewardModal();
   const classId=state.game?.cls||'knight';
   const outfitImage=document.getElementById('pioneerRewardOutfitImage');
-  if(outfitImage) outfitImage.src=`outfits/beta-tester/${classId}_happy.png`;
+  if(outfitImage) outfitImage.src=`outfits/beta-tester/${classId}_happy.webp`;
   document.getElementById('pioneerRewardBg')?.classList.add('show');
   pioneerRewardOpening=false;
 }
@@ -2512,7 +2523,7 @@ function showPendingBetaTesterReward(){
   const heroImage=document.getElementById('betaTesterRewardHeroImage');
   if(title) title.textContent=reward.title;
   if(intro) intro.textContent=reward.intro;
-  if(heroImage) heroImage.src=`outfits/beta-tester/${state.game?.cls||'knight'}_happy.png`;
+  if(heroImage) heroImage.src=`outfits/beta-tester/${state.game?.cls||'knight'}_happy.webp`;
   document.getElementById('betaTesterRewardBg')?.classList.add('show');
   betaTesterRewardOpening=false;
 }

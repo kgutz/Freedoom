@@ -22,8 +22,8 @@
 <!-- ONBOARDING (primera vez) -->
 <div id="onboard" style="display:none">
   <div class="ob-step active" id="ob1">
-    <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
-    <img src="logo.png" alt="Freedom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
+    <img src="backgrounds/onboarding_bg.webp" alt="" class="onboarding-scene" aria-hidden="true">
+    <img src="logo.webp" alt="Freedom" class="ob-logo" onerror="this.style.display='none';document.getElementById('obTitleFallback').style.display='block'">
     <div id="obTitleFallback" class="ob-fallback" style="display:none">FREEDOM</div>
   </div>
   <div class="ob-step" id="ob2">
@@ -125,8 +125,8 @@
 </div>
 
 <div id="loading" class="loading">
-  <img src="backgrounds/onboarding_bg.png" alt="" class="onboarding-scene" aria-hidden="true">
-  <img src="logo.png" alt="Freedom" class="load-logo" onerror="this.style.display='none'">
+  <img src="backgrounds/onboarding_bg.webp" alt="" class="onboarding-scene" aria-hidden="true">
+  <img src="logo.webp" alt="Freedom" class="load-logo" onerror="this.style.display='none'">
 </div>
 
 <div id="app" style="display:none">
@@ -137,7 +137,7 @@
     </button>
     <div class="semana-tag"><div class="sem-line">SEMANA <b id="semanaNum"></b></div><div class="max-line">máx <b id="limiteDia"></b>/día</div></div>
   </header>
-  <img src="logo.png" alt="Freedom" class="top-logo" onerror="this.style.display='none'">
+  <img src="logo.webp" alt="Freedom" class="top-logo" onerror="this.style.display='none'">
 
   <!-- VISTA HOY -->
   <section id="view-hoy" class="view active">
@@ -152,7 +152,7 @@
     </div>
 
     <div class="hoy-hero" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
-      <img class="hoy-hero-bg" id="hoyHeroBg" alt="" aria-hidden="true">
+      <img class="hoy-hero-bg" id="hoyHeroBg" alt="" aria-hidden="true" decoding="async">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
       <div class="hoy-hero-top">
         <div class="hoy-hero-id">
@@ -391,7 +391,7 @@
       </div>
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
-        <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
+        <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
         <p class="hint settings-version">Freedom <span id="settingsVersion">v2.13</span></p>
       </div>
     </div>
@@ -531,7 +531,7 @@
       </details>
     </div>
     <p class="faq-empty" id="faqEmpty" hidden>No encontramos esa respuesta. Prueba con otra palabra.</p>
-    <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
+    <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
   </div>
 </div>
 
@@ -671,7 +671,7 @@
         <span class="pioneer-chest-aura"></span>
         <span class="pioneer-chest-rays"></span>
         <span class="pioneer-chest-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-        <img src="rewards/pioneer-chest.png" alt="">
+        <img src="rewards/pioneer-chest.webp" alt="" loading="lazy" decoding="async">
       </div>
       <p>Gracias por cada prueba y cada feedback. Sin ti, Freedom no sería lo mismo.</p>
       <button type="button" class="pioneer-reward-action" id="pioneerRewardAccept">ACEPTAR</button>
@@ -705,7 +705,7 @@
         <span class="pioneer-chest-aura"></span>
         <span class="pioneer-chest-rays"></span>
         <span class="pioneer-chest-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
-        <img src="rewards/pioneer-chest.png" alt="">
+        <img src="rewards/pioneer-chest.webp" alt="" loading="lazy" decoding="async">
       </div>
       <p id="betaTesterRewardIntro">Freedom sigue creciendo gracias a cada prueba, cada idea y cada error que nos ayudaste a encontrar.</p>
       <button type="button" class="pioneer-reward-action" id="betaTesterRewardAccept">ACEPTAR</button>
@@ -716,8 +716,8 @@
       <div class="beta-tester-reward-items">
         <div class="pioneer-reward-item beta-tester-frame-reward">
           <span class="beta-tester-frame-art" aria-hidden="true">
-            <img class="beta-tester-frame-bg" src="hero_background/beta_tester_bg_final.webp" alt="">
-            <img class="beta-tester-frame-hero" id="betaTesterRewardHeroImage" src="" alt="">
+            <img class="beta-tester-frame-bg" src="hero_background/beta_tester_bg_final.webp" alt="" loading="lazy" decoding="async">
+            <img class="beta-tester-frame-hero" id="betaTesterRewardHeroImage" src="" alt="" loading="lazy" decoding="async">
           </span>
           <strong>Corazón de Freedom</strong>
           <small>MARCO EXCLUSIVO</small>
@@ -922,7 +922,7 @@
 <!-- MENÚ HAMBURGUESA -->
 <div class="modal-bg center" id="menuBg">
   <div class="modal">
-    <img src="logo.png" alt="Freedom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
+    <img src="logo.webp" alt="Freedom" class="menu-logo" onerror="this.style.display='none';document.getElementById('menuTitle').style.display='block'">
     <h3 id="menuTitle" style="display:none">Menú</h3>
     <button class="menu-item" id="menuInstr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>

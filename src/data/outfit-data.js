@@ -51,15 +51,15 @@ export function equippedOutfit(outfitId, game = {}) {
 export function heroSpriteSource(classId, mood = 'happy', outfitId = 'original') {
   const outfit = outfitDefinition(outfitId);
   const assetId = outfit.assetId || outfit.id;
-  if (assetId === 'original') return `sprites/${classId}_${mood}.png`;
-  return `outfits/${assetId}/${classId}_${mood}.png`;
+  if (assetId === 'original') return `sprites/${classId}_${mood}.webp`;
+  return `outfits/${assetId}/${classId}_${mood}.webp`;
 }
 
 export function heroFaceSource(classId, outfitId = 'original') {
   const outfit = outfitDefinition(outfitId);
   const assetId = outfit.assetId || outfit.id;
-  if (assetId === 'original') return `hero_face/${classId}_face.png`;
-  return `outfits/${assetId}/${classId}_face.png`;
+  if (assetId === 'original') return `hero_face/${classId}_face.webp`;
+  return `outfits/${assetId}/${classId}_face.webp`;
 }
 
 export function outfitUsesTransparentPortrait(outfitId = 'original') {

@@ -37,7 +37,7 @@ export function equippedFrame(frameId, game = {}) {
 export function heroBackgroundSource(frameId, classId = 'paladin', surface = 'hero', game = {}) {
   const frame = equippedFrame(frameId, game);
   if (frame.image) return frame.image;
-  if (surface === 'today') return `hero_background/${classId}_today_bg.png`;
-  if (surface === 'habits') return 'backgrounds/habits_training_bg.png';
-  return `hero_background/${classId}_bg.png`;
+  if (surface === 'today') return `hero_background/${classId}_today_bg.webp`;
+  if (surface === 'habits') return 'backgrounds/habits_training_bg.webp';
+  return `hero_background/${classId}_bg.webp`;
 }

@@ -44,7 +44,7 @@ export function spriteImage(classId, mood, extraClass = '', outfitId = 'original
   const outfitClass = outfitId !== 'original'
     ? ` sprite-svg--outfit-${outfitId} sprite-svg--${classId}`
     : '';
-  return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}" src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false">`;
+  return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}" src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false" loading="lazy" decoding="async">`;
 }
 
 const HERO_ENERGY_CLASSES = new Set(['knight', 'paladin', 'sorcerer', 'druid']);
@@ -157,7 +157,7 @@ export function heroVisualMarkup({
     ? ` data-open-character-sheet data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir ficha de personaje"`
     : ' aria-label="Vista animada del héroe"';
   return `<div class="sprite-box ${energyView.classes}${intoxicated ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}"${interaction}>
-    <img class="sprite-bg" src="${heroBackgroundSource(frameId, classId, 'hero', game)}" alt="">
+    <img class="sprite-bg" src="${heroBackgroundSource(frameId, classId, 'hero', game)}" alt="" loading="lazy" decoding="async">
     ${energyView.markup}
     ${spriteImage(classId, mood, '', outfitId)}
     ${sleeping}${intoxicationParticles}
@@ -168,7 +168,7 @@ export function heroIntoxicationBadgeMarkup(intoxication, extraClass = '') {
   if (!(Number(intoxication?.level) > 0)) return '';
   const minutes = Math.max(1, Math.ceil(Number(intoxication?.remainingMinutes) || 0));
   return `<span class="hero-intoxication-badge${extraClass ? ` ${extraClass}` : ''}" title="Borrachera: ${minutes} minutos restantes" aria-label="Borrachera: ${minutes} minutos restantes">
-    <img src="spells/effect_icons/beer_effect_intoxication.png" alt="">
+    <img src="spells/effect_icons/beer_effect_intoxication.webp" alt="" loading="lazy" decoding="async">
     <b>${minutes} min</b>
   </span>`;
 }
@@ -339,7 +339,7 @@ function skillIcon(classId, level, ability, type, status = null, used = false, c
   const passiveActiveClass = type === 'pas' && active ? ' passive-effect-active' : '';
   const source =
     `spells/${classId}_spells/` +
-    `${classId}_${type}_${ability.icon}.png`;
+    `${classId}_${type}_${ability.icon}.webp`;
   const fallback = ability.name.charAt(0);
   const attributes =
     type === 'act'
@@ -347,7 +347,7 @@ function skillIcon(classId, level, ability, type, status = null, used = false, c
       : `data-pas-name="${ability.name}" data-pas-lvl="${ability.lvl}"`;
   return `<div class="skill-box ${active ? 'on' : 'off'}${ultimateClass}${statusClass}${usedClass}${cooldownClass}${passiveActiveClass}" ${attributes}${cooldown ? ' aria-disabled="true"' : ''}>
       <span class="sk-lv">Nv ${ability.lvl}</span>
-      <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <img src="${source}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="sk-fallback" style="display:none">${fallback}</span>
       ${status ? `<span class="skill-active-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
       ${used ? `<span class="skill-used-label" aria-label="Habilidad usada">${ability.ulti ? 'USADA' : 'USADA HOY'}</span>` : ''}
@@ -356,9 +356,9 @@ function skillIcon(classId, level, ability, type, status = null, used = false, c
 
 function quickSkillIcon(classId, level, ability, status = null, used = false, cooldown = false, cooldownUntil = 0) {
   const unlocked = level >= ability.lvl;
-  const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.png`;
+  const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.webp`;
   return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status && !cooldown ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}${cooldown ? ' spell-cooldown' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada dos veces esta semana' : ' · Usada hoy') : ''}${cooldown ? ` · Enfriamiento ${status}` : ''}" title="${ability.name}"${cooldown ? ' disabled' : ''}>
-    <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <img src="${source}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
     ${status ? `<span class="skill-active-timer hero-skill-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
     ${used ? `<span class="skill-used-label hero-skill-used">${ability.ulti ? 'USADA' : 'HOY'}</span>` : ''}
@@ -435,11 +435,11 @@ export function renderHeroView({
   const visibleSkillEffects = model.skillEffects.filter((effect) => effect.kind !== 'intoxication');
   const skillEffectsHtml = visibleSkillEffects
     .map((effect) => {
-      const source = `spells/effect_icons/${classId}_effect_${effect.spellId}.png`;
+      const source = `spells/effect_icons/${classId}_effect_${effect.spellId}.webp`;
       const effectLabel = `${effect.name}: ${effect.remaining} restantes`;
       return `<span class="skill-buff" aria-label="${effectLabel}">
       <span class="skill-buff-icon">
-        <img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <img src="${source}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <span class="sk-fallback" style="display:none">${effect.name.charAt(0)}</span>
       </span>
       <b>${effect.remaining}</b>
@@ -451,7 +451,7 @@ export function renderHeroView({
     ? `${Math.max(1,Math.ceil((potionActive.endsAt-now.getTime())/60000))}m`
     : '';
   const potionEffectHtml=potionRemaining&&['fortune','experience'].includes(potionActive.id)
-    ? `<span class="skill-buff skill-buff--potion" aria-label="Poción de ${potionActive.id==='fortune'?'Fortuna':'Experiencia'}: ${potionRemaining} restantes"><span class="skill-buff-icon skill-buff-icon--potion"><img src="potions/potion_${potionActive.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${potionActive.id==='fortune'?'¤':'✦'}</span></span><b>${potionRemaining}</b></span>`
+    ? `<span class="skill-buff skill-buff--potion" aria-label="Poción de ${potionActive.id==='fortune'?'Fortuna':'Experiencia'}: ${potionRemaining} restantes"><span class="skill-buff-icon skill-buff-icon--potion"><img src="potions/potion_${potionActive.id}.webp" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${potionActive.id==='fortune'?'¤':'✦'}</span></span><b>${potionRemaining}</b></span>`
     : '';
   const visibleEffectCount=visibleSkillEffects.length+(potionEffectHtml?1:0);
   const chipsHtml = skillEffectsHtml||potionEffectHtml
@@ -549,25 +549,25 @@ export function renderHeroView({
     const fighting = !defeated && index === currentBossIndex;
     if (!defeated && !fighting) {
       return `<div class="boss-medal locked">
-        <div class="boss-medal-art"><img src="bosses/boss_medal_locked.png" alt="Jefe todavía desconocido"></div>
+        <div class="boss-medal-art"><img src="bosses/boss_medal_locked.webp" alt="Jefe todavía desconocido" loading="lazy" decoding="async"></div>
         <div class="boss-medal-name">DESCONOCIDO</div>
       </div>`;
     }
     const bossNumber = index + 1;
     const bossName = BOSSES[index];
     const bossSlug = BOSS_SLUGS[index];
-    const bossFile = `boss_${String(bossNumber).padStart(2, '0')}_${bossSlug}.png`;
+    const bossFile = `boss_${String(bossNumber).padStart(2, '0')}_${bossSlug}.webp`;
     if (fighting) {
       return `<div class="boss-medal fighting">
         <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
-          <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+          <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>
           <div class="boss-medal-name">${bossName}<strong>EN COMBATE</strong></div>
         </button>
       </div>`;
     }
     return `<div class="boss-medal won">
       <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
-        <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" onerror="this.style.display='none'"></div>
+        <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>
         <div class="boss-medal-name">${bossName}</div>
       </button>
       <button class="boss-medal-share" type="button" data-share-boss="${index}" data-share-file="${bossFile}">Compartir</button>
@@ -683,8 +683,8 @@ export function renderHeroView({
 
     <div class="card" id="heroBossCard">
       <div class="boss-top">
-        <button type="button" class="boss-box boss-box-open" data-open-current-boss-medal="${currentBossIndex}" data-boss-file="boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" aria-label="Abrir medallón de ${bossState.name}">
-          <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.png" alt="${bossState.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <button type="button" class="boss-box boss-box-open" data-open-current-boss-medal="${currentBossIndex}" data-boss-file="boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.webp" aria-label="Abrir medallón de ${bossState.name}">
+          <img src="bosses/boss_${String(bossState.bossNum).padStart(2, '0')}_${bossState.slug}.webp" alt="${bossState.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <span class="boss-fallback" style="display:none">💀</span>
         </button>
         <div class="boss-id">
@@ -721,7 +721,7 @@ export function renderHeroView({
 function detailedIcon(classId, ability, type) {
   const source =
     `spells/${classId}_spells/` +
-    `${classId}_${type}_${ability.icon}.png`;
+    `${classId}_${type}_${ability.icon}.webp`;
   return `<div class="abil-ico"><img src="${source}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span class="sk-fallback" style="display:none">${ability.name.charAt(0)}</span></div>`;
 }
 

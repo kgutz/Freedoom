@@ -8,9 +8,9 @@ import {
 describe('marcos del héroe', () => {
   it('mantiene el marco original disponible y dependiente de la superficie', () => {
     expect(isFrameUnlocked('original', {})).toBe(true);
-    expect(heroBackgroundSource('original', 'druid', 'hero')).toBe('hero_background/druid_bg.png');
-    expect(heroBackgroundSource('original', 'druid', 'today')).toBe('hero_background/druid_today_bg.png');
-    expect(heroBackgroundSource('original', 'druid', 'habits')).toBe('backgrounds/habits_training_bg.png');
+    expect(heroBackgroundSource('original', 'druid', 'hero')).toBe('hero_background/druid_bg.webp');
+    expect(heroBackgroundSource('original', 'druid', 'today')).toBe('hero_background/druid_today_bg.webp');
+    expect(heroBackgroundSource('original', 'druid', 'habits')).toBe('backgrounds/habits_training_bg.webp');
   });
 
   it('solo permite equipar el marco Beta Tester cuando pertenece al jugador', () => {

@@ -63,8 +63,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Guardián de la Brasa');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Vestiduras nocturnas');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-outfit="beta-tester"');
-    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/sorcerer_happy.png');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/sorcerer_happy.webp');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option equipped');
@@ -79,7 +79,7 @@ describe('interfaz de inventario y botín', () => {
 
     expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBeNull();
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit');
     expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave' })).toBe('arcane-weave-01');
@@ -112,7 +112,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Corazón de Freedom');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-frame="beta-tester"');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('frame-preview-hero');
-    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/paladin_happy.png');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/paladin_happy.webp');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -354,7 +354,7 @@ describe('interfaz de inventario y botín', () => {
     renderFusionView(document, state, 'relic_01', 'relic_02');
     expect(document.elements.forgeBody.innerHTML).toContain('fusion-flow has-pair');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
-    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
+    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.webp');
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
@@ -376,7 +376,7 @@ describe('interfaz de inventario y botín', () => {
     });
     renderFusionView(document, fused, 'relic_01', 'relic_02');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
-    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.png');
+    expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.webp');
     expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-art-part');
     expect(fusionResultMarkup(fused)).toContain('NUEVA RELIQUIA DESCUBIERTA');
     expect(fusionResultMarkup(fused)).toContain('MÍTICO · RANGO 2');
@@ -463,7 +463,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('7 HP');
     expect(html).toContain('Su efecto principal se ha fortalecido');
     expect(html).toContain('Se ha consumido 1 Sangre de Jefe');
-    expect(html).toContain('relic_01_corazon_hollin.png');
+    expect(html).toContain('relic_01_corazon_hollin.webp');
   });
 
   it('explica los efectos extras directamente en el detalle', () => {
@@ -495,7 +495,7 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(1, 'victory');
     renderLootNotice(document, state, state.loot.notices[0]);
     expect(document.elements.lootNoticeRewards.innerHTML).toContain(
-      'relics/boss_loot_chest_open_sapphire.png',
+      'relics/boss_loot_chest_open_sapphire.webp',
     );
     expect(document.elements.lootNoticeRewards.innerHTML).toContain('data-loot-open-relic');
     expect(document.elements.lootNoticeRewards.innerHTML).toContain('loot-reward-empty');

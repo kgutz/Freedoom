@@ -50,19 +50,19 @@ function outfitClassId(lootState) {
 
 function outfitPortrait(classId, outfit, extraClass = '') {
   return `<span class="outfit-portrait outfit-portrait--${classId} outfit-portrait--outfit-${outfit.id}${extraClass ? ` ${extraClass}` : ''}" aria-hidden="true">
-    <img src="${heroFaceSource(classId, outfit.id)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', outfit.id)}'">
+    <img src="${heroFaceSource(classId, outfit.id)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', outfit.id)}'">
   </span>`;
 }
 
 function outfitFullBody(classId, outfit) {
   return `<span class="outfit-full-body outfit-full-body--${classId} outfit-full-body--outfit-${outfit.id}" aria-hidden="true">
-    <img src="${heroSpriteSource(classId, 'happy', outfit.id)}" alt="">
+    <img src="${heroSpriteSource(classId, 'happy', outfit.id)}" alt="" loading="lazy" decoding="async">
   </span>`;
 }
 
 function framePreview(classId, frame, extraClass = '') {
   return `<span class="frame-preview${extraClass ? ` ${extraClass}` : ''}" aria-hidden="true">
-    <img class="frame-preview-bg" src="${heroBackgroundSource(frame.id, classId, 'hero', { frames: { owned: { [frame.id]: true } } })}" alt="">
+    <img class="frame-preview-bg" src="${heroBackgroundSource(frame.id, classId, 'hero', { frames: { owned: { [frame.id]: true } } })}" alt="" loading="lazy" decoding="async">
   </span>`;
 }
 
@@ -195,14 +195,14 @@ export function relicArt(definition, overlay = '') {
   if (definition.ingredientIds?.length === 2 && !definition.image) {
     const ingredients = definition.ingredientIds.map((id) => relicDefinition(id));
     return `<div class="relic-art relic-art--fusion relic-art--${definition.id}">
-      ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true">`).join('')}
+      ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true" loading="lazy" decoding="async">`).join('')}
       <span class="fusion-art-sigil" aria-hidden="true">✦</span>
       ${overlay}
     </div>`;
   }
   const fusionClass = definition.ingredientIds?.length === 2 ? ' relic-art--fusion' : '';
   return `<div class="relic-art${fusionClass} relic-art--${definition.id}">
-    <img src="${definition.image}" alt="${escapeHtml(definition.name)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <img src="${definition.image}" alt="${escapeHtml(definition.name)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
     ${overlay}
   </div>`;
@@ -210,7 +210,7 @@ export function relicArt(definition, overlay = '') {
 
 function potionArt(definition) {
   return `<span class="potion-art potion-art--${definition.tone}" aria-hidden="true">
-    <img src="potions/potion_${definition.id}.png" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+    <img src="potions/potion_${definition.id}.webp" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
     <i style="display:none">${definition.symbol}</i>
   </span>`;
 }
@@ -892,7 +892,7 @@ export function renderLootNotice(document, lootState, notice) {
       ? 'El jefe ha dejado una reliquia exclusiva y recursos para la Forja.'
       : 'Has conseguido los recursos del jefe. Su reliquia podrá recuperarse en la Tienda.';
   document.getElementById('lootNoticeRewards').innerHTML =
-    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest_open_sapphire.png" alt=""></div>') +
+    (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest_open_sapphire.webp" alt=""></div>') +
     `<div class="loot-reward-grid">${rewards}${failedRewards}${resourceRewards}${emptyRewards}</div>` +
     bloodBonusMarkup + earlyVictoryMarkup;
   const summary = document.getElementById('lootNoticeSummary');

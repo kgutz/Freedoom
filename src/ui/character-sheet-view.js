@@ -58,7 +58,7 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
     </section>
     <section class="character-stage">
       <div class="character-equipment">
-        <button type="button" class="character-bag-primary" data-character-bag aria-label="Abrir bolso"><span class="character-bag-art" aria-hidden="true"><img src="ui/backpack.png" alt=""></span></button>
+        <button type="button" class="character-bag-primary" data-character-bag aria-label="Abrir bolso"><span class="character-bag-art" aria-hidden="true"><img src="ui/backpack.webp" alt="" loading="lazy" decoding="async"></span></button>
         ${equippedRelicMarkup(state, equipped[0], 0)}
         ${equippedRelicMarkup(state, equipped[1], 1)}
       </div>

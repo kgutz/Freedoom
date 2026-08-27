@@ -384,7 +384,7 @@ describe('modelo de Héroe', () => {
 
   it('reutiliza el sprite feliz como respaldo para estados sin arte', () => {
     expect(spriteImage('paladin', 'worried')).toContain(
-      'sprites/paladin_happy.png',
+      'sprites/paladin_happy.webp',
     );
   });
 
@@ -538,8 +538,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('class="hero-visual-effects"');
     expect(heroContent.innerHTML).not.toContain('hero-top hero-top--with-effects');
     expect(heroContent.innerHTML).not.toContain('Ojo Certero: 30m restantes');
-    expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.png');
-    expect(heroContent.innerHTML).not.toContain('effect_icons/beer_effect_intoxication.png');
+    expect(heroContent.innerHTML).not.toContain('effect_icons/paladin_effect_certero.webp');
+    expect(heroContent.innerHTML).not.toContain('effect_icons/beer_effect_intoxication.webp');
     expect(heroContent.innerHTML).not.toContain('skill-buff--intoxication');
     expect(heroContent.innerHTML).not.toContain('Borrachera 25%: 41m restantes');
     expect(heroContent.innerHTML).not.toContain('🍺');
@@ -565,8 +565,8 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('data-open-boss-medal="0"');
     expect(bossHistoryBody.innerHTML).toContain('data-open-boss-medal="1"');
     expect(bossHistoryBody.innerHTML).not.toContain('data-open-boss-medal="2"');
-    expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.png');
-    expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.png');
+    expect(bossHistoryBody.innerHTML).toContain('boss_medal_locked.webp');
+    expect(bossHistoryBody.innerHTML).toContain('boss_02_espectro.webp');
     expect(bossHistoryBody.innerHTML).toContain('EN COMBATE');
     expect(heroContent.innerHTML).toContain('Derrotados: <b>1</b> de <b>?</b> · ¡Aún quedan jefes por derrotar!');
     expect(heroContent.innerHTML).not.toContain('de <b>20</b>');
@@ -604,6 +604,6 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).not.toContain('1 / 6');
     expect((bossHistoryBody.innerHTML.match(/class="boss-medal /g) || []).length).toBe(3);
-    expect((bossHistoryBody.innerHTML.match(/boss_medal_locked.png/g) || []).length).toBe(1);
+    expect((bossHistoryBody.innerHTML.match(/boss_medal_locked.webp/g) || []).length).toBe(1);
   });
 });
