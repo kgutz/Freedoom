@@ -19,7 +19,12 @@ import {
   shopOffers,
 } from '../domain/loot-rules.js';
 import { BOSSES } from '../data/game-data.js';
-import { POTION_DEFINITIONS, POTION_FUTURE_SLOTS, POTION_DAILY_LIMITS } from '../data/potion-data.js';
+import {
+  POTION_BAG_SLOT_LIMIT,
+  POTION_DEFINITIONS,
+  POTION_FUTURE_SLOTS,
+  POTION_DAILY_LIMITS,
+} from '../data/potion-data.js';
 import {
   OUTFIT_DEFINITIONS,
   equippedOutfit,
@@ -258,7 +263,7 @@ function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', now
   const potions=normalizePotionState(normalized.inventory.potions);
   const active=potions.active?.endsAt>nowTimestamp?potions.active:null;
   const dailyUses=potions.dailyUses[dayKey]||{};
-  return POTION_DEFINITIONS.filter((definition)=>(potions.owned[definition.id]||0)>0).map((definition)=>{
+  const ownedItems = POTION_DEFINITIONS.filter((definition)=>(potions.owned[definition.id]||0)>0).map((definition)=>{
     const owned=potions.owned[definition.id]||0;
     const used=Math.max(0,Number(dailyUses[definition.id])||0);
     const bloodUsed=definition.id==='blood'?Math.max(0,potions.bloodPrepared[bossKey]||0):0;
@@ -266,7 +271,10 @@ function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', now
     const temporalBlocked=['fortune','experience'].includes(definition.id)&&Boolean(active);
     const disabled=exhausted||temporalBlocked;
     return `<button type="button" class="relic-collection-item potion-inventory-item potion-tone--${definition.tone}${disabled?' is-disabled':''}" data-relic-kind="potion" data-open-potion="${definition.id}" aria-label="Abrir ${escapeHtml(definition.name)} · ${owned} disponible${owned===1?'':'s'}" title="${escapeHtml(definition.name)}">${potionArt(definition)}<span class="potion-inventory-quantity">x${owned}</span></button>`;
-  }).join('');
+  });
+  const emptySlots = Array.from({ length: Math.max(0, POTION_BAG_SLOT_LIMIT - ownedItems.length) }, (_, index) =>
+    `<button type="button" class="relic-collection-item potion-inventory-item bag-potion-empty" data-open-potion-shop aria-label="Comprar una poción para el hueco vacío ${index + 1}"><span aria-hidden="true">+</span></button>`);
+  return [...ownedItems, ...emptySlots].join('');
 }
 
 export function renderPotionDetail(document, lootState, potionId, options = {}) {
@@ -285,8 +293,10 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const blocked=owned<1||used>=limit||(['fortune','experience'].includes(potionId)&&active);
   const shopMode=options.mode==='shop';
   const lacksCoins=normalized.economy.coins<definition.price;
+  const occupiedSlots=Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length;
+  const bagFull=shopMode&&owned<1&&occupiedSlots>=POTION_BAG_SLOT_LIMIT;
   const action=shopMode
-    ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins?' aria-disabled="true"':''}>${lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
+    ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins||bagFull?' aria-disabled="true"':''}>${bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
     : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
   body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
   return true;
@@ -463,7 +473,7 @@ export function renderInventoryView(document, lootState, options = {}) {
     <section class="inventory-section bag-potions-section">
       <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
       <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
-      <div class="relic-grid bag-potion-grid">${potionItems || '<div class="inventory-empty bag-empty">Tu bolso no tiene pociones. Puedes conseguirlas en la Tienda.</div>'}</div>
+      <div class="relic-grid bag-potion-grid">${potionItems}</div>
     </section>`;
 }
 
@@ -484,7 +494,7 @@ export function renderCollectionView(document, lootState) {
   const body = document.getElementById('collectionBody');
   if (!body) return;
   body.innerHTML = `
-    <section class="inventory-section collection-section">
+    <section class="inventory-section collection-section bag-collection-section">
       <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.collection).length}/?</small></div>
       <p class="collection-hint">Aquí permanecen todas las reliquias que has descubierto, incluso si ya no están en tu Inventario.</p>
       <div class="relic-kind-filters" role="group" aria-label="Filtrar colección">

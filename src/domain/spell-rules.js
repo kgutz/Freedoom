@@ -10,6 +10,8 @@ export const ULTIMATE_HABIT_GOLD = 4;
 export const ULTIMATE_COMPLETION_XP = 10;
 export const ULTIMATE_COMPLETION_GOLD = 8;
 export const ULTIMATE_WEEKLY_USES = 2;
+const LEVEL_EIGHT_GLOBAL_USE_ID = 'level-8';
+const LEVEL_TWO_GLOBAL_COOLDOWN_ID = 'level-2';
 
 export function ultimateHabitReward({ completedCount, target = 3 }) {
   const completesChallenge = completedCount >= target;
@@ -48,13 +50,27 @@ function normalizedLevelEightUse(value) {
   };
 }
 
+function levelEightUseForDay(progress, today, spellId) {
+  const uses = progress?.challengeDayUses || {};
+  const globalUse = normalizedLevelEightUse(uses[`${today}:${LEVEL_EIGHT_GLOBAL_USE_ID}`]);
+  if (globalUse.count > 0 || globalUse.lastUsedAt > 0 || globalUse.lastCompletedAt > 0) return globalUse;
+  const legacyUses = Object.entries(uses)
+    .filter(([key]) => key.startsWith(`${today}:`) && key !== `${today}:${LEVEL_EIGHT_GLOBAL_USE_ID}`)
+    .map(([, value]) => normalizedLevelEightUse(value));
+  if (!legacyUses.length && spellId) return normalizedLevelEightUse(uses[`${today}:${spellId}`]);
+  return legacyUses.reduce((combined, use) => ({
+    count: Math.min(LEVEL_EIGHT_DAILY_USES, combined.count + use.count),
+    lastUsedAt: Math.max(combined.lastUsedAt, use.lastUsedAt),
+    lastCompletedAt: Math.max(combined.lastCompletedAt, use.lastCompletedAt),
+  }), { count: 0, lastUsedAt: 0, lastCompletedAt: 0 });
+}
+
 export function levelEightSpellAvailability({ game, spellId, today, nowTimestamp = Date.now() }) {
   const progress = game?.powerProgress || {};
-  const use = normalizedLevelEightUse(progress.challengeDayUses?.[`${today}:${spellId}`]);
+  const use = levelEightUseForDay(progress, today, spellId);
   const active = progress.habitChallenge;
   const activeTarget = active?.autoNextHabitCount || active?.habitIds?.length || 2;
-  const challengeActive = active?.spellId === spellId
-    && active?.day === today
+  const challengeActive = active?.day === today
     && (active?.completedIds?.length || 0) < activeTarget;
   const cooldownUntil = use.lastCompletedAt > 0
     ? use.lastCompletedAt + LEVEL_EIGHT_COOLDOWN_MS
@@ -95,9 +111,17 @@ export function completeLevelEightHabitChallenge({
   if (completed) {
     const useKey = `${today}:${challenge.spellId}`;
     const recordedUse = normalizedLevelEightUse(nextProgress.challengeDayUses[useKey]);
-    nextProgress.challengeDayUses[useKey] = {
+    const completedUse = {
       ...recordedUse,
       count: Math.max(1, recordedUse.count),
+      lastCompletedAt: completedAt,
+    };
+    nextProgress.challengeDayUses[useKey] = completedUse;
+    const globalKey = `${today}:${LEVEL_EIGHT_GLOBAL_USE_ID}`;
+    const globalUse = levelEightUseForDay(nextProgress, today, challenge.spellId);
+    nextProgress.challengeDayUses[globalKey] = {
+      ...globalUse,
+      count: Math.max(1, globalUse.count),
       lastCompletedAt: completedAt,
     };
     nextProgress.habitChallenge = {
@@ -119,6 +143,7 @@ export function levelTwoSpellAvailability({ game, spellId, nowTimestamp = Date.n
   const cooldownUntil = Math.max(
     0,
     Number(game?.powerProgress?.spellCooldowns?.[spellId]) || 0,
+    Number(game?.powerProgress?.spellCooldowns?.[LEVEL_TWO_GLOBAL_COOLDOWN_ID]) || 0,
   );
   return {
     cooldownUntil,
@@ -423,18 +448,21 @@ export function castSpellEffect({
 
   if (spell.lvl === 8 && !spell.ulti) {
     const key = `${today}:${spell.id}`;
-    const previousUse = normalizedLevelEightUse(game.powerProgress?.challengeDayUses?.[key]);
-    nextGame.powerProgress.challengeDayUses[key] = {
+    const previousUse = levelEightUseForDay(game.powerProgress || {}, today, spell.id);
+    const nextUse = {
       count: previousUse.count + 1,
       lastUsedAt: nowTimestamp,
       lastCompletedAt: previousUse.lastCompletedAt,
     };
+    nextGame.powerProgress.challengeDayUses[key] = nextUse;
+    nextGame.powerProgress.challengeDayUses[`${today}:${LEVEL_EIGHT_GLOBAL_USE_ID}`] = nextUse;
     result.dailyUses = previousUse.count + 1;
     result.cooldownUntil = nowTimestamp + LEVEL_EIGHT_COOLDOWN_MS;
   }
   if (spell.lvl === 2 && !spell.ulti) {
     result.cooldownUntil = nowTimestamp + LEVEL_TWO_COOLDOWN_MS;
     nextGame.powerProgress.spellCooldowns[spell.id] = result.cooldownUntil;
+    nextGame.powerProgress.spellCooldowns[LEVEL_TWO_GLOBAL_COOLDOWN_ID] = result.cooldownUntil;
   }
 
   return result;

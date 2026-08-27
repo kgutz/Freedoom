@@ -126,12 +126,13 @@ import {
 } from './domain/todo-rules.js';
 import {
   consumePreparedBlood,
+  normalizePotionState,
   potionBloodChance,
   purchasePotion,
   reconcilePotionHabitBonus,
   usePotion
 } from './domain/potion-rules.js';
-import { POTION_BY_ID } from './data/potion-data.js';
+import { POTION_BAG_SLOT_LIMIT, POTION_BY_ID } from './data/potion-data.js';
 import {
   addBeerIntoxication,
   beerUndoEffects,
@@ -2140,16 +2141,16 @@ function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
   const sheet=overlay?.querySelector('.inventory-sheet');
+  const bagBody=document.getElementById('bagBody');
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
   const mainNav=document.getElementById('mainNav');
-  if(!overlay?.classList.contains('show')||!sheet||!inventoryBody||!collectionBody||!forgeBody||!shopBody) return;
-  const hiddenStates=[inventoryBody.hidden,collectionBody.hidden,forgeBody.hidden,shopBody.hidden];
+  if(!overlay?.classList.contains('show')||!sheet||!bagBody||!inventoryBody||!collectionBody||!forgeBody||!shopBody) return;
+  const hiddenStates=[bagBody.hidden,forgeBody.hidden,shopBody.hidden];
   renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'upgrade'});
-  inventoryBody.hidden=true;
-  collectionBody.hidden=true;
+  bagBody.hidden=true;
   forgeBody.hidden=false;
   shopBody.hidden=true;
   sheet.classList.add('measuring-forge-reference');
@@ -2166,41 +2167,37 @@ function positionInventorySheetFromForge(){
   overlay.style.setProperty('--inventory-panel-offset',
     `${inventoryReferenceOffset(availableHeight,referenceHeight)}px`);
   sheet.classList.remove('measuring-forge-reference');
-  [inventoryBody.hidden,collectionBody.hidden,forgeBody.hidden,shopBody.hidden]=hiddenStates;
-  if(!hiddenStates[2]){
+  [bagBody.hidden,forgeBody.hidden,shopBody.hidden]=hiddenStates;
+  if(!hiddenStates[1]){
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   }
 }
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   if(panel==='inventory') panel='bag';
+  if(panel==='collection') panel='bag';
   if(panel!=='forge') clearFusionFeedback();
   const bagSelected=panel==='bag';
-  const collectionSelected=panel==='collection';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
+  const bagBody=document.getElementById('bagBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
   const bagTab=document.getElementById('bagTab');
-  const collectionTab=document.getElementById('collectionTab');
   const forgeTab=document.getElementById('forgeTab');
   const shopTab=document.getElementById('shopTab');
-  inventoryBody.hidden=!bagSelected;
-  collectionBody.hidden=!collectionSelected;
+  bagBody.hidden=!bagSelected;
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
   bagTab.classList.toggle('active',bagSelected);
-  collectionTab.classList.toggle('active',collectionSelected);
   forgeTab.classList.toggle('active',forgeSelected);
   shopTab.classList.toggle('active',shopSelected);
   bagTab.setAttribute('aria-selected',String(bagSelected));
-  collectionTab.setAttribute('aria-selected',String(collectionSelected));
   forgeTab.setAttribute('aria-selected',String(forgeSelected));
   shopTab.setAttribute('aria-selected',String(shopSelected));
   if(bagSelected){
     renderInventoryView(document,state,potionViewOptions());
-  }else if(collectionSelected){
     renderCollectionView(document,state);
   }else if(forgeSelected){
     selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
@@ -2218,13 +2215,14 @@ function openInventory(panel='bag'){
   fusionRightId=null;
   clearFusionFeedback();
   forgePickerTarget=null;
-  const targetBody=document.getElementById(panel==='collection'?'collectionBody':'inventoryBody');
+  if(panel==='collection') panel='bag';
+  const targetBody=document.getElementById('bagBody');
   if(targetBody) targetBody.scrollTop=0;
   showInventoryPanel(panel);
   showSheet(document,'sheetInventory');
   positionInventorySheetFromForge();
   requestAnimationFrame(()=>{
-    const refreshedBody=document.getElementById(panel==='collection'?'collectionBody':'inventoryBody');
+    const refreshedBody=document.getElementById('bagBody');
     if(refreshedBody) refreshedBody.scrollTop=0;
   });
 }
@@ -4728,7 +4726,9 @@ function handlePotionPurchase(potionId,quantity=1){
   const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const result=purchasePotion({inventory:state.inventory,economy:state.economy,potionId,operationId,quantity,nowTimestamp:Date.now()});
   if(!result.ok){
-    showToast(result.reason==='coins'?'No tienes suficiente oro':'No se pudo comprar la poción','dmg');
+    showToast(result.reason==='coins'?'No tienes suficiente oro'
+      :result.reason==='bag_full'?'Bolso lleno · usa una poción para liberar un hueco'
+      :'No se pudo comprar la poción','dmg');
     return false;
   }
   state.inventory=result.inventory;
@@ -4742,14 +4742,26 @@ function handlePotionPurchase(potionId,quantity=1){
   return true;
 }
 
+function potionBagIsFullFor(potionId){
+  const potions=normalizePotionState(state.inventory?.potions);
+  if((potions.owned[potionId]||0)>0) return false;
+  return Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length>=POTION_BAG_SLOT_LIMIT;
+}
+
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
   }
   if(event.target.closest('#bagTab')){ showInventoryPanel('bag'); return; }
-  if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
+  if(event.target.closest('[data-open-potion-shop]')){
+    showInventoryPanel('shop');
+    requestAnimationFrame(()=>{
+      document.querySelector('#shopBody .shop-potion-heading')?.scrollIntoView({block:'start',behavior:'smooth'});
+    });
+    return;
+  }
   const outfitShortcut=event.target.closest('[data-open-outfits]');
   if(outfitShortcut){
     dismissAureoNotice('outfits');
@@ -4823,6 +4835,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const quantity=Number(event.currentTarget.querySelector('[data-potion-quantity]')?.textContent)||1;
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
+    if(potionBagIsFullFor(potionId)){
+      showToast('Bolso lleno · usa una poción para liberar un hueco','dmg');
+      return;
+    }
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
       showToast('No tienes suficiente oro','dmg');
       return;
@@ -5081,10 +5097,10 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const next=Math.min(99,Math.max(1,(Number(output.textContent)||1)+Number(quantityStep.dataset.potionQuantityStep)));
     output.textContent=String(next);
     const total=next*(Number(buyButton.dataset.unitPrice)||0);
-    buyButton.textContent=`COMPRAR · ${total}`;
     const lacksCoins=total>(Number(state.economy?.coins)||0);
-    buyButton.setAttribute('aria-disabled',String(lacksCoins));
-    buyButton.textContent=lacksCoins?'FALTA ORO':`COMPRAR · ${total}`;
+    const bagFull=potionBagIsFullFor(buyButton.dataset.buyPotion);
+    buyButton.setAttribute('aria-disabled',String(lacksCoins||bagFull));
+    buyButton.textContent=bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${total}`;
     return;
   }
   const potionPurchase=event.target.closest('[data-buy-potion]');
@@ -5093,6 +5109,10 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const potionId=potionPurchase.dataset.buyPotion;
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
+    if(potionBagIsFullFor(potionId)){
+      showToast('Bolso lleno · usa una poción para liberar un hueco','dmg');
+      return;
+    }
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
       showToast('No tienes suficiente oro','dmg');
       return;

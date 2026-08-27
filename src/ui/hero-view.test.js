@@ -269,6 +269,21 @@ describe('modelo de Héroe', () => {
     })).toBe('60s');
   });
 
+  it('muestra en la nueva clase el reto global de nivel 8 que sigue activo', () => {
+    const now = new Date(2026, 6, 26, 12).getTime();
+    const game = { powerProgress: {
+      habitChallenge: {
+        spellId: 'certero', habitIds: ['a', 'b'], completedIds: ['a'], day: '2026-07-26',
+      },
+      challengeDayUses: {
+        '2026-07-26:level-8': { count: 1, lastUsedAt: now, lastCompletedAt: 0 },
+      },
+    } };
+    expect(activeSpellStatus({
+      spellId: 'muro', game, nowTimestamp: now, today: '2026-07-26',
+    })).toBe('1/2');
+  });
+
   it('muestra el progreso de la ulti y la apaga al cobrarla',()=>{
     const now=new Date(2026,6,26,12).getTime();
     const ultimateChallenge={

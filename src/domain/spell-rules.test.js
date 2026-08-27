@@ -3,6 +3,7 @@ import {
   castSpellEffect,
   completeLevelEightHabitChallenge,
   levelEightSpellAvailability,
+  levelTwoSpellAvailability,
   ultimateHabitReward,
 } from './spell-rules.js';
 
@@ -263,6 +264,65 @@ describe('curación y habilidades definitivas', () => {
     expect(cast(selectedSpell,{
       game:{...second.game,mp:200},today:'2026-07-27',selectedHabitIds:['a','b'],
     }).ok).toBe(true);
+  });
+
+  it('comparte los dos usos diarios de nivel 8 entre clases',()=>{
+    const paladinSpell=spell('certero',{
+      lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,
+    });
+    const knightSpell=spell('muro',{
+      lvl:8,cost:40,modern:true,hpCost:10,habitChallenge:true,
+    });
+    const first=cast(paladinSpell,{
+      game:{hp:100,mp:250,buffs:{}},selectedHabitIds:['a','b'],
+    });
+    const firstCompleted={
+      ...first.game,
+      mp:250,
+      powerProgress:{
+        ...first.game.powerProgress,
+        habitChallenge:{...first.game.powerProgress.habitChallenge,completedIds:['a','b'],coinRewarded:true},
+        challengeDayUses:{
+          ...first.game.powerProgress.challengeDayUses,
+          '2026-07-26:level-8':{count:1,lastUsedAt:1_000_000,lastCompletedAt:1_060_000},
+        },
+      },
+    };
+    const second=cast(knightSpell,{
+      game:firstCompleted,nowTimestamp:1_120_001,selectedHabitIds:['c','d'],
+    });
+    expect(second).toMatchObject({ok:true,dailyUses:2});
+    expect(levelEightSpellAvailability({
+      game:second.game,spellId:'regen',today:'2026-07-26',nowTimestamp:1_300_000,
+    })).toMatchObject({count:2,remainingUses:0,exhausted:true});
+  });
+
+  it('mantiene el reto y su cooldown de nivel 8 al cambiar de clase',()=>{
+    const activeGame={powerProgress:{
+      habitChallenge:{spellId:'certero',habitIds:['a','b'],completedIds:['a'],day:'2026-07-26'},
+      challengeDayUses:{'2026-07-26:level-8':{count:1,lastUsedAt:1_000_000,lastCompletedAt:0}},
+    }};
+    expect(levelEightSpellAvailability({
+      game:activeGame,spellId:'muro',today:'2026-07-26',nowTimestamp:1_010_000,
+    })).toMatchObject({challengeActive:true,count:1});
+
+    const completedGame={powerProgress:{
+      habitChallenge:{...activeGame.powerProgress.habitChallenge,completedIds:['a','b'],completedAt:1_020_000},
+      challengeDayUses:{'2026-07-26:level-8':{count:1,lastUsedAt:1_000_000,lastCompletedAt:1_020_000}},
+    }};
+    expect(levelEightSpellAvailability({
+      game:completedGame,spellId:'regen',today:'2026-07-26',nowTimestamp:1_050_000,
+    })).toMatchObject({challengeActive:false,cooldownRemainingMs:30_000});
+  });
+
+  it('comparte el cooldown de nivel 2 entre clases',()=>{
+    const paladin=cast(spell('luz',{lvl:2}),{nowTimestamp:1_000_000});
+    expect(levelTwoSpellAvailability({
+      game:paladin.game,spellId:'grito',nowTimestamp:1_001_000,
+    })).toMatchObject({cooldownRemainingMs:2_000,cooldownUntil:1_003_000});
+    expect(cast(spell('grito',{lvl:2}),{
+      game:{...paladin.game,mp:100},nowTimestamp:1_001_000,
+    })).toMatchObject({ok:false,reason:'spell-cooldown'});
   });
 
   it('Maldición de Ceniza espera los dos primeros hábitos completados, no los primeros de la lista',()=>{

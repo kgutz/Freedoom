@@ -166,7 +166,7 @@ describe('interfaz de inventario y botín', () => {
     expect(resourceIcon('coin')).not.toContain('<img');
   });
 
-  it('muestra recursos y pociones compradas en el Bolso sin mezclar reliquias', () => {
+  it('muestra cuatro huecos de pociones y la colección debajo del Bolso', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     state.inventory.potions = { owned: { fortune: 2, life: 1 } };
@@ -177,11 +177,15 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="fortune"');
     expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="life"');
     expect(document.elements.inventoryBody.innerHTML).toContain('potion-inventory-quantity">x2');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('data-open-relic');
+    expect(document.elements.inventoryBody.innerHTML.match(/potion-inventory-item/g)).toHaveLength(4);
+    expect(document.elements.inventoryBody.innerHTML.match(/bag-potion-empty/g)).toHaveLength(2);
+    expect(document.elements.inventoryBody.innerHTML.match(/data-open-potion-shop/g)).toHaveLength(2);
+    expect(document.elements.inventoryBody.innerHTML).toContain('<span aria-hidden="true">+</span>');
     expect(document.elements.collectionBody.innerHTML).toContain('<small>6/?</small>');
     expect(document.elements.collectionBody.innerHTML).toContain('aria-label="Filtrar colección"');
     expect(document.elements.collectionBody.innerHTML).toContain('FUSIONADAS');
     expect(document.elements.collectionBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
+    expect(document.elements.collectionBody.innerHTML).toContain('bag-collection-section');
     expect(inventoryAccessMarkup(state)).toContain('INVENTARIO Y FORJA');
     expect(inventoryAccessMarkup(state)).not.toContain('6 reliquias');
     expect(document.elements.inventoryBody.innerHTML).toContain('Recursos del bolso');

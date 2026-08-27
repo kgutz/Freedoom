@@ -1,5 +1,6 @@
 import {
   POTION_BLOOD_CHANCES,
+  POTION_BAG_SLOT_LIMIT,
   POTION_BONUS_CAPS,
   POTION_BY_ID,
   POTION_DAILY_LIMITS,
@@ -73,6 +74,11 @@ export function purchasePotion({ inventory, economy, potionId, operationId, quan
   if (potions.purchases.some((entry) => entry.operationId === operationId) ||
       safeEconomy.transactions.some((entry) => entry.id === transactionId)) {
     return { ok: true, duplicate: true, inventory: { ...inventory, potions }, economy: safeEconomy };
+  }
+  const occupiedSlots = Object.values(potions.owned)
+    .filter((ownedQuantity) => Math.max(0, Number(ownedQuantity) || 0) > 0).length;
+  if ((potions.owned[potionId] || 0) < 1 && occupiedSlots >= POTION_BAG_SLOT_LIMIT) {
+    return { ok: false, reason: 'bag_full', inventory: { ...inventory, potions }, economy: safeEconomy };
   }
   if (safeEconomy.coins < totalPrice) {
     return { ok: false, reason: 'coins', inventory: { ...inventory, potions }, economy: safeEconomy };

@@ -278,6 +278,12 @@ export function activeSpellStatus({
     }
   }
   const levelEightUse = levelEightSpellAvailability({ game, spellId, today, nowTimestamp });
+  if (levelEightUse.challengeActive) {
+    const challenge = powers.habitChallenge;
+    const completed = challenge?.completedIds?.length || 0;
+    const target = challenge?.autoNextHabitCount || challenge?.habitIds?.length || 2;
+    return `${completed}/${target}`;
+  }
   if (levelEightUse.count === 1 && levelEightUse.cooldownRemainingMs > 0) {
     return `${Math.max(1, Math.ceil(levelEightUse.cooldownRemainingMs / 1000))}s`;
   }

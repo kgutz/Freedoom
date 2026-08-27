@@ -45,6 +45,40 @@ describe('pociones', () => {
     expect(result.economy.coins).toBe(100);
   });
 
+  it('limita el Bolso a cuatro tipos de poción y permite apilar un tipo existente', () => {
+    const state = richState();
+    state.economy.coins = 500;
+    state.inventory.potions = { owned: { fortune: 1, experience: 1, life: 1, mana: 1 } };
+    const blocked = purchasePotion({
+      inventory: state.inventory, economy: state.economy,
+      potionId: 'blood', operationId: 'fifth-type',
+    });
+    expect(blocked.ok).toBe(false);
+    expect(blocked.reason).toBe('bag_full');
+    expect(blocked.economy.coins).toBe(500);
+
+    const stacked = purchasePotion({
+      inventory: state.inventory, economy: state.economy,
+      potionId: 'life', quantity: 2, operationId: 'stack-existing',
+    });
+    expect(stacked.ok).toBe(true);
+    expect(stacked.inventory.potions.owned.life).toBe(3);
+  });
+
+  it('libera el hueco al gastar la última poción de un tipo', () => {
+    const state = richState();
+    state.economy.coins = 500;
+    state.inventory.potions = { owned: { fortune: 1, experience: 1, life: 1, mana: 1 } };
+    const used = usePotion({ inventory: state.inventory, potionId: 'life', dayKey: DAY });
+    expect(used.inventory.potions.owned.life).toBe(0);
+    const purchased = purchasePotion({
+      inventory: used.inventory, economy: state.economy,
+      potionId: 'blood', operationId: 'freed-slot',
+    });
+    expect(purchased.ok).toBe(true);
+    expect(purchased.inventory.potions.owned.blood).toBe(1);
+  });
+
   it('limita Fortuna a una vez al día y bloquea otra temporal activa', () => {
     const state = richState();
     state.inventory.potions = { owned: { fortune: 2, experience: 1 } };
