@@ -75,6 +75,25 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).not.toContain('6/6');
   });
 
+  it('mantiene 5 como capacidad aunque el día penalizado recargue solo 2', () => {
+    const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: {
+        cls: 'paladin',
+        hunt: {
+          energyDay: '2026-08-26',
+          baseEnergy: 2,
+          energy: 2,
+        },
+      },
+      stats: { lvl: 20 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('<strong>2/5</strong>');
+    expect(root.innerHTML).not.toContain('2/2');
+  });
+
   it('muestra de nuevo una carga antigua que había quedado borrada', () => {
     const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
     renderHuntView({

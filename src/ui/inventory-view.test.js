@@ -100,6 +100,29 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-01"');
   });
 
+  it('permite seleccionar y equipar fondos desde una subsección propia de Outfits', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.game = {
+      cls: 'paladin',
+      outfit: 'original',
+      frame: 'original',
+      frames: { owned: { 'beta-tester': { acquiredAt: 1234 } } },
+    };
+    expect(renderOutfitSelector(document, state, null, { section: 'frames' })).toBeNull();
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('>Fondos</button>');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Colección de fondos"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="beta-tester"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('hero_background/beta_tester_bg_final.webp');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/frame-option--locked/g)).toHaveLength(2);
+
+    expect(renderOutfitSelector(document, state, 'beta-tester', { section: 'frames' })).toBe('beta-tester');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Corazón de Freedom');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-frame="beta-tester"');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('frame-preview-hero');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/paladin_happy.png');
+  });
+
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
     const document = fakeDocument();
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);

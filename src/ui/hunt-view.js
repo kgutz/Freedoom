@@ -22,7 +22,8 @@ function monsterCard(enemy) {
 
 function huntEnergyDisplay(hunt) {
   const maximum = Math.max(1, Number(hunt.baseEnergy) || 5);
-  const bonus = Math.max(0, Number(hunt.bonusEnergyRemaining) || 0);
+  const bonus = Math.max(0, Number(hunt.bonusEnergyRemaining) || 0)
+    + Math.max(0, Number(hunt.rewardEnergyRemaining) || 0);
   const base = Math.max(0, Math.min(maximum, (Number(hunt.energy) || 0) - bonus));
   const bonusMarkup = bonus ? `<em>+${bonus}</em>` : '';
   return {

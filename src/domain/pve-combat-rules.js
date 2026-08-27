@@ -41,17 +41,25 @@ export function localHuntDayKey(timestamp = Date.now()) {
 export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEnergy = DAILY_HUNT_ENERGY) {
   const energyDay = localHuntDayKey(nowTimestamp);
   const sameDay = hunt?.energyDay === energyDay;
-  const baseEnergy = sameDay
-    ? clamp(safeInteger(hunt?.baseEnergy) || safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY)
-    : clamp(safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY, 1, DAILY_HUNT_ENERGY);
-  const storedEnergy = sameDay ? safeInteger(hunt?.energy) : baseEnergy;
+  const rewardEnergyRemaining = safeInteger(hunt?.rewardEnergyRemaining);
+  const dailyRefillEnergy = clamp(
+    safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY,
+    1,
+    DAILY_HUNT_ENERGY,
+  );
+  const baseEnergy = DAILY_HUNT_ENERGY;
+  const storedEnergy = sameDay
+    ? safeInteger(hunt?.energy)
+    : dailyRefillEnergy + rewardEnergyRemaining;
   const rawHabitEnergyRolls = sameDay && Array.isArray(hunt?.habitEnergyRolls)
     ? hunt.habitEnergyRolls.slice(-60)
     : [];
   const storedBonusEnergyEarned = sameDay
     ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
     : 0;
-  const legacyBonusFromEnergy = sameDay ? Math.max(0, storedEnergy - baseEnergy) : 0;
+  const legacyBonusFromEnergy = sameDay
+    ? Math.max(0, storedEnergy - baseEnergy - rewardEnergyRemaining)
+    : 0;
   const legacyGrantedBonuses = rawHabitEnergyRolls.filter((entry) => entry?.granted).length;
   const bonusEnergyEarned = sameDay
     ? clamp(
@@ -85,8 +93,8 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     : 0;
   const recoveredAvailableBonuses = Math.max(0, bonusEnergyRemaining - representedAvailableBonuses);
   const normalizedEnergy = sameDay
-    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, baseEnergy + bonusEnergyEarned)
-    : baseEnergy;
+    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, baseEnergy + bonusEnergyEarned + rewardEnergyRemaining)
+    : dailyRefillEnergy + rewardEnergyRemaining;
   const activeGrantedRolls = rawHabitEnergyRolls.filter((entry) => entry?.granted && entry?.status !== 'revoked');
   const availableEntries = new Set([
     ...activeGrantedRolls.filter((entry) => entry?.status === 'available'),
@@ -103,12 +111,27 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     baseEnergy,
     bonusEnergyEarned,
     bonusEnergyRemaining,
+    rewardEnergyRemaining,
     bonusEnergyLedgerVersion: 1,
     habitEnergyRolls,
     energy: normalizedEnergy,
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
     history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],
+  };
+}
+
+export function grantRewardHuntEnergy({ hunt, amount = 0, nowTimestamp = Date.now() }) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const granted = safeInteger(amount);
+  if (!granted) return { granted: 0, hunt: normalized };
+  return {
+    granted,
+    hunt: {
+      ...normalized,
+      energy: normalized.energy + granted,
+      rewardEnergyRemaining: normalized.rewardEnergyRemaining + granted,
+    },
   };
 }
 
@@ -273,6 +296,10 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
   if (normalized.active) return { ok: false, reason: 'hunt-active', hunt: normalized };
   if (normalized.energy < difficulty.energyCost) return { ok: false, reason: 'insufficient-energy', hunt: normalized };
   const bonusEnergySpent = Math.min(normalized.bonusEnergyRemaining, difficulty.energyCost);
+  const rewardEnergySpent = Math.min(
+    normalized.rewardEnergyRemaining,
+    difficulty.energyCost - bonusEnergySpent,
+  );
   let remainingBonusToSpend = bonusEnergySpent;
   const habitEnergyRolls = normalized.habitEnergyRolls.map((entry) => {
     if (remainingBonusToSpend > 0 && entry?.granted && entry.status === 'available') {
@@ -298,6 +325,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
       ...normalized,
       energy: normalized.energy - difficulty.energyCost,
       bonusEnergyRemaining: normalized.bonusEnergyRemaining - bonusEnergySpent,
+      rewardEnergyRemaining: normalized.rewardEnergyRemaining - rewardEnergySpent,
       habitEnergyRolls,
       active,
     },

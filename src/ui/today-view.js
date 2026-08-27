@@ -27,6 +27,7 @@ import {
   heroSpriteSource,
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
+import { heroBackgroundSource } from '../data/frame-data.js';
 
 const EMPTY_DAY = { c: 0, p: 0 };
 
@@ -385,8 +386,12 @@ export function renderTodayView({
     heroBackground.onerror = () => {
       heroBackground.style.display = 'none';
     };
-    heroBackground.src =
-      `hero_background/${model.hero.classId}_today_bg.png`;
+    heroBackground.src = heroBackgroundSource(
+      game?.frame,
+      model.hero.classId,
+      'today',
+      game,
+    );
     document.getElementById('hoyHeroName').textContent = model.hero.name;
     document.getElementById('hoyHeroCls').textContent = model.hero.className;
     const faceSource = heroFaceSource(model.hero.classId, game?.outfit);

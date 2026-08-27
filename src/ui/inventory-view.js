@@ -27,6 +27,12 @@ import {
   heroSpriteSource,
   isOutfitUnlocked,
 } from '../data/outfit-data.js';
+import {
+  FRAME_DEFINITIONS,
+  equippedFrame,
+  heroBackgroundSource,
+  isFrameUnlocked,
+} from '../data/frame-data.js';
 import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 
@@ -49,6 +55,12 @@ function outfitFullBody(classId, outfit) {
   </span>`;
 }
 
+function framePreview(classId, frame, extraClass = '') {
+  return `<span class="frame-preview${extraClass ? ` ${extraClass}` : ''}" aria-hidden="true">
+    <img class="frame-preview-bg" src="${heroBackgroundSource(frame.id, classId, 'hero', { frames: { owned: { [frame.id]: true } } })}" alt="">
+  </span>`;
+}
+
 function outfitCardMarkup(lootState) {
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
@@ -65,33 +77,58 @@ function outfitCardMarkup(lootState) {
 export function renderOutfitSelector(document, lootState, selectedOutfitId = null, options = {}) {
   const body = document.getElementById('outfitSelectorBody');
   if (!body) return 'original';
-  const section = options.section === 'weave' ? 'weave' : 'owned';
+  const section = ['weave', 'frames'].includes(options.section) ? options.section : 'owned';
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
+  const equippedFrameDefinition = equippedFrame(lootState?.game?.frame, lootState?.game);
   const ownedOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isOutfitUnlocked(outfit, lootState?.game));
   const craftableOutfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.craftable && outfit.recipe);
-  const requested = OUTFIT_DEFINITIONS.find((outfit) => (
-    outfit.id === selectedOutfitId && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
-  ));
+  const ownedFrames = FRAME_DEFINITIONS.filter((frame) => isFrameUnlocked(frame, lootState?.game));
+  const requested = section === 'frames'
+    ? FRAME_DEFINITIONS.find((frame) => frame.id === selectedOutfitId && isFrameUnlocked(frame, lootState?.game))
+    : OUTFIT_DEFINITIONS.find((outfit) => (
+      outfit.id === selectedOutfitId && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
+    ));
   const selected = requested || null;
-  const recipe = selected?.recipe;
-  const alreadyOwned = selected ? isOutfitUnlocked(selected, lootState?.game) : false;
+  const recipe = section === 'weave' ? selected?.recipe : null;
+  const alreadyOwned = section === 'weave' && selected ? isOutfitUnlocked(selected, lootState?.game) : false;
   const hasResources = recipe && Number(lootState?.economy?.coins || 0) >= recipe.coins
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   const selectorModal = body.closest?.('.outfit-selector-modal');
   selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected);
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
+  const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
   body.innerHTML = `
     <div class="outfit-modal-tabs" role="tablist" aria-label="Secciones de outfits">
       <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Colección</button>
       <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">Tejer nuevos</button>
+      <button type="button" role="tab" data-outfit-section="frames" aria-selected="${section === 'frames'}" class="${section === 'frames' ? 'active' : ''}">Fondos</button>
     </div>
     <div class="outfit-selector-scroll-content">
-    <div class="outfit-weave-resources" aria-label="Tus recursos">
+    ${section === 'frames' ? '' : `<div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
-    </div>
-    ${section === 'owned' ? (selected ? `
+    </div>`}
+    ${section === 'frames' ? (selected ? `
+      <div class="outfit-owned-view frame-owned-view">
+        <div class="outfit-owned-preview frame-owned-preview">
+          <div class="frame-option selected${selected.id === equippedFrameDefinition.id ? ' equipped' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equippedFrameDefinition.id ? ', equipado' : ''}">
+            ${framePreview(classId, selected, 'frame-preview--large')}
+          </div>
+        </div>
+        <section class="outfit-weave-detail outfit-owned-detail">
+          <h4>${escapeHtml(selected.name)}</h4>
+          <p>${escapeHtml(selected.lore)}</p>
+          <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
+          <button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
+        </section>
+      </div>` : `
+      <div class="frame-selector-grid" role="listbox" aria-label="Colección de fondos">
+        ${ownedFrames.map((frame) => `<button type="button" class="frame-option${frame.id === equippedFrameDefinition.id ? ' equipped' : ''}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${frame.id === equippedFrameDefinition.id ? ', equipado' : ''}">
+          ${framePreview(classId, frame)}
+        </button>`).join('')}
+        ${Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')}
+      </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
         <div class="outfit-owned-preview">
           <div class="outfit-option selected${selected.id === equipped.id ? ' equipped' : ''}${selected.provisional ? ' outfit-option--arcane' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equipped.id ? ', equipado' : ''}">

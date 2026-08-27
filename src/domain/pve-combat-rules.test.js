@@ -3,6 +3,7 @@ import {
   BRUMA_ENEMIES,
   fiberChanceForHunt,
   grantHabitHuntEnergy,
+  grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
   normalizeHuntState,
   pveHeroStats,
@@ -124,6 +125,16 @@ describe('PvE combat rules', () => {
     expect(started.hunt).toMatchObject({ energy: 5, baseEnergy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
   });
 
+  it('mantiene la energía de un regalo hasta que el jugador la consume', () => {
+    const firstDay = new Date(2026, 7, 26, 12).getTime();
+    const rewarded = grantRewardHuntEnergy({ hunt: null, amount: 2, nowTimestamp: firstDay });
+    expect(rewarded.hunt).toMatchObject({ energy: 7, baseEnergy: 5, rewardEnergyRemaining: 2 });
+    const nextDay = normalizeHuntState(rewarded.hunt, new Date(2026, 7, 27, 12).getTime());
+    expect(nextDay).toMatchObject({ energy: 7, baseEnergy: 5, rewardEnergyRemaining: 2 });
+    const started = startHunt({ hunt: nextDay, difficultyId: 'medium', level: 7, nowTimestamp: new Date(2026, 7, 27, 13).getTime() });
+    expect(started.hunt).toMatchObject({ energy: 5, rewardEnergyRemaining: 0 });
+  });
+
   it('migra una carga extra del formato anterior sin convertirla en capacidad permanente', () => {
     const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
     const migrated = normalizeHuntState({
@@ -211,7 +222,7 @@ describe('PvE combat rules', () => {
   it('admite una recarga diaria penalizada de dos energías', () => {
     const nextDay = new Date(2026, 0, 2, 12).getTime();
     const normalized = normalizeHuntState({ energyDay: '2026-01-01', energy: 0 }, nextDay, 2);
-    expect(normalized).toMatchObject({ energy: 2, baseEnergy: 2, bonusEnergyEarned: 0 });
+    expect(normalized).toMatchObject({ energy: 2, baseEnergy: 5, bonusEnergyEarned: 0 });
   });
 
   it('resuelve el trío fijo y produce un informe persistible', () => {

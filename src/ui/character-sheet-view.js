@@ -63,7 +63,7 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
         ${equippedRelicMarkup(state, equipped[1], 1)}
       </div>
       <div class="character-hero-art${heroModel?.intoxication?.level > 0 ? ' hero-card--intoxicated' : ''}">
-        ${heroVisualMarkup({classId:game.cls,mood:heroModel?.mood||'happy',outfitId:outfit.id,progress:stats.prog,level:stats.lvl,intoxication:heroModel?.intoxication,interactive:false})}
+        ${heroVisualMarkup({classId:game.cls,mood:heroModel?.mood||'happy',outfitId:outfit.id,frameId:game.frame,game,progress:stats.prog,level:stats.lvl,intoxication:heroModel?.intoxication,interactive:false})}
         ${heroIntoxicationBadgeMarkup(heroModel?.intoxication)}
         <button type="button" class="character-outfit-trigger" data-character-outfit aria-label="Cambiar outfit. Actual: ${outfit.name}"></button>
       </div>

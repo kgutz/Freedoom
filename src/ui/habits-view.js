@@ -6,6 +6,7 @@ import {
   heroSpriteSource,
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
+import { heroBackgroundSource } from '../data/frame-data.js';
 import { resourceIcon } from './resource-icons.js';
 import { normalizeTodoState, sortTodos, todoReward } from '../domain/todo-rules.js';
 import {
@@ -61,7 +62,7 @@ export function markedHabitIdsForGame(game, date = new Date()) {
   return marked;
 }
 
-export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, limitLabel = '', backgroundSrc = 'backgrounds/habits_training_bg.png', variantClass = '' }) {
+export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, limitLabel = '', backgroundSrc = null, variantClass = '' }) {
   const classId = game?.cls || 'knight';
   const className = CLASSES[classId]?.name || 'Héroe';
   const level = stats?.lvl || 1;
@@ -75,8 +76,14 @@ export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, li
   const outfitPortraitClass = outfitUsesTransparentPortrait(game?.outfit)
     ? ` outfit-transparent-portrait outfit-id-${game?.outfit || 'original'}`
     : '';
+  const resolvedBackgroundSrc = backgroundSrc || heroBackgroundSource(
+    game?.frame,
+    classId,
+    'habits',
+    game,
+  );
   return `<div class="habit-hero-card${intoxicationStageValue > 0 ? ' hero-card--intoxicated' : ''}${variantClass ? ` ${escapeHtml(variantClass)}` : ''}" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
-      <img class="habit-hero-bg" src="${escapeHtml(backgroundSrc)}" alt="" aria-hidden="true">
+      <img class="habit-hero-bg" src="${escapeHtml(resolvedBackgroundSrc)}" alt="" aria-hidden="true">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
       <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
       <div class="habit-hero-info">

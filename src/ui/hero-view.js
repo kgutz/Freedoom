@@ -23,6 +23,7 @@ import {
   ultimateSpellAvailability,
 } from '../domain/spell-rules.js';
 import { heroSpriteSource } from '../data/outfit-data.js';
+import { heroBackgroundSource } from '../data/frame-data.js';
 import { resourceValue } from './inventory-view.js';
 
 function clamp(value, min, max) {
@@ -134,6 +135,8 @@ export function heroVisualMarkup({
   classId,
   mood = 'happy',
   outfitId = 'original',
+  frameId = 'original',
+  game = {},
   progress = 0,
   level = 1,
   levelUp = false,
@@ -154,7 +157,7 @@ export function heroVisualMarkup({
     ? ` data-open-character-sheet data-xp-progress="${energy.percent}" data-xp-energy="${energy.energyPercent}" role="button" tabindex="0" aria-label="Abrir ficha de personaje"`
     : ' aria-label="Vista animada del héroe"';
   return `<div class="sprite-box ${energyView.classes}${intoxicated ? ` sprite-box--intoxicated intoxication-stage-${intoxicationStageValue}` : ''}" style="${energyView.style}"${interaction}>
-    <img class="sprite-bg" src="hero_background/${classId}_bg.png" alt="">
+    <img class="sprite-bg" src="${heroBackgroundSource(frameId, classId, 'hero', game)}" alt="">
     ${energyView.markup}
     ${spriteImage(classId, mood, '', outfitId)}
     ${sleeping}${intoxicationParticles}
@@ -628,7 +631,7 @@ export function renderHeroView({
     <div class="card">
       <div class="hero-top${chipsHtml ? ' hero-top--with-effects' : ''}">
         <div class="hero-visual-column">
-          ${heroVisualMarkup({classId,mood:model.mood,outfitId:game?.outfit,progress:heroStats.prog,level:heroStats.lvl,levelUp,intoxication:model.intoxication})}
+          ${heroVisualMarkup({classId,mood:model.mood,outfitId:game?.outfit,frameId:game?.frame,game,progress:heroStats.prog,level:heroStats.lvl,levelUp,intoxication:model.intoxication})}
           ${chipsHtml ? `<div class="hero-visual-effects">${chipsHtml}</div>` : ''}
         </div>
         <div class="hero-id">
