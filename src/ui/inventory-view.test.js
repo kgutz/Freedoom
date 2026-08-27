@@ -549,6 +549,8 @@ describe('interfaz de inventario y botín', () => {
 
     expect(renderForgeView(document, fused, null, { mode: 'defusion' })).toBe(null);
     expect(document.elements.forgeBody.innerHTML).toContain('aria-label="Elegir reliquia para desfusionar"');
+    expect(document.elements.forgeBody.innerHTML).toContain('forge-animated-slot--defusion');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('aria-label="Elegir reliquia para desfusionar">?</button>');
     renderForgeRelicPicker(document, fused, { mode: 'defusion', currentId: 'fusion_01' });
     expect(document.elements.forgeRelicPickerTitle.textContent).toBe('Elegir reliquia fusionada');
     expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('Corazón Espectral');

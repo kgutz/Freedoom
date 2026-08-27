@@ -239,7 +239,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.20';
+const APP_VERSION='2.21';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5192,6 +5192,8 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
     const kind=filter.dataset.pickerFilter;
     document.querySelectorAll('[data-picker-filter]').forEach(button=>button.classList.toggle('active',button===filter));
     document.querySelectorAll('[data-picker-kind]').forEach(item=>{item.hidden=kind!=='all'&&item.dataset.pickerKind!==kind;});
+    const visibleRelics=[...document.querySelectorAll('[data-picker-kind]')].filter(item=>!item.hidden).length;
+    filter.closest('.forge-relic-picker-modal')?.classList.toggle('forge-relic-picker-modal--compact',visibleRelics<=6);
     return;
   }
   const choice=event.target.closest('[data-pick-forge-relic]');
