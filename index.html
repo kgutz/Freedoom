@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.09</div>
+  <div class="ob-version" id="obVersion">v2.10</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.png" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.09</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.10</span></p>
       </div>
     </div>
   </div>
@@ -546,13 +546,14 @@
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Colección, Forja y Tienda">
-      <button type="button" class="active" id="collectionTab" role="tab" aria-selected="true">Colección</button>
+    <div class="inventory-tabs" role="tablist" aria-label="Bolso, Colección, Forja y Tienda">
+      <button type="button" class="active" id="bagTab" role="tab" aria-selected="true">Bolso</button>
+      <button type="button" id="collectionTab" role="tab" aria-selected="false">Colección</button>
       <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>
       <button type="button" id="shopTab" role="tab" aria-selected="false">Tienda</button>
     </div>
-    <div id="inventoryBody" hidden></div>
-    <div id="collectionBody"></div>
+    <div id="inventoryBody"></div>
+    <div id="collectionBody" hidden></div>
     <div id="forgeBody" hidden></div>
     <div id="shopBody" hidden></div>
   </div>

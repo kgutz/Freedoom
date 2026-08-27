@@ -43,11 +43,6 @@ describe('interfaz de inventario y botín', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
     state.game = { cls: 'sorcerer', outfit: 'original' };
-    renderInventoryView(document, state);
-    expect(document.elements.inventoryBody.innerHTML).toContain('OUTFITS');
-    expect(document.elements.inventoryBody.innerHTML).toContain('Atuendo Original');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('<small>EQUIPADO</small>');
-    expect(document.elements.inventoryBody.innerHTML).toContain('hero_face/sorcerer_face.png');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBeNull();
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Colección');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-collection-empty/g)).toHaveLength(2);
@@ -81,9 +76,6 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('<small>DISPONIBLE</small>');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
     state.game.outfit = 'beta-tester';
-    renderInventoryView(document, state);
-    expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--outfit-beta-tester');
-    expect(document.elements.inventoryBody.innerHTML).toContain('outfit-portrait--sorcerer');
 
     expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBeNull();
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
@@ -174,39 +166,40 @@ describe('interfaz de inventario y botín', () => {
     expect(resourceIcon('coin')).not.toContain('<img');
   });
 
-  it('muestra recursos y las seis reliquias poseídas sin duplicar las ranuras activas', () => {
+  it('muestra recursos y pociones compradas en el Bolso sin mezclar reliquias', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
+    state.inventory.potions = { owned: { fortune: 2, life: 1 } };
     renderInventoryView(document, state);
     renderCollectionView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('650');
-    expect(document.elements.inventoryBody.innerHTML).toContain('<span>INVENTARIO</span><small>6</small>');
-    expect(document.elements.inventoryBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
+    expect(document.elements.inventoryBody.innerHTML).toContain('<span>POCIONES</span><small>3</small>');
+    expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="fortune"');
+    expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="life"');
+    expect(document.elements.inventoryBody.innerHTML).toContain('potion-inventory-quantity">x2');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('data-open-relic');
     expect(document.elements.collectionBody.innerHTML).toContain('<small>6/?</small>');
     expect(document.elements.collectionBody.innerHTML).toContain('aria-label="Filtrar colección"');
     expect(document.elements.collectionBody.innerHTML).toContain('FUSIONADAS');
     expect(document.elements.collectionBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
     expect(inventoryAccessMarkup(state)).toContain('INVENTARIO Y FORJA');
     expect(inventoryAccessMarkup(state)).not.toContain('6 reliquias');
-    expect(document.elements.inventoryBody.innerHTML).toContain('Corazón de Hollín');
-    expect(document.elements.inventoryBody.innerHTML).toContain('Lágrima de Espectro');
-    expect(document.elements.inventoryBody.innerHTML).toContain('relic_04_yelmo_ultima_brasa.png');
-    expect(document.elements.inventoryBody.innerHTML).toContain('relic_06_colmillo_nicotina.png');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('RELIQUIAS ACTIVAS');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('data-open-equip-picker');
+    expect(document.elements.inventoryBody.innerHTML).toContain('Recursos del bolso');
+    expect(document.elements.inventoryBody.innerHTML).toContain('FIBRAS ARCANAS');
   });
 
-  it('distingue visual y semánticamente una reliquia equipada dentro del inventario', () => {
+  it('distingue visual y semánticamente una reliquia equipada dentro de la colección', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
     state.inventory.equipped = ['relic_02'];
     state.inventory.relics.relic_02.rarity = 'mythic';
-    renderInventoryView(document, state);
-    const html = document.elements.inventoryBody.innerHTML;
+    state.inventory.collection.relic_02.lastOwnedRecord.rarity = 'mythic';
+    renderCollectionView(document, state);
+    const html = document.elements.collectionBody.innerHTML;
     expect(html).toContain('aria-label="Lágrima de Espectro, MÍTICO, rango 1, Equipada"');
     expect(html).not.toContain('data-double-tap-unequip="relic_02"');
     expect(html).not.toContain('RELIQUIAS ACTIVAS');
-    expect(html).toContain('<span>INVENTARIO</span><small>3</small>');
+    expect(html).toContain('<span>COLECCIÓN</span><small>3/?</small>');
     const collectionHtml = html.slice(html.indexOf('<div class="relic-grid">'));
     expect(collectionHtml).not.toContain('relic-card-copy');
     expect(collectionHtml).not.toContain('relic-card-meta');
@@ -290,8 +283,9 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.equipped = ['relic_04', 'relic_01'];
     state.inventory.relics.relic_04.rarity = 'mythic';
     state.inventory.constancy = { cycleId: 'week-3:boss-3', charge: 2 };
-    renderInventoryView(document, state);
-    const html = document.elements.inventoryBody.innerHTML;
+    state.inventory.collection.relic_04.lastOwnedRecord.rarity = 'mythic';
+    renderCollectionView(document, state);
+    const html = document.elements.collectionBody.innerHTML;
     expect(html).not.toContain('relic-charge-indicator');
     expect(html).toContain('rarity-mythic');
   });
@@ -445,10 +439,8 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('relic-art--fusion');
     expect(html).toContain('relic-collection-unknown');
     expect(inventoryHtml).not.toContain('data-open-relic="relic_01"');
-    expect(inventoryHtml).toContain('data-open-relic="fusion_01"');
-    expect(inventoryHtml).toContain('fusion-relic');
-    expect(inventoryHtml).toContain('data-relic-kind="fusion"');
-    expect(inventoryHtml).toContain('relic-art--fusion');
+    expect(inventoryHtml).not.toContain('data-open-relic="fusion_01"');
+    expect(inventoryHtml).toContain('<span>POCIONES</span>');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     const detail = document.elements.relicDetailBody.innerHTML;
     expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8% del Maná máximo.');

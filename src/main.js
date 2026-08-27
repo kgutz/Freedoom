@@ -2171,8 +2171,9 @@ function positionInventorySheetFromForge(){
   }
 }
 function showInventoryPanel(panel='inventory',scrollToEquipped=false){
-  if(panel==='inventory') panel='collection';
+  if(panel==='inventory') panel='bag';
   if(panel!=='forge') clearFusionFeedback();
+  const bagSelected=panel==='bag';
   const collectionSelected=panel==='collection';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
@@ -2180,20 +2181,25 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const collectionBody=document.getElementById('collectionBody');
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
+  const bagTab=document.getElementById('bagTab');
   const collectionTab=document.getElementById('collectionTab');
   const forgeTab=document.getElementById('forgeTab');
   const shopTab=document.getElementById('shopTab');
-  inventoryBody.hidden=true;
+  inventoryBody.hidden=!bagSelected;
   collectionBody.hidden=!collectionSelected;
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
+  bagTab.classList.toggle('active',bagSelected);
   collectionTab.classList.toggle('active',collectionSelected);
   forgeTab.classList.toggle('active',forgeSelected);
   shopTab.classList.toggle('active',shopSelected);
+  bagTab.setAttribute('aria-selected',String(bagSelected));
   collectionTab.setAttribute('aria-selected',String(collectionSelected));
   forgeTab.setAttribute('aria-selected',String(forgeSelected));
   shopTab.setAttribute('aria-selected',String(shopSelected));
-  if(collectionSelected){
+  if(bagSelected){
+    renderInventoryView(document,state,potionViewOptions());
+  }else if(collectionSelected){
     renderCollectionView(document,state);
   }else if(forgeSelected){
     selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
@@ -2205,20 +2211,20 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   }
   positionInventorySheetFromForge();
 }
-function openInventory(){
+function openInventory(panel='bag'){
   selectedForgeRelicId=null;
   fusionLeftId=null;
   fusionRightId=null;
   clearFusionFeedback();
   forgePickerTarget=null;
-  const collectionBody=document.getElementById('collectionBody');
-  if(collectionBody) collectionBody.scrollTop=0;
-  showInventoryPanel('collection');
+  const targetBody=document.getElementById(panel==='collection'?'collectionBody':'inventoryBody');
+  if(targetBody) targetBody.scrollTop=0;
+  showInventoryPanel(panel);
   showSheet(document,'sheetInventory');
   positionInventorySheetFromForge();
   requestAnimationFrame(()=>{
-    const refreshedCollectionBody=document.getElementById('collectionBody');
-    if(refreshedCollectionBody) refreshedCollectionBody.scrollTop=0;
+    const refreshedBody=document.getElementById(panel==='collection'?'collectionBody':'inventoryBody');
+    if(refreshedBody) refreshedBody.scrollTop=0;
   });
 }
 
@@ -2276,7 +2282,7 @@ function unequipInventoryRelic(relicId){
   scheduleSave({type:'loot:unequip',relicId});
   document.getElementById('sheetRelicDetail').classList.remove('show');
   showSheet(document,'sheetInventory');
-  showInventoryPanel('inventory',true); renderHero();
+  showInventoryPanel('collection',true); renderHero();
   showToast('Reliquia desequipada','heal');
   return true;
 }
@@ -4731,7 +4737,7 @@ function handlePotionPurchase(potionId,quantity=1){
   renderShopView(document,state,Date.now(),potionViewOptions());
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
-  showToast(quantity>1?`${quantity} pociones añadidas al Inventario`:'Poción añadida al Inventario','heal');
+  showToast(quantity>1?`${quantity} pociones añadidas al Bolso`:'Poción añadida al Bolso','heal');
   return true;
 }
 
@@ -4739,6 +4745,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
   }
+  if(event.target.closest('#bagTab')){ showInventoryPanel('bag'); return; }
   if(event.target.closest('#collectionTab')){ showInventoryPanel('collection'); return; }
   if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
   if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
@@ -5128,7 +5135,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
     document.getElementById('sheetRelicDetail').classList.remove('show');
     showSheet(document,'sheetInventory');
-    showInventoryPanel('inventory',true); renderHero();
+    showInventoryPanel('collection',true); renderHero();
     showToast('Reliquia equipada','heal');
     return;
   }
@@ -5399,7 +5406,7 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const inventory=event.target.closest('[data-loot-inventory]');
   const shop=event.target.closest('[data-loot-shop]');
   const keepGoing=event.target.closest('[data-loot-continue]');
-  if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); return; }
+  if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory('collection'); return; }
   if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); showInventoryPanel('shop'); return; }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
 });

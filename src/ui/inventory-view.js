@@ -448,32 +448,22 @@ export function inventoryAccessMarkup(lootState) {
 
 export function renderInventoryView(document, lootState, options = {}) {
   const normalized = normalizeLootState(lootState);
-  const equipped = normalized.inventory.equipped;
-  const inventory = ALL_RELIC_DEFINITIONS
-    .filter((definition) => normalized.inventory.relics[definition.id])
-    .map((definition) => relicCollectionItemMarkup({
-      definition,
-      relic: normalized.inventory.relics[definition.id],
-      equipped: equipped.includes(definition.id),
-    }))
-    .join('');
+  const potions = normalizePotionState(normalized.inventory.potions);
+  const ownedPotionCount = Object.values(potions.owned)
+    .reduce((total, quantity) => total + Math.max(0, Number(quantity) || 0), 0);
+  const potionItems = inventoryPotionItemsMarkup(normalized, options);
   const body = document.getElementById('inventoryBody');
   if (!body) return;
   body.innerHTML = `
-    <section class="inventory-resources">
+    <section class="inventory-resources bag-resources" aria-label="Recursos del bolso">
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
-      ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
+      ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS ARCANAS')}
     </section>
-    ${outfitCardMarkup(lootState)}
-    <section class="inventory-section">
-      <div class="inventory-section-head"><span>INVENTARIO</span><small>${Object.keys(normalized.inventory.relics).length}</small></div>
-      <div class="relic-kind-filters" role="group" aria-label="Filtrar reliquias">
-        <button type="button" class="active" data-relic-filter="all" aria-pressed="true">TODAS</button>
-        <button type="button" data-relic-filter="normal" aria-pressed="false">NORMALES</button>
-        <button type="button" data-relic-filter="fusion" aria-pressed="false">FUSIONADAS</button>
-      </div>
-      <div class="relic-grid">${inventoryPotionItemsMarkup(normalized, options)}${inventory || '<div class="inventory-empty">No tienes reliquias disponibles.</div>'}</div>
+    <section class="inventory-section bag-potions-section">
+      <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
+      <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
+      <div class="relic-grid bag-potion-grid">${potionItems || '<div class="inventory-empty bag-empty">Tu bolso no tiene pociones. Puedes conseguirlas en la Tienda.</div>'}</div>
     </section>`;
 }
 
