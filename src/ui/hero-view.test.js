@@ -280,8 +280,30 @@ describe('modelo de Héroe', () => {
       },
     } };
     expect(activeSpellStatus({
-      spellId: 'muro', game, nowTimestamp: now, today: '2026-07-26',
+      spellId: 'muro', spellLevel: 8, game, nowTimestamp: now, today: '2026-07-26',
     })).toBe('1/2');
+  });
+
+  it('no propaga el contador del reto de nivel 8 a otras habilidades', () => {
+    const now = new Date(2026, 6, 26, 12).getTime();
+    const game = { powerProgress: {
+      habitChallenge: {
+        spellId: 'certero', habitIds: ['a', 'b'], completedIds: [], day: '2026-07-26',
+      },
+      challengeDayUses: {
+        '2026-07-26:level-8': { count: 1, lastUsedAt: now, lastCompletedAt: 0 },
+      },
+    } };
+
+    expect(activeSpellStatus({
+      spellId: 'luz', spellLevel: 2, game, nowTimestamp: now, today: '2026-07-26',
+    })).toBeNull();
+    expect(activeSpellStatus({
+      spellId: 'juicio', spellLevel: 14, game, nowTimestamp: now, today: '2026-07-26',
+    })).toBeNull();
+    expect(activeSpellStatus({
+      spellId: 'muro', spellLevel: 8, game, nowTimestamp: now, today: '2026-07-26',
+    })).toBe('0/2');
   });
 
   it('muestra el progreso de la ulti y la apaga al cobrarla',()=>{

@@ -255,6 +255,7 @@ function remainingMinutesLabel(until, nowTimestamp) {
 
 export function activeSpellStatus({
   spellId,
+  spellLevel = null,
   game,
   nowTimestamp,
   today,
@@ -262,14 +263,15 @@ export function activeSpellStatus({
 }) {
   const buffs = game?.buffs || {};
   const powers = game?.powerProgress || {};
-  if (powers.ultimateChallenge?.spellId === spellId) {
+  const canShowLevelEightChallenge = spellLevel == null || spellLevel === 8;
+  if (powers.ultimateChallenge?.spellId === spellId && spellLevel !== 8) {
     const ultimate = powers.ultimateChallenge;
     const completed = ultimate.completedIds?.length || 0;
     return ultimate.day === today && !ultimate.rewarded
       ? `${completed}/${ultimate.habitIds?.length || 3}`
       : null;
   }
-  if (powers.habitChallenge?.spellId === spellId) {
+  if (canShowLevelEightChallenge && powers.habitChallenge?.spellId === spellId) {
     const challenge = powers.habitChallenge;
     const completed = challenge.completedIds?.length || 0;
     const target = challenge.autoNextHabitCount || challenge.habitIds?.length || 2;
@@ -277,15 +279,17 @@ export function activeSpellStatus({
       return `${completed}/${target}`;
     }
   }
-  const levelEightUse = levelEightSpellAvailability({ game, spellId, today, nowTimestamp });
-  if (levelEightUse.challengeActive) {
-    const challenge = powers.habitChallenge;
-    const completed = challenge?.completedIds?.length || 0;
-    const target = challenge?.autoNextHabitCount || challenge?.habitIds?.length || 2;
-    return `${completed}/${target}`;
-  }
-  if (levelEightUse.count === 1 && levelEightUse.cooldownRemainingMs > 0) {
-    return `${Math.max(1, Math.ceil(levelEightUse.cooldownRemainingMs / 1000))}s`;
+  if (canShowLevelEightChallenge) {
+    const levelEightUse = levelEightSpellAvailability({ game, spellId, today, nowTimestamp });
+    if (levelEightUse.challengeActive) {
+      const challenge = powers.habitChallenge;
+      const completed = challenge?.completedIds?.length || 0;
+      const target = challenge?.autoNextHabitCount || challenge?.habitIds?.length || 2;
+      return `${completed}/${target}`;
+    }
+    if (levelEightUse.count === 1 && levelEightUse.cooldownRemainingMs > 0) {
+      return `${Math.max(1, Math.ceil(levelEightUse.cooldownRemainingMs / 1000))}s`;
+    }
   }
   if (spellId === 'ceniza') return remainingMinutesLabel(buffs.cenizaUntil, nowTimestamp);
   if (spellId === 'regen') return remainingMinutesLabel(buffs.regenUntil, nowTimestamp);
@@ -491,6 +495,7 @@ export function renderHeroView({
       ? cooldownStatusLabel(cooldownUntil - now.getTime())
       : activeSpellStatus({
         spellId: ability.id,
+        spellLevel: ability.lvl,
         game,
         nowTimestamp: now.getTime(),
         today,
