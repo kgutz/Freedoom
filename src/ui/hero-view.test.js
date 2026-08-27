@@ -224,6 +224,46 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('hero-skill-used">HOY');
   });
 
+  it('muestra la ulti en cooldown hasta el siguiente día después de usarla', () => {
+    const now = new Date(2026, 6, 26, 12);
+    const heroContent = { innerHTML: '' };
+    const heroSkillsModalBody = { innerHTML: '' };
+    renderHeroView({
+      document: {
+        getElementById(id) {
+          if (id === 'heroContent') return heroContent;
+          if (id === 'heroSkillsModalBody') return heroSkillsModalBody;
+          return null;
+        },
+      },
+      ...base({
+        now,
+        dayKey: '2026-07-26',
+        config: { wakeTime: '07:00', startLimit: 20, dayStartTime: '04:00' },
+        game: {
+          ...base().game,
+          powerProgress: { ultimateDayUses: { '2026-07-26': 1 } },
+        },
+        stats: { ...base().stats, lvl: 15 },
+        boss: {
+          ...base().boss,
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+    });
+
+    expect(heroContent.innerHTML).toContain('data-cast="juicio"');
+    expect(heroContent.innerHTML).toContain('Juicio Divino · Enfriamiento 16h');
+    expect(heroContent.innerHTML).toContain('>16h</span>');
+    expect(heroContent.innerHTML).toContain('disabled');
+    expect(heroSkillsModalBody.innerHTML).toContain('skill-box on ulti spell-cooldown');
+  });
+
   it('apaga el reto completado y bloquea la habilidad tras dos usos diarios', () => {
     const now = new Date(2026, 6, 26, 12).getTime();
     const game = {

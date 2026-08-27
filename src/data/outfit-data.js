@@ -25,6 +25,16 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     lore: 'Dice la leyenda que un Beta Tester recorría Freedom reparando sus redes. Con cada señal y consejo, ayudaba a construir un mundo mejor conectado.',
     recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
   }),
+  Object.freeze({
+    id: 'arcane-weave-02',
+    name: 'Forjador del Crisol',
+    unlocked: false,
+    craftable: true,
+    assetId: 'welder-beta',
+    transparentPortrait: true,
+    lore: 'Cuenta la leyenda que un Beta Tester dominaba el fuego y el metal. Entre chispas y consejos, ayudó a templar un Freedom más resistente.',
+    recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
+  }),
 ]);
 
 function outfitDefinition(outfitId) {

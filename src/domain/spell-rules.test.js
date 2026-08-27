@@ -357,6 +357,7 @@ describe('curación y habilidades definitivas', () => {
         mp:30,
         powerProgress:{
           ultimateWeekUses:{3:1},
+          ultimateDayUses:{'2026-07-26':1},
           ultimateChallenge:{
             spellId:id,
             habitIds:['a','b','c'],
@@ -379,7 +380,7 @@ describe('curación y habilidades definitivas', () => {
     })).toMatchObject({ok:false,reason:'habits',requiredHabits:3});
   });
 
-  it('permite dos ultis por semana y exige completar la primera',()=>{
+  it('permite una ulti al día, mantiene dos por semana y exige completar la primera',()=>{
     const selectedSpell=spell('juicio',{
       lvl:14,cost:70,ulti:true,modern:true,habitChallenge:true,
     });
@@ -401,8 +402,16 @@ describe('curación y habilidades definitivas', () => {
     });
     expect(second.ok).toBe(true);
     expect(second.game.powerProgress.ultimateWeekUses[3]).toBe(2);
-    expect(cast(selectedSpell,{
+    expect(second.game.powerProgress.ultimateDayUses['2026-07-26']).toBe(1);
+    expect(cast(spell('renacer',{
+      lvl:14,cost:70,ulti:true,modern:true,habitChallenge:true,
+    }),{
       level:14,
+      game:{...second.game,mp:100},
+      selectedHabitIds:['d','e','f'],
+    })).toMatchObject({ok:false,reason:'ultimate-daily-used'});
+    expect(cast(selectedSpell,{
+      level:14,today:'2026-07-27',
       game:{...second.game,mp:100},
       selectedHabitIds:['d','e','f'],
     })).toMatchObject({ok:false,reason:'ultimate-used'});

@@ -158,4 +158,15 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(repeated.ok).toBe(false);
     expect(repeated.reason).toBe('owned');
   });
+
+  it('mantiene el mismo coste para Forjador del Crisol que para Operador del Nexo', () => {
+    const initial = stateWithGame();
+    initial.economy.coins = 80;
+    initial.economy.arcaneFibers = 5;
+    const result = weaveOutfit({ state: initial, outfitId: 'arcane-weave-02', operationId: 'weave-2', nowTimestamp: 30 });
+    expect(result.ok).toBe(true);
+    expect(result.economy.coins).toBe(0);
+    expect(result.economy.arcaneFibers).toBe(0);
+    expect(result.game.outfits.owned['arcane-weave-02'].source).toBe('woven');
+  });
 });

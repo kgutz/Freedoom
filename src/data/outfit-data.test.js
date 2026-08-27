@@ -32,4 +32,12 @@ describe('outfits de héroe', () => {
       .toBe('outfits/telecom-beta/knight_happy.webp');
     expect(outfitUsesTransparentPortrait('arcane-weave-01')).toBe(true);
   });
+
+  it('resuelve los recursos de soldadura del segundo outfit crafteable', () => {
+    expect(heroFaceSource('paladin', 'arcane-weave-02'))
+      .toBe('outfits/welder-beta/paladin_face.webp');
+    expect(heroSpriteSource('paladin', 'happy', 'arcane-weave-02'))
+      .toBe('outfits/welder-beta/paladin_happy.webp');
+    expect(outfitUsesTransparentPortrait('arcane-weave-02')).toBe(true);
+  });
 });

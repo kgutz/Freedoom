@@ -10,6 +10,7 @@ export const ULTIMATE_HABIT_GOLD = 4;
 export const ULTIMATE_COMPLETION_XP = 10;
 export const ULTIMATE_COMPLETION_GOLD = 8;
 export const ULTIMATE_WEEKLY_USES = 2;
+export const ULTIMATE_DAILY_USES = 1;
 const LEVEL_EIGHT_GLOBAL_USE_ID = 'level-8';
 const LEVEL_TWO_GLOBAL_COOLDOWN_ID = 'level-2';
 
@@ -25,10 +26,13 @@ export function ultimateHabitReward({ completedCount, target = 3 }) {
 export function ultimateSpellAvailability({ game, currentWeek, today }) {
   const progress = game?.powerProgress || {};
   const uses = Math.max(0, Number(progress.ultimateWeekUses?.[currentWeek]) || 0);
+  const dailyUses = Math.max(0, Number(progress.ultimateDayUses?.[today]) || 0);
   const active = progress.ultimateChallenge;
   return {
     uses,
+    dailyUses,
     exhausted: uses >= ULTIMATE_WEEKLY_USES,
+    dailyExhausted: dailyUses >= ULTIMATE_DAILY_USES,
     challengeActive: Boolean(
       active
       && active.week === currentWeek
@@ -172,9 +176,11 @@ export function castSpellEffect({
   if (level < spell.lvl) {
     return { ok: false, reason: 'level', requiredLevel: spell.lvl };
   }
-  if (spell.ulti && (spell.modern
-    ? ultimateSpellAvailability({ game, currentWeek, today }).exhausted
-    : game.ultiW === currentWeek)) {
+  if (spell.ulti && spell.modern) {
+    const availability = ultimateSpellAvailability({ game, currentWeek, today });
+    if (availability.dailyExhausted) return { ok: false, reason: 'ultimate-daily-used' };
+    if (availability.exhausted) return { ok: false, reason: 'ultimate-used' };
+  } else if (spell.ulti && game.ultiW === currentWeek) {
     return { ok: false, reason: 'ultimate-used' };
   }
   const progress = game.powerProgress || {};
@@ -250,6 +256,7 @@ export function castSpellEffect({
     challengeDayUses: { ...(game.powerProgress?.challengeDayUses || {}) },
     spellCooldowns: { ...(game.powerProgress?.spellCooldowns || {}) },
     ultimateWeekUses: { ...(game.powerProgress?.ultimateWeekUses || {}) },
+    ultimateDayUses: { ...(game.powerProgress?.ultimateDayUses || {}) },
   };
 
   if (spell.modern && spell.hpCost) {
@@ -264,6 +271,8 @@ export function castSpellEffect({
     nextGame.mp = mana - effectiveCost;
     nextGame.powerProgress.ultimateWeekUses[currentWeek] =
       (Number(nextGame.powerProgress.ultimateWeekUses[currentWeek]) || 0) + 1;
+    nextGame.powerProgress.ultimateDayUses[today] =
+      (Number(nextGame.powerProgress.ultimateDayUses[today]) || 0) + 1;
     nextGame.powerProgress.ultimateChallenge = {
       spellId: spell.id,
       habitIds: [...new Set(selectedHabitIds)].slice(0, 3),

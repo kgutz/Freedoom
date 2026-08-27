@@ -361,7 +361,7 @@ export function renderTodayView({
     todayHeroCard.querySelector('.hero-intoxication-badge')?.remove();
   }
   if (heroFace) {
-    heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01');
+    heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01', 'outfit-id-arcane-weave-02');
     heroFace.classList.add(`outfit-id-${game?.outfit || 'original'}`);
     heroFace.classList.toggle(
       'outfit-transparent-portrait',

@@ -482,9 +482,14 @@ export function renderHeroView({
     const levelTwoAvailability = ability.lvl === 2 && !ability.ulti
       ? levelTwoSpellAvailability({ game, spellId: ability.id, nowTimestamp: now.getTime() })
       : null;
+    const ultimateAvailability = ability.ulti && ability.modern
+      ? ultimateSpellAvailability({ game, currentWeek, today })
+      : null;
     let cooldownUntil = 0;
     if (levelTwoAvailability?.cooldownRemainingMs > 0) {
       cooldownUntil = levelTwoAvailability.cooldownUntil;
+    } else if (ultimateAvailability?.dailyExhausted) {
+      cooldownUntil = nextLogicalDayStart(now, config.dayStartTime || '04:00');
     } else if (levelEightAvailability?.exhausted) {
       cooldownUntil = nextLogicalDayStart(now, config.dayStartTime || '04:00');
     } else if (levelEightAvailability?.cooldownRemainingMs > 0) {

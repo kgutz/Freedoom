@@ -1953,6 +1953,9 @@ function castSpell(id,options={}){
   }
   if(sp.ulti&&sp.modern){
     const availability=ultimateSpellAvailability({game:g,currentWeek:w,today:spellDayKey});
+    if(availability.dailyExhausted){
+      return;
+    }
     if(availability.exhausted){
       openUsedSkillModal(sp,{weekly:true,message:'Ya usaste esta definitiva dos veces esta semana. Volverá a activarse al comenzar la próxima semana.'});
       return;
@@ -2014,6 +2017,7 @@ function castSpell(id,options={}){
   });
   if(!result.ok){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
+    else if(result.reason==='ultimate-daily-used') return;
     else if(result.reason==='ultimate-used') showToast(sp.modern?'Ya usada dos veces esta semana':'Ya usada esta semana','dmg');
     else if(result.reason==='ultimate-active') showToast('Completa primero el reto de la definitiva activa','dmg');
     else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó dos veces hoy','dmg');
