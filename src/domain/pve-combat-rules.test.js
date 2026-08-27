@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { relicCombatBonus } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
   fiberChanceForHunt,
@@ -12,6 +13,7 @@ import {
   revokeHabitHuntEnergy,
   simulatePveCombat,
   startHunt,
+  syncHabitSetHuntEnergy,
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
@@ -22,6 +24,26 @@ describe('PvE combat rules', () => {
     expect(hero.magicAttack).toBe(10);
     expect(hero.criticalChance).toBeCloseTo(0.06);
     expect(hero.dodgeChance).toBeCloseTo(0.01);
+  });
+
+  it('suma a la cacería el ataque, poder y defensa de las reliquias equipadas', () => {
+    const base = pveHeroStats({ classId: 'knight', level: 2, allocation: {} });
+    const boosted = pveHeroStats({
+      classId: 'knight', level: 2, allocation: {},
+      relicBonuses: { physicalAttack: 2, magicAttack: 3, defense: 1 },
+    });
+    expect(boosted.physicalAttack).toBe(base.physicalAttack + 2);
+    expect(boosted.magicAttack).toBe(base.magicAttack + 3);
+    expect(boosted.defense).toBe(base.defense + 1);
+  });
+
+  it('escala la estadística de reliquia con el jefe y con su rango', () => {
+    expect(relicCombatBonus('relic_01', 1)).toEqual({ stat: 'defense', value: 1 });
+    expect(relicCombatBonus('relic_04', 1)).toEqual({ stat: 'defense', value: 2 });
+    expect(relicCombatBonus('relic_07', 1)).toEqual({ stat: 'magicAttack', value: 3 });
+    expect(relicCombatBonus('relic_12', 1)).toEqual({ stat: 'physicalAttack', value: 4 });
+    expect(relicCombatBonus('relic_12', 3)).toEqual({ stat: 'physicalAttack', value: 6 });
+    expect(relicCombatBonus('fusion_08', 1)).toEqual({ stat: 'magicAttack', value: 3 });
   });
 
   it('aplica defensa y crítico con un mínimo de un punto de daño', () => {
@@ -156,6 +178,38 @@ describe('PvE combat rules', () => {
     expect(nextDay).toMatchObject({ energy: 7, baseEnergy: 5, rewardEnergyRemaining: 2 });
     const started = startHunt({ hunt: nextDay, difficultyId: 'medium', level: 7, nowTimestamp: new Date(2026, 7, 27, 13).getTime() });
     expect(started.hunt).toMatchObject({ energy: 5, rewardEnergyRemaining: 0 });
+  });
+
+  it('premia las listas completas y limita la energía acumulada a diez', () => {
+    const daily = syncHabitSetHuntEnergy({
+      hunt: null, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
+    });
+    expect(daily).toMatchObject({ granted: 1, revoked: 0 });
+    expect(daily.hunt.energy).toBe(6);
+    const weekly = syncHabitSetHuntEnergy({
+      hunt: daily.hunt, rewardKey: 'weekly:2026-W35', amount: 2, allCompleted: true,
+    });
+    expect(weekly.granted).toBe(2);
+    expect(weekly.hunt.energy).toBe(8);
+    const capped = grantRewardHuntEnergy({ hunt: weekly.hunt, amount: 9 });
+    expect(capped.granted).toBe(2);
+    expect(capped.hunt.energy).toBe(10);
+  });
+
+  it('retira el premio de lista completa si se deshace antes de gastarlo', () => {
+    const rewarded = syncHabitSetHuntEnergy({
+      hunt: null, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
+    });
+    const revoked = syncHabitSetHuntEnergy({
+      hunt: rewarded.hunt, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: false,
+    });
+    expect(revoked.revoked).toBe(1);
+    expect(revoked.hunt.energy).toBe(5);
+    const restored = syncHabitSetHuntEnergy({
+      hunt: revoked.hunt, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
+    });
+    expect(restored.granted).toBe(1);
+    expect(restored.hunt.energy).toBe(6);
   });
 
   it('migra una carga extra del formato anterior sin convertirla en capacidad permanente', () => {

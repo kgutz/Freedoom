@@ -6,6 +6,7 @@ import {
   awardFusionAllHabitsXp,
   canActivateDailyRelic,
   deterministicRelicRoll,
+  defuseRelic,
   emptyLootState,
   ensureShopRotation,
   equipRelic,
@@ -14,6 +15,7 @@ import {
   forgePreview,
   forgeAttemptRoll,
   getForgeFusionPreview,
+  getDefusionPreview,
   grantBossRewards,
   markDailyRelicActivation,
   initializeForgeSeed,
@@ -234,14 +236,14 @@ describe('loot de bosses', () => {
     expect(acknowledged.economy.coins).toBe(160);
   });
 
-  it('aplica 70% de drop y 30% de fallo solo a victorias nuevas', () => {
+  it('aplica 60% de drop y 40% de fallo solo a victorias nuevas', () => {
     const obtained = grantBossRewards({
       state: emptyLootState(), bossesDown: 1, source: 'victory',
-      dropRandom: () => 0.699999, relicRandom: sequence(0.2), nowTimestamp: 10,
+      dropRandom: () => 0.599999, relicRandom: sequence(0.2), nowTimestamp: 10,
     });
     const failed = grantBossRewards({
       state: emptyLootState(), bossesDown: 1, source: 'victory',
-      dropRandom: () => 0.7, relicRandom: sequence(0.2), nowTimestamp: 10,
+      dropRandom: () => 0.6, relicRandom: sequence(0.2), nowTimestamp: 10,
     });
     expect(obtained.rewards[0].obtained).toBe(true);
     expect(obtained.loot.bossRelicOutcomes.boss_reward_01.status).toBe('obtained');
@@ -651,6 +653,9 @@ describe('equipamiento y bonus derivados', () => {
       manaRecoveryPercentBonus: 5,
       habitXpBonus: 1,
       fortune: 3,
+      magicAttack: 1,
+      physicalAttack: 1,
+      defense: 0,
     });
     raw.inventory.relics.relic_02.affixes = ['regeneration', 'arcane'];
     raw.inventory.relics.relic_03.affixes = ['vitality', 'fortune'];
@@ -787,6 +792,36 @@ describe('preview puro de Fusión', () => {
     expect(result.economy).toMatchObject({ coins: 400, bossBlood: 3 });
     expect(result.forge.fusion.history).toHaveLength(1);
     expect(result.economy.transactions.at(-1).id).toBe('fusion:after-preview');
+  });
+
+  it('desfusiona por 250 de oro y una Sangre conservando las reliquias originales', () => {
+    const fused = fuseRelics({
+      state: fusionState(), leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-before-defusion', randomValue: 0, nowTimestamp: 20,
+    });
+    const preview = getDefusionPreview(fused, 'fusion_01');
+    expect(preview).toMatchObject({ ok: true, coinCost: 250, bloodCost: 1 });
+    const result = defuseRelic({
+      state: fused, relicId: 'fusion_01', operationId: 'defusion-1', nowTimestamp: 30,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.economy).toMatchObject({ coins: 150, bossBlood: 2 });
+    expect(result.inventory.relics.fusion_01).toBeUndefined();
+    expect(result.inventory.relics.relic_01).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['vitality'] });
+    expect(result.inventory.relics.relic_02).toMatchObject({ rarity: 'legendary', rank: 1, affixes: ['arcane'] });
+    expect(result.forge.fusion.history.at(-1)).toMatchObject({ type: 'defusion', coinsSpent: 250, bossBloodSpent: 1 });
+    expect(result.economy.transactions.at(-1)).toMatchObject({ id: 'defusion:defusion-1', type: 'relic_defusion' });
+  });
+
+  it('no desfusiona si ya se posee una reliquia original', () => {
+    const fused = fuseRelics({
+      state: fusionState(), leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-owned-base', randomValue: 0, nowTimestamp: 20,
+    });
+    fused.inventory.relics.relic_01 = fused.inventory.collection.relic_01.lastOwnedRecord;
+    expect(getDefusionPreview(fused, 'fusion_01')).toMatchObject({
+      ok: false, reason: 'ingredient-owned', ingredientAlreadyOwned: 'relic_01',
+    });
   });
 });
 

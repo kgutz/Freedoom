@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fuseRelics, grantBossRewards } from '../domain/loot-rules.js';
 import {
+  defusionResultMarkup,
   fusionResultMarkup,
   forgeResultMarkup,
   closeForgeInfoOutside,
@@ -9,6 +10,7 @@ import {
   inventoryAccessMarkup,
   nextFusionSelection,
   renderCollectionView,
+  renderDefusionView,
   renderForgeView,
   renderForgeRelicPicker,
   renderFusionView,
@@ -80,7 +82,8 @@ describe('interfaz de inventario y botín', () => {
     expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBeNull();
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.webp');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/welder-beta/sorcerer_happy.webp');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfits/welder-beta/sorcerer_happy.webp');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Forjador del Crisol');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit');
     expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave' })).toBe('arcane-weave-01');
@@ -91,12 +94,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-01"');
-    expect(renderOutfitSelector(document, state, 'arcane-weave-02', { section: 'weave' })).toBe('arcane-weave-02');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Forjador del Crisol');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudó a templar un Freedom más resistente');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-02"');
+    expect(renderOutfitSelector(document, state, 'arcane-weave-02', { section: 'weave' })).toBeNull();
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Forjador del Crisol');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit="arcane-weave-02"');
   });
 
   it('permite seleccionar y equipar fondos desde una subsección propia de Outfits', () => {
@@ -515,6 +515,47 @@ describe('interfaz de inventario y botín', () => {
     expect(rewardsHtml.indexOf('data-loot-open-relic')).toBeLessThan(rewardsHtml.indexOf('de Sangre de Jefe'));
     expect(rewardsHtml.indexOf('de Sangre de Jefe')).toBeLessThan(rewardsHtml.indexOf(' de oro'));
     expect(rewardsHtml.indexOf(' de oro')).toBeLessThan(rewardsHtml.indexOf('loot-reward-empty'));
+  });
+
+  it('muestra Desfusionar, sus costes y las dos reliquias que se recuperan', () => {
+    const state = lootWithBosses(2);
+    state.economy.coins = 500;
+    state.economy.bossBlood = 5;
+    const fused = fuseRelics({
+      state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-defusion', randomValue: 0, nowTimestamp: 10,
+    });
+    const document = fakeDocument();
+    expect(renderForgeView(document, fused, 'fusion_01', { mode: 'defusion' })).toBe('fusion_01');
+    const html = document.elements.forgeBody.innerHTML;
+    expect(html).toContain('data-forge-mode="defusion"');
+    expect(html).toContain('Corazón Espectral');
+    expect(html).toContain('Corazón de Hollín');
+    expect(html).toContain('Lágrima de Espectro');
+    expect(html).toContain('data-defuse-relic="fusion_01"');
+    expect(html).toContain('data-open-forge-picker="defusion"');
+    expect(html).toContain('aria-label="Cambiar Corazón Espectral"');
+    expect(html).not.toContain('data-select-defusion-relic');
+    expect(html).not.toContain('defusion-relic-grid');
+    expect(html).toContain('resource-icon--coin');
+    expect(html).toContain('<b>250</b>');
+    expect(html).toContain('resource-icon--boss-blood');
+    expect(defusionResultMarkup({
+      restoredRelics: {
+        relic_01: fused.inventory.collection.relic_01.lastOwnedRecord,
+        relic_02: fused.inventory.collection.relic_02.lastOwnedRecord,
+      },
+      spentCoins: 250,
+      spentBossBlood: 1,
+    })).toContain('DESFUSIÓN COMPLETADA');
+
+    expect(renderForgeView(document, fused, null, { mode: 'defusion' })).toBe(null);
+    expect(document.elements.forgeBody.innerHTML).toContain('aria-label="Elegir reliquia para desfusionar"');
+    renderForgeRelicPicker(document, fused, { mode: 'defusion', currentId: 'fusion_01' });
+    expect(document.elements.forgeRelicPickerTitle.textContent).toBe('Elegir reliquia fusionada');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('Corazón Espectral');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).toContain('SELECCIONADA');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).not.toContain('Corazón de Hollín');
+    expect(document.elements.forgeRelicPickerBody.innerHTML).not.toContain('data-picker-filter');
   });
 
   it('muestra las Fibras Arcanas como cuarto objeto del botín del jefe', () => {

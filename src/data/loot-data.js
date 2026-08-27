@@ -16,7 +16,7 @@ export const BOSS_REWARDS = [
   { coins: 220, bossBlood: 5 },
   { coins: 235, bossBlood: 5 },
 ];
-export const RELIC_DROP_RATE = 0.7;
+export const RELIC_DROP_RATE = 0.6;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
 export const EARLY_VICTORY_COIN_BONUS = 25;
 export const EARLY_VICTORY_BLOOD_RATE = 0.1;
@@ -24,6 +24,8 @@ export const SHOP_ROTATION_DAYS = 3;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
 export const FUSION_COIN_COST = 100;
 export const FUSION_BLOOD_COST = 1;
+export const DEFUSION_COIN_COST = 250;
+export const DEFUSION_BLOOD_COST = 1;
 export const FUSION_SUCCESS_PROBABILITIES = Object.freeze([70, 85, 100]);
 
 export const CHARGE_MECHANICS = {
@@ -318,6 +320,23 @@ export const RELIC_RANK_EFFECTS = {
   relic_12: { 1: 5, 2: 8, 3: 12 },
 };
 
+export const RELIC_COMBAT_STATS_BY_EQUIPMENT_TYPE = Object.freeze({
+  heart: 'defense',
+  helmet: 'defense',
+  armor: 'defense',
+  dagger: 'physicalAttack',
+  fang: 'physicalAttack',
+  fist: 'physicalAttack',
+  spirit: 'magicAttack',
+  vessel: 'magicAttack',
+  collar: 'magicAttack',
+  eye: 'magicAttack',
+  skull: 'magicAttack',
+  choker: 'magicAttack',
+});
+
+export const RELIC_COMBAT_BONUS_BY_RANK = Object.freeze({ 1: 0, 2: 1, 3: 2 });
+
 export const FORGE_COSTS = { 2: 50, 3: 100 };
 export const FORGE_BLOOD_REQUIREMENTS = { 2: 1, 3: 2 };
 export const FORGE_PROBABILITIES = {
@@ -345,4 +364,24 @@ export function bossReward(bossIndex) {
 
 export function relicRankEffect(relicId, rank = 1) {
   return RELIC_RANK_EFFECTS[relicId]?.[Math.min(3, Math.max(1, rank))] || 0;
+}
+
+export function relicCombatBonus(relicId, rank = 1) {
+  const definition = relicDefinition(relicId);
+  const stat = RELIC_COMBAT_STATS_BY_EQUIPMENT_TYPE[definition?.equipmentType];
+  if (!stat) return { stat: null, value: 0 };
+  const safeRank = Math.min(3, Math.max(1, Math.trunc(Number(rank) || 1)));
+  const ingredientBossIndexes = Array.isArray(definition.ingredientIds)
+    ? definition.ingredientIds
+      .map((ingredientId) => relicDefinition(ingredientId)?.bossIndex)
+      .filter(Number.isFinite)
+    : [];
+  const bossIndex = Number.isFinite(definition.bossIndex)
+    ? definition.bossIndex
+    : Math.max(0, ...ingredientBossIndexes);
+  const progressionBonus = Math.min(4, Math.floor(bossIndex / 3) + 1);
+  return {
+    stat,
+    value: progressionBonus + RELIC_COMBAT_BONUS_BY_RANK[safeRank],
+  };
 }

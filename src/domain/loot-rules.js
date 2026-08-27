@@ -1,6 +1,8 @@
 import {
   AFFIX_DEFINITIONS,
   BOSS_BLOOD_DOUBLE_RATE,
+  DEFUSION_BLOOD_COST,
+  DEFUSION_COIN_COST,
   EARLY_VICTORY_BLOOD_RATE,
   EARLY_VICTORY_COIN_BONUS,
   FORTUNE_CAP,
@@ -25,6 +27,7 @@ import {
   fusionDefinition,
   isBaseRelic,
   relicDefinition,
+  relicCombatBonus,
   relicRankEffect,
 } from '../data/loot-data.js';
 import { emptyPotionState, normalizePotionState } from './potion-rules.js';
@@ -1167,6 +1170,109 @@ function relicProvidesConstancy(normalized, relicId) {
   return Boolean(relic && (relicId === 'relic_04' || Number(relic.inheritedEffects?.relic_04) > 0));
 }
 
+export function getDefusionPreview(lootState, relicId) {
+  const normalized = normalizeLootState(lootState);
+  const definition = fusionDefinition(relicId);
+  const relic = normalized.inventory.relics[relicId];
+  const ingredientIds = definition?.ingredientIds || [];
+  const ingredientAlreadyOwned = ingredientIds.find((id) => normalized.inventory.relics[id]);
+  let reason = null;
+  if (!definition || !relic) reason = 'missing-fusion';
+  else if (ingredientAlreadyOwned) reason = 'ingredient-owned';
+  else if (ingredientIds.some((id) => !relic.ingredientSnapshots?.[id])) reason = 'missing-snapshots';
+  else if (normalized.economy.coins < DEFUSION_COIN_COST) reason = 'coins';
+  else if (normalized.economy.bossBlood < DEFUSION_BLOOD_COST) reason = 'blood';
+  return {
+    ok: reason === null,
+    reason,
+    definition,
+    relic,
+    ingredientIds,
+    ingredientAlreadyOwned,
+    coinCost: DEFUSION_COIN_COST,
+    bloodCost: DEFUSION_BLOOD_COST,
+    coinsAvailable: normalized.economy.coins,
+    bloodAvailable: normalized.economy.bossBlood,
+  };
+}
+
+export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.now() }) {
+  const normalized = normalizeLootState(state);
+  if (!operationId) return { ...normalized, ok: false, reason: 'missing-operation' };
+  const transactionId = `defusion:${operationId}`;
+  if (normalized.economy.transactions.some((entry) => entry.id === transactionId)) {
+    return { ...normalized, ok: false, reason: 'duplicate-operation' };
+  }
+  const preview = getDefusionPreview(normalized, relicId);
+  if (!preview.ok) return { ...normalized, ok: false, ...preview };
+  const wasEquipped = normalized.inventory.equipped.includes(relicId);
+  const losesConstancy = wasEquipped && relicProvidesConstancy(normalized, relicId);
+  const restoredRelics = {};
+  preview.ingredientIds.forEach((ingredientId) => {
+    const snapshot = preview.relic.ingredientSnapshots[ingredientId];
+    const restored = normalizeRelicRecord(ingredientId, {
+      ...snapshot,
+      unlocked: true,
+      obtainedAt: nowTimestamp,
+    });
+    restoredRelics[ingredientId] = restored;
+    normalized.inventory.relics[ingredientId] = restored;
+    normalized.inventory.collection[ingredientId] = collectionEntry(
+      ingredientId,
+      normalized.inventory.collection[ingredientId],
+      restored,
+    );
+    normalized.inventory.collection[ingredientId].lastOwnedRecord = restored;
+  });
+  normalized.inventory.equipped = normalized.inventory.equipped.filter((id) => id !== relicId);
+  if (losesConstancy) {
+    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
+  }
+  delete normalized.inventory.relics[relicId];
+  normalized.inventory.collection[relicId] = collectionEntry(
+    relicId,
+    normalized.inventory.collection[relicId],
+    preview.relic,
+  );
+  normalized.inventory.collection[relicId].lastOwnedRecord = preview.relic;
+  normalized.economy.coins -= DEFUSION_COIN_COST;
+  normalized.economy.bossBlood -= DEFUSION_BLOOD_COST;
+  const historyEntry = {
+    id: transactionId,
+    operationId,
+    type: 'defusion',
+    recipeId: preview.definition.recipeId,
+    resultRelicId: relicId,
+    ingredientIds: [...preview.ingredientIds],
+    restoredRelics,
+    coinsSpent: DEFUSION_COIN_COST,
+    bossBloodSpent: DEFUSION_BLOOD_COST,
+    at: nowTimestamp,
+  };
+  normalized.forge.fusion.history.push(historyEntry);
+  normalized.forge.fusion.history = normalized.forge.fusion.history.slice(-FUSION_HISTORY_LIMIT);
+  normalized.economy.transactions.push({
+    id: transactionId,
+    operationId,
+    type: 'relic_defusion',
+    recipeId: preview.definition.recipeId,
+    relicId,
+    coins: -DEFUSION_COIN_COST,
+    bossBlood: -DEFUSION_BLOOD_COST,
+    at: nowTimestamp,
+  });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return {
+    ...normalized,
+    ok: true,
+    preview,
+    restoredRelics,
+    historyEntry,
+    spentCoins: DEFUSION_COIN_COST,
+    spentBossBlood: DEFUSION_BLOOD_COST,
+  };
+}
+
 function relicEffectFamilies(relicId) {
   const definition = relicDefinition(relicId);
   if (!definition) return [];
@@ -1309,12 +1415,17 @@ export function equippedRelicBonuses(lootState) {
     manaRecoveryPercentBonus: 0,
     habitXpBonus: 0,
     fortune: 0,
+    physicalAttack: 0,
+    magicAttack: 0,
+    defense: 0,
     rankEffects: {},
   };
   for (const relicId of normalized.inventory.equipped) {
     const relic = normalized.inventory.relics[relicId];
     if (!relic) continue;
     result.rankEffects[relicId] = relicRankEffect(relicId, relic.rank);
+    const combatBonus = relicCombatBonus(relicId, relic.rank);
+    if (combatBonus.stat) result[combatBonus.stat] += combatBonus.value;
     for (const affixId of relic.affixes) {
       const affix = AFFIX_DEFINITIONS[affixId];
       result.maxHpPercent += affix?.maxHpPercent || 0;

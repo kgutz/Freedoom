@@ -28,6 +28,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'arcane-weave-02',
     name: 'Forjador del Crisol',
+    released: false,
     unlocked: false,
     craftable: true,
     assetId: 'welder-beta',
@@ -38,7 +39,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
 ]);
 
 function outfitDefinition(outfitId) {
-  return OUTFIT_DEFINITIONS.find((outfit) => outfit.id === outfitId)
+  return OUTFIT_DEFINITIONS.find((outfit) => outfit.id === outfitId && outfit.released !== false)
     || OUTFIT_DEFINITIONS[0];
 }
 
@@ -47,6 +48,7 @@ export function isOutfitUnlocked(outfitOrId, game = {}) {
     ? OUTFIT_DEFINITIONS.find((candidate) => candidate.id === outfitOrId)
     : outfitOrId;
   if (!outfit) return false;
+  if (outfit.released === false) return false;
   if (outfit.id === 'original') return true;
   if (outfit.id === 'beta-tester') return Boolean(game?.pioneerReward?.claimedAt);
   if (game?.outfits?.owned?.[outfit.id]) return true;

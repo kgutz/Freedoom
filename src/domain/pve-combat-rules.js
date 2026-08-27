@@ -2,6 +2,7 @@ import { attributeSheet } from './attribute-rules.js';
 
 export const DAILY_HUNT_ENERGY = 5;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
+export const MAX_HUNT_ENERGY = 10;
 export const HUNT_VICTORY_RECOVERY = Object.freeze({
   hpPercent: 0.25,
   manaPercent: 0.15,
@@ -47,7 +48,11 @@ export function localHuntDayKey(timestamp = Date.now()) {
 export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEnergy = DAILY_HUNT_ENERGY) {
   const energyDay = localHuntDayKey(nowTimestamp);
   const sameDay = hunt?.energyDay === energyDay;
-  const rewardEnergyRemaining = safeInteger(hunt?.rewardEnergyRemaining);
+  const rewardEnergyRemaining = clamp(
+    safeInteger(hunt?.rewardEnergyRemaining),
+    0,
+    MAX_HUNT_ENERGY - DAILY_HUNT_ENERGY,
+  );
   const dailyRefillEnergy = clamp(
     safeInteger(dailyBaseEnergy) || DAILY_HUNT_ENERGY,
     1,
@@ -99,8 +104,8 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     : 0;
   const recoveredAvailableBonuses = Math.max(0, bonusEnergyRemaining - representedAvailableBonuses);
   const normalizedEnergy = sameDay
-    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, baseEnergy + bonusEnergyEarned + rewardEnergyRemaining)
-    : dailyRefillEnergy + rewardEnergyRemaining;
+    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, MAX_HUNT_ENERGY)
+    : clamp(dailyRefillEnergy + rewardEnergyRemaining, 0, MAX_HUNT_ENERGY);
   const activeGrantedRolls = rawHabitEnergyRolls.filter((entry) => entry?.granted && entry?.status !== 'revoked');
   const availableEntries = new Set([
     ...activeGrantedRolls.filter((entry) => entry?.status === 'available'),
@@ -112,6 +117,13 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     if (entry?.status === 'revoked') return { ...entry };
     return { ...entry, status: availableEntries.has(entry) ? 'available' : 'spent' };
   });
+  const completionEnergyRewards = Array.isArray(hunt?.completionEnergyRewards)
+    ? hunt.completionEnergyRewards.filter((entry) => entry?.key).slice(-120).map((entry) => ({
+      ...entry,
+      granted: safeInteger(entry.granted),
+      remaining: safeInteger(entry.remaining),
+    }))
+    : [];
   return {
     energyDay,
     baseEnergy,
@@ -120,6 +132,7 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     rewardEnergyRemaining,
     bonusEnergyLedgerVersion: 1,
     habitEnergyRolls,
+    completionEnergyRewards,
     energy: normalizedEnergy,
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
@@ -129,7 +142,7 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
 
 export function grantRewardHuntEnergy({ hunt, amount = 0, nowTimestamp = Date.now() }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
-  const granted = safeInteger(amount);
+  const granted = Math.min(safeInteger(amount), Math.max(0, MAX_HUNT_ENERGY - normalized.energy));
   if (!granted) return { granted: 0, hunt: normalized };
   return {
     granted,
@@ -137,6 +150,77 @@ export function grantRewardHuntEnergy({ hunt, amount = 0, nowTimestamp = Date.no
       ...normalized,
       energy: normalized.energy + granted,
       rewardEnergyRemaining: normalized.rewardEnergyRemaining + granted,
+    },
+  };
+}
+
+export function syncHabitSetHuntEnergy({
+  hunt,
+  rewardKey,
+  amount = 0,
+  allCompleted = false,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  if (!rewardKey) return { granted: 0, revoked: 0, hunt: normalized };
+  const previous = normalized.completionEnergyRewards.find((entry) => entry.key === rewardKey);
+  if (allCompleted) {
+    if (previous?.status === 'revoked' && safeInteger(previous.spent) === 0) {
+      const granted = Math.min(
+        safeInteger(previous.granted),
+        Math.max(0, MAX_HUNT_ENERGY - normalized.energy),
+      );
+      return {
+        granted,
+        revoked: 0,
+        hunt: {
+          ...normalized,
+          energy: normalized.energy + granted,
+          rewardEnergyRemaining: normalized.rewardEnergyRemaining + granted,
+          completionEnergyRewards: normalized.completionEnergyRewards.map((entry) => (
+            entry.key === rewardKey
+              ? { ...entry, remaining: granted, status: granted ? 'available' : 'capped' }
+              : entry
+          )),
+        },
+      };
+    }
+    if (previous) return { granted: 0, revoked: 0, hunt: normalized };
+    const requested = safeInteger(amount);
+    const granted = Math.min(requested, Math.max(0, MAX_HUNT_ENERGY - normalized.energy));
+    return {
+      granted,
+      revoked: 0,
+      hunt: {
+        ...normalized,
+        energy: normalized.energy + granted,
+        rewardEnergyRemaining: normalized.rewardEnergyRemaining + granted,
+        completionEnergyRewards: [...normalized.completionEnergyRewards, {
+          key: rewardKey,
+          requested,
+          granted,
+          remaining: granted,
+          status: granted ? 'available' : 'capped',
+        }].slice(-120),
+      },
+    };
+  }
+  if (!previous || previous.status !== 'available' || previous.remaining < 1) {
+    return { granted: 0, revoked: 0, hunt: normalized };
+  }
+  const revoked = Math.min(previous.remaining, normalized.rewardEnergyRemaining, normalized.energy);
+  return {
+    granted: 0,
+    revoked,
+    hunt: {
+      ...normalized,
+      energy: normalized.energy - revoked,
+      rewardEnergyRemaining: normalized.rewardEnergyRemaining - revoked,
+      completionEnergyRewards: normalized.completionEnergyRewards.map((entry) => (
+        entry.key === rewardKey
+          ? { ...entry, spent: Math.max(0, entry.granted - entry.remaining), remaining: 0, status: 'revoked' }
+          : entry
+      )),
     },
   };
 }
@@ -149,15 +233,16 @@ export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTime
   const previous = normalized.habitEnergyRolls.find((entry) => entry?.key === rewardKey);
   if (previous) {
     if (previous.granted && previous.status === 'revoked') {
+      const granted = normalized.energy < MAX_HUNT_ENERGY ? 1 : 0;
       return {
-        granted: 1,
+        granted,
         chance: previous.chance || 0,
         hunt: {
           ...normalized,
-          bonusEnergyRemaining: normalized.bonusEnergyRemaining + 1,
-          energy: normalized.energy + 1,
+          bonusEnergyRemaining: normalized.bonusEnergyRemaining + granted,
+          energy: normalized.energy + granted,
           habitEnergyRolls: normalized.habitEnergyRolls.map((entry) => (
-            entry?.key === rewardKey ? { ...entry, status: 'available' } : entry
+            entry?.key === rewardKey ? { ...entry, status: granted ? 'available' : 'revoked' } : entry
           )),
         },
       };
@@ -168,7 +253,7 @@ export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTime
     return { granted: 0, chance: 0, hunt: normalized };
   }
   const chance = normalized.bonusEnergyEarned === 0 ? 0.1 : 0.08;
-  const granted = roll() < chance ? 1 : 0;
+  const granted = roll() < chance && normalized.energy < MAX_HUNT_ENERGY ? 1 : 0;
   return {
     granted,
     chance,
@@ -218,15 +303,15 @@ export function fiberChanceForHunt({ hunt, difficultyId, nowTimestamp = Date.now
   return Math.max(0.01, difficulty.fiberChance - dropsToday * 0.06);
 }
 
-export function pveHeroStats({ classId, level, allocation }) {
+export function pveHeroStats({ classId, level, allocation, relicBonuses = {} }) {
   const a = attributeSheet({ classId, level, allocation }).attributes;
   return {
     attributes: a,
     maxHp: 70 + a.constitution * 6,
     maxMana: 35 + a.power * 5,
-    physicalAttack: 4 + a.strength * 2,
-    magicAttack: 4 + a.power * 2,
-    defense: a.defense,
+    physicalAttack: 4 + a.strength * 2 + safeInteger(relicBonuses.physicalAttack),
+    magicAttack: 4 + a.power * 2 + safeInteger(relicBonuses.magicAttack),
+    defense: a.defense + safeInteger(relicBonuses.defense),
     criticalChance: clamp(0.04 + a.dexterity * 0.004, 0.04, 0.25),
     dodgeChance: clamp(a.dexterity * 0.002, 0, 0.12),
   };
@@ -294,7 +379,7 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
@@ -314,6 +399,14 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
     }
     return entry;
   });
+  let remainingRewardToSpend = rewardEnergySpent;
+  const completionEnergyRewards = normalized.completionEnergyRewards.map((entry) => {
+    if (remainingRewardToSpend < 1 || entry.status !== 'available' || entry.remaining < 1) return entry;
+    const spent = Math.min(entry.remaining, remainingRewardToSpend);
+    remainingRewardToSpend -= spent;
+    const remaining = entry.remaining - spent;
+    return { ...entry, remaining, status: remaining > 0 ? 'available' : 'spent' };
+  });
   const active = {
     id: `hunt-${nowTimestamp}-${safeInteger(seed)}`,
     regionId: 'fields-of-mist',
@@ -323,6 +416,11 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
     seed: safeInteger(seed),
     entryHpRatio: resourceRatio(currentHp, maxHp),
     entryManaRatio: resourceRatio(currentMana, maxMana),
+    relicBonuses: {
+      physicalAttack: safeInteger(relicBonuses.physicalAttack),
+      magicAttack: safeInteger(relicBonuses.magicAttack),
+      defense: safeInteger(relicBonuses.defense),
+    },
   };
   return {
     ok: true,
@@ -333,6 +431,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
       bonusEnergyRemaining: normalized.bonusEnergyRemaining - bonusEnergySpent,
       rewardEnergyRemaining: normalized.rewardEnergyRemaining - rewardEnergySpent,
       habitEnergyRolls,
+      completionEnergyRewards,
       active,
     },
   };
@@ -345,7 +444,7 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
   if (nowTimestamp < active.endsAt) return { ok: false, reason: 'hunt-in-progress', remainingMs: active.endsAt - nowTimestamp, hunt: normalized };
   const difficulty = HUNT_DIFFICULTIES[active.difficultyId] || HUNT_DIFFICULTIES.easy;
   const random = seededRoll(active.seed);
-  const hero = pveHeroStats({ classId, level, allocation });
+  const hero = pveHeroStats({ classId, level, allocation, relicBonuses: active.relicBonuses });
   let currentHp = Number.isFinite(active.entryHpRatio)
     ? Math.max(0, Math.round(hero.maxHp * clamp(active.entryHpRatio, 0, 1)))
     : hero.maxHp;

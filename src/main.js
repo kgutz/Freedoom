@@ -46,6 +46,7 @@ import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from
 import {
   HUNT_DIFFICULTIES,
   grantHabitHuntEnergy,
+  syncHabitSetHuntEnergy,
   revokeHabitHuntEnergy,
   pveHeroStats,
   normalizeHuntState,
@@ -75,11 +76,13 @@ import {
   availableDailyEffectSources,
   canActivateFusionDaily,
   createForgeSeed,
+  defuseRelic,
   emptyLootState,
   equipRelic,
   ensureShopRotation,
   equippedRelicBonuses,
   forgePreview,
+  getDefusionPreview,
   getForgeFusionPreview,
   grantBossRewards,
   fuseRelics,
@@ -187,6 +190,7 @@ import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
   forgeResultMarkup,
+  defusionResultMarkup,
   inventoryReferenceOffset,
   nextFusionSelection,
   renderForgeView,
@@ -235,7 +239,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.15';
+const APP_VERSION='2.19';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2161,6 +2165,7 @@ let fusionRightId=null;
 let fusionErrorId=null;
 let forgePickerTarget=null;
 let pendingFusion=null;
+let pendingDefusionRelicId=null;
 let pendingActiveRelicTap=null;
 let pendingFusionSlotTap=null;
 const ACTIVE_RELIC_DOUBLE_TAP_MS=375;
@@ -2215,7 +2220,9 @@ function positionInventorySheetFromForge(){
   const upgradeReferenceHeight=sheet.scrollHeight;
   renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'fusion'});
   const fusionReferenceHeight=sheet.scrollHeight;
-  const referenceHeight=Math.max(upgradeReferenceHeight,fusionReferenceHeight);
+  renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'defusion'});
+  const defusionReferenceHeight=sheet.scrollHeight;
+  const referenceHeight=Math.max(upgradeReferenceHeight,fusionReferenceHeight,defusionReferenceHeight);
   overlay.style.setProperty('--inventory-nav-clearance',`${navClearance}px`);
   overlay.style.setProperty('--inventory-panel-offset',
     `${inventoryReferenceOffset(availableHeight,referenceHeight)}px`);
@@ -3315,6 +3322,7 @@ function confirmHuntStart(){
     maxHp:stats.maxHp,
     currentMana:state.game.mp,
     maxMana:stats.maxMp,
+    relicBonuses:relicBonuses(),
     nowTimestamp:Date.now()
   });
   if(!result.ok){
@@ -4133,6 +4141,19 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
+    const activeFrequencyHabits=state.habits.items.filter(item=>item.active!==false&&item.frequency===habit.frequency);
+    const allFrequencyHabitsCompleted=activeFrequencyHabits.length>0&&activeFrequencyHabits.every(item=>{
+      const entry=habitEntryFor(state.habits,item,habitDate,state.config.startDate);
+      return (Number(entry.count)||0)>=Math.max(1,Number(item.target)||1);
+    });
+    const setEnergyResult=syncHabitSetHuntEnergy({
+      hunt:state.game.hunt,
+      rewardKey:`completed-set:${habit.frequency}:${result.entry.periodKey}`,
+      amount:habit.frequency==='weekly'?2:1,
+      allCompleted:allFrequencyHabitsCompleted,
+      nowTimestamp:Date.now()
+    });
+    state.game.hunt=setEnergyResult.hunt;
     const huntEnergyRewardKey=`${habit.id}|${result.entry.periodKey}`;
     const huntEnergyResult=result.becameIncomplete
       ? revokeHabitHuntEnergy({
@@ -4189,15 +4210,17 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     renderAll();
     if(result.becameCompleted){
       const fiberNotice=fiberResult.granted?' · +1 Fibra Arcana':'';
-      const energyNotice=huntEnergyResult.granted?' · +1 Energía de Cacería':'';
+      const energyGained=(huntEnergyResult.granted||0)+(setEnergyResult.granted||0);
+      const energyNotice=energyGained?` · +${energyGained} Energía de Cacería`:'';
       showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${fiberNotice}${energyNotice}`,'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
     }
-    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0||fiberResult.revoked||huntEnergyResult.revoked){
+    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0||fiberResult.revoked||huntEnergyResult.revoked||setEnergyResult.revoked){
       const fiberNotice=fiberResult.revoked?' · −1 Fibra Arcana':'';
-      const energyNotice=huntEnergyResult.revoked?' · −1 Energía de Cacería':'';
+      const energyRevoked=(huntEnergyResult.revoked||0)+(setEnergyResult.revoked||0);
+      const energyNotice=energyRevoked?` · −${energyRevoked} Energía de Cacería`:'';
       showToast(`${habitRewardToast('Progreso corregido',totalRewardDelta)}${fiberNotice}${energyNotice}`,'dmg');
     }
     else if(result.completed) showToast('Límite de recompensas alcanzado','heal');
@@ -4879,7 +4902,9 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
   const forgeModeButton=event.target.closest('[data-forge-mode]');
   if(forgeModeButton){
-    forgeMode=forgeModeButton.dataset.forgeMode==='fusion'?'fusion':'upgrade';
+    forgeMode=['fusion','defusion'].includes(forgeModeButton.dataset.forgeMode)
+      ? forgeModeButton.dataset.forgeMode
+      :'upgrade';
     clearFusionFeedback();
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     scheduleInventorySheetPosition();
@@ -4892,6 +4917,12 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     fusionLeftId=selection.leftId;
     fusionRightId=selection.rightId;
     fusionErrorId=selection.errorId;
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  const defusionChoice=event.target.closest('[data-select-defusion-relic]');
+  if(defusionChoice){
+    selectedForgeRelicId=defusionChoice.dataset.selectDefusionRelic;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
   }
@@ -4939,7 +4970,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const openForgePicker=event.target.closest('[data-open-forge-picker]');
   if(openForgePicker){
     forgePickerTarget={mode:openForgePicker.dataset.openForgePicker,slot:openForgePicker.dataset.fusionSlot||'left'};
-    renderForgeRelicPicker(document,state,{...forgePickerTarget,leftId:fusionLeftId,rightId:fusionRightId});
+    renderForgeRelicPicker(document,state,{...forgePickerTarget,leftId:fusionLeftId,rightId:fusionRightId,currentId:selectedForgeRelicId});
     document.getElementById('forgeRelicPickerBg').classList.add('show');
     return;
   }
@@ -5011,6 +5042,17 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
   const resetAttributes=event.target.closest('[data-character-reset-attributes]');
   if(resetAttributes&&!resetAttributes.disabled){
     openAttributeResetConfirmation();
+    return;
+  }
+  const defusionButton=event.target.closest('[data-defuse-relic]');
+  if(defusionButton&&!defusionButton.disabled){
+    const relicId=defusionButton.dataset.defuseRelic;
+    const preview=getDefusionPreview(state,relicId);
+    if(!preview.ok) return;
+    pendingDefusionRelicId=relicId;
+    const ingredientNames=preview.ingredientIds.map(id=>relicDefinition(id)?.name||id);
+    document.getElementById('defusionConfirmBody').innerHTML=`<p>Vas a consumir <b>${preview.definition.name}</b>.</p><p>Recuperarás <b>${ingredientNames.join('</b> y <b>')}</b> con su rareza, rango y efectos originales.</p><p>Coste: <b>${preview.coinCost} de oro</b> y <b>${preview.bloodCost} Sangre de Jefe</b>.</p>`;
+    document.getElementById('defusionConfirmBg').classList.add('show');
     return;
   }
   const attribute=event.target.closest('[data-character-attribute]');
@@ -5168,7 +5210,7 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
     showToast('Reliquia equipada','heal');
     return;
   }
-  if(forgePickerTarget.mode==='upgrade') selectedForgeRelicId=relicId;
+  if(forgePickerTarget.mode==='upgrade'||forgePickerTarget.mode==='defusion') selectedForgeRelicId=relicId;
   else if(forgePickerTarget.slot==='right') fusionRightId=relicId;
   else fusionLeftId=relicId;
   clearFusionFeedback();
@@ -5338,6 +5380,16 @@ document.getElementById('fusionConfirmCancel').addEventListener('click',()=>{
   pendingFusion=null;
   document.getElementById('fusionConfirmBg').classList.remove('show');
 });
+document.getElementById('defusionConfirmCancel').addEventListener('click',()=>{
+  pendingDefusionRelicId=null;
+  document.getElementById('defusionConfirmBg').classList.remove('show');
+});
+document.getElementById('defusionConfirmBg').addEventListener('click',event=>{
+  if(event.target.id==='defusionConfirmBg'){
+    pendingDefusionRelicId=null;
+    event.currentTarget.classList.remove('show');
+  }
+});
 document.getElementById('shopPurchaseConfirmCancel').addEventListener('click',()=>{
   pendingShopPurchase=null;
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
@@ -5401,6 +5453,43 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
     fusionLeftId=null; fusionRightId=null;
     clearFusionFeedback();
   }
+  renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+  renderInventoryView(document,state); renderHero();
+  forgeLocked=false;
+});
+document.getElementById('defusionConfirmAccept').addEventListener('click',async()=>{
+  if(!pendingDefusionRelicId||forgeLocked) return;
+  forgeLocked=true;
+  const relicId=pendingDefusionRelicId;
+  pendingDefusionRelicId=null;
+  const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const previousLootState=normalizeLootState(state);
+  const result=defuseRelic({state,relicId,operationId,nowTimestamp:Date.now()});
+  document.getElementById('defusionConfirmBg').classList.remove('show');
+  if(!result.ok){
+    showToast('La Desfusión ya no puede completarse','dmg');
+    forgeLocked=false;
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  const commit=await commitLootOperation({
+    previousState:previousLootState,
+    nextState:result,
+    applyState:applyLootSlices,
+    persist:()=>store.set(ACTIVE_STORAGE_KEY,serializeState(state))
+  });
+  if(!commit.ok){
+    console.error('No se pudo guardar la Desfusión',commit.error);
+    showToast('No se pudo confirmar el guardado de la Desfusión','dmg');
+    forgeLocked=false;
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  handleSaveResult(commit.saveResult);
+  document.getElementById('forgeResultBody').innerHTML=defusionResultMarkup(result);
+  document.getElementById('forgeResultBg').classList.add('show');
+  capHeroAfterEquipmentChange();
+  selectedForgeRelicId=null;
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   renderInventoryView(document,state); renderHero();
   forgeLocked=false;

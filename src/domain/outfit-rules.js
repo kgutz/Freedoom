@@ -147,7 +147,9 @@ export function acknowledgeFiberCatchupNotice(state, noticeId) {
 
 export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.now() }) {
   const normalized = normalizeLootState(state);
-  const outfit = OUTFIT_DEFINITIONS.find((item) => item.id === outfitId && item.craftable && item.recipe);
+  const outfit = OUTFIT_DEFINITIONS.find((item) => (
+    item.id === outfitId && item.released !== false && item.craftable && item.recipe
+  ));
   if (!outfit || !operationId) return { ...slices(normalized), game: state.game, ok: false, reason: 'invalid' };
   if (isOutfitUnlocked(outfit, state.game)) return { ...slices(normalized), game: state.game, ok: false, reason: 'owned' };
   if (normalized.forge.weaving.history.some((entry) => entry.operationId === operationId)) {
