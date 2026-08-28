@@ -1,8 +1,8 @@
 export const POTION_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'fortune', name: 'Poción de Fortuna', price: 20, symbol: '¤', tone: 'gold',
-    shortEffect: 'Triplica el oro de tus hábitos diarios durante 30 min.',
-    detail: 'Añade hasta 30 de oro extra.',
+    shortEffect: 'Triplica el oro de tus hábitos y añade +50% al oro de Cacería durante 30 min.',
+    detail: 'Añade hasta 50 de oro extra en total.',
   }),
   Object.freeze({
     id: 'experience', name: 'Poción de Experiencia', price: 20, symbol: '✦', tone: 'violet',
@@ -33,7 +33,7 @@ export const POTION_BY_ID = Object.freeze(Object.fromEntries(
 export const POTION_FUTURE_SLOTS = 7;
 export const POTION_BAG_SLOT_LIMIT = 4;
 export const POTION_DURATION_MS = 30 * 60 * 1000;
-export const POTION_BONUS_CAPS = Object.freeze({ fortune: 30, experience: 10 });
+export const POTION_BONUS_CAPS = Object.freeze({ fortune: 50, experience: 10 });
 export const POTION_DAILY_LIMITS = Object.freeze({
   fortune: 1, experience: 1,
 });

@@ -37,6 +37,26 @@ describe('informe de Cacería', () => {
     expect(html).not.toContain('resource-icon--boss-blood');
   });
 
+  it('separa la bonificación de Fortuna del oro total', () => {
+    const rewards = { xp: 12, gold: 21, baseGold: 14, fortuneGold: 7 };
+    expect(huntResultRewardsMarkup(rewards)).toContain('Poción de Fortuna · +7 oro (50%)');
+    const summary = huntResultSummaryMarkup({
+      defeatedEnemies: 3,
+      heroHp: 80,
+      heroMana: 60,
+      heroMaxHp: 100,
+      heroMaxMana: 100,
+      encounters: [],
+      rewards,
+      fortune: { dayKey: '2026-08-28', granted: 7 },
+    });
+    expect(summary).toContain('Fortuna · +7 oro de bonificación');
+    const report = renderReport(rewards, 'medium', {
+      fortune: { dayKey: '2026-08-28', granted: 7 },
+    });
+    expect(report).toContain('Fortuna · +7 oro (50%)');
+  });
+
   it('muestra una casilla vacía cuando no se obtiene botín', () => {
     expect(huntResultRewardsMarkup({})).toContain('Sin botín obtenido');
   });

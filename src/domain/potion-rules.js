@@ -142,6 +142,27 @@ function bonusUsed(entries, periodKey, field) {
     entry?.periodKey === periodKey ? sum + Math.max(0, Number(entry?.[field]) || 0) : sum, 0);
 }
 
+function huntFortuneBonusUsed(transactions, dayKey) {
+  return (Array.isArray(transactions) ? transactions : []).reduce((sum, transaction) => (
+    transaction?.type === 'hunt' && transaction?.fortuneDayKey === dayKey
+      ? sum + Math.max(0, Number(transaction?.fortuneGold) || 0)
+      : sum
+  ), 0);
+}
+
+export function potionFortuneBonusUsage({ habitState, economy, dayKey }) {
+  const safeDayKey = String(dayKey || '');
+  const habit = bonusUsed(habitState?.entries, `d:${safeDayKey}`, 'fortuneCoinsAwarded');
+  const hunt = huntFortuneBonusUsed(economy?.transactions, safeDayKey);
+  const used = Math.min(POTION_BONUS_CAPS.fortune, habit + hunt);
+  return {
+    habit,
+    hunt,
+    used,
+    remaining: Math.max(0, POTION_BONUS_CAPS.fortune - used),
+  };
+}
+
 export function reconcilePotionHabitBonus({
   inventory, habitState, economy, habit, date, planStartDate, previousCount,
   nowTimestamp = Date.now(),
@@ -172,7 +193,11 @@ export function reconcilePotionHabitBonus({
   if (eligible && count > oldCount) {
     for (let index = oldCount; index < count; index += 1) {
       if (active.id === 'fortune' && !fortuneAwards[index]) {
-        const used = bonusUsed(habitState.entries, periodKey, 'fortuneCoinsAwarded') + coinDelta;
+        const used = potionFortuneBonusUsage({
+          habitState,
+          economy: safeEconomy,
+          dayKey: periodKey.slice(2),
+        }).used + coinDelta;
         const requested = Math.max(0, Number(habitProgressCoinSchedule(habit)[index]) || 0) * 2;
         const award = Math.min(requested, Math.max(0, POTION_BONUS_CAPS.fortune - used));
         fortuneAwards[index] = award;

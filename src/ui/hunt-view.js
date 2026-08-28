@@ -74,7 +74,11 @@ export function huntResultRewardsMarkup(rewards = {}) {
       : '',
   ].filter(Boolean);
   if (!items.length) return '<div class="hunt-result-no-loot">Sin botín obtenido</div>';
-  return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>`;
+  const fortuneGold = Math.max(0, Number(rewards.fortuneGold) || 0);
+  const fortuneMarkup = fortuneGold
+    ? `<div class="hunt-result-fortune-bonus">Poción de Fortuna · +${fortuneGold} oro (50%)</div>`
+    : '';
+  return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>${fortuneMarkup}`;
 }
 
 export function huntResultSummaryMarkup(report = {}) {
@@ -95,6 +99,10 @@ export function huntResultSummaryMarkup(report = {}) {
   const potionSummary = lifePotions || manaPotions
     ? `<small>Pociones usadas · Vida ×${lifePotions} · Maná ×${manaPotions}</small>`
     : '';
+  const fortuneGold = Math.max(0, Number(report.rewards?.fortuneGold) || 0);
+  const fortuneSummary = report.fortune
+    ? `<small class="hunt-result-fortune-summary">Fortuna · +${fortuneGold} oro de bonificación</small>`
+    : '';
   return `<div class="hunt-result-battle-summary">
     <div><span>Enemigos</span><b>${defeatedEnemies}/3</b></div>
     <div><span>Rondas</span><b>${totalRounds}</b></div>
@@ -106,6 +114,7 @@ export function huntResultSummaryMarkup(report = {}) {
       <b><i>Maná</i> ${heroManaPercent}%</b>
     </section>
     ${potionSummary}
+    ${fortuneSummary}
   </div>`;
 }
 
@@ -177,12 +186,16 @@ function reportMarkup(report) {
     Number(rewards.arcaneFibers) > 0 ? resourceValue('arcane-fiber', rewards.arcaneFibers) : '',
     Number(rewards.bossBlood) > 0 ? resourceValue('boss-blood', rewards.bossBlood) : '',
   ].filter(Boolean).join('');
+  const fortuneGold = Math.max(0, Number(rewards.fortuneGold) || 0);
+  const fortuneMarkup = report.fortune
+    ? `<span class="hunt-report-fortune">Fortuna · +${fortuneGold} oro (50%)</span>`
+    : '';
   const resultLabel = report.won ? 'EXPEDICIÓN SUPERADA' : Number(report.defeatedEnemies) > 0 ? 'AVANCE PARCIAL' : 'EXPEDICIÓN FALLIDA';
   return `<section class="card hunt-report">
     <div class="hunt-section-title"><span>Último informe</span><b>${resultLabel}</b></div>
     <div class="hunt-report-result ${report.won ? 'won' : 'lost'}"><strong>${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}</strong>${recoveryMarkup}</div>
     <div class="hunt-report-list">${rows}</div>
-    <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}</div>
+    <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}${fortuneMarkup}</div>
   </section>`;
 }
 

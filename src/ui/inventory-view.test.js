@@ -147,8 +147,8 @@ describe('interfaz de inventario y botín', () => {
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('<span>EFECTO</span>');
-    expect(html).toContain('Triplica el oro de tus hábitos diarios durante 30 min.');
-    expect(html).toContain('Añade hasta 30 de oro extra.');
+    expect(html).toContain('Triplica el oro de tus hábitos y añade +50% al oro de Cacería durante 30 min.');
+    expect(html).toContain('Añade hasta 50 de oro extra en total.');
     expect(html).not.toContain('REGLAS');
 
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'experience', { mode: 'shop' })).toBe(true);

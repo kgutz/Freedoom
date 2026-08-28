@@ -4,6 +4,7 @@ import { adjustHabitProgress, emptyHabitState } from './habit-rules.js';
 import {
   consumePreparedBlood,
   potionBloodChance,
+  potionFortuneBonusUsage,
   purchasePotion,
   reconcilePotionHabitBonus,
   usePotion,
@@ -113,6 +114,40 @@ describe('pociones', () => {
     const undoneState = { ...reward.habitState, entries: { ...reward.habitState.entries, [`water|d:${DAY}`]: { ...reward.habitState.entries[`water|d:${DAY}`], count: 0 } } };
     const undone = reconcilePotionHabitBonus({ inventory: reward.inventory, habitState: undoneState, economy: reward.economy, habit: easy, date: DATE, planStartDate: DAY, previousCount: 1, nowTimestamp: 9_999_999 });
     expect(undone.coinDelta).toBe(-4);
+  });
+
+  it('comparte el límite de Fortuna entre hábitos y Cacería', () => {
+    const state = richState();
+    state.inventory.potions = { owned: { fortune: 1 } };
+    const used = usePotion({ inventory: state.inventory, potionId: 'fortune', dayKey: DAY, nowTimestamp: 1000 });
+    const habitState = {
+      ...emptyHabitState(),
+      entries: {
+        [`other|d:${DAY}`]: { periodKey: `d:${DAY}`, fortuneCoinsAwarded: 45 },
+        [`water|d:${DAY}`]: { habitId: 'water', periodKey: `d:${DAY}`, frequency: 'daily', count: 1 },
+      },
+    };
+    const economy = {
+      ...state.economy,
+      transactions: [{ id: 'hunt-1', type: 'hunt', fortuneDayKey: DAY, fortuneGold: 4 }],
+    };
+    expect(potionFortuneBonusUsage({ habitState, economy, dayKey: DAY })).toEqual({
+      habit: 45,
+      hunt: 4,
+      used: 49,
+      remaining: 1,
+    });
+    const reward = reconcilePotionHabitBonus({
+      inventory: used.inventory,
+      habitState,
+      economy,
+      habit: easy,
+      date: DATE,
+      planStartDate: DAY,
+      previousCount: 0,
+      nowTimestamp: 2000,
+    });
+    expect(reward.coinDelta).toBe(1);
   });
 
   it('Experiencia concede 50% redondeado hacia arriba fuera del premio normal', () => {

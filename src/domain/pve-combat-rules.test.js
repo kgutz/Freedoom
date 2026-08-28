@@ -7,6 +7,7 @@ import {
   grantHabitHuntEnergy,
   grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
+  HUNT_FORTUNE_BONUS_PERCENT,
   huntRecoveryRates,
   normalizeHuntState,
   pveHeroStats,
@@ -411,5 +412,47 @@ describe('PvE combat rules', () => {
     expect(result.report.encounters[1].rewards.arcaneFibers).toBe(0);
     expect(result.hunt.active).toBeNull();
     expect(result.hunt.history).toHaveLength(1);
+  });
+
+  it('aplica Fortuna al 50% del oro obtenido y respeta el límite restante', () => {
+    const now = 50_000;
+    const started = startHunt({
+      hunt: null,
+      difficultyId: 'easy',
+      level: 20,
+      fortune: { dayKey: '2026-08-28' },
+      nowTimestamp: now,
+      seed: 8,
+    });
+    expect(HUNT_FORTUNE_BONUS_PERCENT).toBe(0.5);
+    expect(started.hunt.active.fortune).toEqual({ dayKey: '2026-08-28', bonusPercent: 0.5 });
+    const result = resolveHunt({
+      hunt: started.hunt,
+      classId: 'knight',
+      level: 20,
+      allocation: { strength: 20, defense: 15, constitution: 10 },
+      fortuneBonusRemaining: 50,
+      nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
+    });
+    const expectedBonus = Math.max(1, Math.round(result.report.rewards.baseGold * 0.5));
+    expect(result.report.rewards.fortuneGold).toBe(expectedBonus);
+    expect(result.report.rewards.gold).toBe(result.report.rewards.baseGold + expectedBonus);
+    expect(result.report.fortune).toMatchObject({
+      dayKey: '2026-08-28',
+      bonusPercent: 0.5,
+      granted: expectedBonus,
+      remaining: 50 - expectedBonus,
+    });
+
+    const capped = resolveHunt({
+      hunt: started.hunt,
+      classId: 'knight',
+      level: 20,
+      allocation: { strength: 20, defense: 15, constitution: 10 },
+      fortuneBonusRemaining: 2,
+      nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
+    });
+    expect(capped.report.rewards.fortuneGold).toBe(2);
+    expect(capped.report.fortune.remaining).toBe(0);
   });
 });

@@ -23,6 +23,7 @@ export const HUNT_AUTO_POTION_RULES = Object.freeze({
   maxLifePerEncounter: 1,
   maxManaPerEncounter: 1,
 });
+export const HUNT_FORTUNE_BONUS_PERCENT = 0.5;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const BRUMA_ENEMY_TEMPLATES = [
   { id: 'blighted-harvester', role: 'Soldado', name: 'Brote Engañoso', lore: 'Parece una planta joven e inofensiva, pero sus hojas dentadas se alimentan de la voluntad de quien se acerca. Es la primera mentira que susurra el cultivo.', attributes: { strength: 3, defense: 3, dexterity: 4, power: 1, constitution: 4 } },
@@ -484,7 +485,7 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
@@ -522,6 +523,10 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
     entryHpRatio: resourceRatio(currentHp, maxHp),
     entryManaRatio: resourceRatio(currentMana, maxMana),
     autoUsePotions: Boolean(autoUsePotions),
+    fortune: fortune?.dayKey ? {
+      dayKey: String(fortune.dayKey),
+      bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
+    } : null,
     relicBonuses: {
       physicalAttack: safeInteger(relicBonuses.physicalAttack),
       magicAttack: safeInteger(relicBonuses.magicAttack),
@@ -543,7 +548,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
   };
 }
 
-export function resolveHunt({ hunt, classId, level, allocation, potions: suppliedPotions, nowTimestamp = Date.now() }) {
+export function resolveHunt({ hunt, classId, level, allocation, potions: suppliedPotions, fortuneBonusRemaining = 0, nowTimestamp = Date.now() }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const active = normalized.active;
   if (!active) return { ok: false, reason: 'no-active-hunt', hunt: normalized };
@@ -640,9 +645,16 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   }
   const bossRewards = encounters[2]?.won ? encounters[2].rewards : null;
   if (bossRewards) bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
+  const baseGold = encounters.reduce((total, encounter) => total + encounter.rewards.gold, 0);
+  const fortuneRequested = active.fortune?.dayKey && baseGold > 0
+    ? Math.max(1, Math.round(baseGold * HUNT_FORTUNE_BONUS_PERCENT))
+    : 0;
+  const fortuneGold = Math.min(fortuneRequested, safeInteger(fortuneBonusRemaining));
   const rewards = {
     xp: encounters.reduce((total, encounter) => total + encounter.rewards.xp, 0),
-    gold: encounters.reduce((total, encounter) => total + encounter.rewards.gold, 0),
+    gold: baseGold + fortuneGold,
+    baseGold,
+    fortuneGold,
     arcaneFibers: encounters.reduce((total, encounter) => total + encounter.rewards.arcaneFibers, 0),
     bossBlood: encounters.reduce((total, encounter) => total + encounter.rewards.bossBlood, 0),
   };
@@ -682,6 +694,13 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     recovery,
     encounters,
     rewards,
+    fortune: active.fortune?.dayKey ? {
+      dayKey: active.fortune.dayKey,
+      bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
+      requested: fortuneRequested,
+      granted: fortuneGold,
+      remaining: Math.max(0, safeInteger(fortuneBonusRemaining) - fortuneGold),
+    } : null,
   };
   return { ok: true, reason: null, report, potions, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
 }

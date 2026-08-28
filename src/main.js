@@ -131,6 +131,7 @@ import {
   consumePreparedBlood,
   normalizePotionState,
   potionBloodChance,
+  potionFortuneBonusUsage,
   purchasePotion,
   reconcilePotionHabitBonus,
   usePotion
@@ -3441,6 +3442,12 @@ function openHuntConfirmation(difficultyId){
   pendingHuntDifficultyId=difficultyId;
   pendingHuntAutoUsePotions=true;
   const potions=normalizePotionState(state.inventory?.potions);
+  const fortuneActive=potions.active?.id==='fortune'&&potions.active.endsAt>Date.now()?potions.active:null;
+  const fortuneUsage=fortuneActive?potionFortuneBonusUsage({
+    habitState:state.habits,
+    economy:state.economy,
+    dayKey:fortuneActive.dayKey
+  }):null;
   const lifePotions=Math.max(0,Number(potions.owned.life)||0);
   const manaPotions=Math.max(0,Number(potions.owned.mana)||0);
   const hasCombatPotions=lifePotions+manaPotions>0;
@@ -3451,6 +3458,7 @@ function openHuntConfirmation(difficultyId){
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
     <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
   </div>
+  ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
     <input type="checkbox" id="huntAutoPotions" ${hasCombatPotions?'checked':'disabled'}>
     <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
@@ -3467,6 +3475,11 @@ function confirmHuntStart(){
   closeHuntConfirmation();
   ensureHero();
   const stats=gameStats();
+  const nowTimestamp=Date.now();
+  const activePotion=normalizePotionState(state.inventory?.potions).active;
+  const fortune=activePotion?.id==='fortune'&&activePotion.endsAt>nowTimestamp
+    ? {dayKey:activePotion.dayKey}
+    : null;
   const result=startHunt({
     hunt:state.game.hunt,
     difficultyId,
@@ -3477,7 +3490,8 @@ function confirmHuntStart(){
     maxMana:stats.maxMp,
     relicBonuses:relicBonuses(),
     autoUsePotions,
-    nowTimestamp:Date.now()
+    fortune,
+    nowTimestamp
   });
   if(!result.ok){
     showToast(result.reason==='insufficient-energy'?'No tienes energía suficiente':result.reason==='level-locked'?`Necesitas nivel ${result.requiredLevel}`:'Ya hay una cacería en curso','bad');
@@ -3537,12 +3551,19 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   if(event.target.closest('[data-resolve-hunt]')){
     ensureHero();
     const stats=gameStats();
+    const activeHuntFortune=state.game.hunt?.active?.fortune;
+    const fortuneUsage=activeHuntFortune?.dayKey?potionFortuneBonusUsage({
+      habitState:state.habits,
+      economy:state.economy,
+      dayKey:activeHuntFortune.dayKey
+    }):null;
     const result=resolveHunt({
       hunt:state.game.hunt,
       classId:state.game.cls,
       level:stats.lvl,
       allocation:state.game.attributes,
       potions:state.inventory?.potions,
+      fortuneBonusRemaining:fortuneUsage?.remaining||0,
       nowTimestamp:Date.now()
     });
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
@@ -3556,7 +3577,13 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy.arcaneFibers=Math.max(0,Number(state.economy.arcaneFibers)||0)+result.report.rewards.arcaneFibers;
     state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
     state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
-    state.economy.transactions.push({id:`hunt:${result.report.id}`,type:'hunt',at:Date.now(),...result.report.rewards});
+    state.economy.transactions.push({
+      id:`hunt:${result.report.id}`,
+      type:'hunt',
+      at:Date.now(),
+      fortuneDayKey:result.report.fortune?.dayKey||null,
+      ...result.report.rewards
+    });
     state.economy.transactions=state.economy.transactions.slice(-200);
     scheduleSave({type:'hunt:resolve',won:result.report.won});
     renderHunt();
