@@ -2963,11 +2963,10 @@ document.getElementById('addPill').addEventListener('click',()=>{
   ensureHero();
   const goal=state.config.pillsGoal||3;
   if(d.p+1===goal&&state.game.hp!==undefined){
-    const st=gameStats();
+    const maxes=heroMaxes();
     const reward=pillCompletionReward({
-      classId:state.game.cls,
-      level:st.lvl,
-      passiveMultiplier:currentIntoxication().passiveMultiplier
+      maxHp:maxes.maxHp,
+      maxMp:maxes.maxMp
     });
     const hpBefore=state.game.hp;
     const mpBefore=state.game.mp||0;

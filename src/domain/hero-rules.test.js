@@ -137,14 +137,14 @@ describe('otras reglas de salud', () => {
     ).toEqual({hp:60,mp:24});
   });
 
-  it('mantiene la recompensa de pastillas fuera de las pasivas', () => {
-    expect(pillCompletionReward({ classId: 'paladin', level: 8 })).toEqual({
+  it('escala la recompensa de pastillas con la vida y el maná máximos', () => {
+    expect(pillCompletionReward({ maxHp: 100, maxMp: 100 })).toEqual({
       healing: 15,
       mana: 15,
     });
-    expect(pillCompletionReward({ classId: 'druid', level: 5 })).toEqual({
-      healing: 15,
-      mana: 15,
+    expect(pillCompletionReward({ maxHp: 345, maxMp: 517 })).toEqual({
+      healing: 52,
+      mana: 78,
     });
     expect(BEER_DAMAGE).toBe(5);
   });
@@ -152,8 +152,8 @@ describe('otras reglas de salud', () => {
   it('no aplica Poción Mayor a la curación base de pastillas', () => {
     expect(
       pillCompletionReward({
-        classId: 'druid',
-        level: 5,
+        maxHp: 100,
+        maxMp: 100,
         passiveMultiplier: 0.55,
       }),
     ).toEqual({ healing: 15, mana: 15 });

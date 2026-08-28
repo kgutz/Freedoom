@@ -117,7 +117,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const selectorBack = document.getElementById('outfitSelectorBack');
   if (selectorTitle) selectorTitle.textContent = shopContext
     ? (section === 'frames' ? 'Pintor de Mundos' : 'Telar Arcano')
-    : 'Outfits';
+    : 'Cosméticos';
   if (selectorBack) selectorBack.hidden = !shopContext || !selected;
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
   const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
@@ -158,8 +158,8 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           ${framePreview(classId, frame)}
         </button>`).join('')}
         ${shopContext
-          ? Array.from({ length: 2 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')
-          : Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')}
+          ? Array.from({ length: 2 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')
+          : Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')}
       </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
         <div class="outfit-owned-preview">

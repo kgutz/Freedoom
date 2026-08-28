@@ -81,13 +81,12 @@ export function regenerateHealth({
 }
 
 export function pillCompletionReward({
-  classId,
-  level,
-  passiveMultiplier = 1,
+  maxHp,
+  maxMp,
 }) {
   return {
-    healing:15,
-    mana: 15,
+    healing: Math.max(1, Math.round(Math.max(0, Number(maxHp) || 0) * 0.15)),
+    mana: Math.max(1, Math.round(Math.max(0, Number(maxMp) || 0) * 0.15)),
   };
 }
 
