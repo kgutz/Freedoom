@@ -434,6 +434,7 @@ export function simulatePveCombat({
     }
     roundDetails.push({
       round,
+      damageDealt: heroHit.damage,
       damageTaken,
       heroHp,
       heroMana,

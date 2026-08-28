@@ -10,6 +10,19 @@ function remainingLabel(milliseconds) {
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
+function resourcePercent(value, maximum) {
+  const safeMaximum = Math.max(0, Number(maximum) || 0);
+  if (!safeMaximum) return 0;
+  return Math.max(0, Math.min(100, Math.round((Math.max(0, Number(value) || 0) / safeMaximum) * 100)));
+}
+
+function enemyRoleClass(role) {
+  const normalized = String(role || '').toLowerCase();
+  if (normalized.includes('mini')) return 'miniboss';
+  if (normalized.includes('líder') || normalized.includes('lider')) return 'leader';
+  return 'soldier';
+}
+
 function monsterCard(enemy) {
   return `<button type="button" class="hunt-monster ${enemy.id}" data-hunt-monster="${enemy.id}" aria-label="Ver historia de ${enemy.name}">
     <div class="hunt-monster-art">
@@ -64,36 +77,100 @@ export function huntResultRewardsMarkup(rewards = {}) {
   return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>`;
 }
 
+export function huntResultSummaryMarkup(report = {}) {
+  const encounters = Array.isArray(report.encounters) ? report.encounters : [];
+  const totalRounds = encounters.reduce((sum, encounter) => sum + Math.max(0, Number(encounter.rounds) || 0), 0);
+  const damageDealt = encounters.reduce((sum, encounter) => sum + Math.max(0, Number(encounter.damageDealt) || 0), 0);
+  const damageTaken = encounters.reduce((sum, encounter) => sum + Math.max(0, Number(encounter.damageTaken) || 0), 0);
+  const potionUses = encounters.flatMap((encounter) => Array.isArray(encounter.potionUses) ? encounter.potionUses : []);
+  const lifePotions = potionUses.filter((use) => use?.type === 'life').length;
+  const manaPotions = potionUses.filter((use) => use?.type === 'mana').length;
+  const defeatedEnemies = Math.max(0, Number(report.defeatedEnemies) || 0);
+  const heroHp = Math.max(0, Number(report.heroHp) || 0);
+  const heroMana = Math.max(0, Number(report.heroMana) || 0);
+  const heroMaxHp = Math.max(heroHp, Number(report.heroMaxHp) || 0);
+  const heroMaxMana = Math.max(heroMana, Number(report.heroMaxMana) || 0);
+  const heroHpPercent = resourcePercent(heroHp, heroMaxHp);
+  const heroManaPercent = resourcePercent(heroMana, heroMaxMana);
+  const potionSummary = lifePotions || manaPotions
+    ? `<small>Pociones usadas · Vida ×${lifePotions} · Maná ×${manaPotions}</small>`
+    : '';
+  return `<div class="hunt-result-battle-summary">
+    <div><span>Enemigos</span><b>${defeatedEnemies}/3</b></div>
+    <div><span>Rondas</span><b>${totalRounds}</b></div>
+    <div><span>Daño efectuado</span><b>${damageDealt}</b></div>
+    <div><span>Daño recibido</span><b>${damageTaken}</b></div>
+    <section class="hunt-result-exit-status">
+      <span>Salida de la cacería</span>
+      <b><i>Vida</i> ${heroHpPercent}%</b>
+      <b><i>Maná</i> ${heroManaPercent}%</b>
+    </section>
+    ${potionSummary}
+  </div>`;
+}
+
 function reportMarkup(report) {
   if (!report) return '';
-  const rows = report.encounters.map((encounter) => {
+  const rows = report.encounters.map((encounter, encounterIndex) => {
     const recoveryAfterHp = Math.max(0, Number(encounter.recoveryAfter?.hp) || 0);
     const recoveryAfterMana = Math.max(0, Number(encounter.recoveryAfter?.mana) || 0);
-    const recoveryAfter = recoveryAfterHp > 0 || recoveryAfterMana > 0
-      ? ` · Descanso: +${recoveryAfterHp} VIDA${recoveryAfterMana > 0 ? ` · +${recoveryAfterMana} MANÁ` : ''}`
+    const nextHeroHp = Number.isFinite(Number(encounter.nextHeroHp))
+      ? Math.max(0, Number(encounter.nextHeroHp))
+      : Math.max(0, Number(encounter.heroHp) || 0) + recoveryAfterHp;
+    const nextHeroMana = Number.isFinite(Number(encounter.nextHeroMana))
+      ? Math.max(0, Number(encounter.nextHeroMana))
+      : Math.max(0, Number(encounter.heroMana) || 0) + recoveryAfterMana;
+    const heroMaxHp = Math.max(nextHeroHp, Number(report.heroMaxHp) || 0);
+    const heroMaxMana = Math.max(nextHeroMana, Number(report.heroMaxMana) || 0);
+    const movesToNextEnemy = encounter.won && encounterIndex < report.encounters.length - 1;
+    const nextHpPercent = resourcePercent(nextHeroHp, heroMaxHp);
+    const nextManaPercent = resourcePercent(nextHeroMana, heroMaxMana);
+    const rewardsMarkup = encounter.won
+      ? `<div class="hunt-encounter-rewards"><span>BOTÍN</span><b>✦ ${encounter.rewards?.xp || 0} XP</b>${resourceValue('coin', encounter.rewards?.gold || 0)}${encounter.rewards?.arcaneFibers ? resourceValue('arcane-fiber', encounter.rewards.arcaneFibers) : ''}${encounter.rewards?.bossBlood ? resourceValue('boss-blood', encounter.rewards.bossBlood) : ''}</div>`
       : '';
-    const potionSummary = (encounter.potionUses || []).map((use) => (
-      `${use.type === 'life' ? 'Vida' : 'Maná'} +${Math.max(0, Number(use.restored) || 0)}`
-    )).join(' · ');
-    const roundDetails = (encounter.roundDetails || []).map((detail) => {
-      const used = (detail.potionUses || []).map((use) => (
-        ` · Poción de ${use.type === 'life' ? 'Vida' : 'Maná'} +${Math.max(0, Number(use.restored) || 0)}`
-      )).join('');
-      return `<li><b>R${Math.max(1, Number(detail.round) || 1)}</b><span>−${Math.max(0, Number(detail.damageTaken) || 0)} VIDA · terminó con ${Math.max(0, Number(detail.heroHp) || 0)} HP${used}</span></li>`;
-    }).join('');
-    return `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
-    <span>${encounter.role} · ${encounter.name}</span>
-    <b>${encounter.won ? 'VICTORIA' : 'DERROTA'}</b>
-    <small>${encounter.rounds} rondas · ${encounter.damageDealt} infligido · ${Math.max(0, Number(encounter.damageTaken) || 0)} recibido · ${encounter.heroHp} HP final${potionSummary ? ` · Pociones: ${potionSummary}` : ''}${recoveryAfter}${encounter.won ? ` · ✦ +${encounter.rewards?.xp || 0} XP · ${resourceIcon('coin')} +${encounter.rewards?.gold || 0}${encounter.rewards?.arcaneFibers ? ` · ${resourceIcon('arcane-fiber')} +${encounter.rewards.arcaneFibers}` : ''}${encounter.rewards?.bossBlood ? ` · ${resourceIcon('boss-blood')} +${encounter.rewards.bossBlood}` : ''}` : ''}</small>
-    <ol class="hunt-report-rounds">${roundDetails}</ol>
-  </div>`;
+    const recoveryMarkup = recoveryAfterHp > 0 || recoveryAfterMana > 0
+      ? `<div class="hunt-encounter-recovery"><span>RECUPERACIÓN</span><b>+${recoveryAfterHp} vida · +${recoveryAfterMana} maná</b></div>`
+      : '';
+    const roleClass = enemyRoleClass(encounter.role);
+    return `<details class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
+      <summary>
+        <span class="hunt-report-enemy"><strong>${encounter.name}</strong><small class="hunt-report-role ${roleClass}">${encounter.role}</small></span>
+        <b>${encounter.won ? 'VICTORIA' : 'DERROTA'}</b>
+        <i class="hunt-report-chevron" aria-hidden="true"></i>
+      </summary>
+      <div class="hunt-report-detail">
+        <div class="hunt-encounter-totals">
+          <span><small>RONDAS</small><b>${encounter.rounds}</b></span>
+          <span><small>DAÑO EFECTUADO</small><b>${encounter.damageDealt}</b></span>
+          <span><small>DAÑO RECIBIDO</small><b>${Math.max(0, Number(encounter.damageTaken) || 0)}</b></span>
+        </div>
+        ${recoveryMarkup}
+        ${rewardsMarkup}
+        <div class="hunt-encounter-next"><span>${movesToNextEnemy ? 'SIGUIENTE COMBATE' : 'FIN DE LOS COMBATES'}</span><b>${nextHpPercent}% vida · ${nextManaPercent}% maná</b></div>
+      </div>
+    </details>`;
   }).join('');
   const rewards = report.rewards;
-  const recoveredHp = Math.max(0, Number(report.recovery?.hp) || 0);
-  const recoveredMana = Math.max(0, Number(report.recovery?.mana) || 0);
-  const recoveryMarkup = recoveredHp > 0 || recoveredMana > 0
-    ? `<small class="hunt-report-recovery">${report.won ? 'Recuperación de victoria' : `Recuperación por avance · ${Math.max(0, Number(report.defeatedEnemies) || 0)}/3`} · +${recoveredHp} VIDA · +${recoveredMana} MANÁ</small>`
-    : '';
+  const exitHp = Math.max(0, Number(report.heroHp) || 0);
+  const exitMana = Math.max(0, Number(report.heroMana) || 0);
+  const exitMaxHp = Math.max(exitHp, Number(report.heroMaxHp) || 0);
+  const exitMaxMana = Math.max(exitMana, Number(report.heroMaxMana) || 0);
+  const exitHpPercent = resourcePercent(exitHp, exitMaxHp);
+  const exitManaPercent = resourcePercent(exitMana, exitMaxMana);
+  const firstEncounter = report.encounters[0];
+  const entryHp = Number.isFinite(Number(firstEncounter?.heroHpAtStart))
+    ? Math.max(0, Number(firstEncounter.heroHpAtStart))
+    : exitMaxHp;
+  const entryMana = Number.isFinite(Number(firstEncounter?.heroManaAtStart))
+    ? Math.max(0, Number(firstEncounter.heroManaAtStart))
+    : exitMaxMana;
+  const entryHpPercent = resourcePercent(entryHp, exitMaxHp);
+  const entryManaPercent = resourcePercent(entryMana, exitMaxMana);
+  const recoveryMarkup = `<div class="hunt-report-resource-comparison">
+    <div><span>ENTRASTE</span><b>${entryHpPercent}% vida</b><b>${entryManaPercent}% maná</b></div>
+    <i aria-hidden="true">→</i>
+    <div><span>SALISTE</span><b>${exitHpPercent}% vida</b><b>${exitManaPercent}% maná</b></div>
+  </div>`;
   const rewardItems = [
     Number(rewards.xp) > 0 ? `<span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>` : '',
     Number(rewards.gold) > 0 ? resourceValue('coin', rewards.gold) : '',
@@ -103,7 +180,7 @@ function reportMarkup(report) {
   const resultLabel = report.won ? 'EXPEDICIÓN SUPERADA' : Number(report.defeatedEnemies) > 0 ? 'AVANCE PARCIAL' : 'EXPEDICIÓN FALLIDA';
   return `<section class="card hunt-report">
     <div class="hunt-section-title"><span>Último informe</span><b>${resultLabel}</b></div>
-    <div class="hunt-report-result ${report.won ? 'won' : 'lost'}">${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}${recoveryMarkup}</div>
+    <div class="hunt-report-result ${report.won ? 'won' : 'lost'}"><strong>${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}</strong>${recoveryMarkup}</div>
     <div class="hunt-report-list">${rows}</div>
     <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}</div>
   </section>`;

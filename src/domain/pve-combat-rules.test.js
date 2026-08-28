@@ -107,7 +107,7 @@ describe('PvE combat rules', () => {
     expect(result.potions.owned).toMatchObject({ life: 1, mana: 1 });
     expect(result.potionUses.map((use) => use.type)).toEqual(['mana', 'life']);
     expect(result.roundDetails).toHaveLength(3);
-    expect(result.roundDetails[0]).toMatchObject({ round: 1, damageTaken: 5, heroHp: 40 });
+    expect(result.roundDetails[0]).toMatchObject({ round: 1, damageDealt: 15, damageTaken: 5, heroHp: 40 });
     expect(result.damageTaken).toBe(10);
   });
 

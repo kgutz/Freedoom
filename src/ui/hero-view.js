@@ -651,9 +651,8 @@ export function renderHeroView({
         <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
       </div>
       <div class="boss-duel-summary">
-        <span class="hero-side"><small>TU HÉROE → JEFE</small><b>−${heroDamageLogged} HP</b><em>según el registro</em></span>
-        <i aria-hidden="true">VS</i>
-        <span class="boss-side"><small>JEFE → TU HÉROE</small><b>−${bossDamageLogged} HP</b><em>según el registro</em></span>
+        <span class="hero-side"><small>TU HÉROE → JEFE</small><b>−${heroDamageLogged} HP</b></span>
+        <span class="boss-side"><small>JEFE → TU HÉROE</small><b>−${bossDamageLogged} HP</b></span>
       </div>
       ${bossState.earlyVictoryActive && !bossState.won
         ? '<div class="boss-early-victory-badge">VICTORIA ANTICIPADA · BONUS PENDIENTE</div>'
@@ -673,7 +672,7 @@ export function renderHeroView({
           : (smokeFreeMode || controlledMode) && bossState.todayStatus === 'fail' && !bossState.won
           ? '<div class="boss-projection">Hoy no causa daño al jefe.</div>'
           : !bossState.won
-          ? `<div class="boss-projection">${smokeFreeMode ? 'Si confirmas el día sin fumar' : controlledMode ? 'Si cumples el objetivo de hoy' : 'Si cerraras el día así'}: <b>−${bossState.projectedToday} HP</b> en total hoy</div>`
+          ? ''
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${combatLog

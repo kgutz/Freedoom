@@ -185,7 +185,7 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
-import { huntResultRewardsMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
 import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
@@ -239,7 +239,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.22';
+const APP_VERSION='2.23';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -253,6 +253,7 @@ const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='loca
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_QUIET=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoQuiet')==='1';
 const LOCAL_DEMO_HABIT_PAIR=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHabitPair')==='1';
@@ -275,7 +276,7 @@ const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)
+  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)||(LOCAL_DEMO_REDUCTION_14?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
@@ -284,6 +285,8 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
     ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
+    : LOCAL_DEMO_REDUCTION_14
+    ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -842,10 +845,20 @@ function applyLootSlices(result){
 function prepareLocalBossDemo(){
   if(!LOCAL_DEMO_BOSSES) return;
   initializeLocalDemo=false;
-  state.config={
-    ...state.config,
-    startLimit:Math.max(6,Number(state.config?.startLimit)||20)
-  };
+  if(LOCAL_DEMO_REDUCTION_14){
+    state.config={
+      ...state.config,
+      journeyMode:JOURNEY_MODE_REDUCTION,
+      startDate:todayKey(),
+      startLimit:14
+    };
+    state.days={};
+  }else{
+    state.config={
+      ...state.config,
+      startLimit:Math.max(6,Number(state.config?.startLimit)||20)
+    };
+  }
   state.onboarded=true;
   state.game={
     ...(state.game||{}),
@@ -856,6 +869,21 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
+  if(LOCAL_DEMO_REDUCTION_14){
+    state.game={
+      ...state.game,
+      cls:'paladin',
+      name:'Reducción · 14 al día',
+      bonusXp:35*49*49,
+      cigDmg:[],
+      intoxication:[],
+      buffs:{},
+      day:todayKey()
+    };
+    const demoMaxes=heroMaxes();
+    state.game.hp=demoMaxes.maxHp;
+    state.game.mp=demoMaxes.maxMp;
+  }
   if(LOCAL_DEMO_FIBER_OUTFIT){
     state.game={
       ...state.game,
@@ -3392,6 +3420,7 @@ function openHuntResultModal(report){
     : partial
       ? `Tu héroe tuvo que retirarse tras vencer ${defeatedEnemies}/3 enemigos. Conserva su botín y recupera ${recoveredHp} de vida${recoveredMana>0?` y ${recoveredMana} de maná`:''} antes de regresar.`
       : 'Tu héroe tuvo que retirarse sin derrotar enemigos. No obtiene recuperación de salida.';
+  document.getElementById('huntResultSummary').innerHTML=huntResultSummaryMarkup(report);
   document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
   document.getElementById('huntResultBg').classList.add('show');
 }
@@ -3469,6 +3498,12 @@ document.getElementById('huntConfirmBg').addEventListener('click',event=>{
 });
 document.getElementById('huntResultClose').addEventListener('click',()=>{
   document.getElementById('huntResultBg').classList.remove('show');
+});
+document.getElementById('huntResultFullReport').addEventListener('click',()=>{
+  document.getElementById('huntResultBg').classList.remove('show');
+  window.requestAnimationFrame(()=>{
+    document.querySelector('.hunt-report')?.scrollIntoView({behavior:'smooth',block:'start'});
+  });
 });
 document.getElementById('huntResultBg').addEventListener('click',event=>{
   if(event.target.id==='huntResultBg') event.currentTarget.classList.remove('show');

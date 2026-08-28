@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { huntResultRewardsMarkup, renderHuntView } from './hunt-view.js';
+import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntView } from './hunt-view.js';
 
 function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
@@ -39,6 +39,28 @@ describe('informe de Cacería', () => {
 
   it('muestra una casilla vacía cuando no se obtiene botín', () => {
     expect(huntResultRewardsMarkup({})).toContain('Sin botín obtenido');
+  });
+
+  it('resume toda la batalla en el modal de botín', () => {
+    const html = huntResultSummaryMarkup({
+      defeatedEnemies: 2,
+      heroHp: 42,
+      heroMana: 31,
+      heroMaxHp: 100,
+      heroMaxMana: 80,
+      encounters: [
+        { rounds: 4, damageDealt: 50, damageTaken: 12, potionUses: [{ type: 'life' }] },
+        { rounds: 3, damageDealt: 80, damageTaken: 24, potionUses: [{ type: 'mana' }] },
+      ],
+    });
+    expect(html).toContain('<b>2/3</b>');
+    expect(html).toContain('<b>7</b>');
+    expect(html).toContain('<span>Daño efectuado</span><b>130</b>');
+    expect(html).toContain('<span>Daño recibido</span><b>36</b>');
+    expect(html).toContain('Salida de la cacería');
+    expect(html).toContain('<i>Vida</i> 42%');
+    expect(html).toContain('<i>Maná</i> 39%');
+    expect(html).toContain('Vida ×1 · Maná ×1');
   });
 
   it('muestra únicamente las recompensas obtenidas', () => {
@@ -151,22 +173,51 @@ describe('informe de Cacería', () => {
     expect(html).not.toContain('🩸');
   });
 
-  it('explica la recuperación parcial al retirarse tras dos victorias', () => {
+  it('explica claramente con qué vida y maná termina la cacería', () => {
     const html = renderReport(
       { xp: 10, gold: 12, arcaneFibers: 1, bossBlood: 0 },
       'hard',
-      { won: false, defeatedEnemies: 2, recovery: { hp: 17, mana: 10 } },
+      {
+        won: false,
+        defeatedEnemies: 2,
+        heroHp: 27,
+        heroMaxHp: 100,
+        heroMana: 40,
+        heroMaxMana: 80,
+        recovery: { hp: 17, mana: 10 },
+        encounters: [{
+          role: 'Soldado',
+          name: 'Brote Engañoso',
+          won: false,
+          rounds: 1,
+          damageDealt: 20,
+          damageTaken: 30,
+          heroHpAtStart: 80,
+          heroManaAtStart: 60,
+          heroHp: 10,
+          heroMana: 30,
+          nextHeroHp: 10,
+          nextHeroMana: 30,
+          recoveryAfter: { hp: 0, mana: 0 },
+          roundDetails: [],
+          rewards: { xp: 0, gold: 0, arcaneFibers: 0, bossBlood: 0 },
+        }],
+      },
     );
     expect(html).toContain('AVANCE PARCIAL');
-    expect(html).toContain('Recuperación por avance · 2/3 · +17 VIDA · +10 MANÁ');
+    expect(html).toContain('<span>ENTRASTE</span><b>80% vida</b><b>75% maná</b>');
+    expect(html).toContain('<span>SALISTE</span><b>27% vida</b><b>50% maná</b>');
+    expect(html).not.toContain('Recuperaste');
     expect(html).toContain('resource-icon--arcane-fiber');
   });
 
-  it('detalla el daño recibido, la vida final de cada ronda y las pociones consumidas', () => {
+  it('colapsa cada enemigo y despliega solo el resumen de su combate', () => {
     const html = renderReport(
       { xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 },
       'easy',
       {
+        heroMaxHp: 100,
+        heroMaxMana: 80,
         encounters: [{
           role: 'Soldado',
           name: 'Brote Engañoso',
@@ -175,20 +226,37 @@ describe('informe de Cacería', () => {
           damageDealt: 44,
           damageTaken: 12,
           heroHp: 38,
+          heroMana: 26,
+          nextHeroHp: 70,
+          nextHeroMana: 34,
           recoveryAfter: { hp: 32, mana: 8 },
           potionUses: [{ round: 1, type: 'life', restored: 20 }],
           roundDetails: [
-            { round: 1, damageTaken: 7, heroHp: 43, potionUses: [{ type: 'life', restored: 20 }] },
-            { round: 2, damageTaken: 5, heroHp: 38, potionUses: [] },
+            { round: 1, damageDealt: 24, damageTaken: 7, heroHp: 43, heroMana: 28, potionUses: [{ type: 'life', restored: 20 }] },
+            { round: 2, damageDealt: 20, damageTaken: 5, heroHp: 38, heroMana: 26, potionUses: [] },
           ],
           rewards: { xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 },
         }],
       },
     );
-    expect(html).toContain('12 recibido');
-    expect(html).toContain('R1');
-    expect(html).toContain('−7 VIDA · terminó con 43 HP');
-    expect(html).toContain('Poción de Vida +20');
-    expect(html).toContain('Descanso: +32 VIDA · +8 MANÁ');
+    expect(html).toContain('<details class="hunt-report-row won">');
+    expect(html).toContain('<strong>Brote Engañoso</strong>');
+    expect(html).toContain('<small class="hunt-report-role soldier">Soldado</small>');
+    expect(html).toContain('<b>VICTORIA</b>');
+    expect(html).toContain('<i class="hunt-report-chevron" aria-hidden="true"></i>');
+    expect(html).toContain('<small>RONDAS</small><b>2</b>');
+    expect(html).toContain('DAÑO EFECTUADO');
+    expect(html).toContain('<small>DAÑO EFECTUADO</small><b>44</b>');
+    expect(html).toContain('DAÑO RECIBIDO');
+    expect(html).toContain('<small>DAÑO RECIBIDO</small><b>12</b>');
+    expect(html).toContain('+32 vida · +8 maná');
+    expect(html).toContain('<span>BOTÍN</span>');
+    expect(html).toContain('FIN DE LOS COMBATES');
+    expect(html).toContain('70% vida · 43% maná');
+    expect(html).not.toContain('REGISTRO DE COMBATE');
+    expect(html).not.toContain('RONDA 1');
+    expect(html).not.toContain('Poción de vida +20');
+    expect(html).not.toContain('Informe anterior');
+    expect(html).not.toContain('Final:');
   });
 });

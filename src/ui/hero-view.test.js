@@ -654,7 +654,10 @@ describe('modelo de Héroe', () => {
     expect(bossHistoryBody.innerHTML).toContain('TU HÉROE → JEFE');
     expect(bossHistoryBody.innerHTML).toContain('JEFE → TU HÉROE');
     expect(bossHistoryBody.innerHTML).toContain('−30 HP');
+    expect(bossHistoryBody.innerHTML).not.toContain('según el registro');
     expect(bossHistoryBody.innerHTML).toContain('El jefe contraatacó al fumar.');
+    expect(bossHistoryBody.innerHTML).not.toContain('Si cerraras el día así');
+    expect(bossHistoryBody.innerHTML).not.toContain('en total hoy');
     expect(bossHistoryBody.innerHTML).not.toContain('COMBATES CERRADOS');
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="combat"');
