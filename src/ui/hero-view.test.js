@@ -557,6 +557,25 @@ describe('modelo de Héroe', () => {
               total: 27,
             },
           ],
+          combatLog: [
+            {
+              id: 'day:1:2026-07-26',
+              key: '2026-07-26',
+              direction: 'outgoing',
+              kind: 'day',
+              journeyMode: 'reduction',
+              damage: 27,
+            },
+            {
+              id: 'boss-hit:1:2026-07-26',
+              key: '2026-07-26',
+              direction: 'incoming',
+              kind: 'smoke',
+              damage: 30,
+            },
+          ],
+          heroDamageLogged: 27,
+          bossDamageLogged: 30,
           history: [
             {
               week: 0,
@@ -630,12 +649,13 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('Jefes:');
     expect(heroContent.innerHTML).toContain('Disparos perfectos hoy:');
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
-    expect(bossHistoryBody.innerHTML).toContain('Últimos golpes');
+    expect(bossHistoryBody.innerHTML).toContain('REGISTRO DE COMBATE');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');
     expect(bossHistoryBody.innerHTML).toContain('TU HÉROE → JEFE');
-    expect(bossHistoryBody.innerHTML).toContain('JEFE → TÚ');
+    expect(bossHistoryBody.innerHTML).toContain('JEFE → TU HÉROE');
     expect(bossHistoryBody.innerHTML).toContain('−30 HP');
-    expect(bossHistoryBody.innerHTML).toContain('−24 MANÁ');
+    expect(bossHistoryBody.innerHTML).toContain('El jefe contraatacó al fumar.');
+    expect(bossHistoryBody.innerHTML).not.toContain('COMBATES CERRADOS');
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="combat"');
     expect(bossHistoryBody.innerHTML).toContain('data-boss-history-panel="medals" hidden');

@@ -128,7 +128,7 @@ export function createBossCombat({
 }) {
   const safeLegacy = Math.min(maxBosses, Math.max(0, legacyBossesDown || 0));
   return {
-    version: 4,
+    version: 5,
     startedWeek: currentWeek,
     legacyBossesDown: safeLegacy,
     defeated: 0,
@@ -139,6 +139,7 @@ export function createBossCombat({
     earlyVictory: null,
     spellHits: [],
     criticalHits: [],
+    exchangeLog: [],
     history: [],
   };
 }
@@ -239,7 +240,14 @@ export function calculateWeekBossDamage({
           total: 0,
         }
       : damage;
-    daily.push({ key: dayKey, settled, status, ...actual });
+    daily.push({
+      key: dayKey,
+      settled,
+      status,
+      journeyMode: dateConfig.journeyMode,
+      controlledAllowedDay,
+      ...actual,
+    });
     pips.push(status);
   }
 
@@ -339,6 +347,81 @@ export function calculateBossCombatStatus({
       critical: day.critical,
       zero: day.zero,
     }));
+  const combatLog = [];
+  for (const day of weekDamage.daily) {
+    const baseDamage = Math.max(
+      0,
+      Number(day.completion || 0) +
+        Number(day.margin || 0) +
+        Number(day.zero || 0),
+    );
+    if (baseDamage > 0) {
+      combatLog.push({
+        id: `day:${combat.week}:${day.key}`,
+        key: day.key,
+        sortKey: `${day.key}T23:55:00.000`,
+        direction: 'outgoing',
+        kind: 'day',
+        damage: baseDamage,
+        journeyMode: day.journeyMode,
+        completion: day.completion,
+        margin: day.margin,
+        zero: day.zero,
+      });
+    }
+    for (let index = 0; index < Math.max(0, Number(day.perfect) || 0); index += 1) {
+      combatLog.push({
+        id: `perfect:${combat.week}:${day.key}:${index}`,
+        key: day.key,
+        sortKey: `${day.key}T23:56:${String(index).padStart(2, '0')}.000`,
+        direction: 'outgoing',
+        kind: 'perfect',
+        damage: 1,
+      });
+    }
+    if (day.critical > 0) {
+      combatLog.push({
+        id: `critical:${combat.week}:${day.key}`,
+        key: day.key,
+        sortKey: `${day.key}T23:57:00.000`,
+        direction: 'outgoing',
+        kind: 'critical',
+        damage: day.critical,
+      });
+    }
+  }
+  for (const hit of combat.spellHits || []) {
+    if (!hit || hit.week !== combat.week) continue;
+    combatLog.push({
+      id: hit.id || `spell:${combat.week}:${hit.key || ''}:${hit.damage || 0}`,
+      key: hit.key || '',
+      sortKey: hit.at || `${hit.key || '0000-00-00'}T23:58:00.000`,
+      direction: 'outgoing',
+      kind: 'spell',
+      label: hit.label || hit.name || 'Habilidad del héroe',
+      damage: Math.max(0, Number(hit.damage) || 0),
+    });
+  }
+  for (const hit of combat.exchangeLog || []) {
+    if (
+      !hit ||
+      hit.week !== combat.week ||
+      hit.bossIndex !== combat.bossIndex
+    ) continue;
+    combatLog.push({
+      ...hit,
+      direction: 'incoming',
+      damage: Math.max(0, Number(hit.damage) || 0),
+      sortKey: hit.at || `${hit.key || '0000-00-00'}T12:00:00.000`,
+    });
+  }
+  combatLog.sort((left, right) => String(left.sortKey).localeCompare(String(right.sortKey)));
+  const heroDamageLogged = combatLog
+    .filter((entry) => entry.direction === 'outgoing')
+    .reduce((total, entry) => total + entry.damage, 0);
+  const bossDamageLogged = combatLog
+    .filter((entry) => entry.direction === 'incoming')
+    .reduce((total, entry) => total + entry.damage, 0);
 
   return {
     ...identity,
@@ -389,6 +472,9 @@ export function calculateBossCombatStatus({
     campaignComplete,
     history: combat.history || [],
     recentHits,
+    combatLog,
+    heroDamageLogged,
+    bossDamageLogged,
     controlledWeekUsed: weekDamage.controlledWeekUsed,
     controlledWeeklyLimit: weekDamage.controlledWeeklyLimit,
     controlledBudgetExceeded: weekDamage.controlledBudgetExceeded,
@@ -411,10 +497,11 @@ export function reconcileBossCombat({
   const bossCount = bossCountForJourney(config, BOSSES.length);
   const finalBossIndex = bossCount - 1;
   const next = combat
-    ? {
+      ? {
         ...combat,
         spellHits: [...(combat.spellHits || [])],
         criticalHits: [...(combat.criticalHits || [])],
+        exchangeLog: [...(combat.exchangeLog || [])],
         history: [...(combat.history || [])],
       }
     : createBossCombat({
@@ -451,6 +538,10 @@ export function reconcileBossCombat({
   if ((next.version || 3) < 4) {
     next.criticalHits = [];
     next.version = 4;
+  }
+  if ((next.version || 4) < 5) {
+    next.exchangeLog = [];
+    next.version = 5;
   }
   const weekResults = [];
 
@@ -547,6 +638,9 @@ export function reconcileBossCombat({
     (hit) => hit && hit.week >= next.week,
   );
   next.criticalHits = next.criticalHits.filter(
+    (hit) => hit && hit.week >= next.week,
+  );
+  next.exchangeLog = next.exchangeLog.filter(
     (hit) => hit && hit.week >= next.week,
   );
 

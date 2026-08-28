@@ -66,16 +66,33 @@ export function huntResultRewardsMarkup(rewards = {}) {
 
 function reportMarkup(report) {
   if (!report) return '';
-  const rows = report.encounters.map((encounter) => `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
+  const rows = report.encounters.map((encounter) => {
+    const recoveryAfterHp = Math.max(0, Number(encounter.recoveryAfter?.hp) || 0);
+    const recoveryAfterMana = Math.max(0, Number(encounter.recoveryAfter?.mana) || 0);
+    const recoveryAfter = recoveryAfterHp > 0 || recoveryAfterMana > 0
+      ? ` · Descanso: +${recoveryAfterHp} VIDA${recoveryAfterMana > 0 ? ` · +${recoveryAfterMana} MANÁ` : ''}`
+      : '';
+    const potionSummary = (encounter.potionUses || []).map((use) => (
+      `${use.type === 'life' ? 'Vida' : 'Maná'} +${Math.max(0, Number(use.restored) || 0)}`
+    )).join(' · ');
+    const roundDetails = (encounter.roundDetails || []).map((detail) => {
+      const used = (detail.potionUses || []).map((use) => (
+        ` · Poción de ${use.type === 'life' ? 'Vida' : 'Maná'} +${Math.max(0, Number(use.restored) || 0)}`
+      )).join('');
+      return `<li><b>R${Math.max(1, Number(detail.round) || 1)}</b><span>−${Math.max(0, Number(detail.damageTaken) || 0)} VIDA · terminó con ${Math.max(0, Number(detail.heroHp) || 0)} HP${used}</span></li>`;
+    }).join('');
+    return `<div class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
     <span>${encounter.role} · ${encounter.name}</span>
     <b>${encounter.won ? 'VICTORIA' : 'DERROTA'}</b>
-    <small>${encounter.rounds} rondas · ${encounter.damageDealt} daño · ${encounter.heroHp} HP restante${encounter.won ? ` · ✦ +${encounter.rewards?.xp || 0} XP · ${resourceIcon('coin')} +${encounter.rewards?.gold || 0}${encounter.rewards?.arcaneFibers ? ` · ${resourceIcon('arcane-fiber')} +${encounter.rewards.arcaneFibers}` : ''}${encounter.rewards?.bossBlood ? ` · ${resourceIcon('boss-blood')} +${encounter.rewards.bossBlood}` : ''}` : ''}</small>
-  </div>`).join('');
+    <small>${encounter.rounds} rondas · ${encounter.damageDealt} infligido · ${Math.max(0, Number(encounter.damageTaken) || 0)} recibido · ${encounter.heroHp} HP final${potionSummary ? ` · Pociones: ${potionSummary}` : ''}${recoveryAfter}${encounter.won ? ` · ✦ +${encounter.rewards?.xp || 0} XP · ${resourceIcon('coin')} +${encounter.rewards?.gold || 0}${encounter.rewards?.arcaneFibers ? ` · ${resourceIcon('arcane-fiber')} +${encounter.rewards.arcaneFibers}` : ''}${encounter.rewards?.bossBlood ? ` · ${resourceIcon('boss-blood')} +${encounter.rewards.bossBlood}` : ''}` : ''}</small>
+    <ol class="hunt-report-rounds">${roundDetails}</ol>
+  </div>`;
+  }).join('');
   const rewards = report.rewards;
   const recoveredHp = Math.max(0, Number(report.recovery?.hp) || 0);
   const recoveredMana = Math.max(0, Number(report.recovery?.mana) || 0);
-  const recoveryMarkup = report.won
-    ? `<small class="hunt-report-recovery">Recuperación de victoria · +${recoveredHp} VIDA · +${recoveredMana} MANÁ</small>`
+  const recoveryMarkup = recoveredHp > 0 || recoveredMana > 0
+    ? `<small class="hunt-report-recovery">${report.won ? 'Recuperación de victoria' : `Recuperación por avance · ${Math.max(0, Number(report.defeatedEnemies) || 0)}/3`} · +${recoveredHp} VIDA · +${recoveredMana} MANÁ</small>`
     : '';
   const rewardItems = [
     Number(rewards.xp) > 0 ? `<span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>` : '',
@@ -83,8 +100,9 @@ function reportMarkup(report) {
     Number(rewards.arcaneFibers) > 0 ? resourceValue('arcane-fiber', rewards.arcaneFibers) : '',
     Number(rewards.bossBlood) > 0 ? resourceValue('boss-blood', rewards.bossBlood) : '',
   ].filter(Boolean).join('');
+  const resultLabel = report.won ? 'EXPEDICIÓN SUPERADA' : Number(report.defeatedEnemies) > 0 ? 'AVANCE PARCIAL' : 'EXPEDICIÓN FALLIDA';
   return `<section class="card hunt-report">
-    <div class="hunt-section-title"><span>Último informe</span><b>${report.won ? 'EXPEDICIÓN SUPERADA' : 'EXPEDICIÓN FALLIDA'}</b></div>
+    <div class="hunt-section-title"><span>Último informe</span><b>${resultLabel}</b></div>
     <div class="hunt-report-result ${report.won ? 'won' : 'lost'}">${report.won ? 'La bruma retrocede' : 'Tu héroe tuvo que retirarse'}${recoveryMarkup}</div>
     <div class="hunt-report-list">${rows}</div>
     <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}</div>

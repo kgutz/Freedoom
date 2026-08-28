@@ -125,6 +125,41 @@ describe('daño diario al jefe', () => {
 });
 
 describe('combate semanal', () => {
+  it('unifica en el registro los golpes del héroe y los contraataques reales del jefe', () => {
+    const combat = createBossCombat({ currentWeek: 0 });
+    combat.exchangeLog.push({
+      id: 'boss-hit:0:2026-07-17:1',
+      week: 0,
+      bossIndex: 0,
+      key: '2026-07-17',
+      at: '2026-07-17T12:00:00.000Z',
+      direction: 'incoming',
+      kind: 'smoke',
+      damage: 8,
+    });
+    combat.criticalHits.push({
+      week: 0,
+      key: '2026-07-17',
+      critical: true,
+    });
+
+    const status = calculateBossCombatStatus({
+      combat,
+      now: new Date(2026, 6, 18, 12),
+      config,
+      days: { '2026-07-17': { c: 19, s: 1 } },
+    });
+
+    expect(status.heroDamageLogged).toBe(status.damageThisWeek);
+    expect(status.bossDamageLogged).toBe(8);
+    expect(status.combatLog).toEqual(expect.arrayContaining([
+      expect.objectContaining({ direction: 'outgoing', kind: 'day', damage: 27 }),
+      expect.objectContaining({ direction: 'outgoing', kind: 'perfect', damage: 1 }),
+      expect.objectContaining({ direction: 'outgoing', kind: 'critical', damage: 10 }),
+      expect.objectContaining({ direction: 'incoming', kind: 'smoke', damage: 8 }),
+    ]));
+  });
+
   it('resuelve la semana anterior con su camino original tras una transición', () => {
     const transitionedConfig = {
       ...config,
@@ -545,7 +580,7 @@ describe('combate semanal', () => {
       days: {},
     });
 
-    expect(migrated.combat.version).toBe(4);
+    expect(migrated.combat.version).toBe(5);
     expect(migrated.combat.hpAtWeekStart).toBe(90);
   });
 

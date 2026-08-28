@@ -3,9 +3,11 @@ import { relicCombatBonus, relicCombatBonuses } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
   fiberChanceForHunt,
+  fiberChanceForProgress,
   grantHabitHuntEnergy,
   grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
+  huntRecoveryRates,
   normalizeHuntState,
   pveHeroStats,
   resolveHunt,
@@ -75,6 +77,40 @@ describe('PvE combat rules', () => {
     expect(result.heroMana).toBeLessThan(hero.maxMana);
   });
 
+  it('usa como máximo una poción de Vida y una de Maná por enemigo y registra cada ronda', () => {
+    const result = simulatePveCombat({
+      hero: {
+        maxHp: 100,
+        maxMana: 40,
+        physicalAttack: 15,
+        magicAttack: 15,
+        defense: 0,
+        criticalChance: 0,
+        dodgeChance: 0,
+      },
+      enemy: {
+        maxHp: 45,
+        physicalAttack: 5,
+        magicAttack: 5,
+        defense: 0,
+        criticalChance: 0,
+        dodgeChance: 0,
+        attackType: 'physical',
+      },
+      heroHp: 25,
+      heroMana: 0,
+      autoUsePotions: true,
+      potions: { owned: { life: 2, mana: 2 } },
+      roll: () => 0.99,
+    });
+    expect(result.won).toBe(true);
+    expect(result.potions.owned).toMatchObject({ life: 1, mana: 1 });
+    expect(result.potionUses.map((use) => use.type)).toEqual(['mana', 'life']);
+    expect(result.roundDetails).toHaveLength(3);
+    expect(result.roundDetails[0]).toMatchObject({ round: 1, damageTaken: 5, heroHp: 40 });
+    expect(result.damageTaken).toBe(10);
+  });
+
   it('entra con la vida y el maná actuales y recupera parte de ambos al vencer', () => {
     const now = 20_000;
     const started = startHunt({
@@ -97,8 +133,12 @@ describe('PvE combat rules', () => {
       nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
     });
     expect(result.report.won).toBe(true);
-    expect(result.report.heroHpBeforeRecovery).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.5));
-    expect(result.report.heroManaBeforeRecovery).toBeLessThan(Math.round(result.report.heroMaxMana * 0.2));
+    expect(result.report.encounters[0].heroHpAtStart).toBe(Math.round(result.report.heroMaxHp * 0.5));
+    expect(result.report.heroHpBeforeRecovery).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.8));
+    expect(result.report.encounters[0].recoveryAfter.hp).toBeGreaterThan(0);
+    expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
+    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroMana).toBeGreaterThanOrEqual(result.report.encounters[0].heroMana);
     expect(result.report.heroHp).toBeGreaterThan(result.report.heroHpBeforeRecovery);
     expect(result.report.heroMana).toBeGreaterThan(result.report.heroManaBeforeRecovery);
     expect(result.report.heroHp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.8));
@@ -107,7 +147,7 @@ describe('PvE combat rules', () => {
     expect(result.report.recovery.mana).toBe(result.report.heroMana - result.report.heroManaBeforeRecovery);
   });
 
-  it('no concede recuperación si el héroe pierde la cacería', () => {
+  it('recupera una parte si pierde después de vencer un enemigo', () => {
     const now = 30_000;
     const started = startHunt({ hunt: null, difficultyId: 'hard', level: 12, nowTimestamp: now, seed: 8 });
     const result = resolveHunt({
@@ -118,9 +158,30 @@ describe('PvE combat rules', () => {
       nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
     });
     expect(result.report.won).toBe(false);
-    expect(result.report.recovery).toEqual({ hp: 0, mana: 0 });
-    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery);
+    expect(result.report.defeatedEnemies).toBe(1);
+    expect(result.report.recovery).toEqual({ hp: 8, mana: 0 });
+    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery + 8);
     expect(result.report.heroMana).toBe(result.report.heroManaBeforeRecovery);
+    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[1].heroHpAtStart).toBe(result.report.encounters[0].nextHeroHp);
+  });
+
+  it('recupera dos tercios si se retira tras vencer los dos primeros enemigos', () => {
+    const now = 40_000;
+    const started = startHunt({ hunt: null, difficultyId: 'hard', level: 12, nowTimestamp: now, seed: 34 });
+    const result = resolveHunt({
+      hunt: started.hunt,
+      classId: 'sorcerer',
+      level: 12,
+      allocation: { power: 2 },
+      nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
+    });
+    expect(result.report).toMatchObject({ won: false, defeatedEnemies: 2 });
+    expect(result.report.recovery.hp).toBe(17);
+    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery + 17);
+    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
+    expect(result.report.encounters[2].heroHpAtStart).toBe(result.report.encounters[1].nextHeroHp);
   });
 
   it('deriva el estilo de combate de los cinco atributos del enemigo', () => {
@@ -139,6 +200,24 @@ describe('PvE combat rules', () => {
     expect(HUNT_DIFFICULTIES.easy).toMatchObject({ fiberChance: 0, fiberAmount: [0, 0] });
     expect(HUNT_DIFFICULTIES.medium).toMatchObject({ fiberChance: 0.3, fiberAmount: [1, 1] });
     expect(HUNT_DIFFICULTIES.hard).toMatchObject({ fiberChance: 0.7, fiberAmount: [1, 2] });
+  });
+
+  it('hace la tirada completa de Fibra al vencer al Líder aunque no caiga el Minijefe', () => {
+    const now = new Date(2026, 7, 26, 12).getTime();
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 1, nowTimestamp: now })).toBe(0);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'easy', defeatedEnemies: 2, nowTimestamp: now })).toBe(0);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.3);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.7);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 3, nowTimestamp: now })).toBeCloseTo(0.7);
+  });
+
+  it('recupera vida y maná proporcionalmente a los enemigos vencidos', () => {
+    expect(huntRecoveryRates(0)).toEqual({ hpPercent: 0, manaPercent: 0 });
+    expect(huntRecoveryRates(1).hpPercent).toBeCloseTo(0.25 / 3);
+    expect(huntRecoveryRates(1).manaPercent).toBeCloseTo(0.05);
+    expect(huntRecoveryRates(2).hpPercent).toBeCloseTo(0.5 / 3);
+    expect(huntRecoveryRates(2).manaPercent).toBeCloseTo(0.1);
+    expect(huntRecoveryRates(3)).toEqual({ hpPercent: 0.25, manaPercent: 0.15 });
   });
 
   it('reduce seis puntos la probabilidad por cada drop del día y reinicia al día siguiente', () => {

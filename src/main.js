@@ -1784,6 +1784,43 @@ function heroArmor(){
   return baseArmor;
 }
 
+function recordBossCounterattack({
+  damage=0,
+  key=todayKey(),
+  kind='smoke',
+  shielded=false,
+  unit='HP',
+  id=null
+}={}){
+  const combat=state.game?.bossCombat;
+  if(!combat) return null;
+  combat.exchangeLog=Array.isArray(combat.exchangeLog)?combat.exchangeLog:[];
+  const eventId=id||`boss-hit:${combat.week}:${key}:${Date.now()}:${combat.exchangeLog.length}`;
+  const entry={
+    id:eventId,
+    week:combat.week,
+    bossIndex:combat.bossIndex,
+    key,
+    at:new Date().toISOString(),
+    direction:'incoming',
+    kind,
+    damage:Math.max(0,Number(damage)||0),
+    shielded:Boolean(shielded),
+    unit
+  };
+  const previousIndex=combat.exchangeLog.findIndex(item=>item?.id===eventId);
+  if(previousIndex>=0) combat.exchangeLog[previousIndex]=entry;
+  else combat.exchangeLog.push(entry);
+  combat.exchangeLog=combat.exchangeLog.slice(-80);
+  return eventId;
+}
+
+function removeBossCounterattack(eventId){
+  const combat=state.game?.bossCombat;
+  if(!combat||!eventId||!Array.isArray(combat.exchangeLog)) return;
+  combat.exchangeLog=combat.exchangeLog.filter(entry=>entry?.id!==eventId);
+}
+
 function smokeDamage(){
   ensureHero();
   const g=state.game;
@@ -2823,7 +2860,15 @@ document.getElementById('addCig').addEventListener('click',()=>{
     r:r.consumesRoots,
     sh:r.consumesShield,
     lr:r.relicReduction||0,
-    la:r.relicActivationKey||null
+    la:r.relicActivationKey||null,
+    bl:r.dmg>0||r.shielded
+      ? recordBossCounterattack({
+          damage:r.dmg,
+          key:k,
+          kind:'smoke',
+          shielded:r.shielded
+        })
+      : null
   });
   setDay(k,d.c+1,d.p,Date.now(),undefined,(d.s||0)+(r.perfect?1:0),{
     type:'cigarette:add',day:k,count:d.c+1
@@ -2874,6 +2919,7 @@ document.getElementById('subCig').addEventListener('click',()=>{
       state.game.buffs.shield=(state.game.buffs.shield||0)+1;
     }
     restoreRelicActivation(damageEntry?.la);
+    removeBossCounterattack(damageEntry?.bl);
     scheduleSave();
   }
   setDay(k,d.c-1,d.p,undefined,undefined,(d.s||0)-(wasPerfect?1:0),{
@@ -3093,13 +3139,16 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
   const key=todayKey();
   const record=state.days[key]||{c:0,p:0};
   const status=button.dataset.smokeFreeStatus;
+  const controlledFailureLogId=`controlled-failure:${key}`;
   if(status===SMOKE_FREE_STATUS_PENDING){
     const next={...record};
     delete next.sf;
     state.days[key]=next;
+    removeBossCounterattack(controlledFailureLogId);
     revokeRelicDayXp(key);
     showToast('El día vuelve a estar pendiente','heal');
   }else{
+    const maxHpBefore=heroMaxes().maxHp;
     state.days[key]={...record,sf:status};
     const rewardNotice=applySmokeFreeDayRewards(key,status);
     if(status!==SMOKE_FREE_STATUS_SUCCESS&&state.game){
@@ -3114,6 +3163,17 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
       ensureHero();
       state.game.hp=Math.min(state.game.hp,heroMaxes().maxHp);
       state.game.hpT=Date.now();
+      if(record.sf!==SMOKE_FREE_STATUS_SMOKED){
+        recordBossCounterattack({
+          id:controlledFailureLogId,
+          damage:Math.max(0,maxHpBefore-heroMaxes().maxHp),
+          key,
+          kind:'controlled-failure',
+          unit:'VIDA MÁX.'
+        });
+      }
+    }else{
+      removeBossCounterattack(controlledFailureLogId);
     }
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
@@ -3308,6 +3368,7 @@ function switchView(viewId,buttonId){
 }
 
 let pendingHuntDifficultyId=null;
+let pendingHuntAutoUsePotions=true;
 
 function huntPotentialRewardsMarkup(difficulty){
   const fiberMax=Math.max(0,Number(difficulty?.fiberAmount?.[1])||0);
@@ -3321,18 +3382,23 @@ function huntPotentialRewardsMarkup(difficulty){
 
 function openHuntResultModal(report){
   const won=Boolean(report?.won);
+  const defeatedEnemies=Math.max(0,Number(report?.defeatedEnemies)||0);
+  const partial=!won&&defeatedEnemies>0;
   const recoveredHp=Math.max(0,Number(report?.recovery?.hp)||0);
   const recoveredMana=Math.max(0,Number(report?.recovery?.mana)||0);
-  document.getElementById('huntResultTitle').textContent=won?'Cacería superada':'Cacería finalizada';
+  document.getElementById('huntResultTitle').textContent=won?'Cacería superada':partial?'Avance parcial':'Cacería fallida';
   document.getElementById('huntResultMessage').textContent=won
     ? `La bruma retrocede. Tu héroe recupera ${recoveredHp} de vida y ${recoveredMana} de maná antes de regresar con el botín.`
-    : 'Tu héroe tuvo que retirarse, pero conserva el botín de los enemigos derrotados.';
+    : partial
+      ? `Tu héroe tuvo que retirarse tras vencer ${defeatedEnemies}/3 enemigos. Conserva su botín y recupera ${recoveredHp} de vida${recoveredMana>0?` y ${recoveredMana} de maná`:''} antes de regresar.`
+      : 'Tu héroe tuvo que retirarse sin derrotar enemigos. No obtiene recuperación de salida.';
   document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
   document.getElementById('huntResultBg').classList.add('show');
 }
 
 function closeHuntConfirmation(){
   pendingHuntDifficultyId=null;
+  pendingHuntAutoUsePotions=true;
   document.getElementById('huntConfirmBg').classList.remove('show');
 }
 
@@ -3345,19 +3411,31 @@ function openHuntConfirmation(difficultyId){
   if(heroLevel<difficulty.minLevel){showToast(`Necesitas nivel ${difficulty.minLevel}`,'bad');return;}
   if(hunt.energy<difficulty.energyCost){showToast('No tienes energía suficiente','bad');return;}
   pendingHuntDifficultyId=difficultyId;
+  pendingHuntAutoUsePotions=true;
+  const potions=normalizePotionState(state.inventory?.potions);
+  const lifePotions=Math.max(0,Number(potions.owned.life)||0);
+  const manaPotions=Math.max(0,Number(potions.owned.mana)||0);
+  const hasCombatPotions=lifePotions+manaPotions>0;
   document.getElementById('huntConfirmTitle').textContent=`¿Iniciar en ${difficulty.name}?`;
   document.getElementById('huntConfirmBody').innerHTML=`<div class="hunt-confirm-summary">
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
     <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
     <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
-  </div>`;
+  </div>
+  <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
+    <input type="checkbox" id="huntAutoPotions" ${hasCombatPotions?'checked':'disabled'}>
+    <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
+    <span class="hunt-potion-toggle-copy"><b>Usar pociones automáticamente</b><small>${hasCombatPotions?`Vida ×${lifePotions} · Maná ×${manaPotions} · máximo una de cada tipo por enemigo`:'No tienes pociones de Vida ni de Maná en el Bolso'}</small></span>
+  </label>`;
   document.getElementById('huntConfirmBg').classList.add('show');
 }
 
 function confirmHuntStart(){
   if(!pendingHuntDifficultyId) return;
   const difficultyId=pendingHuntDifficultyId;
+  pendingHuntAutoUsePotions=Boolean(document.getElementById('huntAutoPotions')?.checked);
+  const autoUsePotions=pendingHuntAutoUsePotions;
   closeHuntConfirmation();
   ensureHero();
   const stats=gameStats();
@@ -3370,6 +3448,7 @@ function confirmHuntStart(){
     currentMana:state.game.mp,
     maxMana:stats.maxMp,
     relicBonuses:relicBonuses(),
+    autoUsePotions,
     nowTimestamp:Date.now()
   });
   if(!result.ok){
@@ -3429,10 +3508,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       classId:state.game.cls,
       level:stats.lvl,
       allocation:state.game.attributes,
+      potions:state.inventory?.potions,
       nowTimestamp:Date.now()
     });
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
     state.game.hunt=result.hunt;
+    state.inventory={...(state.inventory||{}),potions:result.potions};
     state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
     state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
     state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;

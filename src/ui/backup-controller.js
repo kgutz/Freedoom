@@ -30,10 +30,10 @@ export function bindBackupControls({
 
   document.getElementById('btnImport').addEventListener('click', () => {
     mode = 'import';
-    document.getElementById('backupTitle').textContent = 'Importar datos o comando';
+    document.getElementById('backupTitle').textContent = 'Importar datos';
     textArea.value = '';
     textArea.readOnly = false;
-    textArea.placeholder = 'Ej.: !+sangre 1, !+energia 2 o !+outfit beta-tester';
+    textArea.placeholder = 'Pega aquí tu copia de seguridad…';
     document.getElementById('backupAction').textContent = 'Importar';
     background.classList.add('show');
   });

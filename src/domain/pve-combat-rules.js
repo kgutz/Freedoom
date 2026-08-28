@@ -1,4 +1,5 @@
 import { attributeSheet } from './attribute-rules.js';
+import { normalizePotionState } from './potion-rules.js';
 
 export const DAILY_HUNT_ENERGY = 5;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
@@ -8,6 +9,19 @@ export const HUNT_VICTORY_RECOVERY = Object.freeze({
   manaPercent: 0.15,
   hpCapPercent: 0.8,
   manaCapPercent: 0.6,
+});
+export const HUNT_ENCOUNTER_RECOVERY = Object.freeze({
+  hpTargetPercent: 0.7,
+  manaPercent: 0.15,
+  manaCapPercent: 0.6,
+});
+export const HUNT_AUTO_POTION_RULES = Object.freeze({
+  lifeThresholdPercent: 0.3,
+  manaThresholdPercent: 0.25,
+  lifeRestore: 20,
+  manaRestore: 25,
+  maxLifePerEncounter: 1,
+  maxManaPerEncounter: 1,
 });
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const BRUMA_ENEMY_TEMPLATES = [
@@ -304,6 +318,25 @@ export function fiberChanceForHunt({ hunt, difficultyId, nowTimestamp = Date.now
   return Math.max(0.01, difficulty.fiberChance - dropsToday * 0.06);
 }
 
+export function fiberChanceForProgress({
+  hunt,
+  difficultyId,
+  defeatedEnemies = 0,
+  nowTimestamp = Date.now(),
+}) {
+  if (safeInteger(defeatedEnemies) < 2) return 0;
+  return fiberChanceForHunt({ hunt, difficultyId, nowTimestamp });
+}
+
+export function huntRecoveryRates(defeatedEnemies = 0, totalEnemies = BRUMA_ENEMIES.length) {
+  const total = Math.max(1, safeInteger(totalEnemies));
+  const progress = clamp(safeInteger(defeatedEnemies), 0, total) / total;
+  return {
+    hpPercent: HUNT_VICTORY_RECOVERY.hpPercent * progress,
+    manaPercent: HUNT_VICTORY_RECOVERY.manaPercent * progress,
+  };
+}
+
 export function pveHeroStats({ classId, level, allocation, relicBonuses = {} }) {
   const a = attributeSheet({ classId, level, allocation }).attributes;
   return {
@@ -326,12 +359,44 @@ export function resolvePveAttack({ attacker, defender, attackType = 'physical', 
   return { damage, critical, dodged: false };
 }
 
-export function simulatePveCombat({ hero, enemy, heroHp: startingHeroHp, heroMana: startingHeroMana, attackType = 'physical', roll = Math.random, maxRounds = 30 }) {
+export function simulatePveCombat({
+  hero,
+  enemy,
+  heroHp: startingHeroHp,
+  heroMana: startingHeroMana,
+  attackType = 'physical',
+  roll = Math.random,
+  maxRounds = 30,
+  autoUsePotions = false,
+  potions: suppliedPotions,
+}) {
   let heroHp = Math.max(0, Number.isFinite(startingHeroHp) ? startingHeroHp : hero.maxHp);
   let heroMana = Math.max(0, Number.isFinite(startingHeroMana) ? startingHeroMana : hero.maxMana);
   let enemyHp = Math.max(1, enemy.maxHp);
+  const potions = normalizePotionState(suppliedPotions);
+  const potionUses = [];
+  const roundDetails = [];
+  let lifePotionsUsed = 0;
+  let manaPotionsUsed = 0;
   const log = [];
   for (let round = 1; round <= maxRounds && heroHp > 0 && enemyHp > 0; round += 1) {
+    const roundPotionUses = [];
+    if (
+      autoUsePotions
+      && manaPotionsUsed < HUNT_AUTO_POTION_RULES.maxManaPerEncounter
+      && potions.owned.mana > 0
+      && heroMana < hero.maxMana
+      && heroMana <= hero.maxMana * HUNT_AUTO_POTION_RULES.manaThresholdPercent
+    ) {
+      const restored = Math.min(HUNT_AUTO_POTION_RULES.manaRestore, hero.maxMana - heroMana);
+      heroMana += restored;
+      potions.owned.mana -= 1;
+      manaPotionsUsed += 1;
+      const use = { round, type: 'mana', restored };
+      potionUses.push(use);
+      roundPotionUses.push(use);
+      log.push({ round, actor: 'potion', potionId: 'mana', restored, remainingMana: heroMana, remainingHp: heroHp });
+    }
     const manaSpent = Math.min(2, heroMana);
     const heroHit = resolvePveAttack({
       attacker: hero,
@@ -343,12 +408,50 @@ export function simulatePveCombat({ hero, enemy, heroHp: startingHeroHp, heroMan
     heroMana = Math.max(0, heroMana - manaSpent);
     enemyHp = Math.max(0, enemyHp - heroHit.damage);
     log.push({ round, actor: 'hero', ...heroHit, manaSpent, remainingMana: heroMana, remainingHp: enemyHp });
-    if (enemyHp <= 0) break;
-    const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
-    heroHp = Math.max(0, heroHp - enemyHit.damage);
-    log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
+    let damageTaken = 0;
+    if (enemyHp > 0) {
+      const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
+      damageTaken = enemyHit.damage;
+      heroHp = Math.max(0, heroHp - enemyHit.damage);
+      log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
+      if (
+        autoUsePotions
+        && heroHp > 0
+        && lifePotionsUsed < HUNT_AUTO_POTION_RULES.maxLifePerEncounter
+        && potions.owned.life > 0
+        && heroHp < hero.maxHp
+        && heroHp <= hero.maxHp * HUNT_AUTO_POTION_RULES.lifeThresholdPercent
+      ) {
+        const restored = Math.min(HUNT_AUTO_POTION_RULES.lifeRestore, hero.maxHp - heroHp);
+        heroHp += restored;
+        potions.owned.life -= 1;
+        lifePotionsUsed += 1;
+        const use = { round, type: 'life', restored };
+        potionUses.push(use);
+        roundPotionUses.push(use);
+        log.push({ round, actor: 'potion', potionId: 'life', restored, remainingMana: heroMana, remainingHp: heroHp });
+      }
+    }
+    roundDetails.push({
+      round,
+      damageTaken,
+      heroHp,
+      heroMana,
+      potionUses: roundPotionUses,
+    });
   }
-  return { won: enemyHp <= 0 && heroHp > 0, heroHp, heroMana, enemyHp, rounds: log.at(-1)?.round || 0, log };
+  return {
+    won: enemyHp <= 0 && heroHp > 0,
+    heroHp,
+    heroMana,
+    enemyHp,
+    rounds: roundDetails.at(-1)?.round || 0,
+    damageTaken: roundDetails.reduce((sum, detail) => sum + detail.damageTaken, 0),
+    potionUses,
+    potions,
+    roundDetails,
+    log,
+  };
 }
 
 function seededRoll(seed) {
@@ -380,7 +483,7 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
@@ -417,6 +520,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
     seed: safeInteger(seed),
     entryHpRatio: resourceRatio(currentHp, maxHp),
     entryManaRatio: resourceRatio(currentMana, maxMana),
+    autoUsePotions: Boolean(autoUsePotions),
     relicBonuses: {
       physicalAttack: safeInteger(relicBonuses.physicalAttack),
       magicAttack: safeInteger(relicBonuses.magicAttack),
@@ -438,7 +542,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
   };
 }
 
-export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = Date.now() }) {
+export function resolveHunt({ hunt, classId, level, allocation, potions: suppliedPotions, nowTimestamp = Date.now() }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const active = normalized.active;
   if (!active) return { ok: false, reason: 'no-active-hunt', hunt: normalized };
@@ -452,16 +556,62 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
   let currentMana = Number.isFinite(active.entryManaRatio)
     ? Math.max(0, Math.round(hero.maxMana * clamp(active.entryManaRatio, 0, 1)))
     : hero.maxMana;
+  let potions = normalizePotionState(suppliedPotions);
   const encounters = [];
-  for (const definition of BRUMA_ENEMIES) {
+  for (const [enemyIndex, definition] of BRUMA_ENEMIES.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
-    const result = simulatePveCombat({ hero, enemy, heroHp: currentHp, heroMana: currentMana, attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical', roll: random });
+    const heroHpAtStart = currentHp;
+    const heroManaAtStart = currentMana;
+    const result = simulatePveCombat({
+      hero,
+      enemy,
+      heroHp: currentHp,
+      heroMana: currentMana,
+      attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical',
+      roll: random,
+      autoUsePotions: Boolean(active.autoUsePotions),
+      potions,
+    });
+    potions = result.potions;
     currentHp = result.heroHp;
     currentMana = result.heroMana;
-    encounters.push({ id: enemy.id, role: enemy.role, name: enemy.name, won: result.won, rounds: result.rounds, heroHp: currentHp, heroMana: currentMana, damageDealt: enemy.maxHp - result.enemyHp });
+    const heroHpAfterFight = currentHp;
+    const heroManaAfterFight = currentMana;
+    const hasNextEncounter = result.won && enemyIndex < BRUMA_ENEMIES.length - 1;
+    if (hasNextEncounter) {
+      const hpRecoveryTarget = Math.round(hero.maxHp * HUNT_ENCOUNTER_RECOVERY.hpTargetPercent);
+      const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaCapPercent);
+      currentHp = Math.max(currentHp, hpRecoveryTarget);
+      currentMana = Math.max(currentMana, Math.min(
+        manaRecoveryLimit,
+        currentMana + Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaPercent),
+      ));
+    }
+    encounters.push({
+      id: enemy.id,
+      role: enemy.role,
+      name: enemy.name,
+      won: result.won,
+      rounds: result.rounds,
+      heroHpAtStart,
+      heroManaAtStart,
+      heroHp: heroHpAfterFight,
+      heroMana: heroManaAfterFight,
+      recoveryAfter: {
+        hp: Math.max(0, currentHp - heroHpAfterFight),
+        mana: Math.max(0, currentMana - heroManaAfterFight),
+      },
+      nextHeroHp: currentHp,
+      nextHeroMana: currentMana,
+      damageDealt: enemy.maxHp - result.enemyHp,
+      damageTaken: result.damageTaken,
+      potionUses: result.potionUses,
+      roundDetails: result.roundDetails,
+    });
     if (!result.won) break;
   }
   const won = encounters.length === BRUMA_ENEMIES.length && encounters.every((encounter) => encounter.won);
+  const defeatedEnemies = encounters.filter((encounter) => encounter.won).length;
   const [minGold, maxGold] = difficulty.gold;
   const fullGold = minGold + Math.floor(random() * (maxGold - minGold + 1));
   const goldByEnemy = splitEncounterReward(fullGold);
@@ -474,33 +624,40 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
       bossBlood: 0,
     };
   });
-  const bossRewards = encounters[2]?.rewards;
-  if (won && bossRewards) {
-    const fiberChance = fiberChanceForHunt({ hunt: normalized, difficultyId: difficulty.id, nowTimestamp });
+  const leaderRewards = encounters[1]?.won ? encounters[1].rewards : null;
+  if (leaderRewards) {
+    const fiberChance = fiberChanceForProgress({
+      hunt: normalized,
+      difficultyId: difficulty.id,
+      defeatedEnemies,
+      nowTimestamp,
+    });
     if (random() < fiberChance) {
       const [minFiber, maxFiber] = difficulty.fiberAmount;
-      bossRewards.arcaneFibers = minFiber + Math.floor(random() * (maxFiber - minFiber + 1));
+      leaderRewards.arcaneFibers = minFiber + Math.floor(random() * (maxFiber - minFiber + 1));
     }
-    bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
   }
+  const bossRewards = encounters[2]?.won ? encounters[2].rewards : null;
+  if (bossRewards) bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
   const rewards = {
     xp: encounters.reduce((total, encounter) => total + encounter.rewards.xp, 0),
     gold: encounters.reduce((total, encounter) => total + encounter.rewards.gold, 0),
-    arcaneFibers: bossRewards?.arcaneFibers || 0,
-    bossBlood: bossRewards?.bossBlood || 0,
+    arcaneFibers: encounters.reduce((total, encounter) => total + encounter.rewards.arcaneFibers, 0),
+    bossBlood: encounters.reduce((total, encounter) => total + encounter.rewards.bossBlood, 0),
   };
   const heroHpBeforeRecovery = currentHp;
   const heroManaBeforeRecovery = currentMana;
-  if (won) {
+  if (defeatedEnemies > 0) {
+    const recoveryRates = huntRecoveryRates(defeatedEnemies);
     const hpRecoveryLimit = Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpCapPercent);
     const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaCapPercent);
     currentHp = Math.max(currentHp, Math.min(
       hpRecoveryLimit,
-      currentHp + Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpPercent),
+      currentHp + Math.round(hero.maxHp * recoveryRates.hpPercent),
     ));
     currentMana = Math.max(currentMana, Math.min(
       manaRecoveryLimit,
-      currentMana + Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaPercent),
+      currentMana + Math.round(hero.maxMana * recoveryRates.manaPercent),
     ));
   }
   const recovery = {
@@ -514,6 +671,7 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
     startedAt: active.startedAt,
     completedAt: nowTimestamp,
     won,
+    defeatedEnemies,
     heroMaxHp: hero.maxHp,
     heroHp: currentHp,
     heroHpBeforeRecovery,
@@ -524,5 +682,5 @@ export function resolveHunt({ hunt, classId, level, allocation, nowTimestamp = D
     encounters,
     rewards,
   };
-  return { ok: true, reason: null, report, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
+  return { ok: true, reason: null, report, potions, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
 }

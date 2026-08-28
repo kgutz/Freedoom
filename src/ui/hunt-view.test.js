@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { huntResultRewardsMarkup, renderHuntView } from './hunt-view.js';
 
-function renderReport(rewards, difficultyId = 'easy') {
+function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
   renderHuntView({
     document: { getElementById: () => root },
@@ -15,6 +15,7 @@ function renderReport(rewards, difficultyId = 'easy') {
           won: true,
           encounters: [],
           rewards,
+          ...reportOverrides,
         },
       },
     },
@@ -148,5 +149,46 @@ describe('informe de Cacería', () => {
     expect(html).toContain('resource-icon--boss-blood');
     expect(html).not.toContain('🧵');
     expect(html).not.toContain('🩸');
+  });
+
+  it('explica la recuperación parcial al retirarse tras dos victorias', () => {
+    const html = renderReport(
+      { xp: 10, gold: 12, arcaneFibers: 1, bossBlood: 0 },
+      'hard',
+      { won: false, defeatedEnemies: 2, recovery: { hp: 17, mana: 10 } },
+    );
+    expect(html).toContain('AVANCE PARCIAL');
+    expect(html).toContain('Recuperación por avance · 2/3 · +17 VIDA · +10 MANÁ');
+    expect(html).toContain('resource-icon--arcane-fiber');
+  });
+
+  it('detalla el daño recibido, la vida final de cada ronda y las pociones consumidas', () => {
+    const html = renderReport(
+      { xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 },
+      'easy',
+      {
+        encounters: [{
+          role: 'Soldado',
+          name: 'Brote Engañoso',
+          won: true,
+          rounds: 2,
+          damageDealt: 44,
+          damageTaken: 12,
+          heroHp: 38,
+          recoveryAfter: { hp: 32, mana: 8 },
+          potionUses: [{ round: 1, type: 'life', restored: 20 }],
+          roundDetails: [
+            { round: 1, damageTaken: 7, heroHp: 43, potionUses: [{ type: 'life', restored: 20 }] },
+            { round: 2, damageTaken: 5, heroHp: 38, potionUses: [] },
+          ],
+          rewards: { xp: 5, gold: 7, arcaneFibers: 0, bossBlood: 0 },
+        }],
+      },
+    );
+    expect(html).toContain('12 recibido');
+    expect(html).toContain('R1');
+    expect(html).toContain('−7 VIDA · terminó con 43 HP');
+    expect(html).toContain('Poción de Vida +20');
+    expect(html).toContain('Descanso: +32 VIDA · +8 MANÁ');
   });
 });

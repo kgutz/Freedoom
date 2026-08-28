@@ -584,49 +584,53 @@ export function renderHeroView({
       <button class="boss-medal-share" type="button" data-share-boss="${index}" data-share-file="${bossFile}">Compartir</button>
     </div>`;
   }).join('');
-  const combatLog = (bossState.recentHits || [])
-    .map((hit) => {
-      const parts = [
-        hit.completion ? `día ${hit.completion}` : '',
-        hit.margin ? `margen ${hit.margin}` : '',
-        hit.perfect ? `perfectos ${hit.perfect}` : '',
-        hit.zero ? `cero ${hit.zero}` : '',
-      ].filter(Boolean);
-      return `<div class="boss-combat-report-row">
-        <div class="boss-combat-report-copy">
-          <b>${hit.key.slice(8, 10)}/${hit.key.slice(5, 7)} · Golpe del héroe</b>
-          <small>${parts.join(' + ')}</small>
-        </div>
-        <strong class="boss-combat-report-damage dealt">−${hit.total} HP</strong>
-      </div>`;
-    })
-    .join('');
-  const pastCombatReports = [...(bossState.history || [])]
-    .slice(-4)
-    .reverse()
-    .map((battle) => {
-      const heroDamage = Math.max(0, Number(battle.heroDamage ?? battle.damage) || 0);
-      const bossDamage = Math.max(0, Number(battle.bossDamage) || 0);
-      const manaDamage = Math.max(0, Number(battle.manaDamage) || 0);
-      const resultLabel = battle.won ? 'VICTORIA' : 'DERROTA';
-      const counterLabel = battle.shielded
+  const bossCombatEntries = Array.isArray(bossState.combatLog)
+    ? bossState.combatLog
+    : (bossState.recentHits || []).map((hit) => ({
+        ...hit,
+        direction: 'outgoing',
+        kind: 'day',
+        damage: hit.total,
+      }));
+  const combatLog = bossCombatEntries
+    .map((entry) => {
+      const outgoing = entry.direction !== 'incoming';
+      const label = entry.kind === 'critical'
+        ? 'Asestaste un golpe crítico al jefe.'
+        : entry.kind === 'perfect'
+          ? 'Tu tiro certero alcanzó al jefe.'
+          : entry.kind === 'spell'
+            ? `${entry.label || 'Tu habilidad'} golpeó al jefe.`
+            : entry.kind === 'smoke'
+              ? entry.shielded
+                ? 'Tu escudo bloqueó el contraataque del jefe.'
+                : 'El jefe contraatacó al fumar.'
+              : entry.kind === 'controlled-failure'
+                ? 'El jefe castigó el consumo de un día no permitido.'
+                : entry.journeyMode === 'smoke_free'
+                  ? 'Completaste un día sin fumar.'
+                  : entry.journeyMode === 'controlled'
+                    ? 'Cumpliste el objetivo de Control.'
+                    : 'Cumpliste tu objetivo diario.';
+      const date = entry.key?.length >= 10
+        ? `${entry.key.slice(8, 10)}/${entry.key.slice(5, 7)}`
+        : 'HOY';
+      const amount = entry.shielded
         ? 'BLOQUEADO'
-        : bossDamage > 0
-          ? `−${bossDamage} HP`
-          : 'SIN DAÑO';
-      return `<div class="boss-week-report ${battle.won ? 'won' : 'lost'}">
-        <div class="boss-week-report-head">
-          <span>SEMANA ${Math.max(0, Number(battle.week) || 0) + 1}</span>
-          <b>${resultLabel}</b>
+        : `${outgoing ? '−' : '−'}${Math.max(0, Number(entry.damage) || 0)} ${entry.unit || 'HP'}`;
+      return `<div class="boss-combat-report-row ${outgoing ? 'outgoing' : 'incoming'}">
+        <div class="boss-combat-report-copy">
+          <small>${date} · ${outgoing ? 'HÉROE → JEFE' : 'JEFE → HÉROE'}</small>
+          <b>${label}</b>
         </div>
-        <div class="boss-week-exchange">
-          <span><small>TÚ → JEFE</small><b>−${heroDamage} HP</b></span>
-          <i aria-hidden="true">VS</i>
-          <span><small>JEFE → TÚ</small><b>${counterLabel}</b>${manaDamage ? `<em>−${manaDamage} MANÁ</em>` : ''}</span>
-        </div>
+        <strong class="boss-combat-report-damage ${outgoing ? 'dealt' : 'received'}${entry.shielded ? ' blocked' : ''}">${amount}</strong>
       </div>`;
     })
     .join('');
+  const heroDamageLogged = Number.isFinite(Number(bossState.heroDamageLogged))
+    ? Math.max(0, Number(bossState.heroDamageLogged))
+    : Math.max(0, Number(bossState.damageThisWeek) || 0);
+  const bossDamageLogged = Math.max(0, Number(bossState.bossDamageLogged) || 0);
   const bossHistoryBody = document.getElementById('bossHistoryBody');
   if (bossHistoryBody) {
     bossHistoryBody.innerHTML = `
@@ -647,9 +651,9 @@ export function renderHeroView({
         <b>${bossState.completedDays} / ${bossState.requiredDays} días cumplidos</b>
       </div>
       <div class="boss-duel-summary">
-        <span class="hero-side"><small>TU HÉROE → JEFE</small><b>−${bossState.damageThisWeek} HP</b><em>esta semana</em></span>
+        <span class="hero-side"><small>TU HÉROE → JEFE</small><b>−${heroDamageLogged} HP</b><em>según el registro</em></span>
         <i aria-hidden="true">VS</i>
-        <span class="boss-side"><small>JEFE → TU HÉROE</small><b>0 HP</b><em>contraataca al perder la semana</em></span>
+        <span class="boss-side"><small>JEFE → TU HÉROE</small><b>−${bossDamageLogged} HP</b><em>según el registro</em></span>
       </div>
       ${bossState.earlyVictoryActive && !bossState.won
         ? '<div class="boss-early-victory-badge">VICTORIA ANTICIPADA · BONUS PENDIENTE</div>'
@@ -673,11 +677,8 @@ export function renderHeroView({
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${combatLog
-        ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>Últimos golpes · esta semana</span><b>DAÑO DE HOY · ${bossState.damageToday}</b></div>${combatLog}</div>`
-        : '<div class="boss-log-empty">Todavía no has golpeado a este jefe.</div>'}
-      ${pastCombatReports
-        ? `<div class="boss-past-combats"><div class="boss-log-title">COMBATES CERRADOS</div>${pastCombatReports}</div>`
-        : ''}
+        ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></div><div class="boss-combat-report-feed">${combatLog}</div></div>`
+        : '<div class="boss-log-empty">El combate aún no tiene movimientos registrados.</div>'}
       </section>`;
   }
 
