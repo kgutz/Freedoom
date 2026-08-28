@@ -23,7 +23,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     assetId: 'telecom-beta',
     transparentPortrait: true,
     lore: 'Dice la leyenda que un Beta Tester recorría Freedom reparando sus redes. Con cada señal y consejo, ayudaba a construir un mundo mejor conectado.',
-    recipe: Object.freeze({ arcaneFibers: 20, coins: 320 }),
+    recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
   }),
   Object.freeze({
     id: 'arcane-weave-02',
@@ -34,7 +34,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     assetId: 'welder-beta',
     transparentPortrait: true,
     lore: 'Cuenta la leyenda que un Beta Tester dominaba el fuego y el metal. Entre chispas y consejos, ayudó a templar un Freedom más resistente.',
-    recipe: Object.freeze({ arcaneFibers: 20, coins: 320 }),
+    recipe: Object.freeze({ arcaneFibers: 5, coins: 80 }),
   }),
 ]);
 

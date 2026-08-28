@@ -4884,6 +4884,25 @@ function potionBagIsFullFor(potionId){
   return Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length>=POTION_BAG_SLOT_LIMIT;
 }
 
+function returnToShopMap(){
+  forgeFromCity=false;
+  shopViewSection='map';
+  showInventoryPanel('shop');
+}
+
+function activeShopDestinationPanel(){
+  if(forgeFromCity) return document.getElementById('forgeBody');
+  if(['potions','relics'].includes(shopViewSection)) return document.getElementById('shopBody');
+  return null;
+}
+
+document.getElementById('sheetInventory').addEventListener('click',event=>{
+  const destinationPanel=activeShopDestinationPanel();
+  if(!destinationPanel||destinationPanel.contains(event.target)) return;
+  event.stopImmediatePropagation();
+  returnToShopMap();
+},true);
+
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
@@ -4903,14 +4922,11 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     return;
   }
   if(event.target.closest('[data-close-shop-destination]')){
-    forgeFromCity=false;
-    shopViewSection='map';
-    showInventoryPanel('shop');
+    returnToShopMap();
     return;
   }
   if(event.target.closest('[data-back-shop-city]')){
-    shopViewSection='map';
-    showInventoryPanel('shop');
+    returnToShopMap();
     return;
   }
   const shopDestination=event.target.closest('[data-shop-destination]');
@@ -5265,9 +5281,7 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
     selectedOutfitDraft=null;
     document.getElementById('outfitSelectorBg').classList.remove('show');
     if(outfitSelectorContext==='shop'){
-      forgeFromCity=false;
-      shopViewSection='map';
-      showInventoryPanel('shop');
+      returnToShopMap();
     }
   }
 });
