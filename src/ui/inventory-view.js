@@ -315,9 +315,9 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const owned=potions.owned[potionId]||0;
   const dayUses=potions.dailyUses[options.dayKey]||{};
   const used=potionId==='blood'?potions.bloodPrepared[options.bossKey]||0:dayUses[potionId]||0;
-  const limit=potionId==='blood'?3:POTION_DAILY_LIMITS[potionId]||1;
+  const limit=potionId==='blood'?3:POTION_DAILY_LIMITS[potionId]||null;
   const active=potions.active?.endsAt>(options.nowTimestamp||Date.now());
-  const blocked=owned<1||used>=limit||(['fortune','experience'].includes(potionId)&&active);
+  const blocked=owned<1||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active);
   const shopMode=options.mode==='shop';
   const lacksCoins=normalized.economy.coins<definition.price;
   const occupiedSlots=Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length;
@@ -325,7 +325,8 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const action=shopMode
     ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins||bagFull?' aria-disabled="true"':''}>${bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
     : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
-  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
+  const usageCopy=limit===null?'Usos diarios: SIN LÍMITE':`Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}`;
+  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
   return true;
 }
 

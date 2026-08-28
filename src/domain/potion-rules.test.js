@@ -88,12 +88,19 @@ describe('pociones', () => {
     expect(usePotion({ inventory: used.inventory, potionId: 'fortune', dayKey: DAY, nowTimestamp: 2_000_000 }).reason).toBe('limit');
   });
 
-  it('limita Vida y Maná a dos usos al día', () => {
+  it('permite usar Vida y Maná sin límite diario mientras queden unidades', () => {
     const state = richState();
     state.inventory.potions = { owned: { life: 3, mana: 3 } };
     const life1 = usePotion({ inventory: state.inventory, potionId: 'life', dayKey: DAY });
     const life2 = usePotion({ inventory: life1.inventory, potionId: 'life', dayKey: DAY });
-    expect(usePotion({ inventory: life2.inventory, potionId: 'life', dayKey: DAY }).reason).toBe('limit');
+    const life3 = usePotion({ inventory: life2.inventory, potionId: 'life', dayKey: DAY });
+    const mana1 = usePotion({ inventory: life3.inventory, potionId: 'mana', dayKey: DAY });
+    const mana2 = usePotion({ inventory: mana1.inventory, potionId: 'mana', dayKey: DAY });
+    const mana3 = usePotion({ inventory: mana2.inventory, potionId: 'mana', dayKey: DAY });
+    expect(life3.ok).toBe(true);
+    expect(mana3.ok).toBe(true);
+    expect(mana3.inventory.potions.owned).toMatchObject({ life: 0, mana: 0 });
+    expect(mana3.inventory.potions.dailyUses[DAY]).toBeUndefined();
   });
 
   it('Fortuna concede el doble adicional y lo revierte al deshacer', () => {

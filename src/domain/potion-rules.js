@@ -109,20 +109,26 @@ export function usePotion({ inventory, potionId, dayKey, bossKey = '', nowTimest
   }
   const daily = potions.dailyUses[dayKey] || {};
   const used = Math.max(0, Number(daily[potionId]) || 0);
-  if (used >= POTION_DAILY_LIMITS[potionId]) {
+  const dailyLimit = POTION_DAILY_LIMITS[potionId];
+  if (dailyLimit && used >= dailyLimit) {
     return { ok: false, reason: 'limit', inventory: { ...inventory, potions } };
   }
   if (['fortune', 'experience'].includes(potionId) && potions.active?.endsAt > nowTimestamp) {
     return { ok: false, reason: 'active', inventory: { ...inventory, potions } };
   }
   potions.owned[potionId] -= 1;
-  potions.dailyUses[dayKey] = { ...daily, [potionId]: used + 1 };
+  if (dailyLimit) potions.dailyUses[dayKey] = { ...daily, [potionId]: used + 1 };
   if (['fortune', 'experience'].includes(potionId)) {
     potions.active = {
       id: potionId, dayKey, startedAt: nowTimestamp, endsAt: nowTimestamp + POTION_DURATION_MS,
     };
   }
-  return { ok: true, inventory: { ...inventory, potions }, uses: used + 1, active: potions.active };
+  return {
+    ok: true,
+    inventory: { ...inventory, potions },
+    uses: dailyLimit ? used + 1 : null,
+    active: potions.active,
+  };
 }
 
 export function consumePreparedBlood(inventory, bossKeys = []) {

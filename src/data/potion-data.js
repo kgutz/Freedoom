@@ -12,12 +12,12 @@ export const POTION_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'life', name: 'Poción de Vida', price: 6, symbol: '♥', tone: 'red',
     shortEffect: 'Recupera 20 puntos de Salud.',
-    detail: 'Uso instantáneo. Máximo dos usos al día.',
+    detail: 'Uso instantáneo. Sin límite diario.',
   }),
   Object.freeze({
     id: 'mana', name: 'Poción de Maná', price: 8, symbol: '◆', tone: 'blue',
     shortEffect: 'Recupera 25 puntos de Maná.',
-    detail: 'Uso instantáneo. Máximo dos usos al día.',
+    detail: 'Uso instantáneo. Sin límite diario.',
   }),
   Object.freeze({
     id: 'blood', name: 'Poción de Sangre', price: 25, symbol: '♦', tone: 'blood',
@@ -35,6 +35,6 @@ export const POTION_BAG_SLOT_LIMIT = 4;
 export const POTION_DURATION_MS = 30 * 60 * 1000;
 export const POTION_BONUS_CAPS = Object.freeze({ fortune: 30, experience: 10 });
 export const POTION_DAILY_LIMITS = Object.freeze({
-  fortune: 1, experience: 1, life: 2, mana: 2,
+  fortune: 1, experience: 1,
 });
 export const POTION_BLOOD_CHANCES = Object.freeze([20, 10, 5]);

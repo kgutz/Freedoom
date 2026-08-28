@@ -156,6 +156,14 @@ describe('interfaz de inventario y botín', () => {
     expect(experienceHtml).toContain('+50% XP de tus hábitos diarios durante 30 min.');
     expect(experienceHtml).toContain('Añade hasta 10 XP extra.');
     expect(experienceHtml).not.toContain('REGLAS');
+
+    const state = lootWithBosses(1);
+    state.inventory.potions = { owned: { life: 2, mana: 2 } };
+    expect(renderPotionDetail(document, state, 'life', { dayKey: '2026-08-28' })).toBe(true);
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Uso instantáneo. Sin límite diario.');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Usos diarios: SIN LÍMITE');
+    expect(renderPotionDetail(document, state, 'mana', { dayKey: '2026-08-28' })).toBe(true);
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Usos diarios: SIN LÍMITE');
   });
 
   it('cierra la información de Forja al tocar fuera y conserva la tocada', () => {
