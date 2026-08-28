@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relicCombatBonus } from '../data/loot-data.js';
+import { relicCombatBonus, relicCombatBonuses } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
   fiberChanceForHunt,
@@ -44,6 +44,16 @@ describe('PvE combat rules', () => {
     expect(relicCombatBonus('relic_12', 1)).toEqual({ stat: 'physicalAttack', value: 4 });
     expect(relicCombatBonus('relic_12', 3)).toEqual({ stat: 'physicalAttack', value: 6 });
     expect(relicCombatBonus('fusion_08', 1)).toEqual({ stat: 'magicAttack', value: 3 });
+  });
+
+  it('una fusión hereda las estadísticas de Cacería y rangos de ambos ingredientes', () => {
+    expect(relicCombatBonuses('fusion_04', 3, {
+      relic_03: { rank: 1 },
+      relic_05: { rank: 2 },
+    })).toEqual([
+      { stat: 'physicalAttack', value: 1 },
+      { stat: 'magicAttack', value: 3 },
+    ]);
   });
 
   it('aplica defensa y crítico con un mínimo de un punto de daño', () => {
@@ -126,8 +136,8 @@ describe('PvE combat rules', () => {
   });
 
   it('escala la fibra arcana con la dificultad', () => {
-    expect(HUNT_DIFFICULTIES.easy).toMatchObject({ fiberChance: 0.25, fiberAmount: [1, 1] });
-    expect(HUNT_DIFFICULTIES.medium).toMatchObject({ fiberChance: 0.5, fiberAmount: [1, 1] });
+    expect(HUNT_DIFFICULTIES.easy).toMatchObject({ fiberChance: 0, fiberAmount: [0, 0] });
+    expect(HUNT_DIFFICULTIES.medium).toMatchObject({ fiberChance: 0.3, fiberAmount: [1, 1] });
     expect(HUNT_DIFFICULTIES.hard).toMatchObject({ fiberChance: 0.7, fiberAmount: [1, 2] });
   });
 
@@ -143,10 +153,11 @@ describe('PvE combat rules', () => {
         { completedAt: today, rewards: { arcaneFibers: 2 } },
       ],
     };
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: today })).toBeCloseTo(0.13);
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: today })).toBeCloseTo(0.38);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: today })).toBe(0);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: today })).toBeCloseTo(0.18);
     expect(fiberChanceForHunt({ hunt, difficultyId: 'hard', nowTimestamp: today })).toBeCloseTo(0.58);
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBeCloseTo(0.25);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBe(0);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBeCloseTo(0.3);
   });
 
   it('concede hasta dos energías extra con probabilidades de diez y ocho por ciento', () => {

@@ -9,7 +9,7 @@ import {
   RELIC_DEFINITIONS,
   fusionDefinition,
   relicDefinition,
-  relicCombatBonus,
+  relicCombatBonuses,
   relicRankEffect,
 } from '../data/loot-data.js';
 import {
@@ -86,15 +86,21 @@ function outfitCardMarkup(lootState) {
 export function renderOutfitSelector(document, lootState, selectedOutfitId = null, options = {}) {
   const body = document.getElementById('outfitSelectorBody');
   if (!body) return 'original';
-  const section = ['weave', 'frames'].includes(options.section) ? options.section : 'owned';
+  const shopContext = options.context === 'shop';
+  const section = shopContext
+    ? (options.section === 'frames' ? 'frames' : 'weave')
+    : (options.section === 'frames' ? 'frames' : 'owned');
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
   const equippedFrameDefinition = equippedFrame(lootState?.game?.frame, lootState?.game);
   const ownedOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isOutfitUnlocked(outfit, lootState?.game));
   const craftableOutfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.released !== false && outfit.craftable && outfit.recipe);
   const ownedFrames = FRAME_DEFINITIONS.filter((frame) => isFrameUnlocked(frame, lootState?.game));
+  const visibleFrames = shopContext
+    ? FRAME_DEFINITIONS.filter((frame) => frame.released !== false)
+    : ownedFrames;
   const requested = section === 'frames'
-    ? FRAME_DEFINITIONS.find((frame) => frame.id === selectedOutfitId && isFrameUnlocked(frame, lootState?.game))
+    ? visibleFrames.find((frame) => frame.id === selectedOutfitId)
     : OUTFIT_DEFINITIONS.find((outfit) => (
       outfit.id === selectedOutfitId && outfit.released !== false
       && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
@@ -106,19 +112,31 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   const selectorModal = body.closest?.('.outfit-selector-modal');
   selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected);
+  selectorModal?.classList.toggle('outfit-selector-modal--shop', shopContext);
+  const selectorTitle = document.getElementById('outfitSelectorTitle');
+  const selectorBack = document.getElementById('outfitSelectorBack');
+  if (selectorTitle) selectorTitle.textContent = shopContext
+    ? (section === 'frames' ? 'Pintor de Mundos' : 'Telar Arcano')
+    : 'Outfits';
+  if (selectorBack) selectorBack.hidden = !shopContext || !selected;
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
   const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
+  const sectionIntro = shopContext
+    ? `<div class="shop-outfit-heading"><p>${section === 'frames'
+      ? 'Paisajes encantados transforman el lugar desde el que tu héroe emprende su viaje.'
+      : 'Hilos arcanos y oficio antiguo convierten tus recursos en nuevos atuendos.'}</p></div>`
+    : '';
   body.innerHTML = `
-    <div class="outfit-modal-tabs" role="tablist" aria-label="Secciones de outfits">
-      <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Colección</button>
-      <button type="button" role="tab" data-outfit-section="weave" aria-selected="${section === 'weave'}" class="${section === 'weave' ? 'active' : ''}">Tejer nuevos</button>
+    ${shopContext ? '' : `<div class="outfit-modal-tabs" role="tablist" aria-label="Colecciones cosméticas">
+      <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Outfits</button>
       <button type="button" role="tab" data-outfit-section="frames" aria-selected="${section === 'frames'}" class="${section === 'frames' ? 'active' : ''}">Fondos</button>
-    </div>
+    </div>`}
     <div class="outfit-selector-scroll-content">
-    ${section === 'frames' ? '' : `<div class="outfit-weave-resources" aria-label="Tus recursos">
+    ${sectionIntro}
+    ${section === 'weave' ? `<div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
-    </div>`}
+    </div>` : ''}
     ${section === 'frames' ? (selected ? `
       <div class="outfit-owned-view frame-owned-view">
         <div class="outfit-owned-preview frame-owned-preview">
@@ -130,14 +148,18 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           <h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore)}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
-          <button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
+          ${shopContext
+            ? `<button type="button" class="outfit-equip-button" disabled>${isFrameUnlocked(selected, lootState?.game) ? 'CONSEGUIDO' : 'NO DISPONIBLE'}</button>`
+            : `<button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`}
         </section>
       </div>` : `
-      <div class="frame-selector-grid" role="listbox" aria-label="Colección de fondos">
-        ${ownedFrames.map((frame) => `<button type="button" class="frame-option${frame.id === equippedFrameDefinition.id ? ' equipped' : ''}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${frame.id === equippedFrameDefinition.id ? ', equipado' : ''}">
+      <div class="frame-selector-grid" role="listbox" aria-label="${shopContext ? 'Fondos disponibles' : 'Colección de fondos'}">
+        ${visibleFrames.map((frame) => `<button type="button" class="frame-option${frame.id === equippedFrameDefinition.id ? ' equipped' : ''}${!isFrameUnlocked(frame, lootState?.game) ? ' frame-option--locked' : ''}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${frame.id === equippedFrameDefinition.id ? ', equipado' : ''}">
           ${framePreview(classId, frame)}
         </button>`).join('')}
-        ${Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')}
+        ${shopContext
+          ? Array.from({ length: 2 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')
+          : Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span aria-hidden="true">?</span></div>`).join('')}
       </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
         <div class="outfit-owned-preview">
@@ -181,7 +203,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}">
           ${outfitFullBody(classId, outfit)}
         </button>`).join('')}
-        ${Array.from({ length: 2 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
+        ${Array.from({ length: 4 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
           <span aria-hidden="true">?</span>
         </div>`).join('')}
       </div>`)}</div>`;
@@ -540,10 +562,10 @@ export function renderRelicDetail(document, lootState, relicId) {
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
   const fusion = Boolean(definition.recipeId);
-  const combatBonus = relicCombatBonus(relicId, relic.rank);
+  const combatBonuses = relicCombatBonuses(relicId, relic.rank, relic.ingredientSnapshots);
   const combatStatLabels = { physicalAttack: 'ATAQUE', magicAttack: 'PODER', defense: 'DEFENSA' };
-  const combatMarkup = combatBonus.stat
-    ? `<div class="relic-combat-bonus"><span>ESTADÍSTICA DE CACERÍA</span><b>${combatStatLabels[combatBonus.stat]} +${combatBonus.value}</b></div>`
+  const combatMarkup = combatBonuses.length
+    ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('')}</div></div>`
     : '';
   const effect = fusion ? 0 : relicRankEffect(relicId, relic.rank);
   const effectDescription = `${escapeHtml(definition.effectLabel)} <b>Valor actual: ${relicEffectValue(relicId, effect)}</b>`;
@@ -588,17 +610,23 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     : null;
   const body = document.getElementById('forgeBody');
   if (!body) return null;
+  const cityHeading = options.cityEntry
+    ? shopDestinationHeading('Forja del Crisol', 'Mejora, fusiona o separa reliquias entre fuego, metal y Sangre de Jefe.')
+    : '';
   if (mode === 'fusion') {
     renderFusionView(document, normalized, options.fusionLeftId, options.fusionRightId, {
       errorId: options.fusionErrorId,
     });
+    if (cityHeading) body.innerHTML = `${cityHeading}${body.innerHTML}`;
     return selectedRelicId;
   }
   if (mode === 'defusion') {
-    return renderDefusionView(document, normalized, selectedRelicId);
+    const rendered = renderDefusionView(document, normalized, selectedRelicId);
+    if (cityHeading) body.innerHTML = `${cityHeading}${body.innerHTML}`;
+    return rendered;
   }
   if (!ownedDefinitions.length) {
-    body.innerHTML = `${forgeModeTabs('upgrade')}<div class="forge-empty">
+    body.innerHTML = `${cityHeading}${forgeModeTabs('upgrade')}<div class="forge-empty">
       <div class="forge-empty-slot forge-animated-slot forge-animated-slot--upgrade">?</div>
       <h3>LA FORJA ESPERA</h3>
       <p>Derrota a un jefe para conseguir tu primera reliquia.</p>
@@ -606,7 +634,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     return null;
   }
   if (!selectedDefinition) {
-    body.innerHTML = `${forgeModeTabs('upgrade')}
+    body.innerHTML = `${cityHeading}${forgeModeTabs('upgrade')}
       <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong><details class="forge-info forge-toolbar-info">
         <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
         <div class="forge-info-popover"><p>El oro se gasta en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
@@ -653,7 +681,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
     </button>`;
   }).join('');
   body.innerHTML = `
-    ${forgeModeTabs('upgrade')}
+    ${cityHeading}${forgeModeTabs('upgrade')}
     <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong>${upgradeInfoMarkup}</div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="forge-focus ${rarityClass(relic.rarity)}">
       <button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button>
@@ -870,10 +898,43 @@ function shopTimeLabel(endsAt, nowTimestamp) {
   return `${Math.max(1, hours)} H`;
 }
 
+function shopCityMapMarkup() {
+  return `<section class="shop-city" aria-label="El Callejón de los Oficios">
+    <div class="shop-city-heading">
+      <span>DISTRITO COMERCIAL</span>
+      <h2>El Callejón de los Oficios</h2>
+      <p>Elige un comercio para preparar a tu héroe.</p>
+    </div>
+    <div class="shop-city-map">
+      <img src="shop/callejon-oficios.webp" alt="Callejón medieval con cinco comercios" loading="eager" decoding="async">
+      <button type="button" class="shop-city-close" data-close-shop-map aria-label="Cerrar mapa de tiendas">✕</button>
+      <button type="button" class="shop-city-zone shop-city-zone--forge" data-shop-destination="forge" aria-label="Entrar en Forja del Crisol"><span>Forja del Crisol</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--potions" data-shop-destination="potions" aria-label="Entrar en Botica de Pociones"><span>Botica de Pociones</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--weave" data-shop-destination="weave" aria-label="Entrar en Telar Arcano"><span>Telar Arcano</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--frames" data-shop-destination="frames" aria-label="Entrar en Pintor de Mundos"><span>Pintor de Mundos</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--relics" data-shop-destination="relics" aria-label="Entrar en Contrabando de Reliquias"><span>Contrabando de Reliquias</span></button>
+    </div>
+  </section>`;
+}
+
+function shopDestinationHeading(name, description) {
+  return `<div class="shop-destination-nav">
+      <span class="shop-destination-nav-spacer" aria-hidden="true"></span>
+      <h2>${escapeHtml(name)}</h2>
+      <button type="button" class="shop-destination-close" data-close-shop-destination aria-label="Cerrar ${escapeHtml(name)}">✕</button>
+    </div>
+    <p class="shop-destination-copy">${escapeHtml(description)}</p>`;
+}
+
 export function renderShopView(document, lootState, nowTimestamp = Date.now(), options = {}) {
   const normalized = ensureShopRotation(lootState, nowTimestamp);
   const body = document.getElementById('shopBody');
   if (!body) return;
+  const section = ['map', 'relics', 'potions'].includes(options.section) ? options.section : 'market';
+  if (section === 'map') {
+    body.innerHTML = shopCityMapMarkup();
+    return;
+  }
   const offers = shopOffers(normalized, nowTimestamp);
   const rotation = normalized.shop.rotation;
   const content = offers.length
@@ -901,16 +962,27 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
         <h4>No hay reliquias disponibles</h4>
         <p>Las reliquias que no consigas al derrotar a un jefe podrán aparecer aquí. La tienda cambia cada 3 días y podrás recuperarlas usando Oro y Sangre de Jefe.</p>
       </div>`;
-  body.innerHTML = `
-    <section class="inventory-resources">
+  const resources = `<section class="inventory-resources">
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
       ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
-    </section>
-    <div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
-    ${content}
-    <div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
+    </section>`;
+  const relicShop = `<div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
+    ${content}`;
+  const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
+  if (section === 'relics') {
+    body.innerHTML = `${shopDestinationHeading('Contrabando de Reliquias', 'Reliquias perdidas vuelven a circular por vías… poco oficiales.')}${resources}${relicShop}`;
+    return;
+  }
+  if (section === 'potions') {
+    body.innerHTML = `${shopDestinationHeading('Botica de Pociones', 'Brebajes para recuperar fuerzas y torcer la suerte a tu favor.')}${resources}${potionShop}`;
+    return;
+  }
+  body.innerHTML = `
+    ${resources}
+    ${relicShop}
+    ${potionShop}`;
 }
 
 export function renderLootNotice(document, lootState, notice) {

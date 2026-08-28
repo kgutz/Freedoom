@@ -507,7 +507,7 @@
           </details>
           <details class="faq-item" data-faq-item="cómo consigo cambio outfit tejer fibras arcanas apariencia">
             <summary><span>¿Cómo consigo y cambio Outfits?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Toca el Outfit desde Inventario para abrir su Colección. Allí puedes equipar los que ya tienes o entrar en «Tejer nuevos».</p><p>Los Outfits cambian la apariencia, no las estadísticas. Se tejen con Fibras Arcanas y oro.</p></div>
+            <div class="faq-answer"><p>Desde la ficha de personaje puedes equipar los Outfits y Fondos que ya posees.</p><p>Los nuevos Outfits se tejen en el Telar Arcano y los Fondos disponibles se consultan en el Pintor de Mundos, dentro de la Tienda.</p></div>
           </details>
         </div>
       </details>
@@ -558,10 +558,9 @@
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Bolso, Forja y Tienda">
+    <div class="inventory-tabs" role="tablist" aria-label="Bolso y Mercado">
       <button type="button" class="active" id="bagTab" role="tab" aria-selected="true">Bolso</button>
-      <button type="button" id="forgeTab" role="tab" aria-selected="false">Forja</button>
-      <button type="button" id="shopTab" role="tab" aria-selected="false">Tienda</button>
+      <button type="button" id="shopTab" role="tab" aria-selected="false">Mercado</button>
     </div>
     <div id="bagBody">
       <div id="inventoryBody"></div>
@@ -582,6 +581,7 @@
 <div class="modal-bg center" id="outfitSelectorBg" style="z-index:31">
   <div class="modal outfit-selector-modal" role="dialog" aria-modal="true" aria-labelledby="outfitSelectorTitle">
     <div class="outfit-selector-top">
+      <button type="button" id="outfitSelectorBack" hidden>‹ Volver</button>
       <h3 id="outfitSelectorTitle">Outfits</h3>
       <button type="button" id="outfitSelectorClose" aria-label="Cerrar selector de outfits">✕</button>
     </div>

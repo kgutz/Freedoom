@@ -385,3 +385,20 @@ export function relicCombatBonus(relicId, rank = 1) {
     value: progressionBonus + RELIC_COMBAT_BONUS_BY_RANK[safeRank],
   };
 }
+
+export function relicCombatBonuses(relicId, rank = 1, ingredientSnapshots = {}) {
+  const definition = relicDefinition(relicId);
+  if (!Array.isArray(definition?.ingredientIds)) {
+    const bonus = relicCombatBonus(relicId, rank);
+    return bonus.stat ? [bonus] : [];
+  }
+
+  const totals = new Map();
+  for (const ingredientId of definition.ingredientIds) {
+    const ingredientRank = ingredientSnapshots?.[ingredientId]?.rank ?? rank;
+    const bonus = relicCombatBonus(ingredientId, ingredientRank);
+    if (!bonus.stat) continue;
+    totals.set(bonus.stat, (totals.get(bonus.stat) || 0) + bonus.value);
+  }
+  return [...totals].map(([stat, value]) => ({ stat, value }));
+}

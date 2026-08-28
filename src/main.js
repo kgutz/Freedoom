@@ -247,7 +247,7 @@ const dismissedInventoryShortcutHints=new Set();
 const AUREO_NOTICE_KEY='freedoom:aureo-notice-seen:v1';
 const AUREO_NOTICE_TARGETS=['outfits','weave','backgrounds'];
 const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
-const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy'];
+const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-bag-market','inventory-market','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
@@ -255,6 +255,7 @@ const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('p
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_QUIET=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoQuiet')==='1';
+const LOCAL_DEMO_HABIT_PAIR=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHabitPair')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
   ? Math.max(1,Math.min(100,parseInt(LOCAL_DEMO_PARAMS.get('demoLevel')||'1',10)||1))
   : null;
@@ -282,7 +283,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}`
+    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
     : LOCAL_DEMO_FUSIONS
     ? `${STORAGE_KEY}:demo-fusions-v2`
     : LOCAL_DEMO_CONSTANCY!==null
@@ -324,6 +325,7 @@ let pendingHeroLevelUp=false;
 let pendingSkillCast=null;
 let selectedOutfitDraft=null;
 let outfitSelectorSection='owned';
+let outfitSelectorContext='collection';
 let pioneerRewardTimer=null;
 let pioneerRewardOpening=false;
 let betaTesterRewardTimer=null;
@@ -1088,6 +1090,18 @@ function prepareLocalBossDemo(){
         {id:'demo-breathe',title:'Respirar antes del antojo',difficulty:'hard',frequency:'daily',target:1,repeatable:false,active:true,order:2,createdAt:now+2,updatedAt:now+2},
         {id:'demo-read',title:'Leer 10 minutos',difficulty:'medium',frequency:'daily',target:1,repeatable:false,active:true,order:3,createdAt:now+3,updatedAt:now+3}
       ],entries:{}};
+    }
+    if(LOCAL_DEMO_HABIT_PAIR){
+      const now=Date.now();
+      state.habits={items:[
+        {id:'demo-repeatable-water',title:'Beber 3 vasos de agua',difficulty:'medium',frequency:'daily',target:3,repeatable:true,active:true,order:0,createdAt:now,updatedAt:now},
+        {id:'demo-single-read',title:'Leer 10 minutos',difficulty:'medium',frequency:'daily',target:1,repeatable:false,active:true,order:1,createdAt:now+1,updatedAt:now+1}
+      ],entries:{}};
+      state.game={
+        ...state.game,
+        powerProgress:{},
+        buffs:{}
+      };
     }
   }
   scheduleSave({type:'demo:bosses',count:LOCAL_DEMO_BOSSES});
@@ -2158,6 +2172,8 @@ let forgeLocked=false;
 let pendingForgeAttempt=null;
 let shopLocked=false;
 let pendingShopPurchase=null;
+let shopViewSection='map';
+let forgeFromCity=false;
 let selectedForgeRelicId=null;
 let forgeMode='upgrade';
 let fusionLeftId=null;
@@ -2193,8 +2209,9 @@ function confirmConstancyLoss(result, action='Desequipar'){
   return confirm(`¿${action} ${name}?\n\nPerderás tu carga de Constancia actual (${result.charge}/${result.maxCharge||6}).`);
 }
 function forgeRenderOptions(){
-  return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId};
+  return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId,cityEntry:forgeFromCity};
 }
+function shopRenderOptions(){return {...potionViewOptions(),section:shopViewSection};}
 function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
@@ -2206,6 +2223,24 @@ function positionInventorySheetFromForge(){
   const shopBody=document.getElementById('shopBody');
   const mainNav=document.getElementById('mainNav');
   if(!overlay?.classList.contains('show')||!sheet||!bagBody||!inventoryBody||!collectionBody||!forgeBody||!shopBody) return;
+  if(sheet.classList.contains('inventory-shop-destination')&&!forgeBody.hidden){
+    const currentMode=forgeMode;
+    renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'defusion'});
+    const sheetStyle=getComputedStyle(sheet);
+    const availableHeight=Math.max(0,sheet.clientHeight-
+      (parseFloat(sheetStyle.paddingTop)||0)-(parseFloat(sheetStyle.paddingBottom)||0));
+    const defusionHeight=Math.min(availableHeight,forgeBody.getBoundingClientRect().height);
+    const referenceOffset=Math.max(0,Math.floor((availableHeight-defusionHeight)/2));
+    sheet.style.setProperty('--forge-reference-offset',`${referenceOffset}px`);
+    renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:currentMode});
+    return;
+  }
+  sheet.style.removeProperty('--forge-reference-offset');
+  if(sheet.classList.contains('inventory-shop-active')){
+    overlay.style.setProperty('--inventory-nav-clearance','0px');
+    overlay.style.setProperty('--inventory-panel-offset','0px');
+    return;
+  }
   const hiddenStates=[bagBody.hidden,forgeBody.hidden,shopBody.hidden];
   renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'upgrade'});
   bagBody.hidden=true;
@@ -2245,17 +2280,26 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const forgeBody=document.getElementById('forgeBody');
   const shopBody=document.getElementById('shopBody');
   const bagTab=document.getElementById('bagTab');
-  const forgeTab=document.getElementById('forgeTab');
   const shopTab=document.getElementById('shopTab');
-  bagBody.hidden=!bagSelected;
+  const inventoryOverlay=document.getElementById('sheetInventory');
+  const inventorySheet=inventoryOverlay?.querySelector('.inventory-sheet');
+  const inventoryTabs=inventorySheet?.querySelector('.inventory-tabs');
+  const inventoryTitle=inventorySheet?.querySelector('.sheet-head h3');
+  const shopExperience=shopSelected||(forgeSelected&&forgeFromCity);
+  const shopMapExpanded=shopSelected&&shopViewSection==='map';
+  bagBody.hidden=!(bagSelected||shopMapExpanded);
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
   bagTab.classList.toggle('active',bagSelected);
-  forgeTab.classList.toggle('active',forgeSelected);
-  shopTab.classList.toggle('active',shopSelected);
+  shopTab.classList.toggle('active',shopExperience);
   bagTab.setAttribute('aria-selected',String(bagSelected));
-  forgeTab.setAttribute('aria-selected',String(forgeSelected));
-  shopTab.setAttribute('aria-selected',String(shopSelected));
+  shopTab.setAttribute('aria-selected',String(shopExperience));
+  if(inventoryTabs) inventoryTabs.hidden=shopExperience&&!shopMapExpanded;
+  if(inventoryTitle) inventoryTitle.textContent=shopExperience&&!shopMapExpanded?'Tienda':'Inventario';
+  inventoryOverlay?.classList.remove('inventory-shop-expanded');
+  inventorySheet?.classList.remove('inventory-shop-active');
+  inventorySheet?.classList.toggle('inventory-shop-map-overlay',shopMapExpanded);
+  inventorySheet?.classList.toggle('inventory-shop-destination',shopExperience&&!shopMapExpanded);
   if(bagSelected){
     renderInventoryView(document,state,potionViewOptions());
     renderCollectionView(document,state);
@@ -2265,7 +2309,7 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
     const before=JSON.stringify(state.shop);
     applyLootSlices(ensureShopRotation(state,Date.now()));
     if(before!==JSON.stringify(state.shop)) scheduleSave({type:'shop:rotation'});
-    renderShopView(document,state,Date.now(),potionViewOptions());
+    renderShopView(document,state,Date.now(),shopRenderOptions());
   }
   positionInventorySheetFromForge();
 }
@@ -2433,7 +2477,11 @@ function dismissDiscoveryNoticesFromClick(target){
     }[target.closest('.view')?.id];
     if(surface) dismissInventoryShortcutHint(surface);
   }
-  if(target.closest('[data-character-bag]')) dismissFeatureDiscovery('character-bag');
+  if(target.closest('[data-character-bag]')){
+    dismissFeatureDiscovery('character-bag');
+    dismissFeatureDiscovery('character-bag-market');
+  }
+  if(target.closest('#shopTab')) dismissFeatureDiscovery('inventory-market');
   if(target.closest('[data-character-outfit]')){
     dismissFeatureDiscovery('character-hero');
     dismissFeatureDiscovery('character-backgrounds');
@@ -3303,7 +3351,7 @@ function openHuntConfirmation(difficultyId){
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
     <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
-    <div><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
+    <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
   </div>`;
   document.getElementById('huntConfirmBg').classList.add('show');
 }
@@ -4772,8 +4820,8 @@ function handleOutfitWeave(outfitId){
   }
   applyLootSlices(result);
   state.game=result.game;
-  outfitSelectorSection='owned';
-  selectedOutfitDraft=renderOutfitSelector(document,state,outfitId,{section:'owned'});
+  outfitSelectorSection=outfitSelectorContext==='shop'?'weave':'owned';
+  selectedOutfitDraft=renderOutfitSelector(document,state,outfitSelectorContext==='shop'?outfitId:null,{section:outfitSelectorSection,context:outfitSelectorContext});
   scheduleSave({type:'outfit:woven',outfitId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -4797,7 +4845,7 @@ async function handleRelicPurchase(relicId){
       console.error('No se pudo guardar la compra de la Tienda',error);
       showToast('No se pudo confirmar el guardado de la compra','dmg');
     }
-    renderShopView(document,state,Date.now(),potionViewOptions());
+    renderShopView(document,state,Date.now(),shopRenderOptions());
     renderInventoryView(document,state,potionViewOptions());
     renderHero();
     if(purchaseSaved) showToast('Reliquia recuperada','heal');
@@ -4805,7 +4853,7 @@ async function handleRelicPurchase(relicId){
     const message=result.reason==='coins'?'No tienes suficiente oro'
       :result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'Esta reliquia ya no está disponible';
     showToast(message,'dmg');
-    renderShopView(document,state,Date.now(),potionViewOptions());
+    renderShopView(document,state,Date.now(),shopRenderOptions());
   }
   shopLocked=false;
   return result.ok;
@@ -4824,7 +4872,7 @@ function handlePotionPurchase(potionId,quantity=1){
   state.economy=result.economy;
   scheduleSave({type:'potion:purchase',potionId});
   document.getElementById('sheetRelicDetail')?.classList.remove('show');
-  renderShopView(document,state,Date.now(),potionViewOptions());
+  renderShopView(document,state,Date.now(),shopRenderOptions());
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
   showToast(quantity>1?`${quantity} pociones añadidas al Bolso`:'Poción añadida al Bolso','heal');
@@ -4841,21 +4889,63 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
   }
-  if(event.target.closest('#bagTab')){ showInventoryPanel('bag'); return; }
-  if(event.target.closest('#forgeTab')){ showInventoryPanel('forge'); return; }
-  if(event.target.closest('#shopTab')){ showInventoryPanel('shop'); return; }
-  if(event.target.closest('[data-open-potion-shop]')){
+  if(event.target.closest('#bagTab')){ forgeFromCity=false; showInventoryPanel('bag'); return; }
+  if(event.target.closest('#shopTab')){
+    dismissFeatureDiscovery('inventory-market');
+    forgeFromCity=false;
+    shopViewSection='map';
     showInventoryPanel('shop');
-    requestAnimationFrame(()=>{
-      document.querySelector('#shopBody .shop-potion-heading')?.scrollIntoView({block:'start',behavior:'smooth'});
-    });
+    return;
+  }
+  if(event.target.closest('[data-close-shop-map]')){
+    forgeFromCity=false;
+    shopViewSection='map';
+    showInventoryPanel('bag');
+    return;
+  }
+  if(event.target.closest('[data-close-shop-destination]')){
+    forgeFromCity=false;
+    shopViewSection='map';
+    showInventoryPanel('shop');
+    return;
+  }
+  if(event.target.closest('[data-back-shop-city]')){
+    shopViewSection='map';
+    showInventoryPanel('shop');
+    return;
+  }
+  const shopDestination=event.target.closest('[data-shop-destination]');
+  if(shopDestination){
+    const destination=shopDestination.dataset.shopDestination;
+    if(destination==='forge'){
+      forgeFromCity=true;
+      showInventoryPanel('forge');
+      return;
+    }
+    if(destination==='potions'||destination==='relics'){
+      shopViewSection=destination;
+      showInventoryPanel('shop');
+      return;
+    }
+    if(destination==='weave'||destination==='frames'){
+      outfitSelectorContext='shop';
+      outfitSelectorSection=destination;
+      selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'shop'});
+      document.getElementById('outfitSelectorBg').classList.add('show');
+      return;
+    }
+  }
+  if(event.target.closest('[data-open-potion-shop]')){
+    shopViewSection='potions';
+    showInventoryPanel('shop');
     return;
   }
   const outfitShortcut=event.target.closest('[data-open-outfits]');
   if(outfitShortcut){
     dismissAureoNotice('outfits');
+    outfitSelectorContext='collection';
     outfitSelectorSection='owned';
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection'});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -5074,14 +5164,16 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
   }
   if(event.target.closest('[data-character-bag]')){
     dismissFeatureDiscovery('character-bag');
+    dismissFeatureDiscovery('character-bag-market');
     openInventory();
     return;
   }
   if(event.target.closest('[data-character-outfit]')){
     dismissFeatureDiscovery('character-hero');
     dismissFeatureDiscovery('character-backgrounds');
+    outfitSelectorContext='collection';
     outfitSelectorSection='owned';
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned',context:'collection'});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -5092,29 +5184,32 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
 });
 
 document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
+  if(event.target.closest('#outfitSelectorBack')){
+    selectedOutfitDraft=null;
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:outfitSelectorContext});
+    return;
+  }
   const sectionButton=event.target.closest('[data-outfit-section]');
   if(sectionButton){
-    outfitSelectorSection=['weave','frames'].includes(sectionButton.dataset.outfitSection)
-      ? sectionButton.dataset.outfitSection
-      : 'owned';
-    if(outfitSelectorSection==='weave') dismissAureoNotice('weave');
+    outfitSelectorContext='collection';
+    outfitSelectorSection=sectionButton.dataset.outfitSection==='frames'?'frames':'owned';
     if(outfitSelectorSection==='frames') dismissAureoNotice('backgrounds');
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection'});
     return;
   }
   const option=event.target.closest('[data-select-outfit]');
   if(option){
-    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned',context:'collection'});
     return;
   }
   const weaveOption=event.target.closest('[data-select-weave-outfit]');
   if(weaveOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave',context:'shop'});
     return;
   }
   const frameOption=event.target.closest('[data-select-frame]');
   if(frameOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,frameOption.dataset.selectFrame,{section:'frames'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,frameOption.dataset.selectFrame,{section:'frames',context:outfitSelectorContext});
     return;
   }
   const weave=event.target.closest('[data-weave-outfit]');
@@ -5170,6 +5265,11 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   if(event.target.id==='outfitSelectorBg'||event.target.closest('#outfitSelectorClose')){
     selectedOutfitDraft=null;
     document.getElementById('outfitSelectorBg').classList.remove('show');
+    if(outfitSelectorContext==='shop'){
+      forgeFromCity=false;
+      shopViewSection='map';
+      showInventoryPanel('shop');
+    }
   }
 });
 document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
@@ -5259,6 +5359,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   if(forgeShortcut){
     selectedForgeRelicId=forgeShortcut.dataset.openForgeRelic;
     forgeMode='upgrade';
+    forgeFromCity=true;
     document.getElementById('sheetRelicDetail').classList.remove('show');
     showSheet(document,'sheetInventory');
     showInventoryPanel('forge');
@@ -5572,8 +5673,9 @@ document.getElementById('betaTesterRewardContinue').addEventListener('click',()=
   document.getElementById('betaTesterRewardBg').classList.remove('show');
   renderAll();
   dismissAureoNotice('backgrounds');
+  outfitSelectorContext='collection';
   outfitSelectorSection='frames';
-  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames'});
+  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:'collection'});
   document.getElementById('outfitSelectorBg').classList.add('show');
   showToast('Marco, +140 de oro, +10 Fibras y +2 de energía','heal');
 });
@@ -5605,7 +5707,7 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const shop=event.target.closest('[data-loot-shop]');
   const keepGoing=event.target.closest('[data-loot-continue]');
   if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory('collection'); return; }
-  if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); showInventoryPanel('shop'); return; }
+  if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); shopViewSection='relics'; showInventoryPanel('shop'); return; }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
 });
 document.getElementById('lootNoticeRewards').addEventListener('click',event=>{

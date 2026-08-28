@@ -30,7 +30,7 @@ export const POTION_BY_ID = Object.freeze(Object.fromEntries(
   POTION_DEFINITIONS.map((definition) => [definition.id, definition]),
 ));
 
-export const POTION_FUTURE_SLOTS = 3;
+export const POTION_FUTURE_SLOTS = 7;
 export const POTION_BAG_SLOT_LIMIT = 4;
 export const POTION_DURATION_MS = 30 * 60 * 1000;
 export const POTION_BONUS_CAPS = Object.freeze({ fortune: 30, experience: 10 });

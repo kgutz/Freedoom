@@ -78,6 +78,7 @@ export function startupImagePhases(game = {}) {
       id: 'inventory',
       delay: 8_500,
       assets: unique([
+        'shop/callejon-oficios.webp',
         ...ALL_RELIC_DEFINITIONS.map((definition) => definition.image),
         ...POTION_DEFINITIONS.map((definition) => `potions/potion_${definition.id}.webp`),
         'relics/boss_loot_chest.webp',

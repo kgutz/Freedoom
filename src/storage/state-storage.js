@@ -1,3 +1,5 @@
+import { grantRewardHuntEnergy } from '../domain/pve-combat-rules.js';
+
 export const STORAGE_KEY = 'registro-dejar-fumar';
 export const STORAGE_SCHEMA_VERSION = 2;
 export const RECOVERY_SLOT_COUNT = 3;
@@ -221,7 +223,131 @@ export function exportBackup(state) {
   return serializeState(state);
 }
 
+const IMPORT_COMMAND_RESOURCES = Object.freeze({
+  sangre: 'bossBlood',
+  'sangre-de-jefe': 'bossBlood',
+  oro: 'coins',
+  moneda: 'coins',
+  monedas: 'coins',
+  fibra: 'arcaneFibers',
+  fibras: 'arcaneFibers',
+  'fibra-arcana': 'arcaneFibers',
+  'fibras-arcanas': 'arcaneFibers',
+});
+
+const IMPORT_COMMAND_OUTFITS = Object.freeze({
+  'beta-tester': 'beta-tester',
+  'arcane-weave-01': 'arcane-weave-01',
+  'operador-del-nexo': 'arcane-weave-01',
+  'arcane-weave-02': 'arcane-weave-02',
+  'forjador-del-crisol': 'arcane-weave-02',
+});
+
+const IMPORT_COMMAND_FRAMES = Object.freeze({
+  'beta-tester': 'beta-tester',
+  'corazon-de-freedom': 'beta-tester',
+});
+
+export function isImportCommand(value) {
+  return String(value ?? '').trimStart().startsWith('!');
+}
+
+export function applyImportCommands(currentState, commandText) {
+  const lines = String(commandText ?? '')
+    .split(/\r?\n/u)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) throw new Error('Comando vacío');
+
+  const operations = lines.map((line) => {
+    const match = /^!\+([\p{L}-]+)\s+([\p{L}\d-]+)$/iu.exec(line);
+    if (!match) throw new Error(`Comando no válido: ${line}`);
+    const commandName = match[1].toLocaleLowerCase('es');
+    const argument = match[2].toLocaleLowerCase('es');
+    if (commandName === 'outfit') {
+      const outfitId = IMPORT_COMMAND_OUTFITS[argument];
+      if (!outfitId) throw new Error(`Outfit no válido: ${argument}`);
+      return { type: 'outfit', id: outfitId };
+    }
+    if (['marco', 'fondo'].includes(commandName)) {
+      const frameId = IMPORT_COMMAND_FRAMES[argument];
+      if (!frameId) throw new Error(`Marco no válido: ${argument}`);
+      return { type: 'frame', id: frameId };
+    }
+    if (['energia', 'energía'].includes(commandName)) {
+      const amount = Number(argument);
+      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10) {
+        throw new Error(`Cantidad de energía no válida: ${argument}`);
+      }
+      return { type: 'energy', amount };
+    }
+    const resourceName = commandName;
+    const resourceKey = IMPORT_COMMAND_RESOURCES[resourceName];
+    if (!resourceKey) throw new Error(`Recurso no válido: ${resourceName}`);
+    const amount = Number(argument);
+    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 999999) {
+      throw new Error(`Cantidad no válida: ${argument}`);
+    }
+    return { type: 'resource', resourceKey, amount };
+  });
+
+  let nextState = {
+    ...currentState,
+    economy: { ...(isObject(currentState?.economy) ? currentState.economy : {}) },
+    game: { ...(isObject(currentState?.game) ? currentState.game : {}) },
+  };
+  const acquiredAt = Date.now();
+  operations.forEach((operation) => {
+    if (operation.type === 'resource') {
+      const currentAmount = Math.max(0, Math.trunc(Number(nextState.economy[operation.resourceKey]) || 0));
+      nextState.economy[operation.resourceKey] = currentAmount + operation.amount;
+      return;
+    }
+    if (operation.type === 'energy') {
+      const grant = grantRewardHuntEnergy({
+        hunt: nextState.game.hunt,
+        amount: operation.amount,
+        nowTimestamp: acquiredAt,
+      });
+      nextState.game = { ...nextState.game, hunt: grant.hunt };
+      return;
+    }
+    if (operation.type === 'frame') {
+      nextState.game = {
+        ...nextState.game,
+        frames: {
+          ...(nextState.game.frames || {}),
+          owned: {
+            ...(nextState.game.frames?.owned || {}),
+            [operation.id]: { acquiredAt, source: 'import-command' },
+          },
+        },
+      };
+      return;
+    }
+    const outfits = {
+      ...(nextState.game.outfits || {}),
+      owned: {
+        ...(nextState.game.outfits?.owned || {}),
+        [operation.id]: { acquiredAt, source: 'import-command' },
+      },
+    };
+    nextState.game = { ...nextState.game, outfits };
+    if (operation.id === 'beta-tester') {
+      nextState.game.pioneerReward = {
+        ...(nextState.game.pioneerReward || {}),
+        claimedAt: nextState.game.pioneerReward?.claimedAt || acquiredAt,
+        outfitId: 'beta-tester',
+      };
+    }
+  });
+  return nextState;
+}
+
 export function importBackup(currentState, backupText) {
+  if (isImportCommand(backupText)) {
+    return applyImportCommands(currentState, backupText);
+  }
   const savedState = parseState(backupText);
   if (!isObject(savedState.days) && !isObject(savedState.config)) {
     throw new Error('Formato de copia no válido');

@@ -33,8 +33,8 @@ function enemyStatsFromAttributes(definition, attributes = definition.attributes
 
 export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
-  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0.25, fiberAmount: [1, 1] }),
-  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.5, fiberAmount: [1, 1] }),
+  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0] }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1] }),
   hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2] }),
 });
 
@@ -296,6 +296,7 @@ export function fiberChanceForHunt({ hunt, difficultyId, nowTimestamp = Date.now
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!difficulty) return 0;
+  if (difficulty.fiberChance <= 0) return 0;
   const dropsToday = normalized.history.filter((report) => (
     Number(report?.rewards?.arcaneFibers) > 0
     && localHuntDayKey(report.completedAt) === normalized.energyDay

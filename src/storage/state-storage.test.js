@@ -6,6 +6,7 @@ import {
   checksumOf,
   createBrowserStore,
   exportBackup,
+  applyImportCommands,
   importBackup,
   isCatastrophicStateRegression,
   mergeState,
@@ -72,6 +73,53 @@ const v34State = {
 };
 
 describe('compatibilidad del estado', () => {
+  it('suma recursos mediante comandos de importación sin alterar el resto de la partida', () => {
+    const current = {
+      ...defaultState(),
+      economy: { coins: 25, bossBlood: 2, arcaneFibers: 3, transactions: [{ id: 'old' }] },
+      inventory: { relics: { relic_01: { id: 'relic_01' } } },
+    };
+    const result = importBackup(current, '!+sangre 1\n!+oro 10\n!+fibra 2');
+    expect(result.economy).toEqual({
+      coins: 35,
+      bossBlood: 3,
+      arcaneFibers: 5,
+      transactions: [{ id: 'old' }],
+    });
+    expect(result.inventory).toBe(current.inventory);
+  });
+
+  it('rechaza comandos desconocidos o cantidades inválidas de forma atómica', () => {
+    const current = { ...defaultState(), economy: { bossBlood: 2, coins: 4 } };
+    expect(() => applyImportCommands(current, '!+sangre 1\n!+pocion 2')).toThrow('Recurso no válido');
+    expect(() => applyImportCommands(current, '!+sangre 0')).toThrow('Cantidad no válida');
+    expect(current.economy).toEqual({ bossBlood: 2, coins: 4 });
+  });
+
+  it('añade energía de Cacería respetando su límite', () => {
+    const current = {
+      ...defaultState(),
+      game: { cls: 'paladin', hunt: { energyDay: '2000-01-01', energy: 0 } },
+    };
+    const result = applyImportCommands(current, '!+energia 2');
+    expect(result.game.hunt.energy).toBe(7);
+    expect(result.game.hunt.rewardEnergyRemaining).toBe(2);
+    const capped = applyImportCommands(result, '!+energía 10');
+    expect(capped.game.hunt.energy).toBe(10);
+  });
+
+  it('desbloquea outfits y marcos mediante sus nombres públicos', () => {
+    const current = { ...defaultState(), game: { cls: 'paladin' } };
+    const result = applyImportCommands(
+      current,
+      '!+outfit operador-del-nexo\n!+outfit beta-tester\n!+marco corazon-de-freedom',
+    );
+    expect(result.game.outfits.owned['arcane-weave-01'].source).toBe('import-command');
+    expect(result.game.outfits.owned['beta-tester'].source).toBe('import-command');
+    expect(result.game.pioneerReward.outfitId).toBe('beta-tester');
+    expect(result.game.frames.owned['beta-tester'].source).toBe('import-command');
+  });
+
   it('preserva economía, reliquias, Forja y Tienda en exportación e importación', () => {
     const lootState = {
       ...v34State,

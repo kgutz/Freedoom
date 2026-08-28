@@ -14,6 +14,7 @@ describe('precarga de imágenes por fases', () => {
     expect(phases[0].assets).toContain('sprites/paladin_happy.webp');
     expect(phases[0].assets).toContain('hero_background/paladin_today_bg.webp');
     expect(phases.find((phase) => phase.id === 'hunt').delay).toBe(3_500);
+    expect(phases.find((phase) => phase.id === 'inventory').assets).toContain('shop/callejon-oficios.webp');
     expect(phases.at(-1).delay).toBeLessThanOrEqual(15_000);
   });
 

@@ -57,4 +57,22 @@ describe('herramientas de recuperación manual', () => {
     expect(onImported).toHaveBeenCalledOnce();
     expect(onImported.mock.calls[0][0].config.startLimit).toBe(8);
   });
+
+  it('aplica un comando aditivo desde el mismo recuadro', () => {
+    const { document, elements } = fixture();
+    const onImported = vi.fn();
+    const showToast = vi.fn();
+    bindBackupControls({
+      document,
+      navigator: { clipboard: { writeText: vi.fn() } },
+      getState: () => ({ config: {}, days: {}, economy: { bossBlood: 2 } }),
+      onImported,
+      showToast,
+    });
+    elements.btnImport.click();
+    elements.backupText.value = '!+sangre 1';
+    elements.backupAction.click();
+    expect(onImported.mock.calls[0][0].economy.bossBlood).toBe(3);
+    expect(showToast).toHaveBeenCalledWith('Comando aplicado ✓', 'heal');
+  });
 });

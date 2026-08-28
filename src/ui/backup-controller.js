@@ -1,4 +1,4 @@
-import { exportBackup, importBackup } from '../storage/state-storage.js';
+import { exportBackup, importBackup, isImportCommand } from '../storage/state-storage.js';
 
 export function bindBackupControls({
   document,
@@ -30,9 +30,10 @@ export function bindBackupControls({
 
   document.getElementById('btnImport').addEventListener('click', () => {
     mode = 'import';
-    document.getElementById('backupTitle').textContent = 'Importar datos';
+    document.getElementById('backupTitle').textContent = 'Importar datos o comando';
     textArea.value = '';
     textArea.readOnly = false;
+    textArea.placeholder = 'Ej.: !+sangre 1, !+energia 2 o !+outfit beta-tester';
     document.getElementById('backupAction').textContent = 'Importar';
     background.classList.add('show');
   });
@@ -40,10 +41,11 @@ export function bindBackupControls({
   document.getElementById('backupAction').addEventListener('click', () => {
     if (mode === 'import') {
       try {
+        const command = isImportCommand(textArea.value);
         onImported(importBackup(getState(), textArea.value));
-        showToast('Datos importados ✓', 'heal');
+        showToast(command ? 'Comando aplicado ✓' : 'Datos importados ✓', 'heal');
       } catch {
-        showToast('No se pudo leer la copia', 'dmg');
+        showToast(isImportCommand(textArea.value) ? 'Comando no válido' : 'No se pudo leer la copia', 'dmg');
         return;
       }
     }

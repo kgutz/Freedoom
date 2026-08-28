@@ -27,7 +27,7 @@ import {
   fusionDefinition,
   isBaseRelic,
   relicDefinition,
-  relicCombatBonus,
+  relicCombatBonuses,
   relicRankEffect,
 } from '../data/loot-data.js';
 import { emptyPotionState, normalizePotionState } from './potion-rules.js';
@@ -1424,8 +1424,10 @@ export function equippedRelicBonuses(lootState) {
     const relic = normalized.inventory.relics[relicId];
     if (!relic) continue;
     result.rankEffects[relicId] = relicRankEffect(relicId, relic.rank);
-    const combatBonus = relicCombatBonus(relicId, relic.rank);
-    if (combatBonus.stat) result[combatBonus.stat] += combatBonus.value;
+    const combatBonuses = relicCombatBonuses(relicId, relic.rank, relic.ingredientSnapshots);
+    for (const combatBonus of combatBonuses) {
+      result[combatBonus.stat] += combatBonus.value;
+    }
     for (const affixId of relic.affixes) {
       const affix = AFFIX_DEFINITIONS[affixId];
       result.maxHpPercent += affix?.maxHpPercent || 0;

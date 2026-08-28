@@ -33,7 +33,7 @@ function lootWithBosses(count, source = 'retroactive') {
 function fakeDocument() {
   const elements = Object.fromEntries([
     'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
-    'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody',
+    'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody', 'outfitSelectorTitle', 'outfitSelectorBack',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -46,13 +46,11 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(2);
     state.game = { cls: 'sorcerer', outfit: 'original' };
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBeNull();
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Colección');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('>Outfits</button>');
     expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-collection-empty/g)).toHaveLength(2);
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Tejer nuevos');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>ORO</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Tejer nuevos');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('>Fondos</button>');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('class="outfit-weave-resources"');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit="beta-tester"');
 
     state.game.pioneerReward = { claimedAt: 1234, outfitId: 'beta-tester', coins: 130 };
@@ -79,21 +77,27 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
     state.game.outfit = 'beta-tester';
 
-    expect(renderOutfitSelector(document, state, null, { section: 'weave' })).toBeNull();
+    expect(renderOutfitSelector(document, state, null, { section: 'weave', context: 'shop' })).toBeNull();
+    expect(document.elements.outfitSelectorBack.hidden).toBe(true);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>ORO</small>');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/welder-beta/sorcerer_happy.webp');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(4);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit');
-    expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave' })).toBe('arcane-weave-01');
+    expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave', context: 'shop' })).toBe('arcane-weave-01');
+    expect(document.elements.outfitSelectorBack.hidden).toBe(false);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-owned-preview');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Operador del Nexo');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudaba a construir un mundo mejor conectado');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('20</b><small>FIBRAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('320</b><small>ORO');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-01"');
-    expect(renderOutfitSelector(document, state, 'arcane-weave-02', { section: 'weave' })).toBe('arcane-weave-02');
+    expect(renderOutfitSelector(document, state, 'arcane-weave-02', { section: 'weave', context: 'shop' })).toBe('arcane-weave-02');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Forjador del Crisol');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-02"');
   });
@@ -119,6 +123,23 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-equip-frame="beta-tester"');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('frame-preview-hero');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('sprites/paladin_happy.webp');
+  });
+
+  it('separa el catálogo de fondos de la colección poseída', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.game = { cls: 'paladin', frame: 'original' };
+    expect(renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop' })).toBeNull();
+    expect(document.elements.outfitSelectorBack.hidden).toBe(true);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Fondos disponibles"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="beta-tester"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 1"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 2"');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-section="owned"');
+    expect(renderOutfitSelector(document, state, 'beta-tester', { section: 'frames', context: 'shop' })).toBe('beta-tester');
+    expect(document.elements.outfitSelectorBack.hidden).toBe(false);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('NO DISPONIBLE');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-frame');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -388,6 +409,8 @@ describe('interfaz de inventario y botín', () => {
     expect(fusionResultMarkup(fused)).toContain('MÍTICO · RANGO 2');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     expect(document.elements.relicDetailBody.innerHTML).toContain('RANGO 2 · RELIQUIA FUSIONADA');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('DEFENSA +2');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('PODER +1');
   });
 
   it('permite cambiar el slot ocupado, abre el vacío y muestra feedback dentro de la Forja', () => {
@@ -579,6 +602,33 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('No hay reliquias disponibles');
     expect(html).toContain('cambia cada 3 días');
     expect(html).toContain('SANGRE DE JEFE');
+  });
+
+  it('convierte la Tienda en un callejón interactivo con cinco comercios', () => {
+    const document = fakeDocument();
+    renderShopView(document, lootWithBosses(2), 20 * 86400000, { section: 'map' });
+    const html = document.elements.shopBody.innerHTML;
+    expect(html).toContain('shop/callejon-oficios.webp');
+    expect(html).toContain('Forja del Crisol');
+    expect(html).toContain('Botica de Pociones');
+    expect(html).toContain('Telar Arcano');
+    expect(html).toContain('Pintor de Mundos');
+    expect(html).toContain('Contrabando de Reliquias');
+    expect(html.match(/data-shop-destination=/g)).toHaveLength(5);
+  });
+
+  it('abre cada comercio con su nombre y descripción contextual', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    renderShopView(document, state, 20 * 86400000, { section: 'relics' });
+    expect(document.elements.shopBody.innerHTML).toContain('Reliquias perdidas vuelven a circular');
+    expect(document.elements.shopBody.innerHTML).not.toContain('data-back-shop-city');
+    expect(document.elements.shopBody.innerHTML).toContain('shop-destination-nav-spacer');
+    renderShopView(document, state, 20 * 86400000, { section: 'potions' });
+    const potionShopHtml = document.elements.shopBody.innerHTML;
+    expect(potionShopHtml).toContain('Brebajes para recuperar fuerzas');
+    expect(potionShopHtml).not.toContain('RELIQUIAS PERDIDAS');
+    expect(potionShopHtml.match(/potion-card--future/g)).toHaveLength(7);
   });
 
   it('presenta una reliquia fallada con precios y compra', () => {

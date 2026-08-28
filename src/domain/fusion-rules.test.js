@@ -126,6 +126,20 @@ describe('Fusión de reliquias', () => {
     expect(equippedRelicBonuses(equipped)).toMatchObject({ maxHpPercent: 5, maxManaPercent: 5 });
   });
 
+  it('la Daga del Antojo conserva ataque y poder mágico de sus dos ingredientes', () => {
+    const state = fusionState(6);
+    state.inventory.relics.relic_03.rank = 1;
+    state.inventory.relics.relic_05.rank = 2;
+    const result = fuse(state, 'relic_03', 'relic_05', 'combat-stats');
+    const equipped = equipRelic(result, 'fusion_04');
+
+    expect(equippedRelicBonuses(equipped)).toMatchObject({
+      physicalAttack: 1,
+      magicAttack: 3,
+      defense: 0,
+    });
+  });
+
   it('garantiza la rareza mayor y asciende según los efectos extras únicos', () => {
     const complementary = fusionState(2);
     complementary.inventory.relics.relic_01 = {
