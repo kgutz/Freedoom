@@ -94,8 +94,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Operador del Nexo');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('ayudaba a construir un mundo mejor conectado');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('5</b><small>FIBRAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('80</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('20</b><small>FIBRAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('320</b><small>ORO');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="arcane-weave-01"');
     expect(renderOutfitSelector(document, state, 'arcane-weave-02', { section: 'weave', context: 'shop' })).toBe('arcane-weave-02');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Forjador del Crisol');

@@ -151,8 +151,8 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     initial.economy.arcaneFibers = 22;
     const result = weaveOutfit({ state: initial, outfitId: 'arcane-weave-01', operationId: 'weave-1', nowTimestamp: 20 });
     expect(result.ok).toBe(true);
-    expect(result.economy.coins).toBe(300);
-    expect(result.economy.arcaneFibers).toBe(17);
+    expect(result.economy.coins).toBe(60);
+    expect(result.economy.arcaneFibers).toBe(2);
     expect(result.game.outfits.owned['arcane-weave-01'].source).toBe('woven');
     const repeated = weaveOutfit({ state: { ...initial, ...result }, outfitId: 'arcane-weave-01', operationId: 'weave-2' });
     expect(repeated.ok).toBe(false);
@@ -161,8 +161,8 @@ describe('Fibras Arcanas y tejido de outfits', () => {
 
   it('mantiene el mismo coste para Forjador del Crisol que para Operador del Nexo', () => {
     const initial = stateWithGame();
-    initial.economy.coins = 80;
-    initial.economy.arcaneFibers = 5;
+    initial.economy.coins = 320;
+    initial.economy.arcaneFibers = 20;
     const result = weaveOutfit({ state: initial, outfitId: 'arcane-weave-02', operationId: 'weave-2', nowTimestamp: 30 });
     expect(result.ok).toBe(true);
     expect(result.economy.coins).toBe(0);
