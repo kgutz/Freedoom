@@ -1389,11 +1389,12 @@
   .inventory-sheet.inventory-shop-map-overlay .shop-city-heading{display:none}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-map{aspect-ratio:auto;border-color:var(--line);border-radius:19px}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-map>img{object-fit:cover}
-  .inventory-sheet.inventory-shop-destination{position:fixed;z-index:60;top:max(8px,env(safe-area-inset-top));bottom:auto;left:50%;display:flex;align-items:center;justify-content:center;width:min(calc(100% - 16px),412px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);margin:0;padding:16px;border:1px solid var(--line);border-radius:20px;background:#0e0b09 url('/shop/callejon-oficios.webp') center/cover no-repeat;box-shadow:0 20px 60px rgba(0,0,0,.66);transform:translateX(-50%);isolation:isolate}
-  .inventory-sheet.inventory-shop-destination::before{content:'';position:absolute;inset:0;z-index:0;border-radius:inherit;background:rgba(8,7,6,.5);pointer-events:none}
+  .inventory-sheet.inventory-shop-destination{overflow:visible;border-color:transparent;background:transparent;box-shadow:none;isolation:isolate}
+  .inventory-sheet.inventory-shop-destination::before{content:'';position:fixed;z-index:59;top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));left:50%;width:min(calc(100vw - 16px),412px);border:1px solid var(--line);border-radius:20px;background:linear-gradient(rgba(8,7,6,.5),rgba(8,7,6,.5)),#0e0b09 url('/shop/callejon-oficios.webp') center/cover no-repeat;box-shadow:0 20px 60px rgba(0,0,0,.66);transform:translateX(-50%);pointer-events:none}
   .inventory-sheet.inventory-shop-destination>.sheet-head,.inventory-sheet.inventory-shop-destination>.inventory-tabs{display:none!important}
-  .inventory-sheet.inventory-shop-destination>#forgeBody,.inventory-sheet.inventory-shop-destination>#shopBody{position:relative;z-index:1;flex:0 1 auto;width:100%;max-height:calc(100% - 32px);margin:auto;padding:18px!important;overflow-y:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 14px 38px rgba(0,0,0,.62);scrollbar-gutter:stable}
-  .inventory-sheet.inventory-shop-destination>#forgeBody{align-self:flex-start;margin:var(--forge-reference-offset,0px) auto auto}
+  .inventory-sheet.inventory-shop-destination>#forgeBody,.inventory-sheet.inventory-shop-destination>#shopBody{position:fixed;z-index:60;left:50%;width:min(calc(100vw - 48px),378px);max-height:calc(100dvh - 48px);margin:0;padding:18px!important;overflow-y:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 14px 38px rgba(0,0,0,.62);scrollbar-gutter:stable}
+  .inventory-sheet.inventory-shop-destination>#shopBody{top:50%;transform:translate(-50%,-50%)}
+  .inventory-sheet.inventory-shop-destination>#forgeBody{top:calc(max(8px,env(safe-area-inset-top)) + 16px + var(--forge-reference-offset,0px));transform:translateX(-50%)}
   .inventory-sheet.measuring-forge-reference{max-height:none;margin-top:0}
   .inventory-sheet.measuring-forge-reference>#forgeBody{overflow:visible}
   .inventory-sheet>.sheet-head,.inventory-sheet>.inventory-tabs{flex:0 0 auto}.inventory-sheet>.sheet-head{margin-bottom:7px;border-bottom:0}

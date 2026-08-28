@@ -2226,9 +2226,8 @@ function positionInventorySheetFromForge(){
   if(sheet.classList.contains('inventory-shop-destination')&&!forgeBody.hidden){
     const currentMode=forgeMode;
     renderForgeView(document,state,selectedForgeRelicId,{...forgeRenderOptions(),mode:'defusion'});
-    const sheetStyle=getComputedStyle(sheet);
-    const availableHeight=Math.max(0,sheet.clientHeight-
-      (parseFloat(sheetStyle.paddingTop)||0)-(parseFloat(sheetStyle.paddingBottom)||0));
+    const viewportHeight=window.visualViewport?.height||window.innerHeight;
+    const availableHeight=Math.max(0,viewportHeight-48);
     const defusionHeight=Math.min(availableHeight,forgeBody.getBoundingClientRect().height);
     const referenceOffset=Math.max(0,Math.floor((availableHeight-defusionHeight)/2));
     sheet.style.setProperty('--forge-reference-offset',`${referenceOffset}px`);
