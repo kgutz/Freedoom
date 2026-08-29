@@ -1523,7 +1523,7 @@ async function showPendingEarlyVictoryNotice(){
   }catch(error){
     earlyVictory.noticePending=true;
     console.error('No se pudo guardar la Victoria Anticipada antes del aviso',error);
-    showToast('No se pudo asegurar el aviso de Victoria Anticipada','dmg');
+    showToast('No se guardó el aviso de victoria','dmg');
   }finally{earlyVictoryNoticeOpening=false;}
 }
 function queueEarlyVictoryNotice(){
@@ -1978,7 +1978,7 @@ function openSkillHabitPicker(spell){
   const available=pendingDailyHabits();
   const limit=skillSelectionLimit(spell);
   if(available.length<limit.min){
-    showToast(`No puedes usar esta habilidad · necesitas ${limit.min} hábitos diarios pendientes`,'dmg');
+    showToast(`Faltan ${limit.min} hábitos diarios`,'dmg');
     return;
   }
   pendingSkillCast={spell,available,selected:[]};
@@ -2074,7 +2074,7 @@ function castSpell(id,options={}){
   }
   if(sp.autoHabitChallenge&&!options.confirmed){
     if(pendingDailyHabits().length<2){
-      showToast('No puedes usar esta habilidad · necesitas 2 hábitos diarios pendientes','dmg');
+      showToast('Faltan 2 hábitos diarios','dmg');
       return;
     }
     openSkillConfirmation(sp);
@@ -2109,12 +2109,12 @@ function castSpell(id,options={}){
     if(result.reason==='level') showToast('Nivel '+result.requiredLevel+' necesario','dmg');
     else if(result.reason==='ultimate-daily-used') return;
     else if(result.reason==='ultimate-used') showToast(sp.modern?'Ya usada dos veces esta semana':'Ya usada esta semana','dmg');
-    else if(result.reason==='ultimate-active') showToast('Completa primero el reto de la definitiva activa','dmg');
+    else if(result.reason==='ultimate-active') showToast('Completa la definitiva activa','dmg');
     else if(result.reason==='challenge-used') showToast('Esta habilidad ya se usó dos veces hoy','dmg');
     else if(result.reason==='challenge-active') showToast('Completa primero el reto activo','dmg');
     else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
     else if(result.reason==='spell-cooldown') return;
-    else if(result.reason==='habits') showToast('No hay suficientes hábitos diarios pendientes','dmg');
+    else if(result.reason==='habits') showToast('Faltan hábitos diarios','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
     else if(result.minimumMana) showToast('Necesitas al menos '+result.requiredMana+' 💧','dmg');
@@ -2911,7 +2911,7 @@ document.getElementById('addCig').addEventListener('click',()=>{
   }
   if(r.shielded) showToast('🛡 Escudo absorbió el ataque del jefe','heal');
   else if(r.dmg>0) showToast('⚔ El jefe ataca · −'+r.dmg+' de vida','dmg');
-  else if(r.perfect) showToast('Disparo perfecto · −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+recoveredMana+' 💧','heal');
+  else if(r.perfect) showToast('🎯 −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+recoveredMana+' 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
 });
 document.getElementById('subCig').addEventListener('click',()=>{
@@ -3022,7 +3022,7 @@ document.getElementById('addBeer').addEventListener('click',()=>{
     type:'beer:add',day:k,count:(d.b||0)+1
   });
   showToast(shielded
-    ? '🛡 Muro de Escudos bloqueó el daño · Borrachera '+added.status.level+'%'
+    ? '🛡 Daño bloqueado · Borrachera '+added.status.level+'%'
     : '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
     shielded?'heal':'dmg'
   );
@@ -3209,11 +3209,11 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
     showToast(
       status===SMOKE_FREE_STATUS_SUCCESS
         ? (isControlledMode(state.config)
-            ? '✓ Día completado · −25 HP al jefe · XP del día'
-            : '✓ Día sin fumar · −25 HP al jefe · XP del día'+rewardNotice)
+            ? '✓ Día · −25 HP jefe · XP'
+            : '✓ Sin fumar · −25 HP jefe · XP'+rewardNotice)
         : forbiddenControlledSmoke
-          ? 'Incumplimiento · −15% de vida máxima hoy · mañana 2/5 de energía'
-          : 'Día registrado. Mañana continúa tu camino.',
+          ? 'Fallo · −15% vida máx. · mañana 2/5 energía'
+          : 'Día registrado · continúa mañana',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
     );
   }
@@ -5004,7 +5004,7 @@ function handleOutfitWeave(outfitId){
   scheduleSave({type:'outfit:woven',outfitId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
-  showToast('Vestidura tejida. Ya es tuya para siempre','heal');
+  showToast('Outfit tejido · conseguido','heal');
   return true;
 }
 
@@ -5236,7 +5236,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
     if(potionBagIsFullFor(potionId)){
-      showToast('Bolso lleno · usa una poción para liberar un hueco','dmg');
+      showToast('Bolso lleno · libera un hueco','dmg');
       return;
     }
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
@@ -5555,7 +5555,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     const definition=POTION_BY_ID[potionId];
     if(!definition) return;
     if(potionBagIsFullFor(potionId)){
-      showToast('Bolso lleno · usa una poción para liberar un hueco','dmg');
+      showToast('Bolso lleno · libera un hueco','dmg');
       return;
     }
     if(definition.price*quantity>(Number(state.economy?.coins)||0)){
@@ -5633,7 +5633,7 @@ async function handleForgeAttempt(relicId){
     });
     if(!commit.ok){
       console.error('No se pudo guardar el intento de Forja',commit.error);
-      showToast('No se pudo confirmar el guardado de la Forja','dmg');
+      showToast('No se guardó la Forja','dmg');
       selectedForgeRelicId=relicId;
       renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
       forgeLocked=false;
@@ -5756,7 +5756,7 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
   pendingFusion=null;
   if(!commit.ok){
     console.error('No se pudo guardar la Fusión',commit.error);
-    showToast('No se pudo confirmar el guardado de la Fusión','dmg');
+    showToast('No se guardó la Fusión','dmg');
     forgeLocked=false;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
@@ -5796,7 +5796,7 @@ document.getElementById('defusionConfirmAccept').addEventListener('click',async(
   });
   if(!commit.ok){
     console.error('No se pudo guardar la Desfusión',commit.error);
-    showToast('No se pudo confirmar el guardado de la Desfusión','dmg');
+    showToast('No se guardó la Desfusión','dmg');
     forgeLocked=false;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
     return;
@@ -5838,13 +5838,13 @@ document.getElementById('pioneerRewardAccept').addEventListener('click',async()=
     state=previousState;
     button.disabled=false;
     console.error('No se pudo guardar la recompensa de pionero',error);
-    showToast('No se pudo guardar la recompensa. Inténtalo otra vez.','dmg');
+    showToast('No se guardó la recompensa · reintenta','dmg');
   }
 });
 document.getElementById('pioneerRewardContinue').addEventListener('click',()=>{
   document.getElementById('pioneerRewardBg').classList.remove('show');
   renderAll();
-  showToast('Outfit Beta Tester y +130 de oro','heal');
+  showToast('Outfit Beta · +130 oro','heal');
 });
 document.getElementById('betaTesterRewardAccept').addEventListener('click',async()=>{
   const button=document.getElementById('betaTesterRewardAccept');
@@ -5881,7 +5881,7 @@ document.getElementById('betaTesterRewardAccept').addEventListener('click',async
     state=previousState;
     button.disabled=false;
     console.error('No se pudo guardar el regalo Beta Tester',error);
-    showToast('No se pudo guardar la recompensa. Inténtalo otra vez.','dmg');
+    showToast('No se guardó la recompensa · reintenta','dmg');
   }
 });
 document.getElementById('betaTesterRewardContinue').addEventListener('click',()=>{
@@ -5892,7 +5892,7 @@ document.getElementById('betaTesterRewardContinue').addEventListener('click',()=
   outfitSelectorSection='frames';
   selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:'collection'});
   document.getElementById('outfitSelectorBg').classList.add('show');
-  showToast('Marco, +140 de oro, +10 Fibras y +2 de energía','heal');
+  showToast('Marco · +140 oro · +10 Fibras · +2 Energía','heal');
 });
 document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   const notice=pendingFiberCatchupNotice(state);
@@ -6063,7 +6063,7 @@ document.getElementById('cfgResetCls').addEventListener('click',()=>{
   if(!currentClass) return;
   const blood=Math.max(0,Number(state.economy?.bossBlood)||0);
   if(!recoveryModeController.isActive()&&blood<1){
-    showToast('Necesitas 1 Sangre de Jefe para cambiar de clase','dmg');
+    showToast('Cambiar clase · falta 1 Sangre','dmg');
     return;
   }
   classChangeReturn={
