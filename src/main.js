@@ -4429,13 +4429,17 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     });
     renderAll();
     if(result.becameCompleted){
-      const fiberNotice=fiberResult.granted?' · +1 Fibra Arcana':'';
+      const fiberNotice=fiberResult.granted?' · +1 Fibra':'';
       const energyGained=(huntEnergyResult.granted||0)+(setEnergyResult.granted||0);
-      const energyNotice=energyGained?` · +${energyGained} Energía de Cacería`:'';
+      const energyNotice=energyGained?` · +${energyGained} Energía`:'';
       const recoveryNotice=baseRecovery.applied
-        ? ' · +5% VIDA · +5% MANÁ'
-        : baseRecovery.capped?' · Recuperación diaria al máximo':'';
-      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${recoveryNotice}${fiberNotice}${energyNotice}`,'heal');
+        ? ' · +5% Vida/Maná'
+        : baseRecovery.capped?' · Recuperación máx.':'';
+      const compactRewards=[];
+      if(totalRewardDelta.xpDelta>0) compactRewards.push(`+${totalRewardDelta.xpDelta} XP`);
+      if(totalRewardDelta.coinDelta>0) compactRewards.push(`+${totalRewardDelta.coinDelta} 🪙`);
+      const rewardNotice=compactRewards.join(' · ');
+      showToast(`${rewardNotice}${recoveryNotice}${fiberNotice}${energyNotice}`.replace(/^ · /,''),'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
