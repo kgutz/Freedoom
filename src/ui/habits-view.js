@@ -108,7 +108,7 @@ function habitRow(habit, entry, skillMarked = false) {
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} oro · 5% vida/maná</span>
+      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} oro</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${earnedCopy}</span>
     </button>
@@ -220,7 +220,7 @@ export function renderHabitsView({
     : `<div class="habit-empty">
         <div class="habit-empty-icon">✦</div>
         <h3>${habits.length ? 'No hay hábitos en este filtro' : 'Empieza con un hábito pequeño'}</h3>
-        <p>${habits.length ? 'Prueba otro filtro o crea un hábito nuevo.' : 'Completar hábitos dará experiencia y recuperará un 5% de vida y maná.'}</p>
+        <p>${habits.length ? 'Prueba otro filtro o crea un hábito nuevo.' : 'Completar hábitos positivos dará experiencia a tu héroe.'}</p>
         <button type="button" data-add-habit>${habits.length ? 'Crear hábito' : 'Crear mi primer hábito'}</button>
       </div>`;
 

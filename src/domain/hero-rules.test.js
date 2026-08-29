@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   BEER_DAMAGE,
   dailyRecovery,
-  habitCompletionRecovery,
   pillCompletionReward,
   regenerateHealth,
   regenerationIntervalMinutes,
@@ -148,24 +147,6 @@ describe('otras reglas de salud', () => {
       mana: 78,
     });
     expect(BEER_DAMAGE).toBe(5);
-  });
-
-  it('recupera un 5% por hábito completado hasta cinco recompensas diarias', () => {
-    expect(habitCompletionRecovery({ maxHp: 345, maxMp: 517, rewardedCount: 0 })).toEqual({
-      healing: 17,
-      mana: 26,
-      capped: false,
-    });
-    expect(habitCompletionRecovery({ maxHp: 345, maxMp: 517, rewardedCount: 4 })).toEqual({
-      healing: 17,
-      mana: 26,
-      capped: false,
-    });
-    expect(habitCompletionRecovery({ maxHp: 345, maxMp: 517, rewardedCount: 5 })).toEqual({
-      healing: 0,
-      mana: 0,
-      capped: true,
-    });
   });
 
   it('no aplica Poción Mayor a la curación base de pastillas', () => {

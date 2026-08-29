@@ -109,7 +109,7 @@ describe('vista de hábitos', () => {
 
     expect(html).toContain('Beber agua');
     expect(html).toContain('data-open-character-sheet');
-    expect(html).toContain('<span class="habit-meta">Media · 6 XP + 3 oro · 5% vida/maná</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 6 XP + 3 oro</span>');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).not.toContain('🪙');
     expect(html).toContain('completed');
@@ -164,8 +164,8 @@ describe('vista de hábitos', () => {
         'gym|w:2026-07-31': { habitId: 'gym', periodKey: 'w:2026-07-31', frequency: 'weekly', count: 1, xpAwarded: 7, coinsAwarded: 2 },
       },
     });
-    expect(html).toContain('<span class="habit-meta">Media · 12 XP + 6 oro · 5% vida/maná</span>');
-    expect(html).toContain('<span class="habit-meta">Media · 18 XP + 5 oro · 5% vida/maná</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 12 XP + 6 oro</span>');
+    expect(html).toContain('<span class="habit-meta">Media · 18 XP + 5 oro</span>');
     expect(html).not.toContain('Próximo avance:');
     expect(html).toContain('1 / 3 · +6 XP · +3 <span class="resource-icon resource-icon--coin"');
   });

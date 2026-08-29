@@ -38,7 +38,6 @@ import {
 import {
   BEER_DAMAGE,
   dailyRecovery,
-  habitCompletionRecovery,
   pillCompletionReward,
   regenerateHealth,
   weeklyBossPenalty
@@ -3779,33 +3778,6 @@ let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
 
-function applyBaseHabitCompletionRecovery({result,habit}){
-  if(!result.becameCompleted||!state.game?.cls) return {applied:false,capped:false,hp:0,mp:0};
-  const dayKey=todayKey();
-  const progress=state.game.powerProgress=state.game.powerProgress||{};
-  const recoveryDays=progress.habitRecoveryDays=progress.habitRecoveryDays||{};
-  const dayRecord=recoveryDays[dayKey]=recoveryDays[dayKey]||{habitIds:[]};
-  dayRecord.habitIds=Array.isArray(dayRecord.habitIds)?dayRecord.habitIds:[];
-  if(dayRecord.habitIds.includes(habit.id)) return {applied:false,capped:false,hp:0,mp:0};
-  const {maxHp,maxMp}=heroMaxes();
-  const reward=habitCompletionRecovery({
-    maxHp,
-    maxMp,
-    rewardedCount:dayRecord.habitIds.length,
-  });
-  if(reward.capped) return {applied:false,capped:true,hp:0,mp:0};
-  dayRecord.habitIds.push(habit.id);
-  const hpBefore=Number(state.game.hp)||0;
-  const mpBefore=Number(state.game.mp)||0;
-  state.game.hp=capHp(hpBefore+reward.healing);
-  state.game.mp=capMp(mpBefore+reward.mana);
-  const retainedDays=Object.keys(recoveryDays).sort().slice(-14);
-  Object.keys(recoveryDays).forEach(savedDay=>{
-    if(!retainedDays.includes(savedDay)) delete recoveryDays[savedDay];
-  });
-  return {applied:true,capped:false,hp:state.game.hp-hpBefore,mp:state.game.mp-mpBefore};
-}
-
 function applyClassHabitRewards({result,habit}){
   const g=state.game;
   if(!g||!g.cls) return '';
@@ -4411,7 +4383,6 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
     }
     if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
-    const baseRecovery=applyBaseHabitCompletionRecovery({result,habit});
     if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit});
     const rewardTotalsAfter={
       xp:gameStats().xp,
@@ -4432,14 +4403,11 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       const fiberNotice=fiberResult.granted?' · +1 Fibra':'';
       const energyGained=(huntEnergyResult.granted||0)+(setEnergyResult.granted||0);
       const energyNotice=energyGained?` · +${energyGained} Energía`:'';
-      const recoveryNotice=baseRecovery.applied
-        ? ' · +5% Vida/Maná'
-        : baseRecovery.capped?' · Recuperación máx.':'';
       const compactRewards=[];
       if(totalRewardDelta.xpDelta>0) compactRewards.push(`+${totalRewardDelta.xpDelta} XP`);
       if(totalRewardDelta.coinDelta>0) compactRewards.push(`+${totalRewardDelta.coinDelta} 🪙`);
       const rewardNotice=compactRewards.join(' · ');
-      showToast(`${rewardNotice}${recoveryNotice}${fiberNotice}${energyNotice}`.replace(/^ · /,''),'heal');
+      showToast(`${rewardNotice}${fiberNotice}${energyNotice}`.replace(/^ · /,''),'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');

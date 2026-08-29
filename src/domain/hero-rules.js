@@ -90,24 +90,4 @@ export function pillCompletionReward({
   };
 }
 
-export function habitCompletionRecovery({
-  maxHp,
-  maxMp,
-  rewardedCount = 0,
-  rewardRate = 0.05,
-  dailyCapRate = 0.25,
-}) {
-  const safeRewardRate = Math.max(0, Number(rewardRate) || 0);
-  const safeCapRate = Math.max(0, Number(dailyCapRate) || 0);
-  const maxRewards = safeRewardRate > 0 ? Math.floor(safeCapRate / safeRewardRate) : 0;
-  if (Math.max(0, Number(rewardedCount) || 0) >= maxRewards) {
-    return { healing: 0, mana: 0, capped: true };
-  }
-  return {
-    healing: Math.max(1, Math.round(Math.max(0, Number(maxHp) || 0) * safeRewardRate)),
-    mana: Math.max(1, Math.round(Math.max(0, Number(maxMp) || 0) * safeRewardRate)),
-    capped: false,
-  };
-}
-
 export const BEER_DAMAGE = 5;
