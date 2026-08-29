@@ -38,6 +38,7 @@ import {
 import {
   BEER_DAMAGE,
   dailyRecovery,
+  habitCompletionRecovery,
   pillCompletionReward,
   regenerateHealth,
   weeklyBossPenalty
@@ -240,7 +241,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.23';
+const APP_VERSION='2.25';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2350,8 +2351,10 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const inventorySheet=inventoryOverlay?.querySelector('.inventory-sheet');
   const inventoryTabs=inventorySheet?.querySelector('.inventory-tabs');
   const inventoryTitle=inventorySheet?.querySelector('.sheet-head h3');
+  const inventoryReturnCharacter=document.getElementById('inventoryReturnCharacter');
   const shopExperience=shopSelected||(forgeSelected&&forgeFromCity);
   const shopMapExpanded=shopSelected&&shopViewSection==='map';
+  if(inventoryReturnCharacter) inventoryReturnCharacter.hidden=!shopExperience||shopMapExpanded;
   bagBody.hidden=!(bagSelected||shopMapExpanded);
   forgeBody.hidden=!forgeSelected;
   shopBody.hidden=!shopSelected;
@@ -3776,6 +3779,33 @@ let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
 
+function applyBaseHabitCompletionRecovery({result,habit}){
+  if(!result.becameCompleted||!state.game?.cls) return {applied:false,capped:false,hp:0,mp:0};
+  const dayKey=todayKey();
+  const progress=state.game.powerProgress=state.game.powerProgress||{};
+  const recoveryDays=progress.habitRecoveryDays=progress.habitRecoveryDays||{};
+  const dayRecord=recoveryDays[dayKey]=recoveryDays[dayKey]||{habitIds:[]};
+  dayRecord.habitIds=Array.isArray(dayRecord.habitIds)?dayRecord.habitIds:[];
+  if(dayRecord.habitIds.includes(habit.id)) return {applied:false,capped:false,hp:0,mp:0};
+  const {maxHp,maxMp}=heroMaxes();
+  const reward=habitCompletionRecovery({
+    maxHp,
+    maxMp,
+    rewardedCount:dayRecord.habitIds.length,
+  });
+  if(reward.capped) return {applied:false,capped:true,hp:0,mp:0};
+  dayRecord.habitIds.push(habit.id);
+  const hpBefore=Number(state.game.hp)||0;
+  const mpBefore=Number(state.game.mp)||0;
+  state.game.hp=capHp(hpBefore+reward.healing);
+  state.game.mp=capMp(mpBefore+reward.mana);
+  const retainedDays=Object.keys(recoveryDays).sort().slice(-14);
+  Object.keys(recoveryDays).forEach(savedDay=>{
+    if(!retainedDays.includes(savedDay)) delete recoveryDays[savedDay];
+  });
+  return {applied:true,capped:false,hp:state.game.hp-hpBefore,mp:state.game.mp-mpBefore};
+}
+
 function applyClassHabitRewards({result,habit}){
   const g=state.game;
   if(!g||!g.cls) return '';
@@ -4381,6 +4411,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
     }
     if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
+    const baseRecovery=applyBaseHabitCompletionRecovery({result,habit});
     if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit});
     const rewardTotalsAfter={
       xp:gameStats().xp,
@@ -4401,7 +4432,10 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       const fiberNotice=fiberResult.granted?' · +1 Fibra Arcana':'';
       const energyGained=(huntEnergyResult.granted||0)+(setEnergyResult.granted||0);
       const energyNotice=energyGained?` · +${energyGained} Energía de Cacería`:'';
-      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${fiberNotice}${energyNotice}`,'heal');
+      const recoveryNotice=baseRecovery.applied
+        ? ' · +5% VIDA · +5% MANÁ'
+        : baseRecovery.capped?' · Recuperación diaria al máximo':'';
+      showToast(`${habitRewardToast('Hábito completado',totalRewardDelta)}${recoveryNotice}${fiberNotice}${energyNotice}`,'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
@@ -5027,9 +5061,22 @@ function potionBagIsFullFor(potionId){
 }
 
 function returnToShopMap(){
+  document.getElementById('sheetInventory')?.classList.remove('inventory-shop-cosmetic-open');
   forgeFromCity=false;
   shopViewSection='map';
   showInventoryPanel('shop');
+}
+
+function returnToCharacterSheetFromShop(){
+  selectedOutfitDraft=null;
+  outfitSelectorContext='collection';
+  document.getElementById('outfitSelectorBg')?.classList.remove('show');
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
+  document.getElementById('sheetInventory')?.classList.remove('show','inventory-shop-cosmetic-open');
+  forgeFromCity=false;
+  shopViewSection='map';
+  renderCurrentCharacterSheet();
+  showSheet(document,'sheetCharacter');
 }
 
 function activeShopDestinationPanel(){
@@ -5046,6 +5093,10 @@ document.getElementById('sheetInventory').addEventListener('click',event=>{
 },true);
 
 document.getElementById('sheetInventory').addEventListener('click',async event=>{
+  if(event.target.closest('[data-return-character-sheet]')){
+    returnToCharacterSheetFromShop();
+    return;
+  }
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
   }
@@ -5088,6 +5139,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
       outfitSelectorContext='shop';
       outfitSelectorSection=destination;
       selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'shop'});
+      document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
       document.getElementById('outfitSelectorBg').classList.add('show');
       return;
     }
@@ -5341,6 +5393,10 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
 });
 
 document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
+  if(event.target.closest('[data-return-character-sheet]')){
+    returnToCharacterSheetFromShop();
+    return;
+  }
   if(event.target.closest('#outfitSelectorBack')){
     selectedOutfitDraft=null;
     selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:outfitSelectorContext});

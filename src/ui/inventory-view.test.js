@@ -33,7 +33,7 @@ function lootWithBosses(count, source = 'retroactive') {
 function fakeDocument() {
   const elements = Object.fromEntries([
     'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
-    'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody', 'outfitSelectorTitle', 'outfitSelectorBack',
+    'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody', 'outfitSelectorTitle', 'outfitSelectorBack', 'outfitSelectorReturnCharacter',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
   ].map((id) => [id, { innerHTML: '', textContent: '' }]));
@@ -79,6 +79,7 @@ describe('interfaz de inventario y botín', () => {
 
     expect(renderOutfitSelector(document, state, null, { section: 'weave', context: 'shop' })).toBeNull();
     expect(document.elements.outfitSelectorBack.hidden).toBe(true);
+    expect(document.elements.outfitSelectorReturnCharacter.hidden).toBe(false);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
@@ -628,6 +629,7 @@ describe('interfaz de inventario y botín', () => {
   it('abre cada comercio con su nombre y descripción contextual', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
+    renderForgeView(document, state, null, { cityEntry: true });
     renderShopView(document, state, 20 * 86400000, { section: 'relics' });
     expect(document.elements.shopBody.innerHTML).toContain('Reliquias perdidas vuelven a circular');
     expect(document.elements.shopBody.innerHTML).not.toContain('data-back-shop-city');

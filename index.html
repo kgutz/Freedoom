@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.24</div>
+  <div class="ob-version" id="obVersion">v2.25</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.24</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.25</span></p>
       </div>
     </div>
   </div>
@@ -405,7 +405,7 @@
     <section class="faq-hero" aria-labelledby="faqHeading">
       <span class="faq-eyebrow">CENTRO DE AYUDA</span>
       <h4 id="faqHeading">¿Qué necesitas saber?</h4>
-      <p>Encuentra una respuesta rápida sin leer un manual.</p>
+      <p>Guía rápida de caminos, progreso, Cacería, objetos y datos.</p>
       <label class="faq-search" for="faqSearch">
         <span aria-hidden="true">⌕</span>
         <input id="faqSearch" type="search" autocomplete="off" placeholder="Buscar en ayuda…">
@@ -419,15 +419,15 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="qué camino debo elegir reducción sin fumar control">
             <summary><span>¿Qué camino debo elegir?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Reducción baja tu límite poco a poco. Sin fumar registra tus días limpios. Control te permite elegir días de consumo y un máximo semanal.</p><p>Puedes programar un cambio desde Ajustes; empezará la siguiente semana para no alterar tu progreso actual.</p></div>
+            <div class="faq-answer"><p><b>Reducción</b> baja tu límite cada semana. <b>Sin fumar</b> registra días limpios o recaídas. <b>Control</b> permite elegir días de consumo y un máximo semanal compartido.</p><p>Si ya estás en Sin fumar, puedes activar Control desde Ajustes: se aplica desde hoy y conserva las reglas de tus días anteriores.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo funciona mi plan semana siete días límite">
             <summary><span>¿Cómo funciona mi semana?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Tu semana dura siete días desde la fecha en la que empezaste. Cada camino evalúa el objetivo que elegiste y usa esos resultados para el combate semanal.</p></div>
+            <div class="faq-answer"><p>Tu semana dura siete días desde la fecha de inicio. Cada día cumplido daña al jefe; seis días válidos garantizan la victoria.</p><p>Reducción evalúa el límite diario, Sin fumar tus confirmaciones y Control el máximo semanal de los días permitidos.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cuándo cambia mi día despertar cuatro madrugada medianoche hora">
             <summary><span>¿Cuándo cambia mi día?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>En Reducción y Sin fumar cambia a las <b>04:00</b> por defecto. En Control, los días permitidos cambian a las <b>00:00</b>.</p><p>Puedes cambiar la hora desde Ajustes y corregir tu despertar de hoy sin modificar días anteriores.</p></div>
+            <div class="faq-answer"><p>En Reducción y Sin fumar el día lógico cambia a las <b>04:00</b> por defecto, para que la madrugada siga contando como la noche anterior. En Control, los días permitidos siguen el calendario y cambian a las <b>00:00</b>.</p><p>Puedes modificar la hora de cambio en Ajustes y corregir el despertar de hoy sin alterar días anteriores.</p></div>
           </details>
         </div>
       </details>
@@ -437,15 +437,19 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="cómo funciona el ritmo barra siguiente aproximado último cigarro">
             <summary><span>¿Cómo funciona el ritmo del día?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>La barra de Hoy reparte tu límite entre las horas que estarás despierto. La zona clara muestra el ritmo recomendado y «Siguiente aprox.» calcula cuándo te conviene registrar el próximo.</p><p>El primer cigarro del día inicia el cálculo: no cuenta como adelantado.</p></div>
+            <div class="faq-answer"><p>En Reducción, la barra de Hoy reparte el límite entre tus horas despierto. La zona clara marca el ritmo recomendado y «Siguiente aprox.» estima el próximo momento.</p><p>El primer cigarro después de despertar no causa daño; registrarlo antes de la hora de despertar sí puede penalizar.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cuándo pierdo recupero vida daño curación armadura">
             <summary><span>¿Cuándo pierdo o recupero vida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>En Reducción pierdes vida si fumas por delante del ritmo o superas tu límite. Esperar, cumplir el día y usar habilidades o reliquias de curación te ayuda a recuperarla.</p><p>La racha también genera Armadura y reduce el daño recibido.</p></div>
+            <div class="faq-answer"><p>En Reducción pierdes vida si te adelantas al ritmo o superas el límite. También puedes recibir daño al fallar el combate semanal o durante una Cacería.</p><p>La vida se regenera con el tiempo. Cumplir el día, usar habilidades, pociones o reliquias puede recuperar vida y maná; la Armadura absorbe daño.</p></div>
           </details>
           <details class="faq-item" data-faq-item="qué hace borrachera cerveza habilidades pasivas falla">
             <summary><span>¿Qué hace la Borrachera?</span><span class="faq-icon" aria-hidden="true"></span></summary>
             <div class="faq-answer"><p>Cada cerveza puede hacer fallar habilidades activas y reducir el efecto de las pasivas durante un tiempo. Cuantas más registres, mayor será la intoxicación.</p><p>Toca su indicador junto al héroe para consultar el porcentaje y el tiempo restante.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="pastillas medicación salud objetivo vida maná opcional">
+            <summary><span>¿Qué ocurre al completar mis pastillas?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Si activaste su registro, completar la pauta del día recupera un 15% de tu Vida máxima y un 15% de tu Maná máximo.</p><p>Las pastillas no dañan al jefe. Puedes corregir su cantidad desde Hoy o Calendario.</p></div>
           </details>
         </div>
       </details>
@@ -455,19 +459,23 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="cómo gano oro y experiencia xp nivel recompensas">
             <summary><span>¿Cómo gano XP y oro?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Cumple tu objetivo diario, completa hábitos o pendientes y derrota jefes. Algunas habilidades, reliquias y pociones añaden recompensas extra.</p><p>La recompensa exacta aparece antes de cada acción y en el resumen al completarla.</p></div>
+            <div class="faq-answer"><p>Cumple el objetivo diario, completa hábitos o pendientes, derrota jefes y supera Cacerías. Algunas habilidades, reliquias y pociones añaden recompensas.</p><p>El oro sirve para Forja, Pociones, Outfits y objetos del mercado; la XP aumenta tu nivel y desbloquea habilidades y dificultades.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo funcionan vida maná clase nivel recuperar máximo">
             <summary><span>¿Cómo funcionan la vida y el maná?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>La vida refleja el aguante de tu héroe; el maná permite usar habilidades. Sus máximos aumentan con el nivel y cambian según la clase.</p><p>Puedes recuperar ambas barras cumpliendo el día, usando habilidades o equipando reliquias.</p></div>
+            <div class="faq-answer"><p>La Vida refleja el aguante; el Maná permite usar habilidades. Sus máximos aumentan con el nivel y cambian según la clase.</p><p>Ambos recursos también entran en Cacería: el informe devuelve a tu héroe con el estado de salida y la recuperación obtenida.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="atributos puntos fuerza defensa destreza poder constitución ficha personaje repartir">
+            <summary><span>¿Para qué sirven los Atributos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Fuerza, Defensa, Destreza, Poder y Constitución determinan cómo combate tu héroe en Cacería. Cada clase parte de valores distintos.</p><p>Recibes <b>3 puntos por nivel</b>. Abre la Ficha de personaje tocando el retrato del héroe para repartirlos.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo uso habilidades nivel dos ocho catorce ulti cooldown usos">
             <summary><span>¿Cómo funcionan las habilidades?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Se desbloquean en los niveles 2, 8 y 14. Las de nivel 8 pueden usarse dos veces al día; tras completar el primer reto, esperan 60 segundos antes del segundo uso.</p><p>La definitiva puede usarse dos veces por semana. Toca la ⓘ del bloque de Habilidades para ver sus reglas y coste.</p></div>
+            <div class="faq-answer"><p>Las activas se desbloquean en los niveles 2, 8 y 14. Las de nivel 8 crean retos de hábitos, permiten dos usos al día y esperan 60 segundos tras completar el primero.</p><p>La definitiva potencia tres hábitos: puede usarse una vez al día y dos por semana. Toca la ⓘ de Habilidades para consultar costes y efectos de tu clase.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo derroto jefe semanal seis días vida golpes botín">
             <summary><span>¿Cómo derroto al jefe semanal?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Cumple seis de los siete días para derrotarlo. Cada día válido le quita vida según las reglas de tu camino.</p><p>Si sobrevive, recupera toda su vida al comenzar la siguiente semana. Si lo derrotas, recibes XP, oro y recursos para el Inventario.</p></div>
+            <div class="faq-answer"><p>Cumple seis de los siete días para garantizar la victoria. Cada día válido quita 25 de Vida; Reducción puede sumar daño por margen, cero cigarros y disparos perfectos.</p><p>El registro de combate muestra todos los golpes. Si ganas antes del sexto día consigues Victoria Anticipada y una recompensa extra.</p></div>
           </details>
         </div>
       </details>
@@ -477,51 +485,99 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="cómo funcionan hábitos diarios semanales objetivo repetible">
             <summary><span>¿Cómo funcionan los hábitos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Los hábitos son rutinas diarias o semanales. Elige su dificultad y objetivo; si requieren varias repeticiones, la recompensa se reparte por fases.</p><p>Puedes corregir el progreso con + y −. Si lo deshaces, también se revierte lo concedido.</p></div>
+            <div class="faq-answer"><p>Los hábitos son rutinas diarias o semanales. Los semanales reparten la recompensa entre sus pasos; un diario normal la entrega al completar el objetivo.</p><p>Un diario marcado como <b>repetible</b> recompensa hasta tres repeticiones con rendimiento decreciente. Puedes corregirlo con + y −.</p></div>
           </details>
           <details class="faq-item" data-faq-item="qué diferencia hay pendiente to do list hábito tarea eliminar">
             <summary><span>¿Qué diferencia hay entre un hábito y un pendiente?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Un hábito se repite; un pendiente es una tarea concreta. Ambos pueden tener dificultad y objetivo, pero al completar un pendiente Freedom te propone eliminarlo de la lista.</p></div>
+            <div class="faq-answer"><p>Un hábito se repite cada día o semana. Un pendiente es una tarea concreta de la lista To-Do y no se reinicia: al completarlo, Freedom propone archivarlo.</p><p>Los avances de un pendiente conceden XP y oro según su dificultad.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cuánto dan hábitos pendientes xp oro recompensa tope">
             <summary><span>¿Cuánto recompensa cada uno?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>La recompensa depende de la dificultad, la frecuencia y el objetivo. La verás al crear la actividad y junto a su nombre, así siempre consultas el valor vigente.</p><p>Los hábitos tienen límites de XP para mantener el equilibrio; los pendientes muestran su progreso por separado.</p></div>
+            <div class="faq-answer"><p>La recompensa depende de dificultad, frecuencia y tipo. La verás antes de guardar y junto a cada actividad.</p><p>Completar todos los hábitos diarios activos añade 3 de oro. La XP de hábitos tiene topes dinámicos; deshacer progreso revierte las recompensas que sigan disponibles.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="hábitos energía cacería fibra fibras arcanas probabilidad recompensa extra">
+            <summary><span>¿Los hábitos pueden dar otros recursos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Sí. Al completar un hábito puedes encontrar 1 Fibra Arcana; la probabilidad aumenta con su dificultad.</p><p>También existe una probabilidad de obtener Energía adicional de Cacería, con un máximo de dos puntos extra al día por hábitos.</p></div>
           </details>
         </div>
       </details>
 
-      <details class="faq-category" data-faq-category="inventario reliquias botín tienda forja outfits fibras arcanas">
-        <summary><span class="faq-category-icon" aria-hidden="true">▣</span><span><b>Inventario</b><small>Reliquias, Forja y Outfits</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+      <details class="faq-category" data-faq-category="cacería caza campos bruma mapa energía dificultad combate enemigos informe botín">
+        <summary><span class="faq-category-icon" aria-hidden="true">⚔</span><span><b>Cacería</b><small>Energía, combate y expediciones</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="dónde está cómo entrar abrir cacería hábitos mapa campos bruma">
+            <summary><span>¿Dónde está Cacería?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Abre <b>Hábitos</b> y elige la pestaña <b>Cacería</b>. En el mapa, entra en Campos de la Bruma y selecciona una dificultad disponible para tu nivel.</p><p>Actualmente es la primera región jugable; las demás zonas del mapa llegarán más adelante.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="cómo funciona energía cacería cinco diaria extra máximo diez coste">
+            <summary><span>¿Cómo funciona la Energía de Cacería?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Cada día recibes <b>5 de Energía base</b>. Fácil cuesta 1, Medio 2 y Difícil 3; el máximo acumulado es 10.</p><p>Hábitos y regalos pueden añadir energía extra. El contador separa la energía base de la adicional.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="dificultad fácil medio difícil nivel duración recompensa fibra sangre jefe">
+            <summary><span>¿Qué cambia con la dificultad?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Fácil se desbloquea en nivel 3 y dura 1 minuto; Medio en nivel 7 y dura 3; Difícil en nivel 12 y dura 5.</p><p>Las dificultades altas dan más XP y oro. Medio y Difícil pueden entregar Fibras; al vencer al minijefe en Difícil hay un 10% de obtener 1 Sangre de Jefe.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="qué pasa combate cacería atributos reliquias vida maná pociones automático informe">
+            <summary><span>¿Qué ocurre durante una expedición?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Tu héroe combate hasta tres enemigos usando clase, nivel, Atributos y reliquias. Entra con su Vida y Maná actuales y conserva el estado de salida.</p><p>Puedes permitir el uso automático de Pociones de Vida y Maná. Al terminar, el informe muestra rondas, daño, recuperación, pociones y botín de cada encuentro.</p></div>
+          </details>
+        </div>
+      </details>
+
+      <details class="faq-category" data-faq-category="inventario colección reliquias botín forja fusionar desfusionar rareza rango">
+        <summary><span class="faq-category-icon" aria-hidden="true">▣</span><span><b>Inventario y reliquias</b><small>Botín, equipo y Forja</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="cómo consigo botín reliquias jefe oro sangre rareza">
             <summary><span>¿Cómo consigo reliquias y recursos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Los jefes pueden entregar reliquias y siempre conceden recursos al derrotarlos por primera vez. El cofre muestra todo lo conseguido.</p><p>La ficha de cada reliquia explica su rareza, efecto y rango.</p></div>
+            <div class="faq-answer"><p>Cada jefe concede oro, Sangre y Fibras al derrotarlo por primera vez. Su reliquia tiene un <b>60% de probabilidad</b> de aparecer; si falla, puede recuperarse en Contrabando.</p><p>La ficha muestra efecto, Rango y rareza: Raro, Legendario o Mítico.</p></div>
           </details>
           <details class="faq-item" data-faq-item="diferencia inventario colección equipar dos reliquias">
             <summary><span>¿Qué diferencia hay entre Inventario y Colección?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Inventario contiene lo que posees y te permite equipar hasta dos reliquias compatibles. Colección registra todo lo que hayas descubierto, aunque ya no lo conserves.</p></div>
+            <div class="faq-answer"><p>Inventario contiene lo que posees y permite equipar hasta dos reliquias de tipos compatibles. Colección registra todo lo descubierto aunque un objeto haya sido fusionado.</p><p>El tipo y el Rango de las reliquias equipadas también mejoran estadísticas de Cacería.</p></div>
           </details>
-          <details class="faq-item" data-faq-item="cómo funcionan tienda forja mejorar fusionar reliquias">
-            <summary><span>¿Para qué sirven la Tienda y la Forja?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>La Tienda te permite comprar pociones y recuperar ciertas reliquias. En la Forja puedes mejorar una reliquia o fusionar dos compatibles para descubrir otra.</p><p>Antes de gastar recursos verás el coste, la probabilidad y una confirmación.</p></div>
+          <details class="faq-item" data-faq-item="cómo funciona forja mejorar rango pity fortuna coste oro sangre probabilidad">
+            <summary><span>¿Cómo funciona Mejorar?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Mejorar aumenta una reliquia hasta Rango III. Cada intento gasta oro; la Sangre solo se consume al acertar.</p><p>Un fallo conserva el Rango y aumenta el Pity del siguiente intento. Fortuna mejora la probabilidad final. La pantalla siempre muestra coste y probabilidad antes de confirmar.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="fusionar desfusionar ingredientes recuperar receta coste reliquia fusionada">
+            <summary><span>¿Cómo funcionan Fusión y Desfusión?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Fusionar combina dos reliquias compatibles por <b>100 de oro + 1 Sangre</b>. No falla, consume los ingredientes y descubre una reliquia con sus efectos heredados.</p><p>Desfusionar cuesta <b>250 de oro + 1 Sangre</b> y recupera ambos ingredientes con la rareza, Rango y efectos que tenían.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo consigo cambio outfit tejer fibras arcanas apariencia">
             <summary><span>¿Cómo consigo y cambio Outfits?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Desde la ficha de personaje puedes equipar los Outfits y Fondos que ya posees.</p><p>Los nuevos Outfits se tejen en el Telar Arcano y los Fondos disponibles se consultan en el Pintor de Mundos, dentro de la Tienda.</p></div>
+            <div class="faq-answer"><p>Desde Inventario o la Ficha de personaje puedes equipar Outfits y Fondos que ya posees.</p><p>Los Outfits actuales se tejen en el Telar Arcano con 20 Fibras + 320 de oro. Son cosméticos y no modifican estadísticas.</p></div>
+          </details>
+        </div>
+      </details>
+
+      <details class="faq-category" data-faq-category="tienda mercado callejón oficios pociones bolso fortuna experiencia vida maná sangre outfits fondos">
+        <summary><span class="faq-category-icon" aria-hidden="true">⌂</span><span><b>Mercado y pociones</b><small>Oficios, Bolso y cosméticos</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <div class="faq-category-body">
+          <details class="faq-item" data-faq-item="qué hay callejón oficios tienda forja botica telar pintor contrabando">
+            <summary><span>¿Qué hay en el Callejón de los Oficios?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>La Forja mejora y combina reliquias; la Botica vende Pociones; el Telar crea Outfits; el Pintor reúne Fondos; y Contrabando recupera reliquias perdidas.</p><p>Contrabando muestra hasta tres ofertas personales y cambia cada tres días.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="poción fortuna experiencia efecto duración treinta minutos oro xp cacería">
+            <summary><span>¿Qué hacen Fortuna y Experiencia?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p><b>Fortuna</b> triplica el oro de hábitos y añade un 50% al oro de Cacería, hasta 50 de oro extra compartido. <b>Experiencia</b> añade un 50% a la XP de hábitos diarios, hasta 10 XP.</p><p>Duran 30 minutos y cada una puede activarse una vez al día.</p></div>
+          </details>
+          <details class="faq-item" data-faq-item="poción vida maná sangre efecto recuperar preparar jefe límite bolso">
+            <summary><span>¿Qué hacen Vida, Maná y Sangre?</span><span class="faq-icon" aria-hidden="true"></span></summary>
+            <div class="faq-answer"><p>Vida recupera 20 y Maná recupera 25; no tienen límite diario y pueden usarse automáticamente en Cacería.</p><p>Sangre prepara hasta tres bonus para el próximo jefe: +20%, +10% y +5% de probabilidad de una Sangre adicional. El Bolso admite cuatro tipos de poción a la vez.</p></div>
           </details>
         </div>
       </details>
 
       <details class="faq-category" data-faq-category="cuenta datos guardado copias seguridad recuperar restaurar dispositivo">
-        <summary><span class="faq-category-icon" aria-hidden="true">▤</span><span><b>Cuenta y datos</b><small>Guardado y recuperación</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
+        <summary><span class="faq-category-icon" aria-hidden="true">▤</span><span><b>Datos y recuperación</b><small>Guardado, copias y dispositivos</small></span><span class="faq-icon" aria-hidden="true"></span></summary>
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="dónde guarda mi partida dispositivo automáticamente">
             <summary><span>¿Dónde se guarda mi partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Freedom guarda cada cambio automáticamente en este dispositivo. La app instalada y el navegador pueden utilizar almacenamientos diferentes.</p></div>
+            <div class="faq-answer"><p>Freedom guarda automáticamente en este dispositivo y mantiene copias recientes, diarias, semanales y una última partida con información.</p><p>No existe cuenta ni nube: la app instalada, otro navegador u otro dispositivo pueden usar almacenamientos diferentes y no se sincronizan.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo recupero partida copia seguridad restaurar">
             <summary><span>¿Cómo recupero una partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Abre el menú y entra en «Copias de seguridad». Freedom conserva copias recientes y versiones protegidas para ayudarte a recuperar una partida con progreso.</p></div>
+            <div class="faq-answer"><p>Abre el menú y entra en <b>Copias de seguridad</b>. Revisa fecha y progreso antes de restaurar; Freedom marca la opción más segura cuando puede identificarla.</p><p>La exportación e importación manual existen como recuperación de emergencia, no como sincronización automática.</p></div>
           </details>
           <details class="faq-item" data-faq-item="qué hago cambio no se guardó error espacio cerrar">
             <summary><span>¿Qué hago si un cambio no se guardó?</span><span class="faq-icon" aria-hidden="true"></span></summary>
@@ -556,6 +612,7 @@
 </div>
 
 <div class="sheet-bg" id="sheetInventory" style="z-index:28">
+  <button type="button" class="shop-return-character" id="inventoryReturnCharacter" data-return-character-sheet hidden>‹ Volver a Ficha</button>
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
     <div class="inventory-tabs" role="tablist" aria-label="Bolso y Mercado">
@@ -579,6 +636,7 @@
 </div>
 
 <div class="modal-bg center" id="outfitSelectorBg" style="z-index:31">
+  <button type="button" class="shop-return-character" id="outfitSelectorReturnCharacter" data-return-character-sheet hidden>‹ Volver a Ficha</button>
   <div class="modal outfit-selector-modal" role="dialog" aria-modal="true" aria-labelledby="outfitSelectorTitle">
     <div class="outfit-selector-top">
       <button type="button" id="outfitSelectorBack" hidden>‹ Volver</button>

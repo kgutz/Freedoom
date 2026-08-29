@@ -115,10 +115,12 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   selectorModal?.classList.toggle('outfit-selector-modal--shop', shopContext);
   const selectorTitle = document.getElementById('outfitSelectorTitle');
   const selectorBack = document.getElementById('outfitSelectorBack');
+  const selectorReturnCharacter = document.getElementById('outfitSelectorReturnCharacter');
   if (selectorTitle) selectorTitle.textContent = shopContext
     ? (section === 'frames' ? 'Pintor de Mundos' : 'Telar Arcano')
     : 'Cosméticos';
   if (selectorBack) selectorBack.hidden = !shopContext || !selected;
+  if (selectorReturnCharacter) selectorReturnCharacter.hidden = !shopContext;
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
   const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
   const sectionIntro = shopContext
