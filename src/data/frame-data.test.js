@@ -21,4 +21,11 @@ describe('marcos del héroe', () => {
     expect(equippedFrame('beta-tester', game).id).toBe('beta-tester');
     expect(heroBackgroundSource('beta-tester', 'knight', 'today', game)).toBe('hero_background/beta_tester_bg_final.webp');
   });
+
+  it('mantiene bloqueado el Santuario del Crisol hasta comprarlo en el Pintor', () => {
+    expect(isFrameUnlocked('welder-beta', {})).toBe(false);
+    const game = { frames: { owned: { 'welder-beta': { acquiredAt: 1234 } } } };
+    expect(isFrameUnlocked('welder-beta', game)).toBe(true);
+    expect(heroBackgroundSource('welder-beta', 'paladin', 'hero', game)).toBe('hero_background/welder_beta_forge.webp');
+  });
 });

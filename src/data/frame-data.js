@@ -12,6 +12,15 @@ export const FRAME_DEFINITIONS = Object.freeze([
     unlocked: false,
     lore: 'La central arcana donde vive el corazón de Freedom. Un recuerdo reservado para quienes ayudaron a construir este mundo.',
   }),
+  Object.freeze({
+    id: 'welder-beta',
+    name: 'Santuario del Crisol',
+    image: 'hero_background/welder_beta_forge.webp',
+    unlocked: false,
+    compatibleOutfitId: 'arcane-weave-02',
+    recipe: Object.freeze({ arcaneInks: 20, coins: 320 }),
+    lore: 'En las entrañas de Freedom arde una forja que nunca duerme. Aquí, el Forjador del Crisol convirtió fuego y metal en un legado para quienes ayudaron a templar este mundo.',
+  }),
 ]);
 
 function frameDefinition(frameId) {

@@ -5,6 +5,7 @@ import {
   bossFiberBase,
   grantBossFiberReward,
   pendingFiberCatchupNotice,
+  paintFrame,
   reconcileHistoricalBossFibers,
   resolveHabitFiberDrop,
   weaveOutfit,
@@ -168,5 +169,17 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(result.economy.coins).toBe(0);
     expect(result.economy.arcaneFibers).toBe(0);
     expect(result.game.outfits.owned['arcane-weave-02'].source).toBe('woven');
+  });
+
+  it('pinta Santuario del Crisol por 20 Tintas y 320 de oro', () => {
+    const initial = stateWithGame();
+    initial.economy.coins = 320;
+    initial.economy.arcaneInks = 20;
+    const result = paintFrame({ state: initial, frameId: 'welder-beta', operationId: 'paint-1', nowTimestamp: 40 });
+    expect(result.ok).toBe(true);
+    expect(result.economy).toMatchObject({ coins: 0, arcaneInks: 0 });
+    expect(result.game.frames.owned['welder-beta']).toMatchObject({ source: 'painted' });
+    const repeated = paintFrame({ state: { ...initial, ...result }, frameId: 'welder-beta', operationId: 'paint-2' });
+    expect(repeated).toMatchObject({ ok: false, reason: 'owned' });
   });
 });

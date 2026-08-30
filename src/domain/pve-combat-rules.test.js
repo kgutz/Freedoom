@@ -4,6 +4,7 @@ import {
   BRUMA_ENEMIES,
   fiberChanceForHunt,
   fiberChanceForProgress,
+  inkChanceForProgress,
   grantHabitHuntEnergy,
   grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
@@ -210,6 +211,20 @@ describe('PvE combat rules', () => {
     expect(fiberChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.3);
     expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.7);
     expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 3, nowTimestamp: now })).toBeCloseTo(0.7);
+  });
+
+  it('entrega Tinta solo desde el Líder en Medio o Difícil y reduce un 5% por drop diario', () => {
+    const today = new Date(2026, 7, 26, 12).getTime();
+    expect(inkChanceForProgress({ hunt: null, difficultyId: 'easy', defeatedEnemies: 3, nowTimestamp: today })).toBe(0);
+    expect(inkChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 1, nowTimestamp: today })).toBe(0);
+    expect(inkChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: today })).toBeCloseTo(0.25);
+    expect(inkChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: today })).toBeCloseTo(0.5);
+    const hunt = { energyDay: '2026-08-26', energy: 2, history: [
+      { completedAt: today, rewards: { arcaneInks: 1 } },
+      { completedAt: today, rewards: { arcaneInks: 1 } },
+    ] };
+    expect(inkChanceForProgress({ hunt, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: today })).toBeCloseTo(0.15);
+    expect(inkChanceForProgress({ hunt, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: today })).toBeCloseTo(0.4);
   });
 
   it('recupera vida y maná proporcionalmente a los enemigos vencidos', () => {

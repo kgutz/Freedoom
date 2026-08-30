@@ -154,11 +154,12 @@ import {
   pendingBetaTesterReward,
 } from './domain/beta-tester-reward-rules.js';
 import { OUTFIT_DEFINITIONS, isOutfitUnlocked } from './data/outfit-data.js';
-import { isFrameUnlocked } from './data/frame-data.js';
+import { FRAME_DEFINITIONS, isFrameUnlocked } from './data/frame-data.js';
 import {
   acknowledgeFiberCatchupNotice,
   grantBossFiberReward,
   pendingFiberCatchupNotice,
+  paintFrame,
   reconcileHistoricalBossFibers,
   resolveHabitFiberDrop,
   weaveOutfit,
@@ -240,7 +241,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.25';
+const APP_VERSION='2.26';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -264,8 +265,9 @@ const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
 const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
-)&&!LOCAL_DEMO_ALL_OUTFITS&&LOCAL_DEMO_PARAMS.get('previewBetaTesterReward')!=='2';
-const LOCAL_BETA_TESTER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewBetaTesterReward')==='2';
+)&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
+const LOCAL_BETA_TESTER_REWARD_PREVIEW_ID=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'):'';
+const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -870,6 +872,18 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
+  if(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID==='3'){
+    const ownedFrames={...(state.game.frames?.owned||{})};
+    const claimedRewards={...(state.game.betaTesterRewards?.claimed||{})};
+    delete ownedFrames['welder-beta'];
+    delete claimedRewards['pioneer-beta-reward-v3'];
+    state.game={
+      ...state.game,
+      frame:'original',
+      frames:{...(state.game.frames||{}),owned:ownedFrames},
+      betaTesterRewards:{...(state.game.betaTesterRewards||{}),claimed:claimedRewards},
+    };
+  }
   if(LOCAL_DEMO_REDUCTION_14){
     state.game={
       ...state.game,
@@ -2667,10 +2681,13 @@ function resetBetaTesterRewardModal(){
   if(accept) accept.disabled=false;
 }
 function pendingDisplayBetaTesterReward(){
+  if(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID==='3'&&state.onboarded&&state.game?.cls){
+    return {id:'pioneer-beta-reward-v3',title:'El color de los pioneros',intro:'Tu huella ya forma parte de Freedom. Recibe recursos para descubrir la Tinta Arcana y el Santuario del Crisol.',coins:192,arcaneFibers:0,arcaneInks:20,energy:0,frameId:'welder-beta',grantsFrame:false};
+  }
   const pending=pendingBetaTesterReward(state);
   if(pending) return pending;
   if(!LOCAL_BETA_TESTER_REWARD_PREVIEW||!state.onboarded||!state.game?.cls) return null;
-  return {id:'pioneer-beta-reward-v2',title:'Entre bugs y victorias',intro:'Freedom sigue creciendo gracias a cada prueba, cada idea y cada error que nos ayudaste a encontrar.'};
+  return {id:'pioneer-beta-reward-v3',title:'El color de los pioneros',intro:'Tu huella ya forma parte de Freedom. Recibe recursos para descubrir la Tinta Arcana y el Santuario del Crisol.',coins:192,arcaneFibers:0,arcaneInks:20,energy:0,frameId:'welder-beta',grantsFrame:false};
 }
 function showPendingBetaTesterReward(){
   betaTesterRewardTimer=null;
@@ -2680,14 +2697,42 @@ function showPendingBetaTesterReward(){
     betaTesterRewardTimer=window.setTimeout(showPendingBetaTesterReward,500);
     return;
   }
+  if(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID==='3'){
+    const ownedFrames={...(state.game?.frames?.owned||{})};
+    delete ownedFrames['welder-beta'];
+    state.game={...state.game,frame:'original',frames:{...(state.game?.frames||{}),owned:ownedFrames}};
+  }
   betaTesterRewardOpening=true;
   resetBetaTesterRewardModal();
   const title=document.getElementById('betaTesterRewardTitle');
   const intro=document.getElementById('betaTesterRewardIntro');
   const heroImage=document.getElementById('betaTesterRewardHeroImage');
+  const isThirdReward=reward.id==='pioneer-beta-reward-v3';
   if(title) title.textContent=reward.title;
   if(intro) intro.textContent=reward.intro;
-  if(heroImage) heroImage.src=`outfits/beta-tester/${state.game?.cls||'knight'}_happy.webp`;
+  const kicker=document.getElementById('betaTesterRewardKicker');
+  const revealTitle=document.getElementById('betaTesterRewardRevealTitle');
+  const frameImage=document.getElementById('betaTesterRewardFrameImage');
+  const frameName=document.getElementById('betaTesterRewardFrameName');
+  const frameCard=document.getElementById('betaTesterRewardFrameCard');
+  if(kicker) kicker.textContent=`RECOMPENSA BETA TESTER · ${isThirdReward?'03':'02'}`;
+  if(revealTitle) revealTitle.textContent=reward.title;
+  if(frameImage) frameImage.src=isThirdReward?'hero_background/welder_beta_forge.webp':'hero_background/beta_tester_bg_final.webp';
+  if(frameName) frameName.textContent=isThirdReward?'Santuario del Crisol':'Corazón de Freedom';
+  if(frameCard) frameCard.hidden=isThirdReward;
+  const frameStatus=document.getElementById('betaTesterRewardFrameStatus');
+  if(frameStatus) frameStatus.textContent=isThirdReward?'FONDO CONMEMORATIVO · TIEMPO LIMITADO':'FONDO EXCLUSIVO';
+  if(heroImage) heroImage.src=`outfits/${isThirdReward?'welder-beta':'beta-tester'}/${state.game?.cls||'knight'}_happy.webp`;
+  [['betaTesterRewardCoins',reward.coins],['betaTesterRewardFibers',reward.arcaneFibers],['betaTesterRewardEnergy',reward.energy],['betaTesterRewardInks',reward.arcaneInks]].forEach(([id,amount])=>{
+    const item=document.getElementById(id);
+    if(item) item.hidden=!Number(amount);
+  });
+  [['betaTesterRewardCoinsAmount',reward.coins],['betaTesterRewardFibersAmount',reward.arcaneFibers],['betaTesterRewardEnergyAmount',reward.energy],['betaTesterRewardInksAmount',reward.arcaneInks]].forEach(([id,amount])=>{
+    const value=document.getElementById(id); if(value) value.textContent=`+${Number(amount)||0}`;
+  });
+  document.querySelector('.beta-tester-reward-items')?.classList.toggle('beta-tester-reward-items--third',isThirdReward);
+  const inkSource=document.getElementById('betaTesterRewardInkSource');
+  if(inkSource) inkSource.hidden=!Number(reward.arcaneInks);
   document.getElementById('betaTesterRewardBg')?.classList.add('show');
   betaTesterRewardOpening=false;
 }
@@ -3406,6 +3451,7 @@ function huntPotentialRewardsMarkup(difficulty){
     `✦ ${difficulty.xp} XP`,
     `${resourceIcon('coin')} ${difficulty.gold[0]}–${difficulty.gold[1]}`,
     fiberMax?`${resourceIcon('arcane-fiber')} 0–${fiberMax}`:'',
+    Number(difficulty.inkChance)>0?`${resourceIcon('arcane-ink')} 0–1`:'',
     difficulty.id==='hard'?`${resourceIcon('boss-blood')} 0–1`:'',
   ].filter(Boolean).join(' · ');
 }
@@ -3577,6 +3623,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy=state.economy||{coins:0,bossBlood:0,arcaneFibers:0,transactions:[]};
     state.economy.coins=Math.max(0,Number(state.economy.coins)||0)+result.report.rewards.gold;
     state.economy.arcaneFibers=Math.max(0,Number(state.economy.arcaneFibers)||0)+result.report.rewards.arcaneFibers;
+    state.economy.arcaneInks=Math.max(0,Number(state.economy.arcaneInks)||0)+result.report.rewards.arcaneInks;
     state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
     state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
     state.economy.transactions.push({
@@ -4948,6 +4995,11 @@ function openShopPurchaseConfirmation(purchase){
     title.textContent='¿Quieres tejer este outfit?';
     body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.fiberCost} Fibras Arcanas</b> y <b>${purchase.coinCost} de oro</b>.</p>`;
     accept.textContent='TEJER';
+  }else if(purchase.type==='frame'){
+    kicker.textContent='CONFIRMAR PINTURA';
+    title.textContent='¿Quieres pintar este fondo?';
+    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Se descontarán <b>${purchase.inkCost} Tintas Arcanas</b> y <b>${purchase.coinCost} de oro</b>.</p>`;
+    accept.textContent='PINTAR';
   }else{
     kicker.textContent='CONFIRMAR COMPRA';
     title.textContent='¿Quieres comprarlo?';
@@ -4973,6 +5025,23 @@ function handleOutfitWeave(outfitId){
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
   showToast('Outfit tejido · conseguido','heal');
+  return true;
+}
+
+function handleFramePaint(frameId){
+  const operationId=`frame-${frameId}-${Date.now()}`;
+  const result=paintFrame({state,frameId,operationId,nowTimestamp:Date.now()});
+  if(!result.ok){
+    showToast(result.reason==='resources'?'No tienes suficientes recursos':'Este fondo ya está conseguido','dmg');
+    return false;
+  }
+  applyLootSlices(result);
+  state.game=result.game;
+  selectedOutfitDraft=renderOutfitSelector(document,state,frameId,{section:'frames',context:'shop'});
+  scheduleSave({type:'frame:painted',frameId,operationId});
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  showToast('Fondo pintado · conseguido','heal');
   return true;
 }
 
@@ -5058,6 +5127,7 @@ function activeShopDestinationPanel(){
 }
 
 document.getElementById('sheetInventory').addEventListener('click',event=>{
+  if(event.target.closest('[data-return-character-sheet]')) return;
   const destinationPanel=activeShopDestinationPanel();
   if(!destinationPanel||destinationPanel.contains(event.target)) return;
   event.stopImmediatePropagation();
@@ -5411,6 +5481,17 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
     });
     return;
   }
+  const paint=event.target.closest('[data-paint-frame]');
+  if(paint&&!paint.disabled){
+    const frameId=paint.dataset.paintFrame;
+    const frame=FRAME_DEFINITIONS.find(item=>item.id===frameId&&item.recipe);
+    if(!frame) return;
+    openShopPurchaseConfirmation({
+      type:'frame',frameId,name:frame.name,
+      inkCost:frame.recipe.arcaneInks,coinCost:frame.recipe.coins,
+    });
+    return;
+  }
   const equip=event.target.closest('[data-equip-outfit]');
   if(equip&&!equip.disabled){
     const outfitId=equip.dataset.equipOutfit;
@@ -5692,6 +5773,7 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
   if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
+  else if(purchase.type==='frame') handleFramePaint(purchase.frameId);
   else await handleRelicPurchase(purchase.relicId);
 });
 document.getElementById('fusionConfirmBg').addEventListener('click',event=>{
@@ -5853,14 +5935,21 @@ document.getElementById('betaTesterRewardAccept').addEventListener('click',async
   }
 });
 document.getElementById('betaTesterRewardContinue').addEventListener('click',()=>{
+  const inkRewardVisible=!document.getElementById('betaTesterRewardInks')?.hidden;
   document.getElementById('betaTesterRewardBg').classList.remove('show');
   renderAll();
   dismissAureoNotice('backgrounds');
-  outfitSelectorContext='collection';
+  outfitSelectorContext=inkRewardVisible?'shop':'collection';
   outfitSelectorSection='frames';
-  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:'collection'});
+  if(inkRewardVisible){
+    forgeFromCity=false;
+    shopViewSection='map';
+    openInventory('shop');
+    document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
+  }
+  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:outfitSelectorContext});
   document.getElementById('outfitSelectorBg').classList.add('show');
-  showToast('Marco · +140 oro · +10 Fibras · +2 Energía','heal');
+  showToast(inkRewardVisible?'+20 Tintas · +192 oro':'Fondo · +140 oro · +10 Fibras · +2 Energía','heal');
 });
 document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   const notice=pendingFiberCatchupNotice(state);
@@ -6244,5 +6333,7 @@ resetGuardContinue.addEventListener('click',()=>{
       queueFiberCatchup();
     }
     queueProgressionUpdate();
+  }else if(LOCAL_BETA_TESTER_REWARD_PREVIEW){
+    queueBetaTesterReward(220);
   }
 })();

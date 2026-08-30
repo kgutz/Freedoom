@@ -12,6 +12,18 @@ export const BETA_TESTER_REWARD_DEFINITIONS = Object.freeze([
     energy: 2,
     frameId: 'beta-tester',
   }),
+  Object.freeze({
+    id: 'pioneer-beta-reward-v3',
+    active: true,
+    title: 'El color de los pioneros',
+    intro: 'Tu huella ya forma parte de Freedom. Recibe recursos para descubrir la Tinta Arcana y el Santuario del Crisol.',
+    coins: 192,
+    arcaneFibers: 0,
+    arcaneInks: 20,
+    energy: 0,
+    frameId: 'welder-beta',
+    grantsFrame: false,
+  }),
 ]);
 
 function transactionsOf(state) {
@@ -37,7 +49,7 @@ export function pendingBetaTesterReward(state) {
 export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now(), { force = false } = {}) {
   const reward = BETA_TESTER_REWARD_DEFINITIONS.find((candidate) => candidate.id === rewardId);
   const eligible = force || pendingBetaTesterReward(state)?.id === rewardId;
-  if (!reward || !eligible || isBetaTesterRewardClaimed(state, rewardId)) {
+  if (!reward || !eligible || (!force && isBetaTesterRewardClaimed(state, rewardId))) {
     return { state, reward: reward || null, granted: false };
   }
   const claimedAt = Math.max(1, Number(nowTimestamp) || Date.now());
@@ -52,13 +64,13 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
     game: {
       ...state.game,
       hunt: energyGrant.hunt,
-      frames: {
+      ...(reward.frameId && reward.grantsFrame !== false ? { frames: {
         ...(state.game?.frames || {}),
         owned: {
           ...(state.game?.frames?.owned || {}),
           [reward.frameId]: { acquiredAt: claimedAt, source: reward.id },
         },
-      },
+      } } : {}),
       betaTesterRewards: {
         ...(state.game?.betaTesterRewards || {}),
         claimed: {
@@ -67,6 +79,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
             claimedAt,
             coins: reward.coins,
             arcaneFibers: reward.arcaneFibers,
+            arcaneInks: reward.arcaneInks || 0,
             energy: energyGrant.granted,
             frameId: reward.frameId,
           },
@@ -77,6 +90,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
       ...economy,
       coins: Math.max(0, Math.trunc(Number(economy.coins) || 0)) + reward.coins,
       arcaneFibers: Math.max(0, Math.trunc(Number(economy.arcaneFibers) || 0)) + reward.arcaneFibers,
+      arcaneInks: Math.max(0, Math.trunc(Number(economy.arcaneInks) || 0)) + (reward.arcaneInks || 0),
       transactions: [
         ...transactionsOf(state),
         {
@@ -84,6 +98,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
           type: 'beta_tester_reward',
           coins: reward.coins,
           arcaneFibers: reward.arcaneFibers,
+          arcaneInks: reward.arcaneInks || 0,
           energy: energyGrant.granted,
           frameId: reward.frameId,
           at: claimedAt,

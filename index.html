@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.25</div>
+  <div class="ob-version" id="obVersion">v2.26</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.25</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.26</span></p>
       </div>
     </div>
   </div>
@@ -773,7 +773,7 @@
 <div class="modal-bg center pioneer-reward-bg" id="betaTesterRewardBg" style="z-index:49">
   <div class="modal pioneer-reward-modal beta-tester-reward-modal" role="dialog" aria-modal="true" aria-labelledby="betaTesterRewardTitle">
     <section id="betaTesterRewardThanks" class="pioneer-reward-step">
-      <span class="pioneer-reward-kicker">RECOMPENSA BETA TESTER · 02</span>
+      <span class="pioneer-reward-kicker" id="betaTesterRewardKicker">RECOMPENSA BETA TESTER · 03</span>
       <h3 id="betaTesterRewardTitle">Entre bugs y victorias</h3>
       <div class="pioneer-chest-scene" aria-hidden="true">
         <span class="pioneer-chest-aura"></span>
@@ -786,30 +786,35 @@
     </section>
     <section id="betaTesterRewardReveal" class="pioneer-reward-step pioneer-reward-reveal" hidden>
       <span class="pioneer-reward-kicker">RECOMPENSA CONSEGUIDA</span>
-      <h3>Entre bugs y victorias</h3>
+      <h3 id="betaTesterRewardRevealTitle">El color de los pioneros</h3>
       <div class="beta-tester-reward-items">
-        <div class="pioneer-reward-item beta-tester-frame-reward">
+        <div class="pioneer-reward-item beta-tester-frame-reward" id="betaTesterRewardFrameCard">
           <span class="beta-tester-frame-art" aria-hidden="true">
-            <img class="beta-tester-frame-bg" src="hero_background/beta_tester_bg_final.webp" alt="" loading="lazy" decoding="async">
+            <img class="beta-tester-frame-bg" id="betaTesterRewardFrameImage" src="hero_background/welder_beta_forge.webp" alt="" loading="lazy" decoding="async">
             <img class="beta-tester-frame-hero" id="betaTesterRewardHeroImage" src="" alt="" loading="lazy" decoding="async">
           </span>
-          <strong>Corazón de Freedom</strong>
-          <small>MARCO EXCLUSIVO</small>
+          <strong id="betaTesterRewardFrameName">Santuario del Crisol</strong>
+          <small id="betaTesterRewardFrameStatus">FONDO CONMEMORATIVO · TIEMPO LIMITADO</small>
         </div>
-        <div class="pioneer-reward-item beta-tester-resource-reward">
+        <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardCoins">
           <span class="resource-icon resource-icon--coin" role="img" aria-label="Oro"></span>
-          <strong>+140</strong><small>ORO</small>
+          <strong id="betaTesterRewardCoinsAmount">+192</strong><small>ORO</small>
         </div>
-        <div class="pioneer-reward-item beta-tester-resource-reward">
+        <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardFibers">
           <span class="resource-icon resource-icon--arcane-fiber" role="img" aria-label="Fibra Arcana"></span>
-          <strong>+10</strong><small>FIBRAS ARCANAS</small>
+          <strong id="betaTesterRewardFibersAmount">+10</strong><small>FIBRAS ARCANAS</small>
         </div>
-        <div class="pioneer-reward-item beta-tester-resource-reward">
+        <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardEnergy">
           <span class="resource-icon resource-icon--hunt-energy" role="img" aria-label="Energía"></span>
-          <strong>+2</strong><small>ENERGÍA</small>
+          <strong id="betaTesterRewardEnergyAmount">+2</strong><small>ENERGÍA</small>
+        </div>
+        <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardInks">
+          <span class="resource-icon resource-icon--arcane-ink" role="img" aria-label="Tinta Arcana"></span>
+          <strong id="betaTesterRewardInksAmount">+20</strong><small>TINTAS ARCANAS</small>
         </div>
       </div>
-      <button type="button" class="pioneer-reward-action" id="betaTesterRewardContinue">VER FONDOS</button>
+      <p class="beta-tester-ink-source" id="betaTesterRewardInkSource">Usa la Tinta Arcana en el Pintor de Mundos. Consigue más en Cacerías Media y Difícil.</p>
+      <button type="button" class="pioneer-reward-action" id="betaTesterRewardContinue">IR AL PINTOR</button>
     </section>
   </div>
 </div>

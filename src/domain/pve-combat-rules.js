@@ -48,9 +48,9 @@ function enemyStatsFromAttributes(definition, attributes = definition.attributes
 
 export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
-  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0] }),
-  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1] }),
-  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2] }),
+  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0 }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1], inkChance: 0.25 }),
+  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2], inkChance: 0.5 }),
 });
 
 const safeInteger = (value) => Math.max(0, Math.floor(Number(value) || 0));
@@ -327,6 +327,18 @@ export function fiberChanceForProgress({
 }) {
   if (safeInteger(defeatedEnemies) < 2) return 0;
   return fiberChanceForHunt({ hunt, difficultyId, nowTimestamp });
+}
+
+export function inkChanceForProgress({ hunt, difficultyId, defeatedEnemies = 0, nowTimestamp = Date.now() }) {
+  if (safeInteger(defeatedEnemies) < 2) return 0;
+  const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const baseChance = Number(HUNT_DIFFICULTIES[difficultyId]?.inkChance) || 0;
+  if (baseChance <= 0) return 0;
+  const dropsToday = normalized.history.filter((report) => (
+    Number(report?.rewards?.arcaneInks) > 0
+    && localHuntDayKey(report.completedAt) === normalized.energyDay
+  )).length;
+  return Math.max(0.05, baseChance - dropsToday * 0.05);
 }
 
 export function huntRecoveryRates(defeatedEnemies = 0, totalEnemies = BRUMA_ENEMIES.length) {
@@ -627,6 +639,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       xp: encounter.won ? xpByEnemy[index] : 0,
       gold: encounter.won ? goldByEnemy[index] : 0,
       arcaneFibers: 0,
+      arcaneInks: 0,
       bossBlood: 0,
     };
   });
@@ -642,6 +655,13 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       const [minFiber, maxFiber] = difficulty.fiberAmount;
       leaderRewards.arcaneFibers = minFiber + Math.floor(random() * (maxFiber - minFiber + 1));
     }
+    const inkChance = inkChanceForProgress({
+      hunt: normalized,
+      difficultyId: difficulty.id,
+      defeatedEnemies,
+      nowTimestamp,
+    });
+    if (random() < inkChance) leaderRewards.arcaneInks = 1;
   }
   const bossRewards = encounters[2]?.won ? encounters[2].rewards : null;
   if (bossRewards) bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
@@ -656,6 +676,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     baseGold,
     fortuneGold,
     arcaneFibers: encounters.reduce((total, encounter) => total + encounter.rewards.arcaneFibers, 0),
+    arcaneInks: encounters.reduce((total, encounter) => total + encounter.rewards.arcaneInks, 0),
     bossBlood: encounters.reduce((total, encounter) => total + encounter.rewards.bossBlood, 0),
   };
   const heroHpBeforeRecovery = currentHp;

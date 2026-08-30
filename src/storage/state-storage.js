@@ -233,6 +233,10 @@ const IMPORT_COMMAND_RESOURCES = Object.freeze({
   fibras: 'arcaneFibers',
   'fibra-arcana': 'arcaneFibers',
   'fibras-arcanas': 'arcaneFibers',
+  tinta: 'arcaneInks',
+  tintas: 'arcaneInks',
+  'tinta-arcana': 'arcaneInks',
+  'tintas-arcanas': 'arcaneInks',
 });
 
 const IMPORT_COMMAND_OUTFITS = Object.freeze({
@@ -246,6 +250,8 @@ const IMPORT_COMMAND_OUTFITS = Object.freeze({
 const IMPORT_COMMAND_FRAMES = Object.freeze({
   'beta-tester': 'beta-tester',
   'corazon-de-freedom': 'beta-tester',
+  'santuario-del-crisol': 'welder-beta',
+  'welder-beta': 'welder-beta',
 });
 
 export function isImportCommand(value) {

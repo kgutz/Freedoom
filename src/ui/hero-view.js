@@ -701,6 +701,7 @@ export function renderHeroView({
             ${resourceValue('coin', lootState?.economy?.coins)}
             ${resourceValue('boss-blood', lootState?.economy?.bossBlood)}
             ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers)}
+            ${resourceValue('arcane-ink', lootState?.economy?.arcaneInks)}
           </button>
           <div class="hero-summary">
             <div class="hero-summary-primary">

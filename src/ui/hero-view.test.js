@@ -138,6 +138,29 @@ describe('modelo de Héroe', () => {
       .toBe(new Date(2026, 6, 27, 4).getTime());
   });
 
+  it('muestra la Tinta Arcana junto al resto de recursos del héroe', () => {
+    const heroContent = { innerHTML: '' };
+    renderHeroView({
+      document: { getElementById: (id) => id === 'heroContent' ? heroContent : null },
+      ...base({
+        lootState: { economy: { coins: 45, bossBlood: 1, arcaneFibers: 12, arcaneInks: 7 } },
+        boss: {
+          ...base().boss,
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+    });
+
+    expect(heroContent.innerHTML).toContain('hero-resource-wallet');
+    expect(heroContent.innerHTML).toContain('resource-icon--arcane-ink');
+    expect(heroContent.innerHTML).toContain('<b>7</b>');
+  });
+
   it('muestra en gris y sobre el icono todos los poderes de nivel 8 en enfriamiento', () => {
     const now = new Date(2026, 6, 26, 12);
     const heroContent = { innerHTML: '' };

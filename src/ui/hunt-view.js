@@ -69,6 +69,9 @@ export function huntResultRewardsMarkup(rewards = {}) {
     Number(rewards.arcaneFibers) > 0
       ? `<div class="hunt-result-reward-slot">${resourceIcon('arcane-fiber')}<b>${Math.max(0, Number(rewards.arcaneFibers) || 0)}</b></div>`
       : '',
+    Number(rewards.arcaneInks) > 0
+      ? `<div class="hunt-result-reward-slot">${resourceIcon('arcane-ink')}<b>${Math.max(0, Number(rewards.arcaneInks) || 0)}</b></div>`
+      : '',
     Number(rewards.bossBlood) > 0
       ? `<div class="hunt-result-reward-slot">${resourceIcon('boss-blood')}<b>${Math.max(0, Number(rewards.bossBlood) || 0)}</b></div>`
       : '',
@@ -135,7 +138,7 @@ function reportMarkup(report) {
     const nextHpPercent = resourcePercent(nextHeroHp, heroMaxHp);
     const nextManaPercent = resourcePercent(nextHeroMana, heroMaxMana);
     const rewardsMarkup = encounter.won
-      ? `<div class="hunt-encounter-rewards"><span>BOTÍN</span><b>✦ ${encounter.rewards?.xp || 0} XP</b>${resourceValue('coin', encounter.rewards?.gold || 0)}${encounter.rewards?.arcaneFibers ? resourceValue('arcane-fiber', encounter.rewards.arcaneFibers) : ''}${encounter.rewards?.bossBlood ? resourceValue('boss-blood', encounter.rewards.bossBlood) : ''}</div>`
+      ? `<div class="hunt-encounter-rewards"><span>BOTÍN</span><b>✦ ${encounter.rewards?.xp || 0} XP</b>${resourceValue('coin', encounter.rewards?.gold || 0)}${encounter.rewards?.arcaneFibers ? resourceValue('arcane-fiber', encounter.rewards.arcaneFibers) : ''}${encounter.rewards?.arcaneInks ? resourceValue('arcane-ink', encounter.rewards.arcaneInks) : ''}${encounter.rewards?.bossBlood ? resourceValue('boss-blood', encounter.rewards.bossBlood) : ''}</div>`
       : '';
     const recoveryMarkup = recoveryAfterHp > 0 || recoveryAfterMana > 0
       ? `<div class="hunt-encounter-recovery"><span>RECUPERACIÓN</span><b>+${recoveryAfterHp} vida · +${recoveryAfterMana} maná</b></div>`
@@ -184,6 +187,7 @@ function reportMarkup(report) {
     Number(rewards.xp) > 0 ? `<span>✦ <b>${Math.max(0, Number(rewards.xp) || 0)}</b> XP</span>` : '',
     Number(rewards.gold) > 0 ? resourceValue('coin', rewards.gold) : '',
     Number(rewards.arcaneFibers) > 0 ? resourceValue('arcane-fiber', rewards.arcaneFibers) : '',
+    Number(rewards.arcaneInks) > 0 ? resourceValue('arcane-ink', rewards.arcaneInks) : '',
     Number(rewards.bossBlood) > 0 ? resourceValue('boss-blood', rewards.bossBlood) : '',
   ].filter(Boolean).join('');
   const fortuneGold = Math.max(0, Number(rewards.fortuneGold) || 0);

@@ -59,7 +59,7 @@ export function fusionPairKey(leftId, rightId) {
 
 export function emptyLootState() {
   return {
-    economy: { coins: 0, bossBlood: 0, arcaneFibers: 0, transactions: [] },
+    economy: { coins: 0, bossBlood: 0, arcaneFibers: 0, arcaneInks: 0, transactions: [] },
     loot: {
       schemaVersion: LOOT_SCHEMA_VERSION,
       claimedBossRewards: [],
@@ -258,6 +258,7 @@ export function normalizeLootState(state = {}) {
       coins: Math.max(0, Math.trunc(Number(economy.coins) || 0)),
       bossBlood: Math.max(0, Math.trunc(Number(economy.bossBlood) || 0)),
       arcaneFibers: Math.max(0, Math.trunc(Number(economy.arcaneFibers) || 0)),
+      arcaneInks: Math.max(0, Math.trunc(Number(economy.arcaneInks) || 0)),
       transactions: arrayOf(economy.transactions).slice(-200),
     },
     loot: {

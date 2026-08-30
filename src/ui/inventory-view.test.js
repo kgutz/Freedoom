@@ -84,6 +84,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-fiber');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>FIBRAS</small>');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>ORO</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML.indexOf('resource-icon--coin'))
+      .toBeLessThan(document.elements.outfitSelectorBody.innerHTML.indexOf('resource-icon--arcane-fiber'));
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/welder-beta/sorcerer_happy.webp');
@@ -129,18 +131,41 @@ describe('interfaz de inventario y botín', () => {
   it('separa el catálogo de fondos de la colección poseída', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
-    state.game = { cls: 'paladin', frame: 'original' };
+    state.game = {
+      cls: 'paladin',
+      frame: 'beta-tester',
+      frames: { owned: { 'beta-tester': { acquiredAt: 1234 } } },
+    };
     expect(renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop' })).toBeNull();
     expect(document.elements.outfitSelectorBack.hidden).toBe(true);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="outfit-weave-resources"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('resource-icon--arcane-ink');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>TINTAS</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('<small>ORO</small>');
+    expect(document.elements.outfitSelectorBody.innerHTML.indexOf('resource-icon--coin'))
+      .toBeLessThan(document.elements.outfitSelectorBody.innerHTML.indexOf('resource-icon--arcane-ink'));
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Fondos disponibles"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="beta-tester"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option equipped frame-option--owned"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Corazón de Freedom, equipado"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option" data-select-frame="welder-beta"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 1"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 2"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 3"');
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/frame-option--future/g)).toHaveLength(3);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-section="owned"');
     expect(renderOutfitSelector(document, state, 'beta-tester', { section: 'frames', context: 'shop' })).toBe('beta-tester');
     expect(document.elements.outfitSelectorBack.hidden).toBe(false);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('NO DISPONIBLE');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-frame');
+    state.economy.coins = 320;
+    state.economy.arcaneInks = 20;
+    expect(renderOutfitSelector(document, state, 'welder-beta', { section: 'frames', context: 'shop' })).toBe('welder-beta');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Santuario del Crisol');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('20</b><small>TINTAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('320</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-paint-frame="welder-beta"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('>PINTAR</button>');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -631,13 +656,22 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(2);
     renderForgeView(document, state, null, { cityEntry: true });
     renderShopView(document, state, 20 * 86400000, { section: 'relics' });
-    expect(document.elements.shopBody.innerHTML).toContain('Reliquias perdidas vuelven a circular');
-    expect(document.elements.shopBody.innerHTML).not.toContain('data-back-shop-city');
-    expect(document.elements.shopBody.innerHTML).toContain('shop-destination-nav-spacer');
+    const relicShopHtml = document.elements.shopBody.innerHTML;
+    expect(relicShopHtml).toContain('Reliquias perdidas vuelven a circular');
+    expect(relicShopHtml).not.toContain('data-back-shop-city');
+    expect(relicShopHtml).toContain('shop-destination-nav-spacer');
+    expect(relicShopHtml).toContain('resource-icon--coin');
+    expect(relicShopHtml).toContain('resource-icon--boss-blood');
+    expect(relicShopHtml).not.toContain('resource-icon--arcane-fiber');
+    expect(relicShopHtml).not.toContain('resource-icon--arcane-ink');
     renderShopView(document, state, 20 * 86400000, { section: 'potions' });
     const potionShopHtml = document.elements.shopBody.innerHTML;
     expect(potionShopHtml).toContain('Brebajes para recuperar fuerzas');
     expect(potionShopHtml).not.toContain('RELIQUIAS PERDIDAS');
+    expect(potionShopHtml).toContain('resource-icon--coin');
+    expect(potionShopHtml).not.toContain('resource-icon--boss-blood');
+    expect(potionShopHtml).not.toContain('resource-icon--arcane-fiber');
+    expect(potionShopHtml).not.toContain('resource-icon--arcane-ink');
     expect(potionShopHtml.match(/potion-card--future/g)).toHaveLength(7);
   });
 

@@ -110,6 +110,10 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const alreadyOwned = section === 'weave' && selected ? isOutfitUnlocked(selected, lootState?.game) : false;
   const hasResources = recipe && Number(lootState?.economy?.coins || 0) >= recipe.coins
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
+  const frameRecipe = section === 'frames' ? selected?.recipe : null;
+  const frameOwned = selected ? isFrameUnlocked(selected, lootState?.game) : false;
+  const hasFrameResources = frameRecipe && Number(lootState?.economy?.coins || 0) >= frameRecipe.coins
+    && Number(lootState?.economy?.arcaneInks || 0) >= frameRecipe.arcaneInks;
   const selectorModal = body.closest?.('.outfit-selector-modal');
   selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected);
   selectorModal?.classList.toggle('outfit-selector-modal--shop', shopContext);
@@ -136,8 +140,11 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     <div class="outfit-selector-scroll-content">
     ${sectionIntro}
     ${section === 'weave' ? `<div class="outfit-weave-resources" aria-label="Tus recursos">
-      ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
+      ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
+    </div>` : shopContext && section === 'frames' ? `<div class="outfit-weave-resources" aria-label="Tus recursos">
+      ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
+      ${resourceValue('arcane-ink', lootState?.economy?.arcaneInks || 0, 'TINTAS')}
     </div>` : ''}
     ${section === 'frames' ? (selected ? `
       <div class="outfit-owned-view frame-owned-view">
@@ -150,17 +157,32 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           <h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore)}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
+          ${shopContext && frameRecipe ? `<div class="outfit-weave-cost">
+            ${resourceValue('coin', frameRecipe.coins, 'ORO')}
+            ${resourceValue('arcane-ink', frameRecipe.arcaneInks, 'TINTAS ARCANAS')}
+          </div>` : ''}
           ${shopContext
-            ? `<button type="button" class="outfit-equip-button" disabled>${isFrameUnlocked(selected, lootState?.game) ? 'CONSEGUIDO' : 'NO DISPONIBLE'}</button>`
+            ? (frameRecipe
+              ? `<button type="button" class="outfit-equip-button" data-paint-frame="${selected.id}"${frameOwned || !hasFrameResources ? ' disabled' : ''}>${frameOwned ? 'CONSEGUIDO' : hasFrameResources ? 'PINTAR' : 'FALTAN RECURSOS'}</button>`
+              : `<button type="button" class="outfit-equip-button" disabled>NO DISPONIBLE</button>`)
             : `<button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`}
         </section>
       </div>` : `
       <div class="frame-selector-grid" role="listbox" aria-label="${shopContext ? 'Fondos disponibles' : 'Colección de fondos'}">
-        ${visibleFrames.map((frame) => `<button type="button" class="frame-option${frame.id === equippedFrameDefinition.id ? ' equipped' : ''}${!isFrameUnlocked(frame, lootState?.game) ? ' frame-option--locked' : ''}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${frame.id === equippedFrameDefinition.id ? ', equipado' : ''}">
-          ${framePreview(classId, frame)}
-        </button>`).join('')}
+        ${visibleFrames.map((frame) => {
+          const unlocked = isFrameUnlocked(frame, lootState?.game);
+          const equippedClass = frame.id === equippedFrameDefinition.id ? ' equipped' : '';
+          const ownedClass = shopContext && unlocked ? ' frame-option--owned' : '';
+          const lockedClass = !shopContext && !unlocked ? ' frame-option--locked' : '';
+          const status = frame.id === equippedFrameDefinition.id
+            ? ', equipado'
+            : shopContext && unlocked ? ', conseguido' : '';
+          return `<button type="button" class="frame-option${equippedClass}${ownedClass}${lockedClass}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${status}">
+            ${framePreview(classId, frame)}
+          </button>`;
+        }).join('')}
         ${shopContext
-          ? Array.from({ length: 2 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')
+          ? Array.from({ length: 3 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')
           : Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')}
       </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
@@ -195,8 +217,8 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
           <div class="outfit-weave-cost">
-            ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
             ${resourceValue('coin', recipe.coins, 'ORO')}
+            ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
           </div>
           <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${alreadyOwned || !hasResources ? ' disabled' : ''}>${alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
         </section>
@@ -499,6 +521,7 @@ export function renderInventoryView(document, lootState, options = {}) {
       ${resourceValue('coin', normalized.economy.coins, 'ORO')}
       ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
       ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS ARCANAS')}
+      ${resourceValue('arcane-ink', normalized.economy.arcaneInks, 'TINTAS ARCANAS')}
     </section>
     <section class="inventory-section bag-potions-section">
       <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
@@ -965,10 +988,17 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
         <h4>No hay reliquias disponibles</h4>
         <p>Las reliquias que no consigas al derrotar a un jefe podrán aparecer aquí. La tienda cambia cada 3 días y podrás recuperarlas usando Oro y Sangre de Jefe.</p>
       </div>`;
-  const resources = `<section class="inventory-resources">
-      ${resourceValue('coin', normalized.economy.coins, 'ORO')}
-      ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
-      ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
+  const shopResourceValues = section === 'potions'
+    ? resourceValue('coin', normalized.economy.coins, 'ORO')
+    : section === 'relics'
+      ? `${resourceValue('coin', normalized.economy.coins, 'ORO')}
+        ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}`
+      : `${resourceValue('coin', normalized.economy.coins, 'ORO')}
+        ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
+        ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
+        ${resourceValue('arcane-ink', normalized.economy.arcaneInks, 'TINTAS')}`;
+  const resources = `<section class="inventory-resources" aria-label="Recursos de esta tienda">
+      ${shopResourceValues}
     </section>`;
   const relicShop = `<div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
     ${content}`;

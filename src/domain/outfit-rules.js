@@ -1,4 +1,5 @@
 import { OUTFIT_DEFINITIONS, isOutfitUnlocked } from '../data/outfit-data.js';
+import { FRAME_DEFINITIONS, isFrameUnlocked } from '../data/frame-data.js';
 import { normalizeLootState } from './loot-rules.js';
 
 export const HABIT_FIBER_DROP_RATES = Object.freeze({ easy: 0.06, medium: 0.12, hard: 0.18 });
@@ -175,4 +176,34 @@ export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.
     },
   };
   return { ...slices(normalized), game, ok: true, outfit };
+}
+
+export function paintFrame({ state, frameId, operationId, nowTimestamp = Date.now() }) {
+  const normalized = normalizeLootState(state);
+  const frame = FRAME_DEFINITIONS.find((item) => item.id === frameId && item.recipe);
+  if (!frame || !operationId) return { ...slices(normalized), game: state.game, ok: false, reason: 'invalid' };
+  if (isFrameUnlocked(frame, state.game)) return { ...slices(normalized), game: state.game, ok: false, reason: 'owned' };
+  if (normalized.forge.weaving.history.some((entry) => entry.operationId === operationId)) {
+    return { ...slices(normalized), game: state.game, ok: false, reason: 'duplicate' };
+  }
+  if (normalized.economy.coins < frame.recipe.coins || normalized.economy.arcaneInks < frame.recipe.arcaneInks) {
+    return { ...slices(normalized), game: state.game, ok: false, reason: 'resources' };
+  }
+  normalized.economy.coins -= frame.recipe.coins;
+  normalized.economy.arcaneInks -= frame.recipe.arcaneInks;
+  normalized.economy.transactions.push({ id: `frame-paint:${operationId}`, type: 'frame-paint', coins: -frame.recipe.coins, arcaneInks: -frame.recipe.arcaneInks, at: nowTimestamp });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  normalized.forge.weaving.history.push({ operationId, frameId, at: nowTimestamp });
+  normalized.forge.weaving.history = normalized.forge.weaving.history.slice(-100);
+  const game = {
+    ...(state.game || {}),
+    frames: {
+      ...(state.game?.frames || {}),
+      owned: {
+        ...(state.game?.frames?.owned || {}),
+        [frameId]: { acquiredAt: nowTimestamp, source: 'painted', operationId },
+      },
+    },
+  };
+  return { ...slices(normalized), game, ok: true, frame };
 }
