@@ -121,7 +121,7 @@
     </div>
     <button class="ob-next" id="obFinish">Empezar</button>
   </div>
-  <div class="ob-version" id="obVersion">v2.26</div>
+  <div class="ob-version" id="obVersion">v2.27</div>
 </div>
 
 <div id="loading" class="loading">
@@ -392,7 +392,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.26</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.27</span></p>
       </div>
     </div>
   </div>
@@ -858,6 +858,37 @@
     <div id="huntResultRewards"></div>
     <button type="button" class="hunt-result-full-report" id="huntResultFullReport">VER INFORME COMPLETO</button>
     <button type="button" class="close" id="huntResultClose">CONTINUAR</button>
+  </div>
+</div>
+
+<div class="modal-bg center death-bg" id="deathBg" style="z-index:60">
+  <div class="modal death-modal" role="dialog" aria-modal="true" aria-labelledby="deathTitle" aria-describedby="deathCause">
+    <span class="death-kicker">MUERTE DEL HÉROE</span>
+    <h3 id="deathTitle">HAS CAÍDO</h3>
+    <div class="death-skull" aria-hidden="true">
+      <span class="death-skull-aura"></span>
+      <img src="ui/death-skull-rebirth.webp" alt="">
+    </div>
+    <p class="death-cause" id="deathCause">Las fuerzas de tu héroe se agotaron.</p>
+    <section class="death-penalty" id="deathPenalty">
+      <small>EXPERIENCIA PERDIDA</small>
+      <strong id="deathXpLoss">−0 XP</strong>
+      <p id="deathXpCopy"></p>
+      <div class="death-level-change" id="deathLevelChange" hidden>
+        <span>NIVEL <b id="deathLevelBefore">1</b></span>
+        <i aria-hidden="true">→</i>
+        <span>NIVEL <b id="deathLevelAfter">1</b></span>
+      </div>
+    </section>
+    <section class="death-rebirth">
+      <small>RENACER</small>
+      <strong>Regresas con todas tus fuerzas</strong>
+      <div class="death-rebirth-status">
+        <span class="life"><i aria-hidden="true">♥</i><b>VIDA</b><em>COMPLETA</em></span>
+        <span class="mana"><i aria-hidden="true">✦</i><b>MANÁ</b><em>COMPLETO</em></span>
+      </div>
+    </section>
+    <button type="button" class="death-action" id="deathContinue">RENACER</button>
   </div>
 </div>
 

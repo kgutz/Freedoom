@@ -681,7 +681,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   };
   const heroHpBeforeRecovery = currentHp;
   const heroManaBeforeRecovery = currentMana;
-  if (defeatedEnemies > 0) {
+  const heroDied = heroHpBeforeRecovery <= 0;
+  if (defeatedEnemies > 0 && !heroDied) {
     const recoveryRates = huntRecoveryRates(defeatedEnemies);
     const hpRecoveryLimit = Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpCapPercent);
     const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaCapPercent);
@@ -705,6 +706,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     startedAt: active.startedAt,
     completedAt: nowTimestamp,
     won,
+    heroDied,
     defeatedEnemies,
     heroMaxHp: hero.maxHp,
     heroHp: currentHp,

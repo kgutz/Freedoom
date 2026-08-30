@@ -149,7 +149,7 @@ describe('PvE combat rules', () => {
     expect(result.report.recovery.mana).toBe(result.report.heroMana - result.report.heroManaBeforeRecovery);
   });
 
-  it('recupera una parte si pierde después de vencer un enemigo', () => {
+  it('marca la muerte y no aplica recuperación de salida tras caer después de un enemigo', () => {
     const now = 30_000;
     const started = startHunt({ hunt: null, difficultyId: 'hard', level: 12, nowTimestamp: now, seed: 8 });
     const result = resolveHunt({
@@ -160,15 +160,16 @@ describe('PvE combat rules', () => {
       nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
     });
     expect(result.report.won).toBe(false);
+    expect(result.report.heroDied).toBe(true);
     expect(result.report.defeatedEnemies).toBe(1);
-    expect(result.report.recovery).toEqual({ hp: 8, mana: 0 });
-    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery + 8);
+    expect(result.report.recovery).toEqual({ hp: 0, mana: 0 });
+    expect(result.report.heroHp).toBe(0);
     expect(result.report.heroMana).toBe(result.report.heroManaBeforeRecovery);
     expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
     expect(result.report.encounters[1].heroHpAtStart).toBe(result.report.encounters[0].nextHeroHp);
   });
 
-  it('recupera dos tercios si se retira tras vencer los dos primeros enemigos', () => {
+  it('marca la muerte y reserva la recuperación completa para el renacer', () => {
     const now = 40_000;
     const started = startHunt({ hunt: null, difficultyId: 'hard', level: 12, nowTimestamp: now, seed: 34 });
     const result = resolveHunt({
@@ -178,9 +179,9 @@ describe('PvE combat rules', () => {
       allocation: { power: 2 },
       nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
     });
-    expect(result.report).toMatchObject({ won: false, defeatedEnemies: 2 });
-    expect(result.report.recovery.hp).toBe(17);
-    expect(result.report.heroHp).toBe(result.report.heroHpBeforeRecovery + 17);
+    expect(result.report).toMatchObject({ won: false, heroDied: true, defeatedEnemies: 2 });
+    expect(result.report.recovery.hp).toBe(0);
+    expect(result.report.heroHp).toBe(0);
     expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
     expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
     expect(result.report.encounters[2].heroHpAtStart).toBe(result.report.encounters[1].nextHeroHp);

@@ -6,6 +6,7 @@ import {
   classDataForJourney
 } from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
+import { deathExperiencePenalty } from './domain/death-rules.js';
 import {
   calculateBossCombatStatus,
   reconcileBossCombat
@@ -241,7 +242,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.26';
+const APP_VERSION='2.27';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -254,6 +255,7 @@ const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
+const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
@@ -1407,6 +1409,85 @@ function heroMaxes(){
 function capHp(v){ return Math.max(0,Math.min(heroMaxes().maxHp, v)); }
 function capMp(v){ return Math.max(0,Math.min(heroMaxes().maxMp, v)); }
 
+let pendingPostDeathHuntReport=null;
+
+function renderDeathModal(notice=state.game?.deathNotice){
+  if(!notice) return;
+  const protectedXp=Boolean(notice.protected)||!notice.xpLost;
+  const levelChanged=notice.levelAfter<notice.levelBefore;
+  document.getElementById('deathCause').textContent=notice.cause||'Las fuerzas de tu héroe se agotaron.';
+  document.getElementById('deathXpLoss').textContent=protectedXp?'XP PROTEGIDA':`−${notice.xpLost} XP`;
+  document.getElementById('deathXpCopy').textContent=protectedXp
+    ? 'Los niveles 1–4 están protegidos frente a la pérdida de experiencia.'
+    : `Has perdido el ${notice.lossPercent||10}% de la experiencia necesaria para completar este nivel.`;
+  const levelRow=document.getElementById('deathLevelChange');
+  levelRow.hidden=!levelChanged;
+  if(levelChanged){
+    document.getElementById('deathLevelBefore').textContent=notice.levelBefore;
+    document.getElementById('deathLevelAfter').textContent=notice.levelAfter;
+  }
+  document.getElementById('deathPenalty').classList.toggle('is-protected',protectedXp);
+}
+
+function showPendingDeathModal(){
+  const g=state.game;
+  if(!g?.deathModalPending||!g.deathNotice) return false;
+  renderDeathModal(g.deathNotice);
+  document.getElementById('deathBg').classList.add('show');
+  return true;
+}
+
+function triggerHeroDeath({cause,source='unknown',open=true}={}){
+  const g=state.game;
+  if(!g?.cls||Number(g.hp)>0) return null;
+  const before=gameStats();
+  const penalty=deathExperiencePenalty({xp:before.xp,level:before.lvl});
+  g.xpDeathPenalty=Math.max(0,Number(g.xpDeathPenalty)||0)+penalty.xpLost;
+  const after=gameStats();
+  g.hp=after.maxHp;
+  g.mp=after.maxMp;
+  g.hpT=Date.now();
+  g.deathNotice={
+    id:`death:${Date.now()}:${source}`,
+    at:Date.now(),
+    source,
+    cause:cause||'Las fuerzas de tu héroe se agotaron.',
+    xpLost:penalty.xpLost,
+    lossPercent:penalty.lossPercent,
+    protected:penalty.protected,
+    levelBefore:penalty.levelBefore,
+    levelAfter:after.lvl,
+    maxHp:after.maxHp,
+    maxMp:after.maxMp,
+  };
+  g.deathModalPending=true;
+  scheduleSave({
+    type:'hero:death',
+    source,
+    xpLost:penalty.xpLost,
+    levelBefore:penalty.levelBefore,
+    levelAfter:after.lvl,
+  });
+  if(open) showPendingDeathModal();
+  return g.deathNotice;
+}
+
+function prepareLocalDeathPreview(){
+  if(!LOCAL_DEATH_PREVIEW||!state.game?.cls) return;
+  const stats=gameStats();
+  const penalty=deathExperiencePenalty({xp:stats.xp,level:stats.lvl});
+  state.game.deathNotice={
+    id:'death:local-preview',at:Date.now(),source:'preview',
+    cause:'Madre del Cultivo derrotó a tu héroe en la Cacería.',
+    xpLost:penalty.xpLost,lossPercent:penalty.lossPercent,protected:penalty.protected,
+    levelBefore:penalty.levelBefore,levelAfter:penalty.levelAfter,
+    maxHp:stats.maxHp,maxMp:stats.maxMp
+  };
+  state.game.deathModalPending=true;
+  state.game.hp=stats.maxHp;
+  state.game.mp=stats.maxMp;
+}
+
 /* --- sistema de vida y maná por eventos --- */
 /* --- modal de resultado semanal (jefe vencido o repetido) --- */
 function renderWeekResultModal(){
@@ -1686,6 +1767,16 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
           manaLost:Math.max(0,mpBefore-g.mp)
         };
       }
+    }
+    if(g.hp<=0){
+      const bossIndex=Number.isFinite(weekResult.bossIndex)
+        ? Math.max(0,weekResult.bossIndex)
+        : Math.max(0,gameStats().bossesDown);
+      triggerHeroDeath({
+        cause:`${BOSSES[bossIndex]||'El jefe semanal'} venció a tu héroe al cerrar la semana.`,
+        source:'weekly-boss',
+        open:false
+      });
     }
     const storedBattle=[...(g.bossCombat?.history||[])].reverse().find(entry=>(
       entry?.week===weekResult.weekIdx&&entry?.bossIndex===weekResult.bossIndex
@@ -2953,7 +3044,12 @@ document.getElementById('addCig').addEventListener('click',()=>{
     state.days[k].sx=(state.days[k].sx||0)+rewards.xp;
     scheduleSave(); renderHero();
   }
-  if(r.shielded) showToast('🛡 Escudo absorbió el ataque del jefe','heal');
+  const death=triggerHeroDeath({
+    cause:'El jefe semanal contraatacó al fumar.',
+    source:'boss-counterattack'
+  });
+  if(death) showToast('Tu héroe ha caído','dmg');
+  else if(r.shielded) showToast('🛡 Escudo absorbió el ataque del jefe','heal');
   else if(r.dmg>0) showToast('⚔ El jefe ataca · −'+r.dmg+' de vida','dmg');
   else if(r.perfect) showToast('🎯 −'+(d.s<3?1:0)+' jefe · +'+rewards.xp+' XP · +'+recoveredMana+' 💧','heal');
   else showToast('En ritmo · sin daño ♥','heal');
@@ -3065,7 +3161,12 @@ document.getElementById('addBeer').addEventListener('click',()=>{
   setDay(k,d.c,d.p,undefined,(d.b||0)+1,undefined,{
     type:'beer:add',day:k,count:(d.b||0)+1
   });
-  showToast(shielded
+  const death=triggerHeroDeath({
+    cause:'El alcohol agotó las fuerzas de tu héroe.',
+    source:'alcohol'
+  });
+  if(death) showToast('Tu héroe ha caído','dmg');
+  else showToast(shielded
     ? '🛡 Daño bloqueado · Borrachera '+added.status.level+'%'
     : '🍺 Borrachera '+added.status.level+'% · −'+bd+' de vida',
     shielded?'heal':'dmg'
@@ -3569,6 +3670,20 @@ document.getElementById('huntResultFullReport').addEventListener('click',()=>{
 document.getElementById('huntResultBg').addEventListener('click',event=>{
   if(event.target.id==='huntResultBg') event.currentTarget.classList.remove('show');
 });
+document.getElementById('deathContinue').addEventListener('click',()=>{
+  const g=state.game;
+  if(g) g.deathModalPending=false;
+  document.getElementById('deathBg').classList.remove('show');
+  scheduleSave({type:'hero:death-acknowledged',deathId:g?.deathNotice?.id||null});
+  renderAll();
+  if(pendingPostDeathHuntReport){
+    const report=pendingPostDeathHuntReport;
+    pendingPostDeathHuntReport=null;
+    openHuntResultModal(report);
+  }else{
+    showPendingWeekResult();
+  }
+});
 
 document.getElementById('view-habits').addEventListener('click',event=>{
   if(!state.game?.cls) return;
@@ -3634,9 +3749,16 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       ...result.report.rewards
     });
     state.economy.transactions=state.economy.transactions.slice(-200);
+    const death=result.report.heroDied
+      ? triggerHeroDeath({
+          cause:`${[...result.report.encounters].reverse().find(encounter=>!encounter.won)?.name||'La Cacería'} derrotó a tu héroe.`,
+          source:'hunt'
+        })
+      : null;
     scheduleSave({type:'hunt:resolve',won:result.report.won});
     renderHunt();
-    openHuntResultModal(result.report);
+    if(death) pendingPostDeathHuntReport=result.report;
+    else openHuntResultModal(result.report);
   }
 });
 
@@ -6161,7 +6283,7 @@ function checkDay(){
     lastDay=todayKey();
     scheduleSave({type:'storage:daily-checkpoint',day:lastDay});
     renderAll();
-    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW) showPendingWeekResult();
+    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!showPendingDeathModal()) showPendingWeekResult();
   }
   else{renderHoy();renderHero();}
 }
@@ -6300,11 +6422,12 @@ resetGuardContinue.addEventListener('click',()=>{
       });
     }
     ensureHero();
+    prepareLocalDeathPreview();
     reconcileStoredLevelEightHabitChallenge();
     syncPeriodicRelicMana();
     renderStartupPrimary();
     preloadStartupViews();
-    if(!LOCAL_DEMO_QUIET) showPendingWeekResult();
+    if((!LOCAL_DEMO_QUIET||LOCAL_DEATH_PREVIEW)&&!showPendingDeathModal()) showPendingWeekResult();
     if(LOCAL_DEMO_QUIET){
       await finishInitialReturnSplash();
     }else if(LOCAL_LOOT_NOTICE_PREVIEW){

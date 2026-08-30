@@ -187,6 +187,7 @@ function calculateXpPass({
     }
   }
 
+  xp = Math.max(0, xp - Math.max(0, Number(game?.xpDeathPenalty) || 0));
   return { xp, streak, bossesDown, currentWeek };
 }
 
