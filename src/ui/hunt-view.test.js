@@ -73,6 +73,20 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('🔒 Nivel 25');
   });
 
+  it('muestra los niveles requeridos en las dificultades de Campos de la Bruma', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'fields-of-mist' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: null },
+      stats: { lvl: 14 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 3');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 7');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 12');
+    expect(root.innerHTML).toContain('<span class="hunt-difficulty-main"><span>Fácil</span><i aria-hidden="true">-</i><b>');
+  });
+
   it('renderiza la pantalla y las fichas propias del Búnker', () => {
     const root = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
     const detailRoot = { innerHTML: '' };

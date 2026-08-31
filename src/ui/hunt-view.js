@@ -267,7 +267,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
     const requiredLevel = huntDifficultyMinLevel(region.id, difficulty.id);
     const levelLocked = heroLevel < requiredLevel;
     return `<button type="button" class="hunt-difficulty ${difficulty.id}${levelLocked ? ' level-locked' : ''}" data-start-hunt="${difficulty.id}" data-hunt-region="${region.id}" ${active || levelLocked || hunt.energy < difficulty.energyCost ? 'disabled' : ''}>
-    <span>${difficulty.name}</span><i class="hunt-difficulty-separator" aria-hidden="true">-</i><b>${levelLocked ? `🔒 Nivel ${requiredLevel}` : `<span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost}`}</b>
+    <span class="hunt-difficulty-main"><span>${difficulty.name}</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost}</b></span><small class="hunt-difficulty-level">${levelLocked ? '🔒 ' : ''}Nivel ${requiredLevel}</small>
   </button>`;
   }).join('');
   const otherRegionActive = active && !regionActive;

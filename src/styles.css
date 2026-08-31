@@ -1746,5 +1746,12 @@
   .fiber-catchup-item .resource-icon--arcane-ink{width:68px;height:68px;margin-bottom:11px;filter:drop-shadow(0 5px 5px rgba(0,0,0,.62)) drop-shadow(0 0 10px rgba(193,104,255,.42));animation:pioneer-coin-pulse 1.9s ease-in-out infinite}
   .fiber-catchup-item[hidden]{display:none!important}
 
+  .hunt-difficulty{min-height:54px!important;flex-direction:column;gap:3px;padding:6px 4px}
+  .hunt-difficulty-main{display:flex;align-items:center;justify-content:center;gap:3px;font:400 11px var(--font-display)}
+  .hunt-difficulty-main>i{color:var(--muted);font:400 9px var(--font-display);font-style:normal}
+  .hunt-difficulty-main>b{display:flex;align-items:center;justify-content:center;gap:1px;margin:0;color:#d8e6bd;font:400 9px var(--font-display)}
+  .hunt-difficulty-level{color:#8fa36a;font:400 7px var(--font-display);line-height:1.2}
+  .hunt-difficulty.level-locked:disabled{opacity:.62}
+
 
 
