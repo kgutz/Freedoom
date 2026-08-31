@@ -4,8 +4,9 @@ import { normalizePotionState } from './potion-rules.js';
 export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
 export const MAX_HUNT_ENERGY = 15;
-export const HUNT_ENERGY_CAPACITY_VERSION = 2;
+export const HUNT_ENERGY_CAPACITY_VERSION = 3;
 const HUNT_ENERGY_CAPACITY_UPGRADE_GIFT = 5;
+const HUNT_ENERGY_ROLLOVER_REPAIR_GIFT = 2;
 export const HUNT_VICTORY_RECOVERY = Object.freeze({
   hpPercent: 0.25,
   manaPercent: 0.15,
@@ -124,7 +125,7 @@ export function localHuntDayKey(timestamp = Date.now()) {
 export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEnergy = DAILY_HUNT_ENERGY) {
   const energyDay = localHuntDayKey(nowTimestamp);
   const sameDay = hunt?.energyDay === energyDay;
-  const rewardEnergyRemaining = clamp(
+  const storedRewardEnergyRemaining = clamp(
     safeInteger(hunt?.rewardEnergyRemaining),
     0,
     MAX_HUNT_ENERGY - DAILY_HUNT_ENERGY,
@@ -135,6 +136,39 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     DAILY_HUNT_ENERGY,
   );
   const baseEnergy = DAILY_HUNT_ENERGY;
+  const previousBaseEnergy = clamp(safeInteger(hunt?.baseEnergy) || baseEnergy, 1, baseEnergy);
+  const previousStoredEnergy = safeInteger(hunt?.energy);
+  const declaredPreviousHabitBonus = hunt?.bonusEnergyRemaining == null
+    ? Math.max(0, previousStoredEnergy - previousBaseEnergy - storedRewardEnergyRemaining)
+    : safeInteger(hunt.bonusEnergyRemaining);
+  const spendablePreviousHabitBonus = Math.max(
+    0,
+    previousStoredEnergy - storedRewardEnergyRemaining,
+  );
+  const carriedHabitBonus = sameDay
+    ? 0
+    : Math.min(
+      declaredPreviousHabitBonus,
+      spendablePreviousHabitBonus,
+      DAILY_HUNT_BONUS_ENERGY_CAP,
+    );
+  const capacityUpgradeEnergy = sameDay
+    && safeInteger(hunt?.energyCapacityVersion) < HUNT_ENERGY_CAPACITY_VERSION
+    ? Math.max(0, dailyRefillEnergy - HUNT_ENERGY_CAPACITY_UPGRADE_GIFT)
+    : 0;
+  const rolloverRepairEnergy = sameDay
+    && safeInteger(hunt?.energyCapacityVersion) === HUNT_ENERGY_CAPACITY_VERSION - 1
+    && dailyRefillEnergy === DAILY_HUNT_ENERGY
+    ? Math.min(
+      HUNT_ENERGY_ROLLOVER_REPAIR_GIFT,
+      Math.max(0, MAX_HUNT_ENERGY - previousStoredEnergy - capacityUpgradeEnergy),
+    )
+    : 0;
+  const rewardEnergyRemaining = clamp(
+    storedRewardEnergyRemaining + carriedHabitBonus + rolloverRepairEnergy,
+    0,
+    MAX_HUNT_ENERGY - DAILY_HUNT_ENERGY,
+  );
   const storedBaseEnergy = sameDay
     ? clamp(safeInteger(hunt?.baseEnergy) || baseEnergy, 1, baseEnergy)
     : baseEnergy;
@@ -182,12 +216,8 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     )
     : 0;
   const recoveredAvailableBonuses = Math.max(0, bonusEnergyRemaining - representedAvailableBonuses);
-  const capacityUpgradeEnergy = sameDay
-    && safeInteger(hunt?.energyCapacityVersion) < HUNT_ENERGY_CAPACITY_VERSION
-    ? HUNT_ENERGY_CAPACITY_UPGRADE_GIFT
-    : 0;
   const normalizedEnergy = sameDay
-    ? clamp(storedEnergy + recoveredAvailableBonuses + capacityUpgradeEnergy, 0, MAX_HUNT_ENERGY)
+    ? clamp(storedEnergy + recoveredAvailableBonuses + capacityUpgradeEnergy + rolloverRepairEnergy, 0, MAX_HUNT_ENERGY)
     : clamp(dailyRefillEnergy + rewardEnergyRemaining, 0, MAX_HUNT_ENERGY);
   const activeGrantedRolls = rawHabitEnergyRolls.filter((entry) => entry?.granted && entry?.status !== 'revoked');
   const availableEntries = new Set([

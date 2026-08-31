@@ -246,7 +246,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.1';
+const APP_VERSION='2.28.2';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -720,7 +720,7 @@ function previousDayExceededConsumptionLimit(now=new Date()){
   return Math.max(0,record.c||0)>limitOfDate(previousDate);
 }
 function huntBaseEnergyForToday(now=new Date()){
-  return previousDayExceededConsumptionLimit(now)?2:5;
+  return previousDayExceededConsumptionLimit(now)?2:10;
 }
 function preloadStartupViews(){
   const imagePreloader=createImagePreloader({window,concurrency:2});

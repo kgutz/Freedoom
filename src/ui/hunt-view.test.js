@@ -185,7 +185,7 @@ describe('informe de Cacería', () => {
         cls: 'paladin',
         hunt: {
           energyDay: '2026-08-26',
-          energyCapacityVersion: 2,
+          energyCapacityVersion: 3,
           baseEnergy: 10,
           energy: 11,
           bonusEnergyEarned: 1,
@@ -207,7 +207,7 @@ describe('informe de Cacería', () => {
         cls: 'paladin',
         hunt: {
           energyDay: '2026-08-26',
-          energyCapacityVersion: 2,
+          energyCapacityVersion: 3,
           baseEnergy: 2,
           energy: 2,
         },

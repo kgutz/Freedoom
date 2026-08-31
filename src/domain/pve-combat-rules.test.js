@@ -280,10 +280,10 @@ describe('PvE combat rules', () => {
       baseEnergy: 5,
       energy: 0,
     }, nowTimestamp);
-    expect(upgraded).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 2 });
+    expect(upgraded).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 3 });
 
     const normalizedAgain = normalizeHuntState(upgraded, nowTimestamp);
-    expect(normalizedAgain).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 2 });
+    expect(normalizedAgain).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 3 });
   });
 
   it('no acumula el regalo de migración si el usuario vuelve después del reinicio diario', () => {
@@ -293,7 +293,29 @@ describe('PvE combat rules', () => {
       baseEnergy: 5,
       energy: 0,
     }, nextDay);
-    expect(upgraded).toMatchObject({ energy: 10, baseEnergy: 10, energyCapacityVersion: 2 });
+    expect(upgraded).toMatchObject({ energy: 10, baseEnergy: 10, energyCapacityVersion: 3 });
+  });
+
+  it('repara la recarga de cinco y compensa las cargas extra borradas por la versión anterior', () => {
+    const nowTimestamp = new Date(2026, 8, 1, 12).getTime();
+    const repaired = normalizeHuntState({
+      energyDay: '2026-09-01',
+      baseEnergy: 10,
+      energy: 5,
+      energyCapacityVersion: 2,
+      bonusEnergyLedgerVersion: 1,
+    }, nowTimestamp);
+
+    expect(repaired).toMatchObject({
+      energy: 12,
+      baseEnergy: 10,
+      rewardEnergyRemaining: 2,
+      energyCapacityVersion: 3,
+    });
+    expect(normalizeHuntState(repaired, nowTimestamp)).toMatchObject({
+      energy: 12,
+      rewardEnergyRemaining: 2,
+    });
   });
 
   it('consume primero la carga extra sin ampliar permanentemente la energía base', () => {
@@ -311,6 +333,42 @@ describe('PvE combat rules', () => {
     expect(nextDay).toMatchObject({ energy: 12, baseEnergy: 10, rewardEnergyRemaining: 2 });
     const started = startHunt({ hunt: nextDay, difficultyId: 'medium', level: 7, nowTimestamp: new Date(2026, 7, 27, 13).getTime() });
     expect(started.hunt).toMatchObject({ energy: 10, rewardEnergyRemaining: 0 });
+  });
+
+  it('recarga diez energías y conserva la energía extra de hábitos al cambiar el día', () => {
+    const nextDay = normalizeHuntState({
+      energyDay: '2026-08-26',
+      baseEnergy: 10,
+      energy: 2,
+      bonusEnergyEarned: 2,
+      bonusEnergyRemaining: 2,
+      habitEnergyRolls: [
+        { key: 'habit-1', granted: 1, status: 'available' },
+        { key: 'habit-2', granted: 1, status: 'available' },
+      ],
+    }, new Date(2026, 7, 27, 12).getTime());
+
+    expect(nextDay).toMatchObject({
+      energy: 12,
+      baseEnergy: 10,
+      bonusEnergyEarned: 0,
+      bonusEnergyRemaining: 0,
+      rewardEnergyRemaining: 2,
+    });
+    expect(nextDay.habitEnergyRolls).toEqual([]);
+  });
+
+  it('conserva juntas las energías extra de hábitos y otros premios al cambiar el día', () => {
+    const nextDay = normalizeHuntState({
+      energyDay: '2026-08-26',
+      baseEnergy: 10,
+      energy: 4,
+      bonusEnergyEarned: 2,
+      bonusEnergyRemaining: 2,
+      rewardEnergyRemaining: 2,
+    }, new Date(2026, 7, 27, 12).getTime());
+
+    expect(nextDay).toMatchObject({ energy: 14, rewardEnergyRemaining: 4 });
   });
 
   it('premia las listas completas y limita la energía acumulada a quince', () => {
