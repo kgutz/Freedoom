@@ -33,9 +33,9 @@ const BRUMA_ENEMY_TEMPLATES = [
   { id: 'mist-mother', role: 'Minijefe', name: 'Madre del Cultivo', art: 'hunt/fields-of-mist/mist-mother.webp', lore: 'Sus raíces recorren toda la plantación y alimentan la bruma fluorescente. Cada criatura del campo es una extensión de su hambre antigua.', attributes: { strength: 6, defense: 9, dexterity: 10, power: 7, constitution: 13 } },
 ];
 const BUNKER_ENEMY_TEMPLATES = [
-  { id: 'the-consumed', role: 'Soldado', name: 'El Consumido', art: 'hunt/dead-hours-bunker/the-consumed.png', lore: 'Entró para descansar solo un momento y entregó días enteros al humo. Ahora sus miembros obedecen a los hilos verdes que le atraviesan la nuca, mientras el último resto de voluntad se apaga detrás de sus ojos.', attributes: { strength: 7, defense: 8, dexterity: 8, power: 5, constitution: 9 } },
-  { id: 'embedded-guardian', role: 'Líder', name: 'El Guardián Empotrado', art: 'hunt/dead-hours-bunker/embedded-guardian.png', lore: 'El búnker lo convirtió en muro, conducto y centinela. El metal crece dentro de su carne y cada tubería alimenta una fuerza que no le pertenece; incluso su brazo blindado se alza porque otro tira de él.', attributes: { strength: 9, defense: 11, dexterity: 11, power: 8, constitution: 14 } },
-  { id: 'dead-hours-puppeteer', role: 'Minijefe', name: 'El Titiritero', art: 'hunt/dead-hours-bunker/dead-hours-puppeteer.png', lore: 'Es la voluntad que respira detrás de las paredes. Se alimenta del tiempo desperdiciado y mueve a sus víctimas mediante filamentos de humo, paciente y consciente, mientras los relojes del búnker permanecen detenidos.', attributes: { strength: 11, defense: 14, dexterity: 14, power: 13, constitution: 19 } },
+  { id: 'the-consumed', role: 'Soldado', name: 'El Consumido', art: 'hunt/dead-hours-bunker/the-consumed.webp', lore: 'Entró para descansar solo un momento y entregó días enteros al humo. Ahora sus miembros obedecen a los hilos verdes que le atraviesan la nuca, mientras el último resto de voluntad se apaga detrás de sus ojos.', attributes: { strength: 7, defense: 8, dexterity: 8, power: 5, constitution: 9 } },
+  { id: 'embedded-guardian', role: 'Líder', name: 'El Guardián Empotrado', art: 'hunt/dead-hours-bunker/embedded-guardian.webp', lore: 'El búnker lo convirtió en muro, conducto y centinela. El metal crece dentro de su carne y cada tubería alimenta una fuerza que no le pertenece; incluso su brazo blindado se alza porque otro tira de él.', attributes: { strength: 9, defense: 11, dexterity: 11, power: 8, constitution: 14 } },
+  { id: 'dead-hours-puppeteer', role: 'Minijefe', name: 'El Titiritero', art: 'hunt/dead-hours-bunker/dead-hours-puppeteer.webp', lore: 'Es la voluntad que respira detrás de las paredes. Se alimenta del tiempo desperdiciado y mueve a sus víctimas mediante filamentos de humo, paciente y consciente, mientras los relojes del búnker permanecen detenidos.', attributes: { strength: 11, defense: 14, dexterity: 14, power: 13, constitution: 19 } },
 ];
 
 function enemyStatsFromAttributes(definition, attributes = definition.attributes) {
@@ -76,7 +76,7 @@ export const HUNT_REGIONS = Object.freeze({
     id: 'dead-hours-bunker',
     name: 'Búnker de las Horas Muertas',
     description: 'Un humo encantado devora la voluntad y el tiempo de quienes entran. Rompe los hilos antes de que el búnker reclame otra víctima.',
-    art: 'hunt/dead-hours-bunker/region.png',
+    art: 'hunt/dead-hours-bunker/region.webp',
     enemies: BUNKER_ENEMIES,
     difficultyMinLevels: Object.freeze({ easy: 15, medium: 20, hard: 25 }),
     rewardMultiplier: 1.6,

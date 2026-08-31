@@ -220,7 +220,7 @@ function regionMapMarkup(hunt, heroLevel) {
     <p>Cada región guarda enemigos, recursos y peligros diferentes.</p>
   </div>
   <section class="hunt-world-map" aria-label="Mapa de zonas de caza">
-    <img src="hunt/world-map-bunker.png" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
+    <img src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ' active' : ''}" data-open-hunt-region="fields-of-mist">
       Campos de la Bruma
     </button>

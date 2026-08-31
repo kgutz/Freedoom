@@ -614,14 +614,17 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeRelicPickerBody.innerHTML).not.toContain('data-picker-filter');
   });
 
-  it('muestra las Fibras Arcanas como cuarto objeto del botín del jefe', () => {
+  it('muestra las Fibras y Tintas Arcanas en el botín del jefe', () => {
     const document = fakeDocument();
     const state = lootWithBosses(1, 'victory');
     state.loot.notices[0].arcaneFibers = 4;
+    state.loot.notices[0].arcaneInks = 2;
     renderLootNotice(document, state, state.loot.notices[0]);
     const html = document.elements.lootNoticeRewards.innerHTML;
     expect(html).toContain('aria-label="4 Fibras Arcanas"');
     expect(html).toContain('resource-icon--arcane-fiber');
+    expect(html).toContain('aria-label="2 Tintas Arcanas"');
+    expect(html).toContain('resource-icon--arcane-ink');
     expect(html).not.toContain('loot-reward-empty');
     expect(html.indexOf(' de oro')).toBeLessThan(html.indexOf('Fibras Arcanas'));
   });

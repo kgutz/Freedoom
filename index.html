@@ -529,7 +529,7 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="cómo consigo botín reliquias jefe oro sangre rareza">
             <summary><span>¿Cómo consigo reliquias y recursos?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Cada jefe concede oro, Sangre y Fibras al derrotarlo por primera vez. Su reliquia tiene un <b>60% de probabilidad</b> de aparecer; si falla, puede recuperarse con el Contrabandista.</p><p>La ficha muestra efecto, Rango y rareza: Raro, Legendario o Mítico.</p></div>
+            <div class="faq-answer"><p>Cada jefe concede oro, Sangre, Fibras y Tintas al derrotarlo por primera vez. Su reliquia tiene un <b>60% de probabilidad</b> de aparecer; si falla, puede recuperarse con el Contrabandista.</p><p>La ficha muestra efecto, Rango y rareza: Raro, Legendario o Mítico.</p></div>
           </details>
           <details class="faq-item" data-faq-item="diferencia inventario colección equipar dos reliquias">
             <summary><span>¿Qué diferencia hay entre Inventario y Colección?</span><span class="faq-icon" aria-hidden="true"></span></summary>
@@ -826,10 +826,15 @@
       <h3 id="fiberCatchupTitle">Tus victorias cuentan</h3>
       <p id="fiberCatchupMessage">Hemos reconocido los jefes que ya habías derrotado.</p>
       <div class="pioneer-reward-items fiber-catchup-items">
-        <div class="pioneer-reward-item fiber-catchup-item">
+        <div class="pioneer-reward-item fiber-catchup-item" id="fiberCatchupFiberItem">
           <span class="resource-icon resource-icon--arcane-fiber" role="img" aria-label="Fibra Arcana"></span>
           <strong id="fiberCatchupAmount">+0</strong>
           <small>FIBRAS ARCANAS</small>
+        </div>
+        <div class="pioneer-reward-item fiber-catchup-item fiber-catchup-item--ink" id="fiberCatchupInkItem">
+          <span class="resource-icon resource-icon--arcane-ink" role="img" aria-label="Tinta Arcana"></span>
+          <strong id="fiberCatchupInkAmount">+0</strong>
+          <small>TINTAS ARCANAS</small>
         </div>
       </div>
       <button type="button" class="pioneer-reward-action" id="fiberCatchupContinue">CONTINUAR</button>

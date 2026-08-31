@@ -3,11 +3,11 @@ import { emptyLootState } from './loot-rules.js';
 import {
   acknowledgeFiberCatchupNotice,
   bossFiberBase,
+  bossInkBase,
   grantBossFiberReward,
   pendingFiberCatchupNotice,
   paintFrame,
   reconcileHistoricalBossFibers,
-  resolveHabitFiberDrop,
   weaveOutfit,
 } from './outfit-rules.js';
 
@@ -18,73 +18,20 @@ function stateWithGame() {
 describe('Fibras Arcanas y tejido de outfits', () => {
   it('escala la recompensa base de los jefes por bloques de cuatro', () => {
     expect([0, 3, 4, 7, 8, 11, 12, 30].map(bossFiberBase)).toEqual([3, 3, 4, 4, 5, 5, 6, 6]);
-  });
-
-  it('guarda también los fallos de hábito para impedir rerolls', () => {
-    const initial = stateWithGame();
-    const failed = resolveHabitFiberDrop({
-      state: initial,
-      habit: { id: 'water', difficulty: 'hard' },
-      periodKey: 'd:2026-08-21',
-      becameCompleted: true,
-      randomValue: 0.9,
-      nowTimestamp: 10,
-    });
-    expect(failed.granted).toBe(0);
-    expect(failed.loot.habitFiberOutcomes['water|d:2026-08-21'].granted).toBe(0);
-    const retry = resolveHabitFiberDrop({
-      state: { ...initial, ...failed },
-      habit: { id: 'water', difficulty: 'hard' },
-      periodKey: 'd:2026-08-21',
-      becameCompleted: true,
-      randomValue: 0,
-    });
-    expect(retry.granted).toBe(0);
-    expect(retry.economy.arcaneFibers).toBe(0);
-  });
-
-  it('retira la Fibra al deshacer el hábito y restaura el mismo resultado al recompletarlo', () => {
-    const initial = stateWithGame();
-    const rewarded = resolveHabitFiberDrop({
-      state: initial,
-      habit: { id: 'water', difficulty: 'hard' },
-      periodKey: 'd:2026-08-21',
-      becameCompleted: true,
-      randomValue: 0,
-      nowTimestamp: 10,
-    });
-    expect(rewarded.economy.arcaneFibers).toBe(1);
-
-    const revoked = resolveHabitFiberDrop({
-      state: { ...initial, ...rewarded },
-      habit: { id: 'water', difficulty: 'hard' },
-      periodKey: 'd:2026-08-21',
-      becameCompleted: false,
-      becameIncomplete: true,
-      nowTimestamp: 20,
-    });
-    expect(revoked).toMatchObject({ granted: 0, revoked: 1 });
-    expect(revoked.economy.arcaneFibers).toBe(0);
-
-    const restored = resolveHabitFiberDrop({
-      state: { ...initial, ...revoked },
-      habit: { id: 'water', difficulty: 'hard' },
-      periodKey: 'd:2026-08-21',
-      becameCompleted: true,
-      randomValue: 0.99,
-      nowTimestamp: 30,
-    });
-    expect(restored).toMatchObject({ granted: 1, revoked: 0 });
-    expect(restored.economy.arcaneFibers).toBe(1);
+    expect([0, 3, 4, 7, 8, 11, 12, 30].map(bossInkBase)).toEqual([2, 2, 3, 3, 4, 4, 5, 5]);
   });
 
   it('entrega la Fibra del jefe una sola vez por ciclo', () => {
     const first = grantBossFiberReward({ state: stateWithGame(), cycleId: 'week-2:boss-2', bossIndex: 2, randomValue: 0.1 });
     expect(first.granted).toBe(4);
+    expect(first.inkGranted).toBe(2);
     expect(first.economy.arcaneFibers).toBe(4);
+    expect(first.economy.arcaneInks).toBe(2);
     const duplicate = grantBossFiberReward({ state: { ...stateWithGame(), ...first }, cycleId: 'week-2:boss-2', bossIndex: 2, randomValue: 0.9 });
     expect(duplicate.granted).toBe(0);
+    expect(duplicate.inkGranted).toBe(0);
     expect(duplicate.economy.arcaneFibers).toBe(4);
+    expect(duplicate.economy.arcaneInks).toBe(2);
     const sameBossDifferentCycle = grantBossFiberReward({
       state: { ...stateWithGame(), ...first },
       cycleId: 'retroactive:boss-2',
@@ -104,10 +51,13 @@ describe('Fibras Arcanas y tejido de outfits', () => {
       nowTimestamp: 100,
     });
     expect(first.granted).toBe(9);
+    expect(first.inkGranted).toBe(6);
     expect(first.bossCount).toBe(3);
     expect(first.economy.arcaneFibers).toBe(9);
+    expect(first.economy.arcaneInks).toBe(6);
     expect(pendingFiberCatchupNotice(first)).toMatchObject({
       arcaneFibers: 9,
+      arcaneInks: 6,
       bossCount: 3,
       acknowledged: false,
     });
@@ -120,7 +70,22 @@ describe('Fibras Arcanas y tejido de outfits', () => {
       nowTimestamp: 200,
     });
     expect(repeated.granted).toBe(0);
+    expect(repeated.inkGranted).toBe(0);
     expect(repeated.economy.arcaneFibers).toBe(0);
+    expect(repeated.economy.arcaneInks).toBe(6);
+  });
+
+  it('entrega retroactivamente la Tinta de los jefes que ya habían dado Fibra', () => {
+    const initial = stateWithGame();
+    initial.loot.bossFiberOutcomes['week-0:boss-0'] = {
+      cycleId: 'week-0:boss-0', bossIndex: 0, base: 3, bonus: 0, granted: 3, notifiedAt: 10,
+    };
+    const result = reconcileHistoricalBossFibers({ state: initial, bossesDown: 1, nowTimestamp: 20 });
+    expect(result).toMatchObject({ granted: 0, inkGranted: 2, bossCount: 1 });
+    expect(result.economy.arcaneFibers).toBe(0);
+    expect(result.economy.arcaneInks).toBe(2);
+    expect(result.loot.bossFiberOutcomes['week-0:boss-0'].arcaneInks).toBe(2);
+    expect(pendingFiberCatchupNotice(result)).toMatchObject({ arcaneFibers: 0, arcaneInks: 2 });
   });
 
   it('solo entrega las Fibras pendientes y permite cerrar su aviso', () => {

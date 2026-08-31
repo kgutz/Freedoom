@@ -1040,8 +1040,8 @@ export function renderLootNotice(document, lootState, notice) {
     </button>`;
   }).join('');
   const relicSlotCount = notice.relicIds.length + (notice.failedRelicIds || []).length;
-  const fiberSlotCount = notice.arcaneFibers > 0 ? 1 : 0;
-  const emptyRewards = Array.from({ length: Math.max(0, 2 - relicSlotCount - fiberSlotCount) }, () =>
+  const resourceSlotCount = (notice.arcaneFibers > 0 ? 1 : 0) + (notice.arcaneInks > 0 ? 1 : 0);
+  const emptyRewards = Array.from({ length: Math.max(0, 2 - relicSlotCount - resourceSlotCount) }, () =>
     '<span class="loot-reward-slot loot-reward-empty" aria-hidden="true"></span>').join('');
   const resourceRewards = `
     <div class="loot-reward-slot loot-resource-slot" aria-label="${notice.bossBlood} de Sangre de Jefe">
@@ -1052,6 +1052,9 @@ export function renderLootNotice(document, lootState, notice) {
     </div>
     ${notice.arcaneFibers > 0 ? `<div class="loot-reward-slot loot-resource-slot loot-resource-slot--arcane" aria-label="${notice.arcaneFibers} Fibras Arcanas">
       ${resourceIcon('arcane-fiber')}<b>${notice.arcaneFibers}</b>
+    </div>` : ''}
+    ${notice.arcaneInks > 0 ? `<div class="loot-reward-slot loot-resource-slot loot-resource-slot--arcane" aria-label="${notice.arcaneInks} Tintas Arcanas">
+      ${resourceIcon('arcane-ink')}<b>${notice.arcaneInks}</b>
     </div>` : ''}`;
   const retroactive = notice.source === 'retroactive';
   const bloodBonusMarkup = notice.bonusBossBlood > 0

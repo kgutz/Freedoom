@@ -275,6 +275,7 @@ export function normalizeLootState(state = {}) {
         ? {
             id: String(loot.fiberCatchupNotice.id || 'boss-fiber-catchup-v1'),
             arcaneFibers: Math.max(0, Math.trunc(Number(loot.fiberCatchupNotice.arcaneFibers) || 0)),
+            arcaneInks: Math.max(0, Math.trunc(Number(loot.fiberCatchupNotice.arcaneInks) || 0)),
             bossCount: Math.max(0, Math.trunc(Number(loot.fiberCatchupNotice.bossCount) || 0)),
             acknowledged: loot.fiberCatchupNotice.acknowledged === true,
             createdAt: Math.max(0, Number(loot.fiberCatchupNotice.createdAt) || 0),
@@ -283,6 +284,7 @@ export function normalizeLootState(state = {}) {
       notices: arrayOf(loot.notices).map((notice) => ({
         ...notice,
         arcaneFibers: Math.max(0, Math.trunc(Number(notice?.arcaneFibers) || 0)),
+        arcaneInks: Math.max(0, Math.trunc(Number(notice?.arcaneInks) || 0)),
         relicIds: arrayOf(notice?.relicIds).filter((id) => Boolean(relicDefinition(id))),
         failedRelicIds: arrayOf(notice?.failedRelicIds)
           .filter((id) => Boolean(relicDefinition(id))),

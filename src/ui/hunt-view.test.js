@@ -36,7 +36,7 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt/world-map-bunker.png');
+    expect(root.innerHTML).toContain('hunt/world-map-bunker.webp');
     expect(root.innerHTML).toContain('data-open-hunt-region="fields-of-mist"');
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
     expect(root.innerHTML).not.toContain('🔒');
@@ -84,14 +84,14 @@ describe('informe de Cacería', () => {
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
     expect(root.innerHTML).toContain('<h2>Búnker de las Horas Muertas</h2>');
-    expect(root.innerHTML).toContain('hunt/dead-hours-bunker/region.png');
+    expect(root.innerHTML).toContain('hunt/dead-hours-bunker/region.webp');
     expect(root.innerHTML).toContain('El Consumido');
     expect(root.innerHTML).toContain('El Guardián Empotrado');
     expect(root.innerHTML).toContain('El Titiritero');
     expect(root.innerHTML).not.toContain('Brote Engañoso');
     expect(renderHuntMonsterDetail({ document, enemyId: 'dead-hours-puppeteer' })).toBe(true);
     expect(detailRoot.innerHTML).toContain('<h2>El Titiritero</h2>');
-    expect(detailRoot.innerHTML).toContain('dead-hours-puppeteer.png');
+    expect(detailRoot.innerHTML).toContain('dead-hours-puppeteer.webp');
   });
   it('prepara el botín final como casillas visuales con icono y cantidad', () => {
     const html = huntResultRewardsMarkup({ xp: 12, gold: 14, arcaneFibers: 1, bossBlood: 0 });

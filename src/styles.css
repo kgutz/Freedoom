@@ -1741,5 +1741,10 @@
   .beta-tester-frame-reward[hidden]{display:none!important}
   .beta-tester-reward-items--third{grid-template-columns:repeat(2,minmax(0,1fr))}
 
+  .fiber-catchup-items{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fiber-catchup-items:has(.fiber-catchup-item[hidden]){grid-template-columns:minmax(0,176px)}
+  .fiber-catchup-item .resource-icon--arcane-ink{width:68px;height:68px;margin-bottom:11px;filter:drop-shadow(0 5px 5px rgba(0,0,0,.62)) drop-shadow(0 0 10px rgba(193,104,255,.42));animation:pioneer-coin-pulse 1.9s ease-in-out infinite}
+  .fiber-catchup-item[hidden]{display:none!important}
+
 
 

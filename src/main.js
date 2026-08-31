@@ -162,11 +162,11 @@ import { OUTFIT_DEFINITIONS, isOutfitUnlocked } from './data/outfit-data.js';
 import { FRAME_DEFINITIONS, isFrameUnlocked } from './data/frame-data.js';
 import {
   acknowledgeFiberCatchupNotice,
+  bossFiberBase,
   grantBossFiberReward,
   pendingFiberCatchupNotice,
   paintFrame,
   reconcileHistoricalBossFibers,
-  resolveHabitFiberDrop,
   weaveOutfit,
 } from './domain/outfit-rules.js';
 import {
@@ -284,8 +284,11 @@ const LOCAL_LOOT_NOTICE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewL
 const LOCAL_DEMO_MIGRATION=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoLootMigration')||'0',10)||0))
   : 0;
+const LOCAL_DEMO_BOSS_INK_CATCHUP=LOCAL_DEMO_HOST
+  ? Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('previewBossInkCatchup')||'0',10)||0))
+  : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)||(LOCAL_DEMO_REDUCTION_14?1:0)
+  ? LOCAL_DEMO_BOSS_INK_CATCHUP||LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)||(LOCAL_DEMO_REDUCTION_14?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
   ? LOCAL_DEMO_PALADIN_EFFECTS
@@ -302,6 +305,8 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
     ? `${STORAGE_KEY}:demo-shop-${LOCAL_DEMO_SHOP}-v1`
+    : LOCAL_DEMO_BOSS_INK_CATCHUP
+    ? `${STORAGE_KEY}:demo-boss-ink-catchup-${LOCAL_DEMO_BOSS_INK_CATCHUP}-v3`
     : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
     : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v3`
@@ -930,6 +935,21 @@ function prepareLocalBossDemo(){
   };
   Object.assign(state,emptyLootState());
   state.economy.arcaneFibers=LOCAL_DEMO_FIBER_OUTFIT?0:8;
+  if(LOCAL_DEMO_BOSS_INK_CATCHUP){
+    const settledBossCount=21;
+    state.economy.arcaneFibers=8;
+    for(let bossIndex=0;bossIndex<settledBossCount;bossIndex+=1){
+      const base=bossFiberBase(bossIndex);
+      const cycleId=`week-${bossIndex}:boss-${bossIndex}`;
+      state.loot.bossFiberOutcomes[cycleId]={
+        cycleId,bossIndex,base,bonus:0,granted:base,
+        resolvedAt:Date.now()-((settledBossCount-bossIndex)*86400000),
+        notifiedAt:Date.now()
+      };
+    }
+    scheduleSave({type:'demo:boss-ink-catchup',count:LOCAL_DEMO_BOSS_INK_CATCHUP});
+    return;
+  }
   if(LOCAL_DEMO_MIGRATION){
     scheduleSave({type:'demo:loot-migration',count:LOCAL_DEMO_MIGRATION});
     return;
@@ -1213,6 +1233,7 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
   });
   if(result.rewards.length){
     let arcaneFibers=0;
+    let arcaneInks=0;
     for(const reward of result.rewards){
       const pendingEntry=Object.entries(result.loot.bossFiberOutcomes||{}).find(([,outcome])=>
         outcome?.bossIndex===reward.bossIndex&&!outcome?.notifiedAt
@@ -1220,10 +1241,12 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
       if(!pendingEntry) continue;
       const [cycleId,outcome]=pendingEntry;
       arcaneFibers+=Math.max(0,Number(outcome.granted)||0);
+      arcaneInks+=Math.max(0,Number(outcome.arcaneInks)||0);
       result.loot.bossFiberOutcomes[cycleId]={...outcome,notifiedAt:Date.now()};
     }
     const notice=result.loot.notices[result.loot.notices.length-1];
     if(notice&&arcaneFibers>0) notice.arcaneFibers=arcaneFibers;
+    if(notice&&arcaneInks>0) notice.arcaneInks=arcaneInks;
   }
   applyLootSlices(result);
   if(source==='victory'&&result.rewards.length){
@@ -2849,14 +2872,20 @@ async function showPendingFiberCatchup(){
   try{
     handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
     const amount=document.getElementById('fiberCatchupAmount');
+    const fiberItem=document.getElementById('fiberCatchupFiberItem');
+    const inkAmount=document.getElementById('fiberCatchupInkAmount');
+    const inkItem=document.getElementById('fiberCatchupInkItem');
     const message=document.getElementById('fiberCatchupMessage');
     if(amount) amount.textContent=`+${notice.arcaneFibers}`;
+    if(fiberItem) fiberItem.hidden=!notice.arcaneFibers;
+    if(inkAmount) inkAmount.textContent=`+${notice.arcaneInks}`;
+    if(inkItem) inkItem.hidden=!notice.arcaneInks;
     if(message) message.textContent=notice.bossCount===1
       ? 'Hemos reconocido un jefe que ya habías derrotado y recuperado su recompensa.'
       : `Hemos reconocido ${notice.bossCount} jefes que ya habías derrotado y recuperado sus recompensas.`;
     document.getElementById('fiberCatchupBg')?.classList.add('show');
   }catch(error){
-    console.error('No se pudo asegurar la entrega retroactiva de Fibras',error);
+    console.error('No se pudo asegurar la entrega retroactiva de recursos',error);
     fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),1000);
   }finally{fiberCatchupOpening=false;}
 }
@@ -4510,15 +4539,6 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.inventory=potionResult.inventory;
     state.habits=potionResult.habitState;
     state.economy=potionResult.economy;
-    const fiberResult=resolveHabitFiberDrop({
-      state,
-      habit,
-      periodKey:result.entry.periodKey,
-      becameCompleted:result.becameCompleted,
-      becameIncomplete:result.becameIncomplete,
-      nowTimestamp:Date.now()
-    });
-    applyLootSlices(fiberResult);
     const newRelicRewards=applyHabitRelicRewards({
       habit,dayKey,becameCompleted:result.becameCompleted
     });
@@ -4585,28 +4605,25 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     scheduleSave({
       type:'habit:progress',id:habit.id,count:result.entry.count,
       period:result.entry.periodKey||'',coinDelta:coinResult.coinDelta+newRelicRewards.coins+potionResult.coinDelta,
-      potionXpDelta:potionResult.xpDelta,
-      arcaneFiberDelta:fiberResult.granted-(fiberResult.revoked||0)
+      potionXpDelta:potionResult.xpDelta
     });
     renderAll();
     if(result.becameCompleted){
-      const fiberNotice=fiberResult.granted?' · +1 Fibra':'';
       const energyGained=(huntEnergyResult.granted||0)+(setEnergyResult.granted||0);
       const energyNotice=energyGained?` · +${energyGained} Energía`:'';
       const compactRewards=[];
       if(totalRewardDelta.xpDelta>0) compactRewards.push(`+${totalRewardDelta.xpDelta} XP`);
       if(totalRewardDelta.coinDelta>0) compactRewards.push(`+${totalRewardDelta.coinDelta} 🪙`);
       const rewardNotice=compactRewards.join(' · ');
-      showToast(`${rewardNotice}${fiberNotice}${energyNotice}`.replace(/^ · /,''),'heal');
+      showToast(`${rewardNotice}${energyNotice}`.replace(/^ · /,''),'heal');
     }
     else if(totalRewardDelta.xpDelta>0||totalRewardDelta.coinDelta>0){
       showToast(habitRewardToast('Progreso registrado',totalRewardDelta),'heal');
     }
-    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0||fiberResult.revoked||huntEnergyResult.revoked||setEnergyResult.revoked){
-      const fiberNotice=fiberResult.revoked?' · −1 Fibra Arcana':'';
+    else if(totalRewardDelta.xpDelta<0||totalRewardDelta.coinDelta<0||huntEnergyResult.revoked||setEnergyResult.revoked){
       const energyRevoked=(huntEnergyResult.revoked||0)+(setEnergyResult.revoked||0);
       const energyNotice=energyRevoked?` · −${energyRevoked} Energía de Cacería`:'';
-      showToast(`${habitRewardToast('Progreso corregido',totalRewardDelta)}${fiberNotice}${energyNotice}`,'dmg');
+      showToast(`${habitRewardToast('Progreso corregido',totalRewardDelta)}${energyNotice}`,'dmg');
     }
     else if(result.completed) showToast('Límite de recompensas alcanzado','heal');
     return;
@@ -6099,9 +6116,12 @@ document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   if(!notice) return;
   applyLootSlices(acknowledgeFiberCatchupNotice(state,notice.id));
   document.getElementById('fiberCatchupBg').classList.remove('show');
-  scheduleSave({type:'reward:boss-fibers-catchup-acknowledged',arcaneFibers:notice.arcaneFibers});
+  scheduleSave({type:'reward:boss-resources-catchup-acknowledged',arcaneFibers:notice.arcaneFibers,arcaneInks:notice.arcaneInks});
   renderAll();
-  showToast(`+${notice.arcaneFibers} Fibras Arcanas`,'heal');
+  const rewards=[];
+  if(notice.arcaneFibers) rewards.push(`+${notice.arcaneFibers} Fibras Arcanas`);
+  if(notice.arcaneInks) rewards.push(`+${notice.arcaneInks} Tintas Arcanas`);
+  showToast(rewards.join(' · '),'heal');
 });
 document.getElementById('progressionUpdateContinue').addEventListener('click',()=>{
   state.game={
@@ -6435,11 +6455,12 @@ resetGuardContinue.addEventListener('click',()=>{
       nowTimestamp:Date.now()
     });
     applyLootSlices(fiberCatchup);
-    if(fiberCatchup.granted>0){
+    if(fiberCatchup.granted>0||fiberCatchup.inkGranted>0){
       scheduleSave({
-        type:'reward:boss-fibers-catchup',
+        type:'reward:boss-resources-catchup',
         bosses:fiberCatchup.bossCount,
-        arcaneFibers:fiberCatchup.granted
+        arcaneFibers:fiberCatchup.granted,
+        arcaneInks:fiberCatchup.inkGranted
       });
     }
     ensureHero();
