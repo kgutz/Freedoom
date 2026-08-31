@@ -647,7 +647,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Botica de Pociones');
     expect(html).toContain('Telar Arcano');
     expect(html).toContain('Pintor de Mundos');
-    expect(html).toContain('Contrabando de Reliquias');
+    expect(html).toContain('Contrabandista de Reliquias');
     expect(html.match(/data-shop-destination=/g)).toHaveLength(5);
   });
 
@@ -688,6 +688,8 @@ describe('interfaz de inventario y botín', () => {
     const html = document.elements.shopBody.innerHTML;
     expect(html).toContain('Corazón de Hollín');
     expect(html).toContain('data-buy-relic="relic_01"');
+    expect(html).toContain('class="shop-relic-buy"');
+    expect(html).toContain('aria-label="Comprar Corazón de Hollín"');
     expect(html).toContain('<b>150</b>');
     expect(html).toContain('<b>1</b>');
   });

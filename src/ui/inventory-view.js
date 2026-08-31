@@ -938,7 +938,7 @@ function shopCityMapMarkup() {
       <button type="button" class="shop-city-zone shop-city-zone--potions" data-shop-destination="potions" aria-label="Entrar en Botica de Pociones"><span>Botica de Pociones</span></button>
       <button type="button" class="shop-city-zone shop-city-zone--weave" data-shop-destination="weave" aria-label="Entrar en Telar Arcano"><span>Telar Arcano</span></button>
       <button type="button" class="shop-city-zone shop-city-zone--frames" data-shop-destination="frames" aria-label="Entrar en Pintor de Mundos"><span>Pintor de Mundos</span></button>
-      <button type="button" class="shop-city-zone shop-city-zone--relics" data-shop-destination="relics" aria-label="Entrar en Contrabando de Reliquias"><span>Contrabando de Reliquias</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--relics" data-shop-destination="relics" aria-label="Entrar en Contrabandista de Reliquias"><span>Contrabandista de Reliquias</span></button>
     </div>
   </section>`;
 }
@@ -980,7 +980,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
             ${resourceValue('coin', offer.coinPrice)}
             ${resourceValue('boss-blood', offer.bloodPrice)}
           </div>
-          <button type="button" data-buy-relic="${offer.relicId}"${lacksCoins || lacksBlood ? ' disabled' : ''}>${buttonText}</button>
+          <button type="button" class="shop-relic-buy" data-buy-relic="${offer.relicId}" aria-label="Comprar ${escapeHtml(offer.definition.name)}"${lacksCoins || lacksBlood ? ' disabled' : ''}>${buttonText}</button>
         </article>`;
       }).join('')}</div>`
     : `<div class="shop-empty">
@@ -1005,7 +1005,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
-    body.innerHTML = `${shopDestinationHeading('Contrabando de Reliquias', 'Reliquias perdidas vuelven a circular por vías… poco oficiales.')}${resources}${relicShop}`;
+    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular por vías… poco oficiales.')}${resources}${relicShop}`;
     return;
   }
   if (section === 'potions') {

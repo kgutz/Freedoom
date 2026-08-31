@@ -94,6 +94,7 @@ import {
   payClassChange,
   pendingLootNotice,
   purchaseShopRelic,
+  shopOffers,
   syncRelicConstancy,
   unequipRelic
 } from './domain/loot-rules.js';
