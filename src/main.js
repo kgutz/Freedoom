@@ -579,6 +579,7 @@ async function load(){
         ? normalizeHuntState(huntBeforeMigration,Date.now(),huntBaseEnergyForToday(new Date()))
         : null;
       const huntEnergyMigrationChanged=Boolean(normalizedHunt)&&(
+        huntBeforeMigration.energyCapacityVersion!==normalizedHunt.energyCapacityVersion||
         huntBeforeMigration.bonusEnergyLedgerVersion!==normalizedHunt.bonusEnergyLedgerVersion||
         Number(huntBeforeMigration.energy)!==normalizedHunt.energy||
         Number(huntBeforeMigration.bonusEnergyEarned)!==normalizedHunt.bonusEnergyEarned||
@@ -3358,7 +3359,7 @@ document.getElementById('smokeFreeCounter').addEventListener('click',event=>{
             ? '✓ Día · −25 HP jefe · XP'
             : '✓ Sin fumar · −25 HP jefe · XP'+rewardNotice)
         : forbiddenControlledSmoke
-          ? 'Fallo · −15% vida máx. · mañana 2/5 energía'
+          ? 'Fallo · −15% vida máx. · mañana 2/10 energía'
           : 'Día registrado · continúa mañana',
       status===SMOKE_FREE_STATUS_SUCCESS?'heal':'dmg'
     );

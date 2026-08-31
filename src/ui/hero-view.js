@@ -382,7 +382,7 @@ export function renderHeroView({
   dayKey,
   lootState,
   huntEnergy = 0,
-  huntEnergyMax = 5,
+  huntEnergyMax = 10,
   huntEnergyBonus = 0,
   classChange = false,
   currentClass = null,

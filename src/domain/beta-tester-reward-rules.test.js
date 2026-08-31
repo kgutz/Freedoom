@@ -42,7 +42,7 @@ describe('regalos sucesivos para beta testers', () => {
     const first = claimBetaTesterReward(betaTesterState(), 'pioneer-beta-reward-v2', 1234);
     expect(first.granted).toBe(true);
     expect(first.state.economy).toMatchObject({ coins: 160, arcaneFibers: 12 });
-    expect(first.state.game.hunt).toMatchObject({ energy: 7, rewardEnergyRemaining: 2 });
+    expect(first.state.game.hunt).toMatchObject({ energy: 12, rewardEnergyRemaining: 2 });
     expect(first.state.game.frames.owned['beta-tester']).toMatchObject({ acquiredAt: 1234 });
     expect(isBetaTesterRewardClaimed(first.state, 'pioneer-beta-reward-v2')).toBe(true);
 
@@ -67,6 +67,6 @@ describe('regalos sucesivos para beta testers', () => {
     const first = claimBetaTesterReward(betaTesterState(), 'pioneer-beta-reward-v2', new Date(2026, 7, 26, 12).getTime());
     const nextDay = new Date(2026, 7, 27, 12).getTime();
     const normalized = normalizeHuntState(first.state.game.hunt, nextDay);
-    expect(normalized).toMatchObject({ energy: 7, rewardEnergyRemaining: 2 });
+    expect(normalized).toMatchObject({ energy: 12, rewardEnergyRemaining: 2 });
   });
 });

@@ -102,10 +102,10 @@ describe('compatibilidad del estado', () => {
       game: { cls: 'paladin', hunt: { energyDay: '2000-01-01', energy: 0 } },
     };
     const result = applyImportCommands(current, '!+energia 2');
-    expect(result.game.hunt.energy).toBe(7);
+    expect(result.game.hunt.energy).toBe(12);
     expect(result.game.hunt.rewardEnergyRemaining).toBe(2);
     const capped = applyImportCommands(result, '!+energía 10');
-    expect(capped.game.hunt.energy).toBe(10);
+    expect(capped.game.hunt.energy).toBe(15);
   });
 
   it('desbloquea outfits y marcos mediante sus nombres públicos', () => {

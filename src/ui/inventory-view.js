@@ -182,7 +182,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           </button>`;
         }).join('')}
         ${shopContext
-          ? Array.from({ length: 3 }, (_, index) => `<div class="frame-option frame-option--locked frame-option--future" aria-label="Próximo fondo ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')
+          ? ''
           : Array.from({ length: emptyFrameSlots }, (_, index) => `<div class="frame-option frame-option--locked" aria-label="Espacio de fondo bloqueado ${index + 1}"><span class="outfit-locked-mark" aria-hidden="true">?</span></div>`).join('')}
       </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">

@@ -259,48 +259,71 @@ describe('PvE combat rules', () => {
   it('concede hasta dos energías extra con probabilidades de diez y ocho por ciento', () => {
     const first = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0.09 });
     expect(first).toMatchObject({ granted: 1, chance: 0.1 });
-    expect(first.hunt.energy).toBe(6);
+    expect(first.hunt.energy).toBe(11);
     expect(first.hunt.bonusEnergyRemaining).toBe(1);
     const second = grantHabitHuntEnergy({ hunt: first.hunt, rewardKey: 'habit-2', becameCompleted: true, roll: () => 0.07 });
     expect(second).toMatchObject({ granted: 1, chance: 0.08 });
-    expect(second.hunt.energy).toBe(7);
+    expect(second.hunt.energy).toBe(12);
     expect(second.hunt.bonusEnergyRemaining).toBe(2);
     const capped = grantHabitHuntEnergy({ hunt: second.hunt, rewardKey: 'habit-3', becameCompleted: true, roll: () => 0 });
     expect(capped.granted).toBe(0);
-    expect(capped.hunt.energy).toBe(7);
+    expect(capped.hunt.energy).toBe(12);
+  });
+
+  it('regala cinco energías una sola vez al migrar la capacidad diaria a diez', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const upgraded = normalizeHuntState({
+      energyDay: '2026-08-26',
+      baseEnergy: 5,
+      energy: 0,
+    }, nowTimestamp);
+    expect(upgraded).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 2 });
+
+    const normalizedAgain = normalizeHuntState(upgraded, nowTimestamp);
+    expect(normalizedAgain).toMatchObject({ energy: 5, baseEnergy: 10, energyCapacityVersion: 2 });
+  });
+
+  it('no acumula el regalo de migración si el usuario vuelve después del reinicio diario', () => {
+    const nextDay = new Date(2026, 7, 27, 12).getTime();
+    const upgraded = normalizeHuntState({
+      energyDay: '2026-08-26',
+      baseEnergy: 5,
+      energy: 0,
+    }, nextDay);
+    expect(upgraded).toMatchObject({ energy: 10, baseEnergy: 10, energyCapacityVersion: 2 });
   });
 
   it('consume primero la carga extra sin ampliar permanentemente la energía base', () => {
     const rewarded = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0 });
     const started = startHunt({ hunt: rewarded.hunt, difficultyId: 'easy', level: 3, nowTimestamp: Date.now() });
     expect(started.ok).toBe(true);
-    expect(started.hunt).toMatchObject({ energy: 5, baseEnergy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
+    expect(started.hunt).toMatchObject({ energy: 10, baseEnergy: 10, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
   });
 
   it('mantiene la energía de un regalo hasta que el jugador la consume', () => {
     const firstDay = new Date(2026, 7, 26, 12).getTime();
     const rewarded = grantRewardHuntEnergy({ hunt: null, amount: 2, nowTimestamp: firstDay });
-    expect(rewarded.hunt).toMatchObject({ energy: 7, baseEnergy: 5, rewardEnergyRemaining: 2 });
+    expect(rewarded.hunt).toMatchObject({ energy: 12, baseEnergy: 10, rewardEnergyRemaining: 2 });
     const nextDay = normalizeHuntState(rewarded.hunt, new Date(2026, 7, 27, 12).getTime());
-    expect(nextDay).toMatchObject({ energy: 7, baseEnergy: 5, rewardEnergyRemaining: 2 });
+    expect(nextDay).toMatchObject({ energy: 12, baseEnergy: 10, rewardEnergyRemaining: 2 });
     const started = startHunt({ hunt: nextDay, difficultyId: 'medium', level: 7, nowTimestamp: new Date(2026, 7, 27, 13).getTime() });
-    expect(started.hunt).toMatchObject({ energy: 5, rewardEnergyRemaining: 0 });
+    expect(started.hunt).toMatchObject({ energy: 10, rewardEnergyRemaining: 0 });
   });
 
-  it('premia las listas completas y limita la energía acumulada a diez', () => {
+  it('premia las listas completas y limita la energía acumulada a quince', () => {
     const daily = syncHabitSetHuntEnergy({
       hunt: null, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
     });
     expect(daily).toMatchObject({ granted: 1, revoked: 0 });
-    expect(daily.hunt.energy).toBe(6);
+    expect(daily.hunt.energy).toBe(11);
     const weekly = syncHabitSetHuntEnergy({
       hunt: daily.hunt, rewardKey: 'weekly:2026-W35', amount: 2, allCompleted: true,
     });
     expect(weekly.granted).toBe(2);
-    expect(weekly.hunt.energy).toBe(8);
+    expect(weekly.hunt.energy).toBe(13);
     const capped = grantRewardHuntEnergy({ hunt: weekly.hunt, amount: 9 });
     expect(capped.granted).toBe(2);
-    expect(capped.hunt.energy).toBe(10);
+    expect(capped.hunt.energy).toBe(15);
   });
 
   it('retira el premio de lista completa si se deshace antes de gastarlo', () => {
@@ -311,12 +334,12 @@ describe('PvE combat rules', () => {
       hunt: rewarded.hunt, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: false,
     });
     expect(revoked.revoked).toBe(1);
-    expect(revoked.hunt.energy).toBe(5);
+    expect(revoked.hunt.energy).toBe(10);
     const restored = syncHabitSetHuntEnergy({
       hunt: revoked.hunt, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
     });
     expect(restored.granted).toBe(1);
-    expect(restored.hunt.energy).toBe(6);
+    expect(restored.hunt.energy).toBe(11);
   });
 
   it('migra una carga extra del formato anterior sin convertirla en capacidad permanente', () => {
@@ -324,11 +347,12 @@ describe('PvE combat rules', () => {
     const migrated = normalizeHuntState({
       energyDay: '2026-08-26',
       energy: 6,
+      baseEnergy: 5,
       habitEnergyRolls: [{ key: 'habit-legacy', granted: 1 }],
     }, nowTimestamp);
     expect(migrated).toMatchObject({
-      energy: 6,
-      baseEnergy: 5,
+      energy: 11,
+      baseEnergy: 10,
       bonusEnergyEarned: 1,
       bonusEnergyRemaining: 1,
       bonusEnergyLedgerVersion: 1,
@@ -341,11 +365,12 @@ describe('PvE combat rules', () => {
     const repaired = normalizeHuntState({
       energyDay: '2026-08-26',
       energy: 5,
+      baseEnergy: 5,
       bonusEnergyEarned: 0,
       bonusEnergyRemaining: 0,
       habitEnergyRolls: [{ key: 'habit-repair', granted: 1, status: 'spent' }],
     }, nowTimestamp);
-    expect(repaired).toMatchObject({ energy: 6, bonusEnergyEarned: 1, bonusEnergyRemaining: 1 });
+    expect(repaired).toMatchObject({ energy: 11, bonusEnergyEarned: 1, bonusEnergyRemaining: 1 });
     expect(repaired.habitEnergyRolls[0].status).toBe('available');
   });
 
@@ -354,12 +379,13 @@ describe('PvE combat rules', () => {
     const spent = normalizeHuntState({
       energyDay: '2026-08-26',
       energy: 5,
+      baseEnergy: 5,
       bonusEnergyEarned: 1,
       bonusEnergyRemaining: 0,
       bonusEnergyLedgerVersion: 1,
       habitEnergyRolls: [{ key: 'habit-spent', granted: 1, status: 'spent' }],
     }, nowTimestamp);
-    expect(spent).toMatchObject({ energy: 5, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
+    expect(spent).toMatchObject({ energy: 10, bonusEnergyEarned: 1, bonusEnergyRemaining: 0 });
     expect(spent.habitEnergyRolls[0].status).toBe('spent');
   });
 
@@ -367,17 +393,17 @@ describe('PvE combat rules', () => {
     const rewarded = grantHabitHuntEnergy({ hunt: null, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0 });
     const revoked = revokeHabitHuntEnergy({ hunt: rewarded.hunt, rewardKey: 'habit-1', becameIncomplete: true });
     expect(revoked).toMatchObject({ revoked: 1 });
-    expect(revoked.hunt).toMatchObject({ energy: 5, bonusEnergyRemaining: 0 });
+    expect(revoked.hunt).toMatchObject({ energy: 10, bonusEnergyRemaining: 0 });
     expect(revoked.hunt.habitEnergyRolls[0].status).toBe('revoked');
 
     const restored = grantHabitHuntEnergy({ hunt: revoked.hunt, rewardKey: 'habit-1', becameCompleted: true, roll: () => 0.99 });
     expect(restored).toMatchObject({ granted: 1 });
-    expect(restored.hunt).toMatchObject({ energy: 6, bonusEnergyRemaining: 1 });
+    expect(restored.hunt).toMatchObject({ energy: 11, bonusEnergyRemaining: 1 });
 
     const spent = startHunt({ hunt: restored.hunt, difficultyId: 'easy', level: 3 });
     const cannotRevokeSpent = revokeHabitHuntEnergy({ hunt: spent.hunt, rewardKey: 'habit-1', becameIncomplete: true });
     expect(cannotRevokeSpent).toMatchObject({ revoked: 0 });
-    expect(cannotRevokeSpent.hunt.energy).toBe(5);
+    expect(cannotRevokeSpent.hunt.energy).toBe(10);
   });
 
   it('aplica una duración de uno, tres o cinco minutos según la dificultad', () => {
@@ -386,7 +412,7 @@ describe('PvE combat rules', () => {
     expect(HUNT_DIFFICULTIES.hard.durationMinutes).toBe(5);
     const started = startHunt({ hunt: null, difficultyId: 'medium', level: 7, nowTimestamp: 1_000, seed: 17 });
     expect(started.ok).toBe(true);
-    expect(started.hunt.energy).toBe(3);
+    expect(started.hunt.energy).toBe(8);
     expect(started.hunt.active.endsAt).toBe(1_000 + 3 * 60_000);
     const pending = resolveHunt({ hunt: started.hunt, classId: 'knight', level: 8, allocation: {}, nowTimestamp: 2_000 });
     expect(pending.reason).toBe('hunt-in-progress');
@@ -399,14 +425,14 @@ describe('PvE combat rules', () => {
 
   it('restaura la energía al cambiar el día y conserva el historial', () => {
     const previous = normalizeHuntState({ energyDay: '2026-01-01', energy: 0, history: [{ id: 'old' }] }, new Date(2026, 0, 2, 12).getTime());
-    expect(previous.energy).toBe(5);
+    expect(previous.energy).toBe(10);
     expect(previous.history).toHaveLength(1);
   });
 
   it('admite una recarga diaria penalizada de dos energías', () => {
     const nextDay = new Date(2026, 0, 2, 12).getTime();
     const normalized = normalizeHuntState({ energyDay: '2026-01-01', energy: 0 }, nextDay, 2);
-    expect(normalized).toMatchObject({ energy: 2, baseEnergy: 5, bonusEnergyEarned: 0 });
+    expect(normalized).toMatchObject({ energy: 2, baseEnergy: 10, bonusEnergyEarned: 0 });
   });
 
   it('resuelve el trío fijo y produce un informe persistible', () => {

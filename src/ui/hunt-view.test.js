@@ -9,6 +9,7 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
       cls: 'paladin',
       hunt: {
         energyDay: '2026-08-26',
+        energyCapacityVersion: 2,
         energy: 4,
         lastReport: {
           difficultyId,
@@ -105,8 +106,9 @@ describe('informe de Cacería', () => {
         cls: 'paladin',
         hunt: {
           energyDay: '2026-08-26',
-          baseEnergy: 5,
-          energy: 6,
+          energyCapacityVersion: 2,
+          baseEnergy: 10,
+          energy: 11,
           bonusEnergyEarned: 1,
           bonusEnergyRemaining: 1,
         },
@@ -114,11 +116,11 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('<strong>5/5<em>+1</em></strong>');
-    expect(root.innerHTML).not.toContain('6/6');
+    expect(root.innerHTML).toContain('<strong>10/10<em>+1</em></strong>');
+    expect(root.innerHTML).not.toContain('11/11');
   });
 
-  it('mantiene 5 como capacidad aunque el día penalizado recargue solo 2', () => {
+  it('mantiene 10 como capacidad aunque el día penalizado recargue solo 2', () => {
     const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
     renderHuntView({
       document: { getElementById: () => root },
@@ -126,6 +128,7 @@ describe('informe de Cacería', () => {
         cls: 'paladin',
         hunt: {
           energyDay: '2026-08-26',
+          energyCapacityVersion: 2,
           baseEnergy: 2,
           energy: 2,
         },
@@ -133,7 +136,7 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('<strong>2/5</strong>');
+    expect(root.innerHTML).toContain('<strong>2/10</strong>');
     expect(root.innerHTML).not.toContain('2/2');
   });
 
@@ -155,7 +158,7 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('<strong>5/5<em>+1</em></strong>');
+    expect(root.innerHTML).toContain('<strong>10/10<em>+1</em></strong>');
   });
 
   it('integra la cacería activa sobre la imagen de la región sin crear otra tarjeta', () => {
@@ -167,6 +170,7 @@ describe('informe de Cacería', () => {
         cls: 'paladin',
         hunt: {
           energyDay: '2026-08-26',
+          energyCapacityVersion: 2,
           energy: 4,
           active: {
             difficultyId: 'easy',

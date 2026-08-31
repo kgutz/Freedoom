@@ -1,9 +1,11 @@
 import { attributeSheet } from './attribute-rules.js';
 import { normalizePotionState } from './potion-rules.js';
 
-export const DAILY_HUNT_ENERGY = 5;
+export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
-export const MAX_HUNT_ENERGY = 10;
+export const MAX_HUNT_ENERGY = 15;
+export const HUNT_ENERGY_CAPACITY_VERSION = 2;
+const HUNT_ENERGY_CAPACITY_UPGRADE_GIFT = 5;
 export const HUNT_VICTORY_RECOVERY = Object.freeze({
   hpPercent: 0.25,
   manaPercent: 0.15,
@@ -74,6 +76,9 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     DAILY_HUNT_ENERGY,
   );
   const baseEnergy = DAILY_HUNT_ENERGY;
+  const storedBaseEnergy = sameDay
+    ? clamp(safeInteger(hunt?.baseEnergy) || baseEnergy, 1, baseEnergy)
+    : baseEnergy;
   const storedEnergy = sameDay
     ? safeInteger(hunt?.energy)
     : dailyRefillEnergy + rewardEnergyRemaining;
@@ -84,7 +89,7 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
     : 0;
   const legacyBonusFromEnergy = sameDay
-    ? Math.max(0, storedEnergy - baseEnergy - rewardEnergyRemaining)
+    ? Math.max(0, storedEnergy - storedBaseEnergy - rewardEnergyRemaining)
     : 0;
   const legacyGrantedBonuses = rawHabitEnergyRolls.filter((entry) => entry?.granted).length;
   const bonusEnergyEarned = sameDay
@@ -118,8 +123,12 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     )
     : 0;
   const recoveredAvailableBonuses = Math.max(0, bonusEnergyRemaining - representedAvailableBonuses);
+  const capacityUpgradeEnergy = sameDay
+    && safeInteger(hunt?.energyCapacityVersion) < HUNT_ENERGY_CAPACITY_VERSION
+    ? HUNT_ENERGY_CAPACITY_UPGRADE_GIFT
+    : 0;
   const normalizedEnergy = sameDay
-    ? clamp(storedEnergy + recoveredAvailableBonuses, 0, MAX_HUNT_ENERGY)
+    ? clamp(storedEnergy + recoveredAvailableBonuses + capacityUpgradeEnergy, 0, MAX_HUNT_ENERGY)
     : clamp(dailyRefillEnergy + rewardEnergyRemaining, 0, MAX_HUNT_ENERGY);
   const activeGrantedRolls = rawHabitEnergyRolls.filter((entry) => entry?.granted && entry?.status !== 'revoked');
   const availableEntries = new Set([
@@ -145,6 +154,7 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     bonusEnergyEarned,
     bonusEnergyRemaining,
     rewardEnergyRemaining,
+    energyCapacityVersion: HUNT_ENERGY_CAPACITY_VERSION,
     bonusEnergyLedgerVersion: 1,
     habitEnergyRolls,
     completionEnergyRewards,

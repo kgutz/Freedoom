@@ -299,7 +299,7 @@ export function renderTodayView({
       smoked: [
         'Hoy fumaste',
         model.controlledMode && !model.controlledAllowedToday
-          ? 'Vida máxima −15% hoy · mañana empezarás con 2/5 de energía.'
+          ? 'Vida máxima −15% hoy · mañana empezarás con 2/10 de energía.'
           : 'Puedes corregirlo antes del cambio de día.',
       ],
     }[model.smokeFreeStatus];

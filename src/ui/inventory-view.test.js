@@ -149,10 +149,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option equipped frame-option--owned"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Corazón de Freedom, equipado"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option" data-select-frame="welder-beta"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 1"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 2"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Próximo fondo 3"');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/frame-option--future/g)).toHaveLength(3);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Próximo fondo');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('frame-option--future');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-section="owned"');
     expect(renderOutfitSelector(document, state, 'beta-tester', { section: 'frames', context: 'shop' })).toBe('beta-tester');
     expect(document.elements.outfitSelectorBack.hidden).toBe(false);

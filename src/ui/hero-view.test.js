@@ -614,8 +614,8 @@ describe('modelo de Héroe', () => {
         },
       }),
       intoxication: { level: 25, remainingMinutes: 41 },
-      huntEnergy: 4,
-      huntEnergyMax: 5,
+      huntEnergy: 10,
+      huntEnergyMax: 10,
       huntEnergyBonus: 1,
       levelUp: true,
     });
@@ -625,8 +625,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('aria-label="Abrir medallón de Espectro"');
     expect(heroContent.innerHTML).toContain('<div class="rango">Paladin</div>');
     expect(heroContent.innerHTML).toContain('data-open-hunt-from-hero');
-    expect(heroContent.innerHTML).toContain('Energía de Cacería: 3 de 5, más 1 extra. Abrir Cacería');
-    expect(heroContent.innerHTML).toContain('<b>3/5<em>+1</em></b>');
+    expect(heroContent.innerHTML).toContain('Energía de Cacería: 9 de 10, más 1 extra. Abrir Cacería');
+    expect(heroContent.innerHTML).toContain('<b>9/10<em>+1</em></b>');
     expect(heroContent.innerHTML).not.toContain('data-open-hero-skills');
     expect(heroContent.innerHTML).not.toContain('hero-quick-actions');
     expect(heroContent.innerHTML).not.toContain('id="heroSkillsCard"');
