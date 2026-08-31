@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { relicCombatBonus, relicCombatBonuses } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
+  BUNKER_ENEMIES,
   fiberChanceForHunt,
   fiberChanceForProgress,
+  huntDropRules,
   inkChanceForProgress,
   grantHabitHuntEnergy,
   grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
   HUNT_FORTUNE_BONUS_PERCENT,
+  HUNT_REGIONS,
   huntRecoveryRates,
   normalizeHuntState,
   pveHeroStats,
@@ -421,6 +424,54 @@ describe('PvE combat rules', () => {
   it('bloquea cada dificultad hasta alcanzar su nivel mínimo', () => {
     const blocked = startHunt({ hunt: null, difficultyId: 'hard', level: 11, nowTimestamp: 1_000 });
     expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 12 });
+  });
+
+  it('abre el Búnker como una región independiente a partir del nivel quince', () => {
+    expect(HUNT_REGIONS['dead-hours-bunker'].enemies).toBe(BUNKER_ENEMIES);
+    expect(BUNKER_ENEMIES.map((enemy) => enemy.name)).toEqual([
+      'El Consumido',
+      'El Guardián Empotrado',
+      'El Titiritero',
+    ]);
+    const blocked = startHunt({
+      hunt: null,
+      regionId: 'dead-hours-bunker',
+      difficultyId: 'easy',
+      level: 14,
+    });
+    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 15 });
+    const started = startHunt({
+      hunt: null,
+      regionId: 'dead-hours-bunker',
+      difficultyId: 'easy',
+      level: 15,
+      nowTimestamp: 1_000,
+    });
+    expect(started.ok).toBe(true);
+    expect(started.hunt.active.regionId).toBe('dead-hours-bunker');
+  });
+
+  it('aumenta la Fibra y la Tinta del Búnker sin alterar el drop de la Bruma', () => {
+    expect(huntDropRules('fields-of-mist', 'medium')).toEqual({
+      fiberChance: 0.3,
+      fiberAmount: [1, 1],
+      inkChance: 0.25,
+      inkAmount: [1, 1],
+    });
+    expect(huntDropRules('dead-hours-bunker', 'medium')).toEqual({
+      fiberChance: 0.4,
+      fiberAmount: [1, 2],
+      inkChance: 0.3,
+      inkAmount: [1, 1],
+    });
+    expect(huntDropRules('dead-hours-bunker', 'hard')).toEqual({
+      fiberChance: 0.75,
+      fiberAmount: [2, 3],
+      inkChance: 0.55,
+      inkAmount: [1, 2],
+    });
+    expect(fiberChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'medium', defeatedEnemies: 2 })).toBeCloseTo(0.4);
+    expect(inkChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'hard', defeatedEnemies: 2 })).toBeCloseTo(0.55);
   });
 
   it('restaura la energía al cambiar el día y conserva el historial', () => {

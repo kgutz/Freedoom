@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntView } from './hunt-view.js';
+import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
 
 function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
@@ -28,6 +28,71 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
 }
 
 describe('informe de Cacería', () => {
+  it('muestra el nuevo mapa con Bruma, Búnker y una futura zona al noroeste', () => {
+    const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: null },
+      stats: { lvl: 20 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('hunt/world-map-bunker.png');
+    expect(root.innerHTML).toContain('data-open-hunt-region="fields-of-mist"');
+    expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
+    expect(root.innerHTML).not.toContain('🔒');
+    expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
+  });
+
+  it('avisa en el mapa que el Búnker se desbloquea en el nivel quince', () => {
+    const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: null },
+      stats: { lvl: 14 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('hunt-map-zone--bunker hunt-map-zone--detailed locked');
+    expect(root.innerHTML).not.toContain('BLOQUEADO');
+    expect(root.innerHTML).toContain('<span aria-hidden="true">🔒</span> Se desbloquea en el nivel 15');
+    expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
+    expect(root.innerHTML).not.toContain('data-open-hunt-region="dead-hours-bunker" aria-label="Búnker de las Horas Muertas. Vista previa. Se desbloquea en el nivel 15" disabled');
+  });
+
+  it('permite explorar el Búnker antes del nivel quince, pero bloquea sus dificultades', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: null },
+      stats: { lvl: 14 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('Alcanza el nivel 15 para iniciar esta cacería');
+    expect(root.innerHTML).toContain('Fácil');
+    expect(root.innerHTML).toContain('🔒 Nivel 15');
+    expect(root.innerHTML).toContain('🔒 Nivel 20');
+    expect(root.innerHTML).toContain('🔒 Nivel 25');
+  });
+
+  it('renderiza la pantalla y las fichas propias del Búnker', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
+    const detailRoot = { innerHTML: '' };
+    const document = { getElementById: (id) => (id === 'huntContent' ? root : detailRoot) };
+    renderHuntView({
+      document,
+      game: { cls: 'paladin', hunt: null },
+      stats: { lvl: 25 },
+      nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
+    });
+    expect(root.innerHTML).toContain('<h2>Búnker de las Horas Muertas</h2>');
+    expect(root.innerHTML).toContain('hunt/dead-hours-bunker/region.png');
+    expect(root.innerHTML).toContain('El Consumido');
+    expect(root.innerHTML).toContain('El Guardián Empotrado');
+    expect(root.innerHTML).toContain('El Titiritero');
+    expect(root.innerHTML).not.toContain('Brote Engañoso');
+    expect(renderHuntMonsterDetail({ document, enemyId: 'dead-hours-puppeteer' })).toBe(true);
+    expect(detailRoot.innerHTML).toContain('<h2>El Titiritero</h2>');
+    expect(detailRoot.innerHTML).toContain('dead-hours-puppeteer.png');
+  });
   it('prepara el botín final como casillas visuales con icono y cantidad', () => {
     const html = huntResultRewardsMarkup({ xp: 12, gold: 14, arcaneFibers: 1, bossBlood: 0 });
     expect(html).toContain('hunt-result-reward-grid items-3');

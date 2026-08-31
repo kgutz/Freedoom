@@ -46,7 +46,10 @@ import {
 import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from './domain/attribute-rules.js';
 import {
   HUNT_DIFFICULTIES,
+  HUNT_REGIONS,
   grantHabitHuntEnergy,
+  huntDropRules,
+  huntDifficultyMinLevel,
   syncHabitSetHuntEnergy,
   revokeHabitHuntEnergy,
   pveHeroStats,
@@ -3546,20 +3549,27 @@ function switchView(viewId,buttonId){
 }
 
 let pendingHuntDifficultyId=null;
+let pendingHuntRegionId=null;
 let pendingHuntAutoUsePotions=true;
 
-function huntPotentialRewardsMarkup(difficulty){
-  const fiberMax=Math.max(0,Number(difficulty?.fiberAmount?.[1])||0);
+function huntPotentialRewardsMarkup(difficulty,region){
+  const dropRules=huntDropRules(region?.id,difficulty?.id);
+  const fiberMax=Math.max(0,Number(dropRules?.fiberAmount?.[1])||0);
+  const inkMax=Math.max(0,Number(dropRules?.inkAmount?.[1])||0);
+  const rewardMultiplier=Math.max(1,Number(region?.rewardMultiplier)||1);
+  const xp=Math.round(difficulty.xp*rewardMultiplier);
+  const gold=difficulty.gold.map(value=>Math.round(value*rewardMultiplier));
   return [
-    `✦ ${difficulty.xp} XP`,
-    `${resourceIcon('coin')} ${difficulty.gold[0]}–${difficulty.gold[1]}`,
+    `✦ ${xp} XP`,
+    `${resourceIcon('coin')} ${gold[0]}–${gold[1]}`,
     fiberMax?`${resourceIcon('arcane-fiber')} 0–${fiberMax}`:'',
-    Number(difficulty.inkChance)>0?`${resourceIcon('arcane-ink')} 0–1`:'',
+    inkMax?`${resourceIcon('arcane-ink')} 0–${inkMax}`:'',
     difficulty.id==='hard'?`${resourceIcon('boss-blood')} 0–1`:'',
   ].filter(Boolean).join(' · ');
 }
 
 function openHuntResultModal(report){
+  const region=HUNT_REGIONS[report?.regionId]||HUNT_REGIONS['fields-of-mist'];
   const won=Boolean(report?.won);
   const defeatedEnemies=Math.max(0,Number(report?.defeatedEnemies)||0);
   const partial=!won&&defeatedEnemies>0;
@@ -3567,7 +3577,7 @@ function openHuntResultModal(report){
   const recoveredMana=Math.max(0,Number(report?.recovery?.mana)||0);
   document.getElementById('huntResultTitle').textContent=won?'Cacería superada':partial?'Avance parcial':'Cacería fallida';
   document.getElementById('huntResultMessage').textContent=won
-    ? `La bruma retrocede. Tu héroe recupera ${recoveredHp} de vida y ${recoveredMana} de maná antes de regresar con el botín.`
+    ? `${region.victoryMessage}. Tu héroe recupera ${recoveredHp} de vida y ${recoveredMana} de maná antes de regresar con el botín.`
     : partial
       ? `Tu héroe tuvo que retirarse tras vencer ${defeatedEnemies}/3 enemigos. Conserva su botín y recupera ${recoveredHp} de vida${recoveredMana>0?` y ${recoveredMana} de maná`:''} antes de regresar.`
       : 'Tu héroe tuvo que retirarse sin derrotar enemigos. No obtiene recuperación de salida.';
@@ -3578,19 +3588,23 @@ function openHuntResultModal(report){
 
 function closeHuntConfirmation(){
   pendingHuntDifficultyId=null;
+  pendingHuntRegionId=null;
   pendingHuntAutoUsePotions=true;
   document.getElementById('huntConfirmBg').classList.remove('show');
 }
 
-function openHuntConfirmation(difficultyId){
+function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
   const difficulty=HUNT_DIFFICULTIES[difficultyId];
-  if(!difficulty) return;
+  const region=HUNT_REGIONS[regionId];
+  if(!difficulty||!region) return;
   const hunt=normalizeHuntState(state.game.hunt,Date.now());
   const heroLevel=gameStats().lvl;
   if(hunt.active){showToast('Ya hay una cacería en curso','bad');return;}
-  if(heroLevel<difficulty.minLevel){showToast(`Necesitas nivel ${difficulty.minLevel}`,'bad');return;}
+  const requiredLevel=huntDifficultyMinLevel(region.id,difficulty.id);
+  if(heroLevel<requiredLevel){showToast(`Necesitas nivel ${requiredLevel}`,'bad');return;}
   if(hunt.energy<difficulty.energyCost){showToast('No tienes energía suficiente','bad');return;}
   pendingHuntDifficultyId=difficultyId;
+  pendingHuntRegionId=region.id;
   pendingHuntAutoUsePotions=true;
   const potions=normalizePotionState(state.inventory?.potions);
   const fortuneActive=potions.active?.id==='fortune'&&potions.active.endsAt>Date.now()?potions.active:null;
@@ -3602,12 +3616,12 @@ function openHuntConfirmation(difficultyId){
   const lifePotions=Math.max(0,Number(potions.owned.life)||0);
   const manaPotions=Math.max(0,Number(potions.owned.mana)||0);
   const hasCombatPotions=lifePotions+manaPotions>0;
-  document.getElementById('huntConfirmTitle').textContent=`¿Iniciar en ${difficulty.name}?`;
+  document.getElementById('huntConfirmTitle').textContent=`¿Entrar en ${region.name}?`;
   document.getElementById('huntConfirmBody').innerHTML=`<div class="hunt-confirm-summary">
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
     <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
-    <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty)}</b></div>
+    <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty,region)}</b></div>
   </div>
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
@@ -3619,8 +3633,9 @@ function openHuntConfirmation(difficultyId){
 }
 
 function confirmHuntStart(){
-  if(!pendingHuntDifficultyId) return;
+  if(!pendingHuntDifficultyId||!pendingHuntRegionId) return;
   const difficultyId=pendingHuntDifficultyId;
+  const regionId=pendingHuntRegionId;
   pendingHuntAutoUsePotions=Boolean(document.getElementById('huntAutoPotions')?.checked);
   const autoUsePotions=pendingHuntAutoUsePotions;
   closeHuntConfirmation();
@@ -3633,6 +3648,7 @@ function confirmHuntStart(){
     : null;
   const result=startHunt({
     hunt:state.game.hunt,
+    regionId,
     difficultyId,
     level:stats.lvl,
     currentHp:state.game.hp,
@@ -3649,7 +3665,7 @@ function confirmHuntStart(){
     return;
   }
   state.game.hunt=result.hunt;
-  scheduleSave({type:'hunt:start',difficultyId});
+  scheduleSave({type:'hunt:start',regionId,difficultyId});
   renderHunt();
   const durationMinutes=HUNT_DIFFICULTIES[difficultyId].durationMinutes;
   showToast(`Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
@@ -3693,8 +3709,11 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     openCharacterSheet();
     return;
   }
-  if(event.target.closest('[data-open-hunt-region]')){
-    document.getElementById('huntContent').dataset.huntScreen='region';
+  const huntRegionButton=event.target.closest('[data-open-hunt-region]');
+  if(huntRegionButton){
+    const huntContent=document.getElementById('huntContent');
+    huntContent.dataset.huntScreen='region';
+    huntContent.dataset.huntRegion=huntRegionButton.dataset.openHuntRegion||'fields-of-mist';
     renderHunt();
     return;
   }
@@ -3710,7 +3729,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   }
   const startButton=event.target.closest('[data-start-hunt]');
   if(startButton){
-    openHuntConfirmation(startButton.dataset.startHunt);
+    openHuntConfirmation(startButton.dataset.startHunt,startButton.dataset.huntRegion);
     return;
   }
   if(event.target.closest('[data-resolve-hunt]')){

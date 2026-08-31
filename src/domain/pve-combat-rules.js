@@ -28,9 +28,14 @@ export const HUNT_AUTO_POTION_RULES = Object.freeze({
 export const HUNT_FORTUNE_BONUS_PERCENT = 0.5;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const BRUMA_ENEMY_TEMPLATES = [
-  { id: 'blighted-harvester', role: 'Soldado', name: 'Brote Engañoso', lore: 'Parece una planta joven e inofensiva, pero sus hojas dentadas se alimentan de la voluntad de quien se acerca. Es la primera mentira que susurra el cultivo.', attributes: { strength: 3, defense: 3, dexterity: 4, power: 1, constitution: 4 } },
-  { id: 'spore-overseer', role: 'Líder', name: 'Segador de la Bruma', lore: 'Creció respirando los vapores tóxicos del campo hasta adoptar una silueta casi humana. Sus esporas nublan el juicio y guían a los brotes menores.', attributes: { strength: 3, defense: 6, dexterity: 7, power: 5, constitution: 8 } },
-  { id: 'mist-mother', role: 'Minijefe', name: 'Madre del Cultivo', lore: 'Sus raíces recorren toda la plantación y alimentan la bruma fluorescente. Cada criatura del campo es una extensión de su hambre antigua.', attributes: { strength: 6, defense: 9, dexterity: 10, power: 7, constitution: 13 } },
+  { id: 'blighted-harvester', role: 'Soldado', name: 'Brote Engañoso', art: 'hunt/fields-of-mist/blighted-harvester.webp', lore: 'Parece una planta joven e inofensiva, pero sus hojas dentadas se alimentan de la voluntad de quien se acerca. Es la primera mentira que susurra el cultivo.', attributes: { strength: 3, defense: 3, dexterity: 4, power: 1, constitution: 4 } },
+  { id: 'spore-overseer', role: 'Líder', name: 'Segador de la Bruma', art: 'hunt/fields-of-mist/spore-overseer.webp', lore: 'Creció respirando los vapores tóxicos del campo hasta adoptar una silueta casi humana. Sus esporas nublan el juicio y guían a los brotes menores.', attributes: { strength: 3, defense: 6, dexterity: 7, power: 5, constitution: 8 } },
+  { id: 'mist-mother', role: 'Minijefe', name: 'Madre del Cultivo', art: 'hunt/fields-of-mist/mist-mother.webp', lore: 'Sus raíces recorren toda la plantación y alimentan la bruma fluorescente. Cada criatura del campo es una extensión de su hambre antigua.', attributes: { strength: 6, defense: 9, dexterity: 10, power: 7, constitution: 13 } },
+];
+const BUNKER_ENEMY_TEMPLATES = [
+  { id: 'the-consumed', role: 'Soldado', name: 'El Consumido', art: 'hunt/dead-hours-bunker/the-consumed.png', lore: 'Entró para descansar solo un momento y entregó días enteros al humo. Ahora sus miembros obedecen a los hilos verdes que le atraviesan la nuca, mientras el último resto de voluntad se apaga detrás de sus ojos.', attributes: { strength: 7, defense: 8, dexterity: 8, power: 5, constitution: 9 } },
+  { id: 'embedded-guardian', role: 'Líder', name: 'El Guardián Empotrado', art: 'hunt/dead-hours-bunker/embedded-guardian.png', lore: 'El búnker lo convirtió en muro, conducto y centinela. El metal crece dentro de su carne y cada tubería alimenta una fuerza que no le pertenece; incluso su brazo blindado se alza porque otro tira de él.', attributes: { strength: 9, defense: 11, dexterity: 11, power: 8, constitution: 14 } },
+  { id: 'dead-hours-puppeteer', role: 'Minijefe', name: 'El Titiritero', art: 'hunt/dead-hours-bunker/dead-hours-puppeteer.png', lore: 'Es la voluntad que respira detrás de las paredes. Se alimenta del tiempo desperdiciado y mueve a sus víctimas mediante filamentos de humo, paciente y consciente, mientras los relojes del búnker permanecen detenidos.', attributes: { strength: 11, defense: 14, dexterity: 14, power: 13, constitution: 19 } },
 ];
 
 function enemyStatsFromAttributes(definition, attributes = definition.attributes) {
@@ -49,11 +54,65 @@ function enemyStatsFromAttributes(definition, attributes = definition.attributes
 }
 
 export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
+export const BUNKER_ENEMIES = Object.freeze(BUNKER_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
-  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0 }),
-  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1], inkChance: 0.25 }),
-  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2], inkChance: 0.5 }),
+  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0, inkAmount: [0, 0] }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
+  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2], inkChance: 0.5, inkAmount: [1, 1] }),
 });
+export const HUNT_REGIONS = Object.freeze({
+  'fields-of-mist': Object.freeze({
+    id: 'fields-of-mist',
+    name: 'Campos de la Bruma',
+    description: 'Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.',
+    art: 'hunt/fields-of-mist/region.webp',
+    enemies: BRUMA_ENEMIES,
+    difficultyMinLevels: Object.freeze({ easy: 3, medium: 7, hard: 12 }),
+    rewardMultiplier: 1,
+    bossBloodChance: 0.1,
+    victoryMessage: 'La bruma retrocede',
+  }),
+  'dead-hours-bunker': Object.freeze({
+    id: 'dead-hours-bunker',
+    name: 'Búnker de las Horas Muertas',
+    description: 'Un humo encantado devora la voluntad y el tiempo de quienes entran. Rompe los hilos antes de que el búnker reclame otra víctima.',
+    art: 'hunt/dead-hours-bunker/region.png',
+    enemies: BUNKER_ENEMIES,
+    difficultyMinLevels: Object.freeze({ easy: 15, medium: 20, hard: 25 }),
+    rewardMultiplier: 1.6,
+    dropOverrides: Object.freeze({
+      medium: Object.freeze({ fiberChance: 0.4, fiberAmount: Object.freeze([1, 2]), inkChance: 0.3, inkAmount: Object.freeze([1, 1]) }),
+      hard: Object.freeze({ fiberChance: 0.75, fiberAmount: Object.freeze([2, 3]), inkChance: 0.55, inkAmount: Object.freeze([1, 2]) }),
+    }),
+    bossBloodChance: 0.15,
+    victoryMessage: 'Los hilos del Titiritero se quiebran',
+  }),
+});
+export const HUNT_ENEMIES = Object.freeze(Object.values(HUNT_REGIONS).flatMap((region) => region.enemies));
+
+export function huntRegion(regionId = 'fields-of-mist') {
+  return HUNT_REGIONS[regionId] || null;
+}
+
+export function huntDifficultyMinLevel(regionId, difficultyId) {
+  const region = huntRegion(regionId);
+  const difficulty = HUNT_DIFFICULTIES[difficultyId];
+  if (!region || !difficulty) return 0;
+  return safeInteger(region.difficultyMinLevels?.[difficultyId] ?? difficulty.minLevel);
+}
+
+export function huntDropRules(regionId = 'fields-of-mist', difficultyId) {
+  const region = huntRegion(regionId);
+  const difficulty = HUNT_DIFFICULTIES[difficultyId];
+  if (!region || !difficulty) return null;
+  const override = region.dropOverrides?.[difficultyId] || {};
+  return {
+    fiberChance: Number(override.fiberChance ?? difficulty.fiberChance) || 0,
+    fiberAmount: [...(override.fiberAmount || difficulty.fiberAmount || [0, 0])],
+    inkChance: Number(override.inkChance ?? difficulty.inkChance) || 0,
+    inkAmount: [...(override.inkAmount || difficulty.inkAmount || [0, 0])],
+  };
+}
 
 const safeInteger = (value) => Math.max(0, Math.floor(Number(value) || 0));
 
@@ -317,32 +376,32 @@ export function revokeHabitHuntEnergy({ hunt, rewardKey, becameIncomplete, nowTi
   };
 }
 
-export function fiberChanceForHunt({ hunt, difficultyId, nowTimestamp = Date.now() }) {
+export function fiberChanceForHunt({ hunt, difficultyId, regionId = 'fields-of-mist', nowTimestamp = Date.now() }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
-  const difficulty = HUNT_DIFFICULTIES[difficultyId];
-  if (!difficulty) return 0;
-  if (difficulty.fiberChance <= 0) return 0;
+  const dropRules = huntDropRules(regionId, difficultyId);
+  if (!dropRules || dropRules.fiberChance <= 0) return 0;
   const dropsToday = normalized.history.filter((report) => (
     Number(report?.rewards?.arcaneFibers) > 0
     && localHuntDayKey(report.completedAt) === normalized.energyDay
   )).length;
-  return Math.max(0.01, difficulty.fiberChance - dropsToday * 0.06);
+  return Math.max(0.01, dropRules.fiberChance - dropsToday * 0.06);
 }
 
 export function fiberChanceForProgress({
   hunt,
   difficultyId,
+  regionId = 'fields-of-mist',
   defeatedEnemies = 0,
   nowTimestamp = Date.now(),
 }) {
   if (safeInteger(defeatedEnemies) < 2) return 0;
-  return fiberChanceForHunt({ hunt, difficultyId, nowTimestamp });
+  return fiberChanceForHunt({ hunt, difficultyId, regionId, nowTimestamp });
 }
 
-export function inkChanceForProgress({ hunt, difficultyId, defeatedEnemies = 0, nowTimestamp = Date.now() }) {
+export function inkChanceForProgress({ hunt, difficultyId, regionId = 'fields-of-mist', defeatedEnemies = 0, nowTimestamp = Date.now() }) {
   if (safeInteger(defeatedEnemies) < 2) return 0;
   const normalized = normalizeHuntState(hunt, nowTimestamp);
-  const baseChance = Number(HUNT_DIFFICULTIES[difficultyId]?.inkChance) || 0;
+  const baseChance = huntDropRules(regionId, difficultyId)?.inkChance || 0;
   if (baseChance <= 0) return 0;
   const dropsToday = normalized.history.filter((report) => (
     Number(report?.rewards?.arcaneInks) > 0
@@ -507,11 +566,14 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
+  const region = huntRegion(regionId);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
+  if (!region) return { ok: false, reason: 'unknown-region', hunt: normalized };
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
-  if (safeInteger(level) < difficulty.minLevel) return { ok: false, reason: 'level-locked', requiredLevel: difficulty.minLevel, hunt: normalized };
+  const requiredLevel = huntDifficultyMinLevel(region.id, difficulty.id);
+  if (safeInteger(level) < requiredLevel) return { ok: false, reason: 'level-locked', requiredLevel, hunt: normalized };
   if (normalized.active) return { ok: false, reason: 'hunt-active', hunt: normalized };
   if (normalized.energy < difficulty.energyCost) return { ok: false, reason: 'insufficient-energy', hunt: normalized };
   const bonusEnergySpent = Math.min(normalized.bonusEnergyRemaining, difficulty.energyCost);
@@ -537,7 +599,7 @@ export function startHunt({ hunt, difficultyId, level = 1, currentHp, maxHp, cur
   });
   const active = {
     id: `hunt-${nowTimestamp}-${safeInteger(seed)}`,
-    regionId: 'fields-of-mist',
+    regionId: region.id,
     difficultyId,
     startedAt: nowTimestamp,
     endsAt: nowTimestamp + difficulty.durationMinutes * 60_000,
@@ -576,6 +638,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   if (!active) return { ok: false, reason: 'no-active-hunt', hunt: normalized };
   if (nowTimestamp < active.endsAt) return { ok: false, reason: 'hunt-in-progress', remainingMs: active.endsAt - nowTimestamp, hunt: normalized };
   const difficulty = HUNT_DIFFICULTIES[active.difficultyId] || HUNT_DIFFICULTIES.easy;
+  const region = huntRegion(active.regionId) || HUNT_REGIONS['fields-of-mist'];
   const random = seededRoll(active.seed);
   const hero = pveHeroStats({ classId, level, allocation, relicBonuses: active.relicBonuses });
   let currentHp = Number.isFinite(active.entryHpRatio)
@@ -586,7 +649,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     : hero.maxMana;
   let potions = normalizePotionState(suppliedPotions);
   const encounters = [];
-  for (const [enemyIndex, definition] of BRUMA_ENEMIES.entries()) {
+  for (const [enemyIndex, definition] of region.enemies.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
     const heroHpAtStart = currentHp;
     const heroManaAtStart = currentMana;
@@ -605,7 +668,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     currentMana = result.heroMana;
     const heroHpAfterFight = currentHp;
     const heroManaAfterFight = currentMana;
-    const hasNextEncounter = result.won && enemyIndex < BRUMA_ENEMIES.length - 1;
+    const hasNextEncounter = result.won && enemyIndex < region.enemies.length - 1;
     if (hasNextEncounter) {
       const hpRecoveryTarget = Math.round(hero.maxHp * HUNT_ENCOUNTER_RECOVERY.hpTargetPercent);
       const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaCapPercent);
@@ -638,12 +701,13 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     });
     if (!result.won) break;
   }
-  const won = encounters.length === BRUMA_ENEMIES.length && encounters.every((encounter) => encounter.won);
+  const won = encounters.length === region.enemies.length && encounters.every((encounter) => encounter.won);
   const defeatedEnemies = encounters.filter((encounter) => encounter.won).length;
   const [minGold, maxGold] = difficulty.gold;
-  const fullGold = minGold + Math.floor(random() * (maxGold - minGold + 1));
+  const rewardMultiplier = Math.max(1, Number(region.rewardMultiplier) || 1);
+  const fullGold = Math.round((minGold + Math.floor(random() * (maxGold - minGold + 1))) * rewardMultiplier);
   const goldByEnemy = splitEncounterReward(fullGold);
-  const xpByEnemy = splitEncounterReward(difficulty.xp);
+  const xpByEnemy = splitEncounterReward(Math.round(difficulty.xp * rewardMultiplier));
   encounters.forEach((encounter, index) => {
     encounter.rewards = {
       xp: encounter.won ? xpByEnemy[index] : 0,
@@ -655,26 +719,32 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   });
   const leaderRewards = encounters[1]?.won ? encounters[1].rewards : null;
   if (leaderRewards) {
+    const dropRules = huntDropRules(region.id, difficulty.id);
     const fiberChance = fiberChanceForProgress({
       hunt: normalized,
       difficultyId: difficulty.id,
+      regionId: region.id,
       defeatedEnemies,
       nowTimestamp,
     });
     if (random() < fiberChance) {
-      const [minFiber, maxFiber] = difficulty.fiberAmount;
+      const [minFiber, maxFiber] = dropRules.fiberAmount;
       leaderRewards.arcaneFibers = minFiber + Math.floor(random() * (maxFiber - minFiber + 1));
     }
     const inkChance = inkChanceForProgress({
       hunt: normalized,
       difficultyId: difficulty.id,
+      regionId: region.id,
       defeatedEnemies,
       nowTimestamp,
     });
-    if (random() < inkChance) leaderRewards.arcaneInks = 1;
+    if (random() < inkChance) {
+      const [minInk, maxInk] = dropRules.inkAmount;
+      leaderRewards.arcaneInks = minInk + (maxInk > minInk ? Math.floor(random() * (maxInk - minInk + 1)) : 0);
+    }
   }
   const bossRewards = encounters[2]?.won ? encounters[2].rewards : null;
-  if (bossRewards) bossRewards.bossBlood = difficulty.id === 'hard' && random() < 0.1 ? 1 : 0;
+  if (bossRewards) bossRewards.bossBlood = difficulty.id === 'hard' && random() < region.bossBloodChance ? 1 : 0;
   const baseGold = encounters.reduce((total, encounter) => total + encounter.rewards.gold, 0);
   const fortuneRequested = active.fortune?.dayKey && baseGold > 0
     ? Math.max(1, Math.round(baseGold * HUNT_FORTUNE_BONUS_PERCENT))
@@ -693,7 +763,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const heroManaBeforeRecovery = currentMana;
   const heroDied = heroHpBeforeRecovery <= 0;
   if (defeatedEnemies > 0 && !heroDied) {
-    const recoveryRates = huntRecoveryRates(defeatedEnemies);
+    const recoveryRates = huntRecoveryRates(defeatedEnemies, region.enemies.length);
     const hpRecoveryLimit = Math.round(hero.maxHp * HUNT_VICTORY_RECOVERY.hpCapPercent);
     const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_VICTORY_RECOVERY.manaCapPercent);
     currentHp = Math.max(currentHp, Math.min(
