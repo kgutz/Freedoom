@@ -43,7 +43,7 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
   });
 
-  it('avisa en el mapa que el Búnker se desbloquea en el nivel quince', () => {
+  it('muestra el Búnker como una zona pulsable igual que Campos de la Bruma', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({
       document: { getElementById: () => root },
@@ -51,11 +51,12 @@ describe('informe de Cacería', () => {
       stats: { lvl: 14 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt-map-zone--bunker hunt-map-zone--detailed locked');
-    expect(root.innerHTML).not.toContain('BLOQUEADO');
-    expect(root.innerHTML).toContain('<span aria-hidden="true">🔒</span> Se desbloquea en el nivel 15');
+    expect(root.innerHTML).toContain('class="hunt-map-zone hunt-map-zone--bunker"');
+    expect(root.innerHTML).toContain('Búnker de las Horas Muertas');
+    expect(root.innerHTML).not.toContain('hunt-map-zone--detailed');
+    expect(root.innerHTML).not.toContain('locked');
+    expect(root.innerHTML).not.toContain('Se desbloquea en el nivel 15');
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
-    expect(root.innerHTML).not.toContain('data-open-hunt-region="dead-hours-bunker" aria-label="Búnker de las Horas Muertas. Vista previa. Se desbloquea en el nivel 15" disabled');
   });
 
   it('permite explorar el Búnker antes del nivel quince, pero bloquea sus dificultades', () => {

@@ -206,11 +206,9 @@ function reportMarkup(report) {
   </section>`;
 }
 
-function regionMapMarkup(hunt, heroLevel) {
+function regionMapMarkup(hunt) {
   const energy = huntEnergyDisplay(hunt);
   const activeRegionId = hunt.active ? hunt.active.regionId || 'fields-of-mist' : null;
-  const bunkerMinLevel = huntDifficultyMinLevel('dead-hours-bunker', 'easy');
-  const bunkerLocked = heroLevel < bunkerMinLevel;
   return `<div class="hunt-map-heading">
     <span>MAPA DE CACERÍA</span>
     <div class="hunt-map-title-row">
@@ -224,9 +222,8 @@ function regionMapMarkup(hunt, heroLevel) {
     <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ' active' : ''}" data-open-hunt-region="fields-of-mist">
       Campos de la Bruma
     </button>
-    <button type="button" class="hunt-map-zone hunt-map-zone--bunker hunt-map-zone--detailed${bunkerLocked ? ' locked' : ''}${activeRegionId === 'dead-hours-bunker' ? ' active' : ''}" data-open-hunt-region="dead-hours-bunker" aria-label="Búnker de las Horas Muertas. ${bunkerLocked ? `Vista previa. Se desbloquea en el nivel ${bunkerMinLevel}` : 'Disponible'}">
-      <strong>Búnker de las Horas Muertas</strong>
-      ${bunkerLocked ? `<small><span aria-hidden="true">🔒</span> Se desbloquea en el nivel ${bunkerMinLevel}</small>` : ''}
+    <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ' active' : ''}" data-open-hunt-region="dead-hours-bunker">
+      Búnker de las Horas Muertas
     </button>
     <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>PRÓXIMAMENTE</span></div>
   </section>
@@ -244,7 +241,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const heroLevel = Math.max(1, Number(stats?.lvl) || 1);
   const isRegionScreen = root.dataset.huntScreen === 'region';
   if (!isRegionScreen) {
-    root.innerHTML = regionMapMarkup(hunt, heroLevel);
+    root.innerHTML = regionMapMarkup(hunt);
     return;
   }
   const active = hunt.active;
