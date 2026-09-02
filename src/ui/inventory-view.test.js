@@ -670,10 +670,15 @@ describe('interfaz de inventario y botín', () => {
     expect(potionShopHtml).toContain('Brebajes para recuperar fuerzas');
     expect(potionShopHtml).not.toContain('RELIQUIAS PERDIDAS');
     expect(potionShopHtml).toContain('resource-icon--coin');
+    expect(potionShopHtml).toContain('data-open-shop-potion="energy"');
+    expect(potionShopHtml).toContain('potions/potion_energy.webp');
+    expect(potionShopHtml.indexOf('data-open-shop-potion="life"')).toBeLessThan(potionShopHtml.indexOf('data-open-shop-potion="mana"'));
+    expect(potionShopHtml.indexOf('data-open-shop-potion="mana"')).toBeLessThan(potionShopHtml.indexOf('data-open-shop-potion="fortune"'));
+    expect(potionShopHtml.indexOf('data-open-shop-potion="blood"')).toBeLessThan(potionShopHtml.indexOf('data-open-shop-potion="energy"'));
     expect(potionShopHtml).not.toContain('resource-icon--boss-blood');
     expect(potionShopHtml).not.toContain('resource-icon--arcane-fiber');
     expect(potionShopHtml).not.toContain('resource-icon--arcane-ink');
-    expect(potionShopHtml.match(/potion-card--future/g)).toHaveLength(7);
+    expect(potionShopHtml.match(/potion-card--future/g)).toHaveLength(6);
   });
 
   it('presenta una reliquia fallada con precios y compra', () => {

@@ -382,7 +382,7 @@ describe('PvE combat rules', () => {
     expect(nextDay).toMatchObject({ energy: 14, rewardEnergyRemaining: 4 });
   });
 
-  it('premia las listas completas y limita la energía acumulada a quince', () => {
+  it('premia las listas completas y limita la energía acumulada a veinte', () => {
     const daily = syncHabitSetHuntEnergy({
       hunt: null, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
     });
@@ -394,8 +394,8 @@ describe('PvE combat rules', () => {
     expect(weekly.granted).toBe(2);
     expect(weekly.hunt.energy).toBe(13);
     const capped = grantRewardHuntEnergy({ hunt: weekly.hunt, amount: 9 });
-    expect(capped.granted).toBe(2);
-    expect(capped.hunt.energy).toBe(15);
+    expect(capped.granted).toBe(7);
+    expect(capped.hunt.energy).toBe(20);
   });
 
   it('retira el premio de lista completa si se deshace antes de gastarlo', () => {

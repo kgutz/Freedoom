@@ -206,4 +206,14 @@ describe('pociones', () => {
     expect(usePotion({ inventory: three.inventory, potionId: 'blood', dayKey: DAY, bossKey: 'boss-1' }).reason).toBe('limit');
     expect(potionBloodChance(consumePreparedBlood(three.inventory, ['boss-1']).potions, 'boss-1')).toBe(0);
   });
+
+  it('Vigor solo puede consumirse una vez por día lógico', () => {
+    const state = richState();
+    state.inventory.potions = { owned: { energy: 2 } };
+    const first = usePotion({ inventory: state.inventory, potionId: 'energy', dayKey: DAY });
+    expect(first.ok).toBe(true);
+    expect(first.inventory.potions.owned.energy).toBe(1);
+    expect(usePotion({ inventory: first.inventory, potionId: 'energy', dayKey: DAY }).reason).toBe('limit');
+    expect(usePotion({ inventory: first.inventory, potionId: 'energy', dayKey: '2026-09-03' }).ok).toBe(true);
+  });
 });

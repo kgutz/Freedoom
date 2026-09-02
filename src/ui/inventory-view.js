@@ -271,12 +271,15 @@ function potionFutureSlots() {
     `<div class="potion-card potion-card--future" aria-label="Próxima poción ${index + 1}"><span>?</span></div>`).join('');
 }
 
-function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey = '', nowTimestamp = Date.now() } = {}) {
+function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey = '', nowTimestamp = Date.now(), huntEnergy = 0, huntEnergyCapacity = 20 } = {}) {
   const potions = normalizePotionState(normalized.inventory.potions);
   const active = potions.active?.endsAt > nowTimestamp ? potions.active : null;
   const dailyUses = potions.dailyUses[dayKey] || {};
   const definitions=mode==='shop'
-    ? POTION_DEFINITIONS
+    ? [...POTION_DEFINITIONS].sort((a,b)=>{
+      const shopOrder=['life','mana','fortune','experience','blood','energy'];
+      return shopOrder.indexOf(a.id)-shopOrder.indexOf(b.id);
+    })
     : POTION_DEFINITIONS.filter((definition)=>(potions.owned[definition.id]||0)>0);
   if(mode!=='shop'&&!definitions.length) return '';
   return `<div class="potion-grid">${definitions.map((definition) => {
@@ -292,7 +295,8 @@ function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey
     const bloodUsed = definition.id === 'blood' ? Math.max(0, potions.bloodPrepared[bossKey] || 0) : 0;
     const temporalBlocked = ['fortune', 'experience'].includes(definition.id) && Boolean(active);
     const exhausted = definition.id === 'blood' ? bloodUsed >= 3 : dailyLimit && used >= dailyLimit;
-    const disabled = owned < 1 || temporalBlocked || exhausted;
+    const energyBlocked=definition.id==='energy'&&huntEnergy>huntEnergyCapacity-(definition.energyRestore||0);
+    const disabled = owned < 1 || temporalBlocked || exhausted || energyBlocked;
     const status = definition.id === 'blood'
       ? `${bloodUsed}/3 · +${potionBloodChance(potions, bossKey)}%`
       : dailyLimit ? `${used}/${dailyLimit}` : '';
@@ -341,7 +345,8 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const used=potionId==='blood'?potions.bloodPrepared[options.bossKey]||0:dayUses[potionId]||0;
   const limit=potionId==='blood'?3:POTION_DAILY_LIMITS[potionId]||null;
   const active=potions.active?.endsAt>(options.nowTimestamp||Date.now());
-  const blocked=owned<1||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active);
+  const energyBlocked=potionId==='energy'&&(options.huntEnergy||0)>(options.huntEnergyCapacity||20)-(definition.energyRestore||0);
+  const blocked=owned<1||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active)||energyBlocked;
   const shopMode=options.mode==='shop';
   const lacksCoins=normalized.economy.coins<definition.price;
   const occupiedSlots=Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length;

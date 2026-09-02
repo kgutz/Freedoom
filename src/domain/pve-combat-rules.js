@@ -7,7 +7,7 @@ import { normalizePotionState } from './potion-rules.js';
 
 export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
-export const MAX_HUNT_ENERGY = 15;
+export const MAX_HUNT_ENERGY = 20;
 export const HUNT_ENERGY_CAPACITY_VERSION = 3;
 const HUNT_ENERGY_CAPACITY_UPGRADE_GIFT = 5;
 const HUNT_ENERGY_ROLLOVER_REPAIR_GIFT = 2;

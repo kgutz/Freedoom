@@ -48,6 +48,8 @@ import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from
 import {
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
+  MAX_HUNT_ENERGY,
+  grantRewardHuntEnergy,
   grantHabitHuntEnergy,
   huntDifficultyForRegion,
   huntDropRules,
@@ -250,7 +252,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.6';
+const APP_VERSION='2.28.7';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4533,7 +4535,9 @@ function awardFusionDailyHabitListXp(dayKey){
 }
 function potionViewOptions(){
   const bossIndex=Math.max(0,Number(state.game?.bossCombat?.bossIndex)||0);
-  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||''};
+  const nowTimestamp=Date.now();
+  const hunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
+  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY};
 }
 
 function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
@@ -5253,9 +5257,16 @@ function handlePotionUse(potionId){
   const maxes=heroMaxes();
   if(potionId==='life'&&(state.game.hp||0)>=maxes.maxHp){ showToast('La Salud ya está completa','dmg'); return false; }
   if(potionId==='mana'&&(state.game.mp||0)>=maxes.maxMp){ showToast('El Maná ya está completo','dmg'); return false; }
+  const nowTimestamp=Date.now();
+  let normalizedHunt=null;
+  if(potionId==='energy'){
+    normalizedHunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
+    const restore=POTION_BY_ID.energy.energyRestore;
+    if(normalizedHunt.energy>MAX_HUNT_ENERGY-restore){ showToast('Necesitas tener 15 de energía o menos','dmg'); return false; }
+  }
   const options=potionViewOptions();
   const result=usePotion({
-    inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp:Date.now()
+    inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp
   });
   if(!result.ok){
     const remainingAvailability=()=>{
@@ -5288,6 +5299,10 @@ function handlePotionUse(potionId){
   }else if(potionId==='mana'){
     const before=state.game.mp||0; state.game.mp=capMp(before+25); notice=`+${state.game.mp-before} Maná`;
     flashHeroStatFeedback('mp');
+  }else if(potionId==='energy'){
+    const reward=grantRewardHuntEnergy({hunt:normalizedHunt,amount:POTION_BY_ID.energy.energyRestore,nowTimestamp});
+    state.game.hunt=reward.hunt;
+    notice=`+${reward.granted} Energía de Cacería`;
   }else if(potionId==='blood') notice=`Sangre preparada · +${potionBloodChance(state.inventory.potions,options.bossKey)}%`;
   else notice=`${potionId==='fortune'?'Fortuna':'Experiencia'} activa durante 30 minutos`;
   scheduleSave({type:'potion:use',potionId});

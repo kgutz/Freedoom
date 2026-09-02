@@ -105,7 +105,7 @@ describe('compatibilidad del estado', () => {
     expect(result.game.hunt.energy).toBe(12);
     expect(result.game.hunt.rewardEnergyRemaining).toBe(2);
     const capped = applyImportCommands(result, '!+energía 10');
-    expect(capped.game.hunt.energy).toBe(15);
+    expect(capped.game.hunt.energy).toBe(20);
   });
 
   it('desbloquea outfits y marcos mediante sus nombres públicos', () => {
