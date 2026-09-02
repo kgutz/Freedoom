@@ -249,7 +249,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.4';
+const APP_VERSION='2.28.5';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4017,6 +4017,9 @@ let habitDraftDifficulty='easy';
 let habitDraftFrequency='daily';
 let habitDraftTarget=1;
 let habitDraftRepeatable=false;
+let habitDraftYesterdayCount=0;
+let habitDraftYesterdayTarget=1;
+let habitDraftYesterdayDate=null;
 let pendingCompletedTodoId=null;
 let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
@@ -4181,6 +4184,85 @@ function activeHabitById(id){
 function activeTodoById(id){
   return normalizeTodoState(state.todos).items.find(todo=>todo.id===id&&todo.active!==false);
 }
+function editableYesterdayForHabit(habit){
+  if(!habit||habit.frequency!=='daily') return null;
+  const yesterday=currentHabitDate();
+  yesterday.setDate(yesterday.getDate()-1);
+  return yesterday;
+}
+function applyYesterdayHabitCorrection(habit,count){
+  const date=habitDraftYesterdayDate;
+  if(!habit||!date||habit.frequency!=='daily') return false;
+  const previous=habitEntryFor(state.habits,habit,date,state.config.startDate);
+  const target=Math.max(1,Number(habit.target)||1);
+  const desiredCount=Math.min(target,Math.max(0,Math.trunc(Number(count)||0)));
+  const currentCount=Math.max(0,Number(previous.count)||0);
+  const delta=desiredCount-currentCount;
+  if(!delta) return false;
+  ensureHero();
+  const result=adjustHabitProgress({
+    habitState:state.habits,
+    habit,
+    delta,
+    date,
+    planStartDate:state.config.startDate,
+  });
+  const coinResult=applyHabitCoinRewards({
+    habitState:result.habitState,
+    economy:state.economy,
+    habit,
+    date,
+    planStartDate:state.config.startDate,
+    becameCompleted:result.becameCompleted,
+    becameIncomplete:result.becameIncomplete,
+    progressChanged:result.countChanged,
+    nowTimestamp:Date.now(),
+  });
+  state.habits=coinResult.habitState;
+  state.economy=coinResult.economy;
+  const potionResult=reconcilePotionHabitBonus({
+    inventory:state.inventory,
+    habitState:state.habits,
+    economy:state.economy,
+    habit,
+    date,
+    planStartDate:state.config.startDate,
+    previousCount:currentCount,
+    nowTimestamp:Date.now(),
+  });
+  state.inventory=potionResult.inventory;
+  state.habits=potionResult.habitState;
+  state.economy=potionResult.economy;
+  const activeDaily=state.habits.items.filter(item=>item.active!==false&&item.frequency==='daily');
+  const allDailyCompleted=activeDaily.length>0&&activeDaily.every(item=>{
+    const entry=habitEntryFor(state.habits,item,date,state.config.startDate);
+    return (Number(entry.count)||0)>=Math.max(1,Number(item.target)||1);
+  });
+  const setEnergyResult=syncHabitSetHuntEnergy({
+    hunt:state.game.hunt,
+    rewardKey:`completed-set:daily:${result.entry.periodKey}`,
+    amount:1,
+    allCompleted:allDailyCompleted,
+    nowTimestamp:Date.now(),
+  });
+  state.game.hunt=setEnergyResult.hunt;
+  const energyRewardKey=`${habit.id}|${result.entry.periodKey}`;
+  const energyResult=result.becameIncomplete
+    ? revokeHabitHuntEnergy({
+        hunt:state.game.hunt,
+        rewardKey:energyRewardKey,
+        becameIncomplete:true,
+        nowTimestamp:Date.now(),
+      })
+    : grantHabitHuntEnergy({
+        hunt:state.game.hunt,
+        rewardKey:energyRewardKey,
+        becameCompleted:result.becameCompleted,
+        nowTimestamp:Date.now(),
+      });
+  state.game.hunt=energyResult.hunt;
+  return true;
+}
 function updateHabitEditor(){
   document.querySelectorAll('[data-habit-difficulty]').forEach(button=>{
     button.classList.toggle('active',button.dataset.habitDifficulty===habitDraftDifficulty);
@@ -4195,9 +4277,29 @@ function updateHabitEditor(){
   const repeatToggle=document.getElementById('habitRepeatToggle');
   const editingTodo=habitEditorMode==='todo';
   const isWeekly=habitDraftFrequency==='weekly';
+  const yesterdaySection=document.getElementById('habitYesterdaySection');
   frequencySection.hidden=editingTodo;
   repeatRow.hidden=editingTodo||isWeekly;
   targetRow.hidden=false;
+  yesterdaySection.hidden=editingTodo||isWeekly||!editingHabitId||!habitDraftYesterdayDate;
+  if(!yesterdaySection.hidden){
+    const multiple=habitDraftYesterdayTarget>1;
+    document.getElementById('habitYesterdayDate').textContent=
+      habitDraftYesterdayDate.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'short'});
+    document.getElementById('habitYesterdayLabel').textContent=multiple
+      ? 'Progreso de ayer'
+      : '¿Lo cumpliste ayer?';
+    document.getElementById('habitYesterdayChoice').hidden=multiple;
+    document.getElementById('habitYesterdayProgress').hidden=!multiple;
+    yesterdaySection.querySelectorAll('[data-habit-yesterday]').forEach(button=>{
+      button.classList.toggle('active',
+        (button.dataset.habitYesterday==='yes')===(habitDraftYesterdayCount>=habitDraftYesterdayTarget));
+    });
+    document.getElementById('habitYesterdayCount').textContent=habitDraftYesterdayCount;
+    document.getElementById('habitYesterdayTarget').textContent=habitDraftYesterdayTarget;
+    document.getElementById('habitYesterdaySub').disabled=habitDraftYesterdayCount<=0;
+    document.getElementById('habitYesterdayAdd').disabled=habitDraftYesterdayCount>=habitDraftYesterdayTarget;
+  }
   repeatToggle.classList.toggle('active',habitDraftRepeatable&&!isWeekly);
   repeatToggle.setAttribute('aria-pressed',String(habitDraftRepeatable&&!isWeekly));
   repeatToggle.textContent=habitDraftRepeatable&&!isWeekly?'Sí':'No';
@@ -4269,6 +4371,13 @@ function openHabitEditor(id=null){
   habitDraftFrequency=habit?.frequency||'daily';
   habitDraftTarget=habit?.target||1;
   habitDraftRepeatable=habit?.repeatable===true&&habitDraftFrequency==='daily';
+  habitDraftYesterdayDate=editableYesterdayForHabit(habit);
+  habitDraftYesterdayTarget=Math.max(1,Number(habit?.target)||1);
+  habitDraftYesterdayCount=habitDraftYesterdayDate
+    ? Math.min(habitDraftYesterdayTarget,Math.max(0,Number(habitEntryFor(
+        state.habits,habit,habitDraftYesterdayDate,state.config.startDate,
+      ).count)||0))
+    : 0;
   document.getElementById('habitModalTitle').textContent=habit?'Editar hábito':'Nuevo hábito';
   document.getElementById('habitTitle').value=habit?.title||'';
   document.getElementById('habitNotes').value=habit?.notes||'';
@@ -4289,6 +4398,9 @@ function openTodoEditor(id=null){
   habitDraftFrequency='daily';
   habitDraftTarget=Math.min(20,Math.max(1,Math.trunc(Number(todo?.target)||1)));
   habitDraftRepeatable=false;
+  habitDraftYesterdayCount=0;
+  habitDraftYesterdayTarget=1;
+  habitDraftYesterdayDate=null;
   document.getElementById('habitModalTitle').textContent=todo?'Editar tarea':'Nueva tarea';
   document.getElementById('habitTitle').value=todo?.title||'';
   document.getElementById('habitTitle').placeholder='Ej. Pedir cita con el médico';
@@ -4370,8 +4482,13 @@ function saveHabitEditor(){
     showToast('Escribe un nombre para el hábito','dmg');
     return;
   }
-  const normalized=normalizeHabitState(state.habits);
   const wasEditing=Boolean(editingHabitId);
+  const existingHabit=editingHabitId?activeHabitById(editingHabitId):null;
+  const yesterdayChanged=Boolean(
+    existingHabit&&habitDraftYesterdayDate&&
+    applyYesterdayHabitCorrection(existingHabit,habitDraftYesterdayCount)
+  );
+  const normalized=normalizeHabitState(state.habits);
   let savedHabitId=editingHabitId;
   if(editingHabitId){
     const existing=normalized.items.find(habit=>habit.id===editingHabitId);
@@ -4402,7 +4519,9 @@ function saveHabitEditor(){
   });
   closeHabitEditor();
   renderAll();
-  showToast(wasEditing?'Hábito actualizado':'Hábito creado','heal');
+  showToast(wasEditing
+    ? yesterdayChanged?'Hábito actualizado · ayer corregido':'Hábito actualizado'
+    : 'Hábito creado','heal');
 }
 
 function awardFusionDailyHabitListXp(dayKey){
@@ -4862,6 +4981,20 @@ document.getElementById('habitDelete').addEventListener('click',()=>{
   closeHabitEditor();
   renderAll();
   showToast('Hábito eliminado','dmg');
+});
+document.getElementById('habitYesterdaySection').addEventListener('click',event=>{
+  const button=event.target.closest('[data-habit-yesterday]');
+  if(!button) return;
+  habitDraftYesterdayCount=button.dataset.habitYesterday==='yes'?habitDraftYesterdayTarget:0;
+  updateHabitEditor();
+});
+document.getElementById('habitYesterdaySub').addEventListener('click',()=>{
+  habitDraftYesterdayCount=Math.max(0,habitDraftYesterdayCount-1);
+  updateHabitEditor();
+});
+document.getElementById('habitYesterdayAdd').addEventListener('click',()=>{
+  habitDraftYesterdayCount=Math.min(habitDraftYesterdayTarget,habitDraftYesterdayCount+1);
+  updateHabitEditor();
 });
 document.getElementById('todoCompletionCancel').addEventListener('click',closeTodoCompletion);
 document.getElementById('todoCompletionAccept').addEventListener('click',()=>{

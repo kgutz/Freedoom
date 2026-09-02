@@ -36,7 +36,7 @@ export const CLASSES={
   paladin:{
     name:'Paladin',es:'Arquero Sagrado',
     tiers:['Explorador','Paladín','Paladín Real','Paladín Divino'],
-    desc:'Precisión sagrada. Cada flecha (cigarro) solo cuando de verdad toca.',
+    desc:'Precisión sagrada. Cada flecha solo cuando de verdad toca.',
     pal:{A:'#7FA366',B:'#55703F',C:'#E8B44A',Y:'#8A6B47'},
     px:[
       "................",
@@ -104,7 +104,7 @@ export const CLASSES={
   druid:{
     name:'Druid',es:'Curandero',
     tiers:['Iniciado','Druida','Druida Ancestral','Avatar del Bosque'],
-    desc:'Sana el cuerpo día a día y hace crecer algo nuevo donde había ceniza.',
+    desc:'Sana el cuerpo y hace crecer algo nuevo donde había ceniza.',
     pal:{A:'#A8C46B',B:'#7A5C3E',C:'#C4553E'},
     px:[
       "................",

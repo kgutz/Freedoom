@@ -1,4 +1,5 @@
 import { CLASSES, classDataForJourney } from '../data/game-data.js';
+import { heroFaceSource } from '../data/outfit-data.js';
 import {
   JOURNEY_MODE_REDUCTION,
   JOURNEY_MODE_SMOKE_FREE,
@@ -70,12 +71,35 @@ export function createOnboardingController({
   spriteImage,
   onFinish,
 }) {
-  let pillsYes = true;
-  let beerYes = true;
+  let pillsYes = false;
+  let beerYes = false;
   let chosenClass = null;
   let chosenJourneyMode = null;
   let introTimer = null;
   let introSequence = 0;
+
+  const renderPlanCopy = (mode) => {
+    const copy = {
+      [JOURNEY_MODE_REDUCTION]: {
+        kicker: 'PASO 2/3',
+        summary: 'Marca un objetivo realista. Freedom lo reducirá contigo, semana a semana.',
+        start: 'Esta fecha inicia tu primera semana y el combate contra tu primer jefe.',
+      },
+      [JOURNEY_MODE_SMOKE_FREE]: {
+        kicker: 'PASO 2/3',
+        summary: 'Cada día cuenta. Registrarás tu constancia mientras tu héroe se hace más fuerte.',
+        start: 'Esta fecha comienza tu camino y marca el inicio de cada jefe semanal.',
+      },
+      [JOURNEY_MODE_CONTROLLED]: {
+        kicker: 'PASO 2/3',
+        summary: 'Elige tus días permitidos y un límite semanal que puedas mantener.',
+        start: 'Esta fecha inicia tu primera semana de control y el combate contra tu primer jefe.',
+      },
+    }[mode] || {};
+    document.getElementById('obPlanKicker').textContent = copy.kicker || 'PASO 2/3';
+    document.getElementById('obPlanSummary').textContent = copy.summary || '';
+    document.getElementById('obStartNote').textContent = copy.start || '';
+  };
 
   const clearIntroTimer=()=>{
     clearTimeout(introTimer);
@@ -118,31 +142,32 @@ export function createOnboardingController({
           const classData=classDataForJourney(classId,{
             smokeFree:chosenJourneyMode!==JOURNEY_MODE_REDUCTION,
           });
-          return `<div class="cls-card" data-obcls="${classId}">
-      ${spriteImage(classId, 'happy')}
-      <div class="cn">${classData.name}</div>
+          return `<button type="button" class="cls-card" data-obcls="${classId}">
+      <div class="ob-class-art">${spriteImage(classId, 'happy')}</div>
       <div class="ce">${classData.es}</div>
+      <div class="cn">${classData.name}</div>
       <div class="cd">${classData.desc}</div>
-    </div>`;
+      <span class="cls-card-action">Elegir</span>
+    </button>`;
         },
       )
       .join('');
   };
 
   const resetChoices = () => {
-    pillsYes = true;
-    beerYes = true;
+    pillsYes = false;
+    beerYes = false;
     chosenClass = null;
     chosenJourneyMode = null;
     document.querySelectorAll('[data-pills]').forEach((button) => {
-      button.classList.toggle('active', button.dataset.pills === 'yes');
+      button.classList.remove('active');
     });
     document.querySelectorAll('[data-beer]').forEach((button) => {
       if (button.classList.contains('ob-tg')) {
-        button.classList.toggle('active', button.dataset.beer === 'yes');
+        button.classList.remove('active');
       }
     });
-    document.getElementById('obPillsQty').style.display = 'block';
+    document.getElementById('obPillsQty').style.display = 'none';
     document.getElementById('obName').value = '';
     document.querySelectorAll('[data-journey-mode]').forEach((button) => {
       button.classList.remove('active');
@@ -153,8 +178,17 @@ export function createOnboardingController({
         DEFAULT_CONTROLLED_DAYS.includes(Number(button.dataset.controlledDay)),
       );
     });
-    document.getElementById('obControlledWeeklyLimit').value =
-      DEFAULT_CONTROLLED_WEEKLY_LIMIT;
+    [
+      'obStart2',
+      'obLimit',
+      'obControlledWeeklyLimit',
+      'obPills',
+      'obWake',
+      'obSleep',
+      'obDayStart',
+    ].forEach((inputId) => {
+      document.getElementById(inputId).value = '';
+    });
   };
 
   const start = () => {
@@ -163,7 +197,6 @@ export function createOnboardingController({
     document.getElementById('app').style.display = 'none';
     document.getElementById('mainNav').classList.remove('show');
     document.getElementById('onboard').style.display = 'flex';
-    document.getElementById('obStart2').value = todayKey();
     renderHeroes();
     showStep(1);
   };
@@ -207,11 +240,7 @@ export function createOnboardingController({
       document.getElementById('obControlledFields').style.display = controlled
         ? ''
         : 'none';
-      document.getElementById('obStartNote').textContent = controlled
-        ? 'Este día comienza tu primera semana de control y el combate contra tu primer jefe.'
-        : smokeFree
-          ? 'Este día comienza tu camino y marca el inicio de cada jefe semanal.'
-          : 'Este día marca tu semana: cada 7 días, ese mismo día, tu objetivo baja un cigarro.';
+      renderPlanCopy(chosenJourneyMode);
       showStep(3);
     });
   });
@@ -236,10 +265,9 @@ export function createOnboardingController({
     const classData = classDataForJourney(chosenClass,{
       smokeFree:chosenJourneyMode!==JOURNEY_MODE_REDUCTION,
     });
-    document.getElementById('obHeroPreview').innerHTML = spriteImage(
-      chosenClass,
-      'happy',
-    );
+    document.getElementById('obHeroPreview').innerHTML = `
+      <img src="${heroFaceSource(chosenClass)}" alt="Retrato de ${classData.es}">
+    `;
     document.getElementById('obName').value = '';
     document.getElementById('obName').placeholder = `${classData.es}…`;
     showStep(5);
