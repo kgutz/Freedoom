@@ -1204,6 +1204,23 @@
   .boss-medal-detail-actions button{min-height:42px;border-radius:10px;border:1px solid var(--kodak);background:var(--kodak);color:#241C0E;font:400 12px var(--font-display);cursor:pointer}
   .boss-medal-detail-actions button:last-child{background:transparent;color:var(--kodak)}
   .boss-medal-detail-actions[hidden]{display:none}
+  .boss-medal-combat-history{margin-top:18px;text-align:left}
+  .boss-medal-combat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid var(--line);font:400 8px var(--font-display);letter-spacing:.08em}
+  .boss-medal-combat-head span{color:var(--muted)}
+  .boss-medal-combat-head b{color:var(--kodak);font-weight:400}
+  .boss-medal-combat-row{margin-top:8px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+  .boss-medal-combat-row.won{border-color:rgba(105,162,77,.45)}
+  .boss-medal-combat-row.lost{border-color:rgba(187,72,58,.38)}
+  .boss-medal-combat-result{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .boss-medal-combat-result small{color:var(--muted);font:400 7px var(--font-display);letter-spacing:.06em}
+  .boss-medal-combat-result strong{color:var(--ok);font:400 8px var(--font-display)}
+  .boss-medal-combat-row.lost .boss-medal-combat-result strong{color:var(--warn)}
+  .boss-medal-combat-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:9px;padding-top:8px;border-top:1px solid var(--line)}
+  .boss-medal-combat-stats span{display:flex;min-width:0;flex-direction:column;align-items:center;gap:4px;text-align:center}
+  .boss-medal-combat-stats span+span{border-left:1px solid var(--line)}
+  .boss-medal-combat-stats small{color:var(--muted);font:400 6px var(--font-display)}
+  .boss-medal-combat-stats b{color:var(--text);font:400 8px var(--font-display);white-space:nowrap}
+  .boss-medal-combat-empty{margin:0!important;padding:11px;border:1px dashed var(--line);border-radius:9px;color:var(--muted)!important;font-size:10px!important;text-align:center!important}
   .boss-history-divider{height:1px;background:var(--line);margin:20px 0 16px}
   .boss-combat-head{margin-bottom:8px}
   .boss-combat-current{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:14px;width:100%;margin:0 0 14px;padding:2px 5px 5px;border:0;background:transparent;color:var(--text);font-family:inherit;text-align:left;cursor:pointer}.boss-combat-current-art{display:grid;place-items:center;width:78px;height:78px;overflow:hidden;border:1px solid var(--kodak);border-radius:11px;background:#100e0c;box-shadow:0 0 12px rgba(232,180,74,.12)}.boss-combat-current-art img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}.boss-combat-current-art i{place-items:center;width:100%;height:100%;font-style:normal}.boss-combat-current-copy small,.boss-combat-current-copy strong,.boss-combat-current-copy em{display:block}.boss-combat-current-copy small{color:var(--kodak);font:400 9px var(--font-display);letter-spacing:.12em}.boss-combat-current-copy strong{margin-top:6px;font:400 16px var(--font-display);line-height:1.15}.boss-combat-current-copy em{margin-top:6px;color:var(--muted);font-size:10px;font-style:normal}.boss-combat-current:active{transform:scale(.99)}.boss-combat-current:focus-visible{outline:2px solid var(--kodak);outline-offset:2px}

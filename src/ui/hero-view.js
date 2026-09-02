@@ -369,6 +369,33 @@ function quickSkillIcon(classId, level, ability, status = null, used = false, co
   </button>`;
 }
 
+export function bossMedalCombatHistoryMarkup(history, bossIndex, { inCombat = false } = {}) {
+  const entries = (Array.isArray(history) ? history : [])
+    .filter((entry) => Math.max(0, Number(entry?.bossIndex) || 0) === bossIndex)
+    .sort((left, right) => (Number(left?.week) || 0) - (Number(right?.week) || 0));
+  if (!entries.length) {
+    const copy = inCombat
+      ? 'El combate actual sigue en curso. Sus resultados aparecerán aquí al cerrar la semana.'
+      : 'No se conserva un registro detallado de este combate.';
+    return `<section class="boss-medal-combat-history"><div class="boss-medal-combat-head"><span>HISTORIAL DE COMBATE</span><b>0 INTENTOS</b></div><p class="boss-medal-combat-empty">${copy}</p></section>`;
+  }
+  const rows = entries.map((entry, index) => {
+    const heroDamage = Math.max(0, Number(entry?.heroDamage ?? entry?.damage) || 0);
+    const bossDamage = Math.max(0, Number(entry?.bossDamage) || 0);
+    const manaDamage = Math.max(0, Number(entry?.manaDamage) || 0);
+    const won = Boolean(entry?.won);
+    return `<article class="boss-medal-combat-row ${won ? 'won' : 'lost'}">
+      <div class="boss-medal-combat-result"><small>INTENTO ${index + 1} · SEMANA ${Math.max(0, Number(entry?.week) || 0) + 1}</small><strong>${won ? 'VICTORIA' : 'DERROTA'}</strong></div>
+      <div class="boss-medal-combat-stats">
+        <span><small>AL JEFE</small><b>−${heroDamage} HP</b></span>
+        <span><small>RECIBIDO</small><b>${entry?.shielded ? 'BLOQUEADO' : `−${bossDamage} HP`}</b></span>
+        <span><small>MANÁ</small><b>−${manaDamage}</b></span>
+      </div>
+    </article>`;
+  }).join('');
+  return `<section class="boss-medal-combat-history"><div class="boss-medal-combat-head"><span>HISTORIAL DE COMBATE</span><b>${entries.length} ${entries.length === 1 ? 'INTENTO' : 'INTENTOS'}</b></div>${rows}</section>`;
+}
+
 export function renderHeroView({
   document,
   now,

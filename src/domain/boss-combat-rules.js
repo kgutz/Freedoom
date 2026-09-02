@@ -633,7 +633,7 @@ export function reconcileBossCombat({
     next.earlyVictory = null;
   }
 
-  next.history = next.history.slice(-12);
+  next.history = next.history.slice(-120);
   next.spellHits = next.spellHits.filter(
     (hit) => hit && hit.week >= next.week,
   );

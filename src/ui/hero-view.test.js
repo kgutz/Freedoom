@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeSpellStatus,
+  bossMedalCombatHistoryMarkup,
   cooldownStatusLabel,
   createHeroModel,
   didHeroLevelUp,
@@ -13,6 +14,28 @@ import {
   spriteImage,
 } from './hero-view.js';
 import { BOSSES, BOSS_LORE } from '../data/game-data.js';
+
+describe('historial del medallón de jefe', () => {
+  it('muestra únicamente los intentos del jefe seleccionado', () => {
+    const html = bossMedalCombatHistoryMarkup([
+      { week: 0, bossIndex: 0, won: false, heroDamage: 90, bossDamage: 30, manaDamage: 20 },
+      { week: 1, bossIndex: 0, won: true, heroDamage: 150, bossDamage: 0, manaDamage: 0, shielded: true },
+      { week: 2, bossIndex: 1, won: true, heroDamage: 150, bossDamage: 12, manaDamage: 8 },
+    ], 0);
+    expect(html).toContain('2 INTENTOS');
+    expect(html).toContain('INTENTO 1 · SEMANA 1');
+    expect(html).toContain('INTENTO 2 · SEMANA 2');
+    expect(html).toContain('VICTORIA');
+    expect(html).toContain('DERROTA');
+    expect(html).toContain('BLOQUEADO');
+    expect(html).not.toContain('SEMANA 3');
+  });
+
+  it('explica que el combate actual todavía no está cerrado', () => {
+    expect(bossMedalCombatHistoryMarkup([], 1, { inCombat: true }))
+      .toContain('El combate actual sigue en curso');
+  });
+});
 
 const base = (overrides = {}) => ({
   now: new Date(2026, 6, 26, 12),

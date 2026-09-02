@@ -190,6 +190,7 @@ import { renderChartView } from './ui/chart-view.js';
 import { renderTodayView } from './ui/today-view.js';
 import {
   createHeroModel,
+  bossMedalCombatHistoryMarkup,
   didHeroLevelUp,
   nextLogicalDayStart,
   renderHeroView,
@@ -252,7 +253,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.8';
+const APP_VERSION='2.28.9';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -315,7 +316,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     ? `${STORAGE_KEY}:demo-boss-ink-catchup-${LOCAL_DEMO_BOSS_INK_CATCHUP}-v3`
     : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
-    : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v3`
+    : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v4`
   : STORAGE_KEY;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
@@ -953,7 +954,15 @@ function prepareLocalBossDemo(){
     victoryRecorded:false,
     spellHits:[],
     history:Array.from({length:LOCAL_DEMO_BOSSES},(_,index)=>({
-      week:index,bossIndex:index,won:true,damage:150,remainingHp:0
+      week:index,
+      bossIndex:index,
+      won:true,
+      damage:150,
+      heroDamage:150,
+      bossDamage:[34,0,21,46,18][index%5],
+      manaDamage:[20,12,8,26,14][index%5],
+      shielded:index===1,
+      remainingHp:0
     }))
   };
   Object.assign(state,emptyLootState());
@@ -6388,6 +6397,11 @@ function openBossMedalDetail(bossIndex,bossFile){
   document.getElementById('bossMedalDetailState').textContent=defeated?'MEDALLÓN CONSEGUIDO':'EN COMBATE';
   document.getElementById('bossMedalDetailName').textContent=bossName;
   document.getElementById('bossMedalDetailLore').textContent=BOSS_LORE[bossIndex]||'Un enemigo nacido del humo y de las viejas costumbres espera en el camino.';
+  document.getElementById('bossMedalCombatHistory').innerHTML=bossMedalCombatHistoryMarkup(
+    state.game?.bossCombat?.history,
+    bossIndex,
+    {inCombat:!defeated}
+  );
   document.getElementById('bossMedalDetailLock').textContent=defeated?'':'Derrota a este jefe para conseguir, descargar y compartir su medallón.';
   document.getElementById('bossMedalDetailActions').hidden=!defeated;
   detail.classList.toggle('in-combat',!defeated);
