@@ -2,6 +2,7 @@ import {
   HUNT_ENEMIES,
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
+  huntDifficultyForRegion,
   huntDifficultyMinLevel,
   normalizeHuntState,
 } from '../domain/pve-combat-rules.js';
@@ -254,13 +255,14 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const regionLocked = heroLevel < regionMinLevel;
   const regionActive = Boolean(active) && activeRegionId === region.id;
   const energy = huntEnergyDisplay(hunt);
-  const activeDifficulty = active ? HUNT_DIFFICULTIES[active.difficultyId] : null;
+  const activeDifficulty = active ? huntDifficultyForRegion(activeRegionId, active.difficultyId) : null;
   const activeMarkup = regionActive ? `<div class="hunt-region-active" aria-label="Cacería en curso">
     <span>CACERÍA EN CURSO · ${activeDifficulty.name}</span>
     <strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>
     <button type="button" data-resolve-hunt ${nowTimestamp < active.endsAt ? 'disabled' : ''}>${nowTimestamp < active.endsAt ? 'Informe disponible al terminar' : 'VER INFORME'}</button>
   </div>` : '';
-  const difficulties = Object.values(HUNT_DIFFICULTIES).map((difficulty) => {
+  const difficulties = Object.values(HUNT_DIFFICULTIES).map((baseDifficulty) => {
+    const difficulty = huntDifficultyForRegion(region.id, baseDifficulty.id);
     const requiredLevel = huntDifficultyMinLevel(region.id, difficulty.id);
     const levelLocked = heroLevel < requiredLevel;
     return `<button type="button" class="hunt-difficulty ${difficulty.id}${levelLocked ? ' level-locked' : ''}" data-start-hunt="${difficulty.id}" data-hunt-region="${region.id}" ${active || levelLocked || hunt.energy < difficulty.energyCost ? 'disabled' : ''}>

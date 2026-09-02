@@ -83,11 +83,35 @@ export const HUNT_REGIONS = Object.freeze({
     description: 'Un humo encantado devora la voluntad y el tiempo de quienes entran. Rompe los hilos antes de que el búnker reclame otra víctima.',
     art: 'hunt/dead-hours-bunker/region.webp',
     enemies: BUNKER_ENEMIES,
-    difficultyMinLevels: Object.freeze({ easy: 15, medium: 20, hard: 25 }),
-    rewardMultiplier: 1.6,
+    difficultyMinLevels: Object.freeze({ easy: 13, medium: 17, hard: 22 }),
+    difficultyOverrides: Object.freeze({
+      easy: Object.freeze({
+        multiplier: 1.5,
+        attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85 }),
+        energyCost: 3,
+        xp: 26,
+        gold: Object.freeze([24, 38]),
+      }),
+      medium: Object.freeze({
+        multiplier: 1.8,
+        attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, defense: 1.3 }),
+        energyCost: 4,
+        xp: 40,
+        gold: Object.freeze([38, 58]),
+      }),
+      hard: Object.freeze({
+        multiplier: 2.2,
+        attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, constitution: 1.15 }),
+        energyCost: 5,
+        xp: 60,
+        gold: Object.freeze([60, 90]),
+      }),
+    }),
+    rewardMultiplier: 1,
     dropOverrides: Object.freeze({
-      medium: Object.freeze({ fiberChance: 0.4, fiberAmount: Object.freeze([1, 2]), inkChance: 0.3, inkAmount: Object.freeze([1, 1]) }),
-      hard: Object.freeze({ fiberChance: 0.75, fiberAmount: Object.freeze([2, 3]), inkChance: 0.55, inkAmount: Object.freeze([1, 2]) }),
+      easy: Object.freeze({ fiberChance: 0.75, fiberAmount: Object.freeze([1, 2]), inkChance: 0.55, inkAmount: Object.freeze([1, 1]) }),
+      medium: Object.freeze({ fiberChance: 0.8, fiberAmount: Object.freeze([2, 3]), inkChance: 0.65, inkAmount: Object.freeze([1, 2]) }),
+      hard: Object.freeze({ fiberChance: 0.9, fiberAmount: Object.freeze([3, 4]), inkChance: 0.8, inkAmount: Object.freeze([2, 3]) }),
     }),
     bossBloodChance: 0.15,
     victoryMessage: 'Los hilos del Titiritero se quiebran',
@@ -99,11 +123,27 @@ export function huntRegion(regionId = 'fields-of-mist') {
   return HUNT_REGIONS[regionId] || null;
 }
 
-export function huntDifficultyMinLevel(regionId, difficultyId) {
+export function huntDifficultyForRegion(regionId, difficultyId) {
   const region = huntRegion(regionId);
   const difficulty = HUNT_DIFFICULTIES[difficultyId];
-  if (!region || !difficulty) return 0;
-  return safeInteger(region.difficultyMinLevels?.[difficultyId] ?? difficulty.minLevel);
+  if (!region || !difficulty) return null;
+  const override = region.difficultyOverrides?.[difficultyId];
+  const regionalMinLevel = safeInteger(region.difficultyMinLevels?.[difficultyId] ?? difficulty.minLevel);
+  if (!override && regionalMinLevel === difficulty.minLevel) return difficulty;
+  return {
+    ...difficulty,
+    ...override,
+    minLevel: regionalMinLevel,
+    attributeMultipliers: {
+      ...(difficulty.attributeMultipliers || {}),
+      ...(override.attributeMultipliers || {}),
+    },
+  };
+}
+
+export function huntDifficultyMinLevel(regionId, difficultyId) {
+  const difficulty = huntDifficultyForRegion(regionId, difficultyId);
+  return difficulty ? safeInteger(difficulty.minLevel) : 0;
 }
 
 export function huntDropRules(regionId = 'fields-of-mist', difficultyId) {
@@ -588,7 +628,9 @@ function seededRoll(seed) {
 function scaledEnemy(enemy, difficulty) {
   const scale = difficulty.multiplier;
   const attributes = Object.fromEntries(Object.entries(enemy.attributes)
-    .map(([id, value]) => [id, Math.max(1, Math.round(value * scale))]));
+    .map(([id, value]) => [id, Math.max(1, Math.round(
+      value * scale * (Number(difficulty.attributeMultipliers?.[id]) || 1),
+    ))]));
   return enemyStatsFromAttributes(enemy, attributes);
 }
 
@@ -609,8 +651,8 @@ function resourceRatio(current, maximum) {
 export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const region = huntRegion(regionId);
-  const difficulty = HUNT_DIFFICULTIES[difficultyId];
   if (!region) return { ok: false, reason: 'unknown-region', hunt: normalized };
+  const difficulty = huntDifficultyForRegion(region.id, difficultyId);
   if (!difficulty) return { ok: false, reason: 'unknown-difficulty', hunt: normalized };
   const requiredLevel = huntDifficultyMinLevel(region.id, difficulty.id);
   if (safeInteger(level) < requiredLevel) return { ok: false, reason: 'level-locked', requiredLevel, hunt: normalized };
@@ -677,8 +719,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const active = normalized.active;
   if (!active) return { ok: false, reason: 'no-active-hunt', hunt: normalized };
   if (nowTimestamp < active.endsAt) return { ok: false, reason: 'hunt-in-progress', remainingMs: active.endsAt - nowTimestamp, hunt: normalized };
-  const difficulty = HUNT_DIFFICULTIES[active.difficultyId] || HUNT_DIFFICULTIES.easy;
   const region = huntRegion(active.regionId) || HUNT_REGIONS['fields-of-mist'];
+  const difficulty = huntDifficultyForRegion(region.id, active.difficultyId) || HUNT_DIFFICULTIES.easy;
   const random = seededRoll(active.seed);
   const hero = pveHeroStats({ classId, level, allocation, relicBonuses: active.relicBonuses });
   let currentHp = Number.isFinite(active.entryHpRatio)

@@ -49,6 +49,7 @@ import {
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
   grantHabitHuntEnergy,
+  huntDifficultyForRegion,
   huntDropRules,
   huntDifficultyMinLevel,
   syncHabitSetHuntEnergy,
@@ -249,7 +250,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.5';
+const APP_VERSION='2.28.6';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -3648,8 +3649,8 @@ function closeHuntConfirmation(){
 }
 
 function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
-  const difficulty=HUNT_DIFFICULTIES[difficultyId];
   const region=HUNT_REGIONS[regionId];
+  const difficulty=huntDifficultyForRegion(regionId,difficultyId);
   if(!difficulty||!region) return;
   const hunt=normalizeHuntState(state.game.hunt,Date.now(),huntBaseEnergyForToday(new Date()),state.config.dayStartTime);
   const heroLevel=gameStats().lvl;
@@ -3721,7 +3722,7 @@ function confirmHuntStart(){
   state.game.hunt=result.hunt;
   scheduleSave({type:'hunt:start',regionId,difficultyId});
   renderHunt();
-  const durationMinutes=HUNT_DIFFICULTIES[difficultyId].durationMinutes;
+  const durationMinutes=huntDifficultyForRegion(regionId,difficultyId).durationMinutes;
   showToast(`Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
 }
 

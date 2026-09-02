@@ -59,19 +59,19 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
   });
 
-  it('permite explorar el Búnker antes del nivel quince, pero bloquea sus dificultades', () => {
+  it('permite explorar el Búnker antes del nivel trece, pero bloquea sus dificultades', () => {
     const root = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
     renderHuntView({
       document: { getElementById: () => root },
       game: { cls: 'paladin', hunt: null },
-      stats: { lvl: 14 },
+      stats: { lvl: 12 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('Alcanza el nivel 15 para iniciar esta cacería');
+    expect(root.innerHTML).toContain('Alcanza el nivel 13 para iniciar esta cacería');
     expect(root.innerHTML).toContain('Fácil');
-    expect(root.innerHTML).toContain('🔒 Nivel 15');
-    expect(root.innerHTML).toContain('🔒 Nivel 20');
-    expect(root.innerHTML).toContain('🔒 Nivel 25');
+    expect(root.innerHTML).toContain('🔒 Nivel 13');
+    expect(root.innerHTML).toContain('🔒 Nivel 17');
+    expect(root.innerHTML).toContain('🔒 Nivel 22');
   });
 
   it('muestra los niveles requeridos en las dificultades de Campos de la Bruma', () => {
@@ -103,6 +103,9 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('El Consumido');
     expect(root.innerHTML).toContain('El Guardián Empotrado');
     expect(root.innerHTML).toContain('El Titiritero');
+    expect(root.innerHTML).toContain('Fácil</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>3');
+    expect(root.innerHTML).toContain('Medio</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>4');
+    expect(root.innerHTML).toContain('Difícil</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>5');
     expect(root.innerHTML).not.toContain('Brote Engañoso');
     expect(renderHuntMonsterDetail({ document, enemyId: 'dead-hours-puppeteer' })).toBe(true);
     expect(detailRoot.innerHTML).toContain('<h2>El Titiritero</h2>');

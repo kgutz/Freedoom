@@ -5,6 +5,7 @@ import {
   BUNKER_ENEMIES,
   fiberChanceForHunt,
   fiberChanceForProgress,
+  huntDifficultyForRegion,
   huntDropRules,
   inkChanceForProgress,
   grantHabitHuntEnergy,
@@ -494,7 +495,7 @@ describe('PvE combat rules', () => {
     expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 12 });
   });
 
-  it('abre el Búnker como una región independiente a partir del nivel quince', () => {
+  it('abre el Búnker como una región independiente a partir del nivel trece', () => {
     expect(HUNT_REGIONS['dead-hours-bunker'].enemies).toBe(BUNKER_ENEMIES);
     expect(BUNKER_ENEMIES.map((enemy) => enemy.name)).toEqual([
       'El Consumido',
@@ -505,18 +506,46 @@ describe('PvE combat rules', () => {
       hunt: null,
       regionId: 'dead-hours-bunker',
       difficultyId: 'easy',
-      level: 14,
+      level: 12,
     });
-    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 15 });
+    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 13 });
     const started = startHunt({
       hunt: null,
       regionId: 'dead-hours-bunker',
       difficultyId: 'easy',
-      level: 15,
+      level: 13,
       nowTimestamp: 1_000,
     });
     expect(started.ok).toBe(true);
     expect(started.hunt.active.regionId).toBe('dead-hours-bunker');
+  });
+
+  it('intercala el Búnker con niveles, energía y recompensas propias sin alterar la Bruma', () => {
+    expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toBe(HUNT_DIFFICULTIES.hard);
+    expect(huntDifficultyForRegion('dead-hours-bunker', 'easy')).toMatchObject({
+      minLevel: 13,
+      energyCost: 3,
+      xp: 26,
+      gold: [24, 38],
+    });
+    expect(huntDifficultyForRegion('dead-hours-bunker', 'medium')).toMatchObject({
+      energyCost: 4,
+      xp: 40,
+      gold: [38, 58],
+    });
+    expect(huntDifficultyForRegion('dead-hours-bunker', 'hard')).toMatchObject({
+      energyCost: 5,
+      xp: 60,
+      gold: [60, 90],
+    });
+    const started = startHunt({
+      hunt: null,
+      regionId: 'dead-hours-bunker',
+      difficultyId: 'easy',
+      level: 13,
+      nowTimestamp: 1_000,
+    });
+    expect(started.hunt.energy).toBe(7);
   });
 
   it('aumenta la Fibra y la Tinta del Búnker sin alterar el drop de la Bruma', () => {
@@ -526,20 +555,49 @@ describe('PvE combat rules', () => {
       inkChance: 0.25,
       inkAmount: [1, 1],
     });
-    expect(huntDropRules('dead-hours-bunker', 'medium')).toEqual({
-      fiberChance: 0.4,
+    expect(huntDropRules('dead-hours-bunker', 'easy')).toEqual({
+      fiberChance: 0.75,
       fiberAmount: [1, 2],
-      inkChance: 0.3,
+      inkChance: 0.55,
       inkAmount: [1, 1],
     });
-    expect(huntDropRules('dead-hours-bunker', 'hard')).toEqual({
-      fiberChance: 0.75,
+    expect(huntDropRules('dead-hours-bunker', 'medium')).toEqual({
+      fiberChance: 0.8,
       fiberAmount: [2, 3],
-      inkChance: 0.55,
+      inkChance: 0.65,
       inkAmount: [1, 2],
     });
-    expect(fiberChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'medium', defeatedEnemies: 2 })).toBeCloseTo(0.4);
-    expect(inkChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'hard', defeatedEnemies: 2 })).toBeCloseTo(0.55);
+    expect(huntDropRules('dead-hours-bunker', 'hard')).toEqual({
+      fiberChance: 0.9,
+      fiberAmount: [3, 4],
+      inkChance: 0.8,
+      inkAmount: [2, 3],
+    });
+    expect(fiberChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'medium', defeatedEnemies: 2 })).toBeCloseTo(0.8);
+    expect(inkChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'hard', defeatedEnemies: 2 })).toBeCloseTo(0.8);
+  });
+
+  it('entrega la XP y el oro propios del Búnker al resolver la expedición', () => {
+    const now = 25_000;
+    const started = startHunt({
+      hunt: null,
+      regionId: 'dead-hours-bunker',
+      difficultyId: 'easy',
+      level: 50,
+      nowTimestamp: now,
+      seed: 91,
+    });
+    const result = resolveHunt({
+      hunt: started.hunt,
+      classId: 'knight',
+      level: 50,
+      allocation: { strength: 70, defense: 35, constitution: 25, dexterity: 17 },
+      nowTimestamp: now + HUNT_DIFFICULTIES.easy.durationMinutes * 60_000,
+    });
+    expect(result.report.won).toBe(true);
+    expect(result.report.rewards.xp).toBe(26);
+    expect(result.report.rewards.gold).toBeGreaterThanOrEqual(24);
+    expect(result.report.rewards.gold).toBeLessThanOrEqual(38);
   });
 
   it('restaura la energía al cambiar el día y conserva el historial', () => {
