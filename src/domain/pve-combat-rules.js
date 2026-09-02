@@ -1,4 +1,8 @@
 import { attributeSheet } from './attribute-rules.js';
+import {
+  DEFAULT_DAY_START_TIME,
+  logicalDayKey,
+} from './day-boundary-rules.js';
 import { normalizePotionState } from './potion-rules.js';
 
 export const DAILY_HUNT_ENERGY = 10;
@@ -117,13 +121,18 @@ export function huntDropRules(regionId = 'fields-of-mist', difficultyId) {
 
 const safeInteger = (value) => Math.max(0, Math.floor(Number(value) || 0));
 
-export function localHuntDayKey(timestamp = Date.now()) {
-  const date = new Date(timestamp);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+export function localHuntDayKey(timestamp = Date.now(), dayStartTime = DEFAULT_DAY_START_TIME) {
+  return logicalDayKey(new Date(timestamp), dayStartTime);
 }
 
-export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEnergy = DAILY_HUNT_ENERGY) {
-  const energyDay = localHuntDayKey(nowTimestamp);
+export function normalizeHuntState(
+  hunt,
+  nowTimestamp = Date.now(),
+  dailyBaseEnergy = DAILY_HUNT_ENERGY,
+  dayStartTime = hunt?.dayStartTime || DEFAULT_DAY_START_TIME,
+) {
+  const normalizedDayStartTime = dayStartTime || DEFAULT_DAY_START_TIME;
+  const energyDay = localHuntDayKey(nowTimestamp, normalizedDayStartTime);
   const sameDay = hunt?.energyDay === energyDay;
   const storedRewardEnergyRemaining = clamp(
     safeInteger(hunt?.rewardEnergyRemaining),
@@ -239,6 +248,7 @@ export function normalizeHuntState(hunt, nowTimestamp = Date.now(), dailyBaseEne
     : [];
   return {
     energyDay,
+    dayStartTime: normalizedDayStartTime,
     baseEnergy,
     bonusEnergyEarned,
     bonusEnergyRemaining,
@@ -412,7 +422,7 @@ export function fiberChanceForHunt({ hunt, difficultyId, regionId = 'fields-of-m
   if (!dropRules || dropRules.fiberChance <= 0) return 0;
   const dropsToday = normalized.history.filter((report) => (
     Number(report?.rewards?.arcaneFibers) > 0
-    && localHuntDayKey(report.completedAt) === normalized.energyDay
+    && localHuntDayKey(report.completedAt, normalized.dayStartTime) === normalized.energyDay
   )).length;
   return Math.max(0.01, dropRules.fiberChance - dropsToday * 0.06);
 }
@@ -435,7 +445,7 @@ export function inkChanceForProgress({ hunt, difficultyId, regionId = 'fields-of
   if (baseChance <= 0) return 0;
   const dropsToday = normalized.history.filter((report) => (
     Number(report?.rewards?.arcaneInks) > 0
-    && localHuntDayKey(report.completedAt) === normalized.energyDay
+    && localHuntDayKey(report.completedAt, normalized.dayStartTime) === normalized.energyDay
   )).length;
   return Math.max(0.05, baseChance - dropsToday * 0.05);
 }

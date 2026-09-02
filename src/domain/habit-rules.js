@@ -1,5 +1,8 @@
 import { keyOf } from './date-utils.js';
+import { DEFAULT_DAY_START_TIME, logicalDayKey } from './day-boundary-rules.js';
 import { weekIndexFor, weekRangeFor } from './plan-rules.js';
+
+export const HABIT_DAY_BOUNDARY_REPAIR_VERSION = 1;
 
 export const HABIT_XP_CAP_RULES = Object.freeze({
   daily: Object.freeze({ base: 25, scaling: 0.8, hard: 100 }),
@@ -59,6 +62,9 @@ export function normalizeHabitState(value) {
       !Array.isArray(value.dailyCoinBonuses)
         ? value.dailyCoinBonuses
         : {},
+    ...(value.dayBoundaryRepairVersion
+      ? { dayBoundaryRepairVersion: Math.max(0, Number(value.dayBoundaryRepairVersion) || 0) }
+      : {}),
   };
 }
 
@@ -243,6 +249,91 @@ export function habitPeriodKey(habit, date, planStartDate) {
 
 export function habitEntryKey(habitId, periodKey) {
   return `${habitId}|${periodKey}`;
+}
+
+function mergedHabitEntry(previous, moved, periodKey) {
+  if (!previous) return { ...moved, periodKey };
+  const merged = {
+    ...previous,
+    periodKey,
+    count: Math.max(Number(previous.count) || 0, Number(moved.count) || 0),
+    xpAwarded: (Number(previous.xpAwarded) || 0) + (Number(moved.xpAwarded) || 0),
+    extraXpAwarded: (Number(previous.extraXpAwarded) || 0) + (Number(moved.extraXpAwarded) || 0),
+    potionXpAwarded: (Number(previous.potionXpAwarded) || 0) + (Number(moved.potionXpAwarded) || 0),
+    coinsAwarded: (Number(previous.coinsAwarded) || 0) + (Number(moved.coinsAwarded) || 0),
+  };
+  delete merged.xpAwards;
+  delete merged.extraXpAwards;
+  return merged;
+}
+
+export function repairEarlyMorningHabitPeriods({
+  habitState,
+  economy,
+  dayStartTime = DEFAULT_DAY_START_TIME,
+}) {
+  const normalized = normalizeHabitState(habitState);
+  if ((Number(normalized.dayBoundaryRepairVersion) || 0) >= HABIT_DAY_BOUNDARY_REPAIR_VERSION) {
+    return { habitState: normalized, economy, changed: false, moved: 0 };
+  }
+  const entries = { ...normalized.entries };
+  const dailyCoinBonuses = { ...normalized.dailyCoinBonuses };
+  const transactions = Array.isArray(economy?.transactions)
+    ? economy.transactions.map((transaction) => ({ ...transaction }))
+    : [];
+  let moved = 0;
+
+  transactions.forEach((transaction) => {
+    const timestamp = Number(transaction?.at);
+    const date = new Date(timestamp);
+    const storedPeriod = String(transaction?.periodKey || '');
+    if (!timestamp || Number.isNaN(date.getTime()) || !storedPeriod.startsWith('d:')) return;
+    const storedDay = storedPeriod.slice(2);
+    const calendarDay = keyOf(date);
+    const logicalDay = logicalDayKey(date, dayStartTime);
+    if (calendarDay !== storedDay || logicalDay === storedDay) return;
+    const targetPeriod = `d:${logicalDay}`;
+
+    if (transaction.type === 'habit_coin_reward' && transaction.habitId) {
+      const sourceKey = habitEntryKey(transaction.habitId, storedPeriod);
+      const targetKey = habitEntryKey(transaction.habitId, targetPeriod);
+      if (entries[sourceKey]) {
+        entries[targetKey] = mergedHabitEntry(entries[targetKey], entries[sourceKey], targetPeriod);
+        delete entries[sourceKey];
+        moved += 1;
+      }
+      transaction.periodKey = targetPeriod;
+      transaction.id = `habit-coin:${targetKey}`;
+    }
+
+    if (transaction.type === 'habit_all_daily_bonus') {
+      const source = dailyCoinBonuses[storedPeriod];
+      if (source) {
+        const previous = dailyCoinBonuses[targetPeriod];
+        dailyCoinBonuses[targetPeriod] = {
+          periodKey: targetPeriod,
+          coinsAwarded: (Number(previous?.coinsAwarded) || 0) + (Number(source.coinsAwarded) || 0),
+        };
+        delete dailyCoinBonuses[storedPeriod];
+      }
+      transaction.periodKey = targetPeriod;
+      transaction.id = `habit-coin-bonus:${targetPeriod}`;
+    }
+  });
+
+  return {
+    habitState: {
+      ...normalized,
+      entries,
+      dailyCoinBonuses,
+      dayBoundaryRepairVersion: HABIT_DAY_BOUNDARY_REPAIR_VERSION,
+    },
+    economy: economy && typeof economy === 'object'
+      ? { ...economy, transactions }
+      : economy,
+    changed: true,
+    moved,
+  };
 }
 
 export function habitEntryFor(habitState, habit, date, planStartDate) {

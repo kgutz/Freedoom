@@ -334,7 +334,7 @@ export function renderTodayView({
       .map((day) => DAY_NAMES[day].toLowerCase())
       .join(', ');
     document.getElementById('controlledDaysLabel').textContent =
-      `Días permitidos: ${dayNames} · cambian a las 00:00`;
+      `Días permitidos: ${dayNames} · cambian a las ${config.dayStartTime || DEFAULT_DAY_START_TIME}`;
     controlledSummary.classList.toggle(
       'over',
       model.controlledWeekUsed > model.controlledWeeklyLimit,

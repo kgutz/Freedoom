@@ -58,25 +58,14 @@ export function isControlledSmokingDay(config, date) {
 }
 
 export function journeyDayDate(config, now = new Date()) {
-  const calendarDate = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-  );
-  const pending = config?.pendingJourneyTransition;
-  const pendingControlled =
-    normalizeJourneyMode(pending?.journeyMode) === JOURNEY_MODE_CONTROLLED &&
-    pending?.effectiveDate &&
-    pending.effectiveDate <= keyOf(calendarDate);
-  const controlled =
-    pendingControlled ||
-    journeyModeForDate(config, calendarDate) === JOURNEY_MODE_CONTROLLED;
-
-  if (controlled) return calendarDate;
   return logicalDayDate(
     now,
     config?.dayStartTime || DEFAULT_DAY_START_TIME,
   );
+}
+
+export function habitDayDate(config, now = new Date()) {
+  return journeyDayDate(config, now);
 }
 
 export function journeyModeForDate(config, date) {

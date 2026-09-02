@@ -27,6 +27,7 @@ import {
   isControlledMode,
   isControlledSmokingDay,
   isSmokeFreeMode,
+  habitDayDate as habitDateForJourney,
   journeyConfigForDate,
   journeyDayDate,
   applyDueJourneyTransition,
@@ -122,7 +123,8 @@ import {
   nextHabitOrder,
   normalizeHabitInput,
   normalizeHabitState,
-  reorderHabits
+  reorderHabits,
+  repairEarlyMorningHabitPeriods
 } from './domain/habit-rules.js';
 import {
   adjustTodoProgress,
@@ -186,6 +188,7 @@ import { renderTodayView } from './ui/today-view.js';
 import {
   createHeroModel,
   didHeroLevelUp,
+  nextLogicalDayStart,
   renderHeroView,
   renderSkillsView,
   spriteImage
@@ -246,7 +249,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.3';
+const APP_VERSION='2.28.4';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -406,6 +409,12 @@ function currentDayDate(now=new Date()){
 function todayKey(now=new Date()){
   return keyOf(currentDayDate(now));
 }
+function currentHabitDate(now=new Date()){
+  return habitDateForJourney(state.config,now);
+}
+function habitDayKey(now=new Date()){
+  return keyOf(currentHabitDate(now));
+}
 function wakeTimeForDay(key=todayKey()){
   return (state.days[key]&&state.days[key].w)||state.config.wakeTime||'09:00';
 }
@@ -445,7 +454,7 @@ function controlledDayCompleted(key){
   }
   return controlledWeekUsage(date)<=controlledWeeklyLimitOf(dateConfig);
 }
-function applyPendingJourneyTransition(date=new Date()){
+function applyPendingJourneyTransition(date=currentDayDate()){
   const result=applyDueJourneyTransition(state.config,date);
   if(!result.applied) return false;
   state.config=result.config;
@@ -580,11 +589,18 @@ async function load(){
       const legacyDayBoundary=!(saved.config&&saved.config.dayStartTime);
       state=mergeState(state,saved);
       state={...state,...initializeForgeSeed(state)};
+      const habitDayRepair=repairEarlyMorningHabitPeriods({
+        habitState:state.habits,
+        economy:state.economy,
+        dayStartTime:state.config.dayStartTime||DEFAULT_DAY_START_TIME
+      });
+      state.habits=habitDayRepair.habitState;
+      state.economy=habitDayRepair.economy;
       const pioneerMigration=migratePioneerRewardEligibility(state,{existingProfile:true});
       state=pioneerMigration.state;
       const huntBeforeMigration=state.game?.hunt;
       const normalizedHunt=huntBeforeMigration
-        ? normalizeHuntState(huntBeforeMigration,Date.now(),huntBaseEnergyForToday(new Date()))
+        ? normalizeHuntState(huntBeforeMigration,Date.now(),huntBaseEnergyForToday(new Date()),state.config.dayStartTime)
         : null;
       const huntEnergyMigrationChanged=Boolean(normalizedHunt)&&(
         huntBeforeMigration.energyCapacityVersion!==normalizedHunt.energyCapacityVersion||
@@ -592,7 +608,8 @@ async function load(){
         Number(huntBeforeMigration.energy)!==normalizedHunt.energy||
         Number(huntBeforeMigration.bonusEnergyEarned)!==normalizedHunt.bonusEnergyEarned||
         Number(huntBeforeMigration.bonusEnergyRemaining)!==normalizedHunt.bonusEnergyRemaining||
-        Number(huntBeforeMigration.rewardEnergyRemaining||0)!==normalizedHunt.rewardEnergyRemaining
+        Number(huntBeforeMigration.rewardEnergyRemaining||0)!==normalizedHunt.rewardEnergyRemaining||
+        huntBeforeMigration.dayStartTime!==normalizedHunt.dayStartTime
       );
       if(normalizedHunt) state.game.hunt=normalizedHunt;
       setStorageHealth({
@@ -613,8 +630,11 @@ async function load(){
         }
         scheduleSave();
       }
-      else if(pioneerMigration.changed||huntEnergyMigrationChanged){
-        scheduleSave({type:huntEnergyMigrationChanged?'hunt:energy-ledger-migrated':'reward:pioneer-eligibility-migrated'});
+      else if(pioneerMigration.changed||huntEnergyMigrationChanged||habitDayRepair.changed){
+        scheduleSave({
+          type:habitDayRepair.changed?'habit:day-boundary-repaired':huntEnergyMigrationChanged?'hunt:energy-ledger-migrated':'reward:pioneer-eligibility-migrated',
+          moved:habitDayRepair.moved
+        });
       }
     }
   }catch(e){
@@ -789,7 +809,7 @@ function renderHabits(){
     document,
     habitState:state.habits,
     todoState:state.todos,
-    date:currentDayDate(),
+    date:currentHabitDate(),
     planStartDate:state.config.startDate,
     game:state.game,
     stats,
@@ -2032,7 +2052,7 @@ function smokeDamage(){
 /* --- lanzar hechizos --- */
 function pendingDailyHabits(){
   const normalized=normalizeHabitState(state.habits);
-  const periodKey=`d:${todayKey()}`;
+  const periodKey=`d:${habitDayKey()}`;
   return normalized.items.filter(habit=>{
     if(habit.active===false||habit.frequency!=='daily') return false;
     const count=Math.max(0,Number(normalized.entries[`${habit.id}|${periodKey}`]?.count)||0);
@@ -2139,7 +2159,7 @@ function applyFilacteria(spentMana){
   const g=state.game;
   if(g?.cls!=='sorcerer'||gameStats().lvl<12||spentMana<=0) return '';
   const rewards=g.powerProgress=g.powerProgress||{};
-  const week=Math.max(0,weekIndexOf(currentDayDate()));
+  const week=Math.max(0,weekIndexOf(currentHabitDate()));
   const progressKey=`filacteria-mana:${week}`;
   const usesKey=`filacteria-uses:${week}`;
   rewards[progressKey]=(Number(rewards[progressKey])||0)+spentMana;
@@ -2166,8 +2186,8 @@ function castSpell(id,options={}){
     showToast('Nivel '+sp.lvl+' necesario','dmg');
     return;
   }
-  const w=Math.max(0,weekIndexOf(currentDayDate()));
-  const spellDayKey=todayKey();
+  const w=Math.max(0,weekIndexOf(currentHabitDate()));
+  const spellDayKey=habitDayKey();
   reconcileStoredLevelEightHabitChallenge();
   if(sp.lvl===2&&!sp.ulti){
     const availability=levelTwoSpellAvailability({game:g,spellId:sp.id,nowTimestamp:Date.now()});
@@ -2227,7 +2247,7 @@ function castSpell(id,options={}){
     spell:sp,
     level:st.lvl,
     currentWeek:w,
-    today:todayKey(),
+    today:spellDayKey,
     nowTimestamp:now,
     maxHp:st.maxHp,
     maxMp:st.maxMp,
@@ -2331,6 +2351,8 @@ function renderHero(){
   const now=new Date();
   const dayDate=currentDayDate(now);
   const dayKey=todayKey(now);
+  const habitDate=currentHabitDate(now);
+  const currentHabitDayKey=keyOf(habitDate);
   const dailyConfig={...state.config,wakeTime:wakeTimeForDay(dayKey)};
   const stats=gameStats();
   if(didHeroLevelUp(observedHeroLevel,stats.lvl)) pendingHeroLevelUp=true;
@@ -2345,7 +2367,7 @@ function renderHero(){
     config:state.config,
     days:state.days
   });
-  const hunt=normalizeHuntState(state.game.hunt,now.getTime(),huntBaseEnergyForToday(now));
+  const hunt=normalizeHuntState(state.game.hunt,now.getTime(),huntBaseEnergyForToday(now),state.config.dayStartTime);
   renderHeroView({
     document,
     now,
@@ -2357,6 +2379,8 @@ function renderHero(){
     armor:heroArmor(),
     intoxication,
     dayKey,
+    habitDayKey:currentHabitDayKey,
+    habitDate,
     lootState:state,
     huntEnergy:hunt.energy,
     huntEnergyMax:hunt.baseEnergy,
@@ -2566,7 +2590,7 @@ function renderHunt(){
   const stats=game.cls?gameStats():null;
   if(game.cls){
     const nowTimestamp=Date.now();
-    const normalized=normalizeHuntState(game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)));
+    const normalized=normalizeHuntState(game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
     if(JSON.stringify(normalized)!==JSON.stringify(game.hunt||null)){
       game.hunt=normalized;
       scheduleSave();
@@ -2911,7 +2935,7 @@ function showPendingProgressionUpdate(){
   progressionUpdateOpening=true;
   const stats=gameStats();
   const sheet=attributeSheet({classId:state.game.cls,level:stats.lvl,allocation:state.game.attributes});
-  const hunt=normalizeHuntState(state.game.hunt,Date.now(),huntBaseEnergyForToday(new Date()));
+  const hunt=normalizeHuntState(state.game.hunt,Date.now(),huntBaseEnergyForToday(new Date()),state.config.dayStartTime);
   document.getElementById('progressionUpdateLevel').textContent=`NIVEL ${stats.lvl}`;
   document.getElementById('progressionUpdatePoints').textContent=String(sheet.availablePoints);
   document.getElementById('progressionUpdateEnergy').textContent=`${hunt.energy}/${hunt.baseEnergy+hunt.bonusEnergyEarned}`;
@@ -3476,7 +3500,7 @@ document.getElementById('journeyChangeConfirm').addEventListener('click',()=>{
     button=>Number(button.dataset.transitionControlledDay)
   );
   const limit=Math.max(1,parseInt(document.getElementById('journeyTransitionLimit').value,10)||3);
-  const effectiveDate=keyOf(new Date());
+  const effectiveDate=todayKey();
   state.config=scheduleControlledJourneyTransition({
     config:state.config,
     effectiveDate,
@@ -3507,6 +3531,7 @@ document.getElementById('cfgDayStart').addEventListener('change',e=>{
   if(e.target.value){
     state.config.dayStartTime=e.target.value;
     lastDay=todayKey();
+    lastHabitDay=habitDayKey();
     registerDailyWakeEstimate();
     scheduleSave();
     renderAll();
@@ -3626,7 +3651,7 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
   const difficulty=HUNT_DIFFICULTIES[difficultyId];
   const region=HUNT_REGIONS[regionId];
   if(!difficulty||!region) return;
-  const hunt=normalizeHuntState(state.game.hunt,Date.now());
+  const hunt=normalizeHuntState(state.game.hunt,Date.now(),huntBaseEnergyForToday(new Date()),state.config.dayStartTime);
   const heroLevel=gameStats().lvl;
   if(hunt.active){showToast('Ya hay una cacería en curso','bad');return;}
   const requiredLevel=huntDifficultyMinLevel(region.id,difficulty.id);
@@ -3997,14 +4022,14 @@ let habitEditorCloseTimer=null;
 let habitEditorViewportHeight=null;
 let habitEditorResizeHandler=null;
 
-function applyClassHabitRewards({result,habit}){
+function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=currentHabitDate()}){
   const g=state.game;
   if(!g||!g.cls) return '';
   const rewardedProgress=result.xpDelta>0;
-  const key=todayKey();
+  const key=dayKey;
   const lvl=gameStats().lvl;
   const {maxHp,maxMp}=heroMaxes();
-  const week=Math.max(0,weekIndexOf(currentDayDate()));
+  const week=Math.max(0,weekIndexOf(habitDate));
   let rewards=g.powerProgress=g.powerProgress||{};
   rewards.habitEntries=rewards.habitEntries||{};
   const entryKey=`${result.entry.habitId}|${result.entry.periodKey}|${result.entry.count}`;
@@ -4091,7 +4116,7 @@ function applyClassHabitRewards({result,habit}){
   return notices.length?' · '+notices.join(' · '):'';
 }
 
-function applyLevelEightChallengeHabitCompletion({habitId,key=todayKey(),completedAt=Date.now()}){
+function applyLevelEightChallengeHabitCompletion({habitId,key=habitDayKey(),completedAt=Date.now()}){
   const g=state.game;
   if(!g) return '';
   const maxHp=heroMaxes().maxHp;
@@ -4130,9 +4155,9 @@ function applyLevelEightChallengeHabitCompletion({habitId,key=todayKey(),complet
 
 function reconcileStoredLevelEightHabitChallenge(){
   const challenge=state.game?.powerProgress?.habitChallenge;
-  const key=todayKey();
+  const key=habitDayKey();
   if(!challenge||challenge.day!==key||!Array.isArray(challenge.habitIds)||!challenge.habitIds.length) return false;
-  const date=currentDayDate();
+  const date=currentHabitDate();
   let changed=false;
   for(const habitId of challenge.habitIds){
     const active=state.game?.powerProgress?.habitChallenge;
@@ -4498,14 +4523,14 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const smokeFreeMode=usesSmokeFreeSkills(state.config);
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
-    const dayKey=todayKey();
+    const dayKey=habitDayKey();
     const habitXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
     const relicHabitXpActive=habitXpSources.length>0;
     const flatRewardBonus=relicBonuses().habitXpBonus+
       (relicHabitXpActive
         ? habitXpSources.reduce((total,source)=>total+source.value,0)
         : 0);
-    const habitDate=currentDayDate();
+    const habitDate=currentHabitDate();
     const previousHabitEntry=state.habits?.entries?.[`${habit.id}|${habit.frequency==='weekly'
       ? `w:${keyOf(weekRangeFor(state.config.startDate,weekIndexFor(state.config.startDate,habitDate))[0])}`
       : `d:${keyOf(habitDate)}`}`];
@@ -4593,7 +4618,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
     }
     if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
-    if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit});
+    if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit,dayKey,habitDate});
     const rewardTotalsAfter={
       xp:gameStats().xp,
       coins:Number(state.economy?.coins)||0
@@ -5107,9 +5132,8 @@ function handlePotionUse(potionId){
       }
       if(result.reason==='limit'){
         if(potionId==='blood') return 'Podrás preparar más con el próximo jefe';
-        const nextDay=new Date();
-        nextDay.setHours(24,0,0,0);
-        const minutes=Math.max(1,Math.ceil((nextDay.getTime()-Date.now())/60000));
+        const nextDayStart=nextLogicalDayStart(new Date(),state.config.dayStartTime||DEFAULT_DAY_START_TIME);
+        const minutes=Math.max(1,Math.ceil((nextDayStart-Date.now())/60000));
         const hours=Math.floor(minutes/60);
         const rest=minutes%60;
         return `Podrás usarla de nuevo en ${hours?`${hours} h${rest?` ${rest} min`:''}`:`${rest} min`}`;
@@ -6315,16 +6339,21 @@ bindBackupControls({
   showToast
 });
 
-/* refresco cada minuto: mueve la marca "ahora" de la barra de ritmo y
-   cambia de día a medianoche en controlado o a la hora configurada en los demás caminos */
+/* refresco cada minuto: todos los sistemas respetan la hora de corte configurada */
 let lastDay=todayKey();
+let lastHabitDay=habitDayKey();
 function checkDay(){
   syncPeriodicRelicMana(Date.now(),true);
-  if(todayKey()!==lastDay){
-    lastDay=todayKey();
-    scheduleSave({type:'storage:daily-checkpoint',day:lastDay});
+  const currentDay=todayKey();
+  const currentHabitDay=habitDayKey();
+  const journeyDayChanged=currentDay!==lastDay;
+  const habitDayChanged=currentHabitDay!==lastHabitDay;
+  if(journeyDayChanged||habitDayChanged){
+    lastDay=currentDay;
+    lastHabitDay=currentHabitDay;
+    scheduleSave({type:'storage:daily-checkpoint',day:lastDay,habitDay:lastHabitDay});
     renderAll();
-    if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!showPendingDeathModal()) showPendingWeekResult();
+    if(journeyDayChanged&&!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!showPendingDeathModal()) showPendingWeekResult();
   }
   else{renderHoy();renderHero();}
 }

@@ -13,6 +13,7 @@ import {
   HUNT_FORTUNE_BONUS_PERCENT,
   HUNT_REGIONS,
   huntRecoveryRates,
+  localHuntDayKey,
   normalizeHuntState,
   pveHeroStats,
   resolveHunt,
@@ -24,6 +25,15 @@ import {
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it('cambia el día de energía con la hora configurada', () => {
+    expect(localHuntDayKey(new Date(2026, 8, 2, 3, 59).getTime(), '04:00')).toBe('2026-09-01');
+    expect(localHuntDayKey(new Date(2026, 8, 2, 4, 0).getTime(), '04:00')).toBe('2026-09-02');
+    expect(normalizeHuntState(null, new Date(2026, 8, 2, 3, 59).getTime(), 10, '04:00')).toMatchObject({
+      energyDay: '2026-09-01',
+      dayStartTime: '04:00',
+    });
+  });
+
   it('transforma los atributos en estadísticas exclusivas del PvE', () => {
     const hero = pveHeroStats({ classId: 'knight', level: 2, allocation: { constitution: 3 } });
     expect(hero.maxHp).toBe(142);

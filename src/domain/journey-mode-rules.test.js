@@ -12,6 +12,7 @@ import {
   controlledDaysOf,
   controlledWeeklyLimitOf,
   isControlledSmokingDay,
+  habitDayDate,
   journeyDayDate,
   journeyConfigForDate,
   journeyModeForDate,
@@ -44,7 +45,7 @@ describe('modos del viaje', () => {
     expect(isControlledSmokingDay(config, new Date(2026, 7, 6))).toBe(false);
   });
 
-  it('cambia los días controlados a medianoche aunque el corte general sea a las 04:00', () => {
+  it('aplica la hora de corte configurada a todos los caminos', () => {
     const controlled = {
       journeyMode: JOURNEY_MODE_CONTROLLED,
       controlledDays: [5, 6, 0],
@@ -56,8 +57,23 @@ describe('modos del viaje', () => {
     };
 
     const fridayAtOne = new Date(2026, 7, 7, 1, 0);
-    expect(journeyDayDate(controlled, fridayAtOne).getDay()).toBe(5);
+    expect(journeyDayDate(controlled, fridayAtOne).getDay()).toBe(4);
     expect(journeyDayDate(reduction, fridayAtOne).getDay()).toBe(4);
+  });
+
+  it('mantiene consumo y hábitos en el mismo día lógico antes del corte', () => {
+    const controlled = {
+      journeyMode: JOURNEY_MODE_CONTROLLED,
+      controlledDays: [5, 6, 0],
+      dayStartTime: '04:00',
+    };
+    const beforeHabitBoundary = new Date(2026, 8, 2, 3, 0);
+    const afterHabitBoundary = new Date(2026, 8, 2, 4, 0);
+
+    expect(journeyDayDate(controlled, beforeHabitBoundary).getDate()).toBe(1);
+    expect(habitDayDate(controlled, beforeHabitBoundary).getDate()).toBe(1);
+    expect(journeyDayDate(controlled, afterHabitBoundary).getDate()).toBe(2);
+    expect(habitDayDate(controlled, afterHabitBoundary).getDate()).toBe(2);
   });
 
   it('conserva el camino histórico antes de una transición', () => {

@@ -16,6 +16,7 @@ import {
   normalizeHabitState,
   normalizeHabitInput,
   reorderHabits,
+  repairEarlyMorningHabitPeriods,
   sortHabits,
 } from './habit-rules.js';
 import { journeyDayDate } from './journey-mode-rules.js';
@@ -31,6 +32,41 @@ const habit = {
 };
 
 const economy = (coins = 0) => ({ coins, bossBlood: 2, transactions: [] });
+
+it('mueve al día lógico anterior los hábitos guardados de madrugada', () => {
+  const wrongPeriod = 'd:2026-09-02';
+  const correctPeriod = 'd:2026-09-01';
+  const repaired = repairEarlyMorningHabitPeriods({
+    habitState: {
+      items: [habit],
+      entries: {
+        [`water|${wrongPeriod}`]: {
+          habitId: 'water', periodKey: wrongPeriod, frequency: 'daily', count: 2,
+          xpAwarded: 6, coinsAwarded: 3,
+        },
+      },
+    },
+    economy: {
+      coins: 3,
+      transactions: [{
+        id: `habit-coin:water|${wrongPeriod}`,
+        type: 'habit_coin_reward', habitId: 'water', periodKey: wrongPeriod,
+        coins: 3, at: new Date(2026, 8, 2, 3, 0).getTime(),
+      }],
+    },
+    dayStartTime: '04:00',
+  });
+
+  expect(repaired.moved).toBe(1);
+  expect(repaired.habitState.entries[`water|${wrongPeriod}`]).toBeUndefined();
+  expect(repaired.habitState.entries[`water|${correctPeriod}`]).toMatchObject({ count: 2, periodKey: correctPeriod });
+  expect(repaired.economy.transactions[0]).toMatchObject({ periodKey: correctPeriod });
+  expect(repairEarlyMorningHabitPeriods({
+    habitState: repaired.habitState,
+    economy: repaired.economy,
+    dayStartTime: '04:00',
+  }).changed).toBe(false);
+});
 
 function progressWithCoins({
   habitState,

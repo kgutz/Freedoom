@@ -380,6 +380,8 @@ export function renderHeroView({
   armor,
   intoxication,
   dayKey,
+  habitDayKey = dayKey,
+  habitDate = now,
   lootState,
   huntEnergy = 0,
   huntEnergyMax = 10,
@@ -472,10 +474,10 @@ export function renderHeroView({
     .map((ability) => skillIcon(classId, heroStats.lvl, ability, 'pas'))
     .join('');
   const currentWeek = config.startDate
-    ? Math.max(0, weekIndexFor(config.startDate, now))
+    ? Math.max(0, weekIndexFor(config.startDate, habitDate))
     : 0;
   const abilityUiState = (ability) => {
-    const today = dayKey || keyOf(now);
+    const today = habitDayKey || dayKey || keyOf(now);
     const levelEightAvailability = ability.lvl === 8 && !ability.ulti
       ? levelEightSpellAvailability({ game, spellId: ability.id, today, nowTimestamp: now.getTime() })
       : null;
