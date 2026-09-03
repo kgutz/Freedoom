@@ -92,9 +92,34 @@ describe('Fusión de reliquias', () => {
     expect(fusionRecipeStatus('relic_02', 'relic_05').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_04', 'relic_06').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_03', 'relic_06').status).toBe('incompatible');
-    expect(fusionRecipeStatus('relic_01', 'relic_03').status).toBe('not-designed');
+    expect(fusionRecipeStatus('relic_01', 'relic_03')).toMatchObject({
+      status: 'available', definition: { id: 'fusion_09' },
+    });
     expect(fusionRecipeStatus('relic_01', 'relic_01').status).toBe('same-relic');
   });
+
+  it.each([
+    ['fusion_09', 'relic_01', 'relic_03'],
+    ['fusion_10', 'relic_01', 'relic_05'],
+    ['fusion_11', 'relic_01', 'relic_06'],
+    ['fusion_12', 'relic_02', 'relic_03'],
+    ['fusion_13', 'relic_02', 'relic_04'],
+    ['fusion_14', 'relic_02', 'relic_06'],
+    ['fusion_15', 'relic_04', 'relic_05'],
+    ['fusion_16', 'relic_05', 'relic_06'],
+  ])('fusiona la receta nueva %s y conserva ambos efectos',
+    (fusionId, leftId, rightId) => {
+      const result = fuse(fusionState(7), leftId, rightId, `new-${fusionId}`);
+      expect(result.ok).toBe(true);
+      expect(result.inventory.relics[fusionId]).toMatchObject({
+        kind: 'fusion',
+        ingredientIds: expect.arrayContaining([leftId, rightId]),
+        inheritedEffects: {
+          [leftId]: expect.any(Number),
+          [rightId]: expect.any(Number),
+        },
+      });
+    });
 
   it('consume ingredientes, entrega el resultado y conserva valores históricos sin reroll', () => {
     const state = fusionState(2);

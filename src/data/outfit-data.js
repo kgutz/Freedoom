@@ -36,6 +36,18 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     lore: 'Cuenta la leyenda que un Beta Tester dominaba el fuego y el metal. Entre chispas y consejos, ayudó a templar un Freedom más resistente.',
     recipe: Object.freeze({ arcaneFibers: 20, coins: 320 }),
   }),
+  Object.freeze({
+    id: 'celestial-rhythm-master',
+    name: 'Maestro del Ritmo Celestial',
+    rarity: 'mythic',
+    released: true,
+    unlocked: false,
+    craftable: true,
+    assetId: 'celestial-rhythm',
+    transparentPortrait: true,
+    lore: 'Dicen que un Beta Tester aprendió a escuchar la frecuencia oculta de Freedom. Entre máquinas ancestrales, discos de cristal y ritmos capaces de hacer vibrar el oro, convirtió cada expedición en una obra digna de los dioses.',
+    recipe: Object.freeze({ arcaneFibers: 35, coins: 350 }),
+  }),
 ]);
 
 function outfitDefinition(outfitId) {

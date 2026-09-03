@@ -147,4 +147,31 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     const repeated = paintFrame({ state: { ...initial, ...result }, frameId: 'welder-beta', operationId: 'paint-2' });
     expect(repeated).toMatchObject({ ok: false, reason: 'owned' });
   });
+
+  it('compra una sola vez el conjunto mítico con sus costes exactos', () => {
+    const outfitState = stateWithGame();
+    outfitState.economy = { ...outfitState.economy, coins: 350, arcaneFibers: 35 };
+    const outfit = weaveOutfit({ state: outfitState, outfitId: 'celestial-rhythm-master', operationId: 'celestial-outfit' });
+    expect(outfit).toMatchObject({ ok: true, economy: { coins: 0, arcaneFibers: 0 } });
+    expect(outfit.game.outfits.owned['celestial-rhythm-master']).toMatchObject({ source: 'woven' });
+    expect(weaveOutfit({ state: { ...outfitState, ...outfit }, outfitId: 'celestial-rhythm-master', operationId: 'again' }))
+      .toMatchObject({ ok: false, reason: 'owned' });
+
+    const frameState = stateWithGame();
+    frameState.economy = { ...frameState.economy, coins: 350, arcaneInks: 35 };
+    const frame = paintFrame({ state: frameState, frameId: 'celestial-music-studio', operationId: 'celestial-frame' });
+    expect(frame).toMatchObject({ ok: true, economy: { coins: 0, arcaneInks: 0 } });
+    expect(frame.game.frames.owned['celestial-music-studio']).toMatchObject({ source: 'painted' });
+    expect(paintFrame({ state: { ...frameState, ...frame }, frameId: 'celestial-music-studio', operationId: 'again' }))
+      .toMatchObject({ ok: false, reason: 'owned' });
+  });
+
+  it('no descuenta recursos cuando el conjunto mítico no se puede comprar', () => {
+    const initial = stateWithGame();
+    initial.economy = { ...initial.economy, coins: 349, arcaneFibers: 34, arcaneInks: 34 };
+    const outfit = weaveOutfit({ state: initial, outfitId: 'celestial-rhythm-master', operationId: 'poor-outfit' });
+    const frame = paintFrame({ state: initial, frameId: 'celestial-music-studio', operationId: 'poor-frame' });
+    expect(outfit).toMatchObject({ ok: false, reason: 'resources', economy: { coins: 349, arcaneFibers: 34 } });
+    expect(frame).toMatchObject({ ok: false, reason: 'resources', economy: { coins: 349, arcaneInks: 34 } });
+  });
 });

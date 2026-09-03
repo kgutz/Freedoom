@@ -1683,8 +1683,9 @@ export function activateRelicConstancy({
 }) {
   const normalized = syncRelicConstancy(state, { cycleId, outcomes, nowTimestamp });
   const activationKey = constancyActivationKey(cycleId);
-  if (!bossWon) return { ...normalized, activated: false, xp: 0, activationKey };
+  if (!bossWon) return { ...normalized, activated: false, xp: 0, manaPercent: 0, activationKey };
   let xp = 0;
+  let manaPercent = 0;
   const activations = [];
   if (normalized.inventory.constancy.charge >= 6) {
     for (const source of equippedRelicEffectSources(normalized, 'relic_04')) {
@@ -1700,17 +1701,22 @@ export function activateRelicConstancy({
     }
   }
   const fulfilledDays = arrayOf(outcomes).filter((outcome) => outcome === 'hit').length;
-  for (const fusionId of ['fusion_02', 'fusion_05']) {
+  for (const fusionId of ['fusion_02', 'fusion_05', 'fusion_13', 'fusion_15']) {
     if (!normalized.inventory.equipped.includes(fusionId) ||
         fulfilledDays < 6 || normalized.inventory.constancy.charge < 6) continue;
     const definition = fusionDefinition(fusionId);
     const key = `${fusionId}:six-days:${cycleId}`;
     if (!definition || normalized.forge.fusion.weeklyActivations[key]) continue;
-    const bonus = definition.synergy.value;
+    const relicRank = Math.max(1, Math.min(3,
+      Number(normalized.inventory.relics[fusionId]?.rank) || 1));
+    const bonus = Math.max(0, Number(definition.synergy.value) ||
+      Number(definition.synergy.values?.[relicRank]) || 0);
+    const manaBonus = Math.max(0, Number(definition.synergy.manaValues?.[relicRank]) || 0);
     normalized.forge.fusion.weeklyActivations[key] = {
       type: definition.synergy.type, cycleId, relicId: fusionId, xp: bonus, at: nowTimestamp,
     };
     xp += bonus;
+    manaPercent += manaBonus;
     activations.push(key);
   }
   if (activations.length) {
@@ -1723,6 +1729,7 @@ export function activateRelicConstancy({
     ...normalized,
     activated: activations.length > 0,
     xp,
+    manaPercent,
     activationKey,
     activations,
   };

@@ -28,4 +28,14 @@ describe('marcos del héroe', () => {
     expect(isFrameUnlocked('welder-beta', game)).toBe(true);
     expect(heroBackgroundSource('welder-beta', 'paladin', 'hero', game)).toBe('hero_background/welder_beta_forge.webp');
   });
+
+  it('aplica el Estudio Musical Celestial a cualquier clase y superficie', () => {
+    const game = { frames: { owned: { 'celestial-music-studio': { acquiredAt: 1 } } } };
+    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
+      expect(heroBackgroundSource('celestial-music-studio', classId, 'today', game))
+        .toBe('hero_background/celestial_music_studio.webp');
+      expect(heroBackgroundSource('celestial-music-studio', classId, 'habits', game))
+        .toBe('hero_background/celestial_music_studio.webp');
+    }
+  });
 });

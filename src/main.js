@@ -253,7 +253,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.9';
+const APP_VERSION='2.28.10';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -270,6 +270,7 @@ const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
+const LOCAL_DEMO_CELESTIAL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoCelestial')==='1';
 const LOCAL_DEMO_QUIET=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoQuiet')==='1';
 const LOCAL_DEMO_HABIT_PAIR=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHabitPair')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
@@ -303,7 +304,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v2${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
+    ? `${STORAGE_KEY}:demo-control-complete-v3${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_DEMO_CELESTIAL?'-celestial':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
@@ -1045,6 +1046,7 @@ function prepareLocalBossDemo(){
       fusion_08:{rarity:'mythic',affixes:['arcane','discipline']}
     };
     FUSION_RELIC_DEFINITIONS.forEach((definition,index)=>{
+      const demoStyle=demoFusionStyles[definition.id]||{rarity:'rare',affixes:[]};
       const ingredientSnapshots=Object.fromEntries(definition.ingredientIds.map(id=>[
         id,{
           rarity:demoRelics[id]?.rarity||'rare',
@@ -1057,9 +1059,9 @@ function prepareLocalBossDemo(){
         unlocked:true,
         kind:'fusion',
         recipeId:definition.recipeId,
-        rarity:demoFusionStyles[definition.id].rarity,
+        rarity:demoStyle.rarity,
         rank:1,
-        affixes:[...demoFusionStyles[definition.id].affixes],
+        affixes:[...demoStyle.affixes],
         obtainedAt:nowTimestamp+index,
         ingredientSnapshots,
         inheritedEffects:Object.fromEntries(
@@ -1183,7 +1185,13 @@ function prepareLocalBossDemo(){
     const demoMaxes=heroMaxes();
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
-    state.economy={...state.economy,coins:9999,bossBlood:99};
+    state.economy={
+      ...state.economy,
+      coins:9999,
+      bossBlood:99,
+      arcaneFibers:LOCAL_DEMO_CELESTIAL?99:state.economy.arcaneFibers,
+      arcaneInks:LOCAL_DEMO_CELESTIAL?99:state.economy.arcaneInks
+    };
     if(!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!normalizeHabitState(state.habits).items.some(habit=>habit.active!==false)){
       const now=Date.now();
       state.habits={items:[
@@ -1324,6 +1332,9 @@ function syncPeriodicRelicMana(now=Date.now(),notify=false){
       collarRecoverySourcesForKey(todayKey()).some(source=>source.relicId==='fusion_08')){
     state.inventory.dailyActivations[`fusion_08:mana-recovered:${todayKey()}`]=true;
   }
+  if(result.manaRecovered>0&&result.sourceIds.includes('fusion_16')){
+    state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
+  }
   if(timerChanged||result.manaRecovered>0){
     scheduleSave({type:'relic:periodic-mana',recovered:result.manaRecovered,ticks:result.ticks});
   }
@@ -1347,7 +1358,20 @@ function applyFirstDamageRelic(damage,key=todayKey()){
       collarRecoverySourcesForKey(key).some(source=>source.relicId==='fusion_06')){
     state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]=true;
   }
-  return {damage:Math.max(0,damage-reduction),reduction,activationKey:sources.map(source=>source.relicId)};
+  if(reduction>0&&sources.some(source=>source.relicId==='fusion_11')){
+    state.inventory.dailyActivations[`fusion_11:shield-used:${key}`]=true;
+  }
+  let manaRecovered=0;
+  if(reduction>0&&sources.some(source=>source.relicId==='fusion_10')&&
+      canActivateFusionDaily(state,'fusion_10','shield-mana',key)){
+    const manaPercent=fusionSynergyXp('fusion_10');
+    manaRecovered=recoverMana(Math.max(1,Math.round(heroMaxes().maxMp*manaPercent/100)));
+    applyLootSlices(markFusionDaily(state,'fusion_10','shield-mana',key,manaRecovered||true));
+  }
+  return {
+    damage:Math.max(0,damage-reduction),reduction,manaRecovered,
+    activationKey:sources.map(source=>source.relicId)
+  };
 }
 
 function previousDayFailedForKey(key){
@@ -1380,6 +1404,8 @@ function restoreRelicActivation(activationKey){
       const key=sourceId==='relic_01'?`relic_01:${todayKey()}`:`${sourceId}:relic_01:${todayKey()}`;
       delete state.inventory.dailyActivations[key];
       if(sourceId==='fusion_06') delete state.inventory.dailyActivations[`fusion_06:shield-used:${todayKey()}`];
+      if(sourceId==='fusion_10') delete state.forge?.fusion?.dailyActivations?.[`fusion_10:shield-mana:${todayKey()}`];
+      if(sourceId==='fusion_11') delete state.inventory.dailyActivations[`fusion_11:shield-used:${todayKey()}`];
     });
     return;
   }
@@ -1390,6 +1416,20 @@ function awardRelicDayXp(key){
   const sources=availableDailyEffectSources(state,'relic_06',key);
   let amount=sources.reduce((total,source)=>total+source.value,0);
   sources.forEach(source=>{
+    let synergyXp=0;
+    if(source.relicId==='fusion_11'&&state.inventory.dailyActivations[`fusion_11:shield-used:${key}`]){
+      synergyXp=fusionSynergyXp('fusion_11');
+    }
+    if(source.relicId==='fusion_14'&&state.inventory.dailyActivations[`fusion_14:mana-used:${key}`]){
+      synergyXp=fusionSynergyXp('fusion_14');
+    }
+    if(source.relicId==='fusion_16'&&state.inventory.dailyActivations[`fusion_16:mana-recovered:${key}`]){
+      synergyXp=fusionSynergyXp('fusion_16');
+    }
+    if(synergyXp>0){
+      amount+=synergyXp;
+      state.inventory.dailyActivations[`${source.relicId}:synergy-xp:${key}`]=synergyXp;
+    }
     applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],source.value));
   });
   if(previousDayFailedForKey(key)){
@@ -1426,7 +1466,7 @@ function revokeRelicDayXp(key){
       delete state.inventory.dailyActivations[activationKey];
     }
   });
-  for(const fusionId of ['fusion_06','fusion_07','fusion_08']){
+  for(const fusionId of ['fusion_06','fusion_07','fusion_08','fusion_11','fusion_14','fusion_16']){
     const synergyKey=`${fusionId}:synergy-xp:${key}`;
     amount+=Number(state.inventory?.dailyActivations?.[synergyKey])||0;
     delete state.inventory.dailyActivations[synergyKey];
@@ -1725,6 +1765,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     bossesDown:totalBossesDown
   });
   let constancyXp=0;
+  let constancyMana=0;
   const applyConstancyVictory=({week,bossIndex,pips})=>{
     const cycleId=`week-${week}:boss-${bossIndex}`;
     const reward=activateRelicConstancy({
@@ -1738,6 +1779,9 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     if(reward.activated){
       g.bonusXp=(g.bonusXp||0)+reward.xp;
       constancyXp+=reward.xp;
+      if(reward.manaPercent>0){
+        constancyMana+=recoverMana(Math.max(1,Math.round(heroMaxes().maxMp*reward.manaPercent/100)));
+      }
     }
     applyLootSlices(grantBossFiberReward({
       state,
@@ -1859,7 +1903,8 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     scheduleSave();
   }
   if(constancyXp>0){
-    showToast(`🔥 CONSTANCIA COMPLETADA · 6/6 · +${constancyXp} XP`,'heal');
+    const manaNotice=constancyMana>0?` · +${constancyMana} Maná`:'';
+    showToast(`🔥 CONSTANCIA COMPLETADA · 6/6 · +${constancyXp} XP${manaNotice}`,'heal');
   }
   if(g.bossCombat.earlyVictory?.noticePending) queueEarlyVictoryNotice();
   return result.status;
@@ -3828,7 +3873,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.economy.arcaneInks=Math.max(0,Number(state.economy.arcaneInks)||0)+result.report.rewards.arcaneInks;
     state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
     state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
-    state.economy.transactions.push({
+    if(!state.economy.transactions.some(transaction=>transaction?.id===`hunt:${result.report.id}`)) state.economy.transactions.push({
       id:`hunt:${result.report.id}`,
       type:'hunt',
       at:Date.now(),
@@ -4659,10 +4704,24 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const dayKey=habitDayKey();
     const habitXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
     const relicHabitXpActive=habitXpSources.length>0;
+    const protectionSources=availableDailyEffectSources(state,'relic_01',dayKey);
+    const firstHabitManaSources=availableDailyEffectSources(state,'relic_02',dayKey);
+    const firstHabitFusionBonuses=[];
+    if(habitXpSources.some(source=>source.relicId==='fusion_09')&&
+        protectionSources.some(source=>source.relicId==='fusion_09')&&
+        canActivateFusionDaily(state,'fusion_09','protected-first-habit-xp',dayKey)){
+      firstHabitFusionBonuses.push(['fusion_09','protected-first-habit-xp',fusionSynergyXp('fusion_09')]);
+    }
+    if(habitXpSources.some(source=>source.relicId==='fusion_12')&&
+        firstHabitManaSources.some(source=>source.relicId==='fusion_12')&&
+        canActivateFusionDaily(state,'fusion_12','first-habit-mana-xp',dayKey)){
+      firstHabitFusionBonuses.push(['fusion_12','first-habit-mana-xp',fusionSynergyXp('fusion_12')]);
+    }
+    const firstHabitFusionXp=firstHabitFusionBonuses.reduce((total,item)=>total+item[2],0);
     const flatRewardBonus=relicBonuses().habitXpBonus+
       (relicHabitXpActive
         ? habitXpSources.reduce((total,source)=>total+source.value,0)
-        : 0);
+        : 0)+firstHabitFusionXp;
     const habitDate=currentHabitDate();
     const previousHabitEntry=state.habits?.entries?.[`${habit.id}|${habit.frequency==='weekly'
       ? `w:${keyOf(weekRangeFor(state.config.startDate,weekIndexFor(state.config.startDate,habitDate))[0])}`
@@ -4733,6 +4792,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     }
     if(result.xpDelta>0&&relicHabitXpActive){
       applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,habitXpSources,true));
+      firstHabitFusionBonuses.forEach(([fusionId,effect,value])=>{
+        applyLootSlices(markFusionDaily(state,fusionId,effect,dayKey,value));
+      });
     }
     const manaSources=result.xpDelta>0
       ? availableDailyEffectSources(state,'relic_02',dayKey)
@@ -4748,6 +4810,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_07')&&
           collarRecoverySourcesForKey(dayKey).some(source=>source.relicId==='fusion_07')){
         state.inventory.dailyActivations[`fusion_07:mana-used:${dayKey}`]=true;
+      }
+      if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_14')){
+        state.inventory.dailyActivations[`fusion_14:mana-used:${dayKey}`]=true;
       }
     }
     if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);

@@ -43,4 +43,15 @@ describe('outfits de héroe', () => {
       .toBe('outfits/welder-beta/paladin_happy.webp');
     expect(outfitUsesTransparentPortrait('arcane-weave-02')).toBe(true);
   });
+
+  it('mapea las cuatro clases del Maestro del Ritmo Celestial', () => {
+    const game = { outfits: { owned: { 'celestial-rhythm-master': { acquiredAt: 1 } } } };
+    expect(isOutfitUnlocked('celestial-rhythm-master', game)).toBe(true);
+    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
+      expect(heroFaceSource(classId, 'celestial-rhythm-master'))
+        .toBe(`outfits/celestial-rhythm/${classId}_face.webp`);
+      expect(heroSpriteSource(classId, 'happy', 'celestial-rhythm-master'))
+        .toBe(`outfits/celestial-rhythm/${classId}_happy.webp`);
+    }
+  });
 });

@@ -245,6 +245,8 @@ const IMPORT_COMMAND_OUTFITS = Object.freeze({
   'operador-del-nexo': 'arcane-weave-01',
   'arcane-weave-02': 'arcane-weave-02',
   'forjador-del-crisol': 'arcane-weave-02',
+  'celestial-rhythm-master': 'celestial-rhythm-master',
+  'maestro-del-ritmo-celestial': 'celestial-rhythm-master',
 });
 
 const IMPORT_COMMAND_FRAMES = Object.freeze({
@@ -252,6 +254,8 @@ const IMPORT_COMMAND_FRAMES = Object.freeze({
   'corazon-de-freedom': 'beta-tester',
   'santuario-del-crisol': 'welder-beta',
   'welder-beta': 'welder-beta',
+  'celestial-music-studio': 'celestial-music-studio',
+  'estudio-musical-celestial': 'celestial-music-studio',
 });
 
 export function isImportCommand(value) {

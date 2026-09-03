@@ -166,6 +166,28 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('>PINTAR</button>');
   });
 
+  it('muestra el conjunto mítico, sus costes y su naturaleza cosmética en Telar y Pintor', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.game = { cls: 'druid', outfit: 'original', frame: 'original' };
+    state.economy = { ...state.economy, coins: 700, arcaneFibers: 35, arcaneInks: 35 };
+
+    expect(renderOutfitSelector(document, state, 'celestial-rhythm-master', { section: 'weave', context: 'shop' }))
+      .toBe('celestial-rhythm-master');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Maestro del Ritmo Celestial');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('35</b><small>FIBRAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('350</b><small>ORO');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/celestial-rhythm/druid_happy.webp');
+
+    expect(renderOutfitSelector(document, state, 'celestial-music-studio', { section: 'frames', context: 'shop' }))
+      .toBe('celestial-music-studio');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Estudio Musical Celestial');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('35</b><small>TINTAS ARCANAS');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('hero_background/celestial_music_studio.webp');
+  });
+
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
     const document = fakeDocument();
     expect(renderPotionDetail(document, { economy: { coins: 100 } }, 'fortune', { mode: 'shop' })).toBe(true);
@@ -471,16 +493,16 @@ describe('interfaz de inventario y botín', () => {
   });
 
   it('rechaza una segunda incompatible sin alterar la selección y limpia el error al continuar', () => {
-    const first = nextFusionSelection({}, 'relic_01');
-    expect(first).toEqual({ leftId: 'relic_01', rightId: null, errorId: null });
-    const rejected = nextFusionSelection(first, 'relic_03');
-    expect(rejected).toEqual({ leftId: 'relic_01', rightId: null, errorId: 'relic_03' });
-    const compatible = nextFusionSelection(rejected, 'relic_02');
-    expect(compatible).toEqual({ leftId: 'relic_01', rightId: 'relic_02', errorId: null });
-    const restarted = nextFusionSelection(compatible, 'relic_01');
-    expect(restarted).toEqual({ leftId: 'relic_02', rightId: null, errorId: null });
-    const removedSecond = nextFusionSelection(compatible, 'relic_02');
-    expect(removedSecond).toEqual({ leftId: 'relic_01', rightId: null, errorId: null });
+    const first = nextFusionSelection({}, 'relic_02');
+    expect(first).toEqual({ leftId: 'relic_02', rightId: null, errorId: null });
+    const rejected = nextFusionSelection(first, 'relic_05');
+    expect(rejected).toEqual({ leftId: 'relic_02', rightId: null, errorId: 'relic_05' });
+    const compatible = nextFusionSelection(rejected, 'relic_01');
+    expect(compatible).toEqual({ leftId: 'relic_02', rightId: 'relic_01', errorId: null });
+    const restarted = nextFusionSelection(compatible, 'relic_02');
+    expect(restarted).toEqual({ leftId: 'relic_01', rightId: null, errorId: null });
+    const removedSecond = nextFusionSelection(compatible, 'relic_01');
+    expect(removedSecond).toEqual({ leftId: 'relic_02', rightId: null, errorId: null });
     const changedFirst = nextFusionSelection(compatible, 'relic_04');
     expect(changedFirst).toEqual({ leftId: 'relic_04', rightId: null, errorId: null });
   });

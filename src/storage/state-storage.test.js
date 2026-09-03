@@ -169,6 +169,24 @@ describe('compatibilidad del estado', () => {
     expect(restored.shop.purchases[0].operationId).toBe('buy-1');
   });
 
+  it('preserva el conjunto mítico equipado', () => {
+    const current = {
+      ...v34State,
+      game: {
+        ...v34State.game,
+        outfit: 'celestial-rhythm-master',
+        frame: 'celestial-music-studio',
+        outfits: { owned: { 'celestial-rhythm-master': { acquiredAt: 10, source: 'woven' } } },
+        frames: { owned: { 'celestial-music-studio': { acquiredAt: 11, source: 'painted' } } },
+      },
+    };
+    const restored = importBackup(defaultState(), exportBackup(current));
+    expect(restored.game.outfit).toBe('celestial-rhythm-master');
+    expect(restored.game.frame).toBe('celestial-music-studio');
+    expect(restored.game.outfits.owned['celestial-rhythm-master'].source).toBe('woven');
+    expect(restored.game.frames.owned['celestial-music-studio'].source).toBe('painted');
+  });
+
   it('bloquea una regresión que borraría una colección aunque conserve el héroe', () => {
     const protectedState = {
       ...v34State,
