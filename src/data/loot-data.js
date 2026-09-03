@@ -284,9 +284,9 @@ export const FUSION_RELIC_DEFINITIONS = [
     id: 'fusion_08',
     recipeId: 'fusion_recipe_08',
     ingredientIds: ['relic_05', 'relic_07'],
-    name: 'Brazal del Antojo Roto',
+    name: 'Anillo del Antojo Roto',
     equipmentType: 'collar',
-    image: 'relics/fusion_08_brazal_antojo_roto.webp',
+    image: 'relics/fusion_08_anillo_antojo_roto.webp',
     effectLabel: 'Recupera Maná cada 30 minutos y concede XP al recuperarse de un día fallido. Si recuperas Maná durante esa recuperación y completas el día, obtienes XP adicional.',
     synergy: { type: 'recovery-periodic-mana-xp', values: { 1: 10, 2: 14, 3: 18 } },
   },
@@ -425,6 +425,13 @@ export const RELIC_COMBAT_STATS_BY_EQUIPMENT_TYPE = Object.freeze({
 
 export const RELIC_COMBAT_BONUS_BY_RANK = Object.freeze({ 1: 0, 2: 1, 3: 2 });
 
+// Algunos jefes comparten escalón de poder para mantener una progresión coherente
+// con el orden real en que se obtienen sus reliquias.
+export const RELIC_COMBAT_BASE_BONUS = Object.freeze({
+  relic_05: 1,
+  relic_07: 4,
+});
+
 export const FORGE_COSTS = { 2: 50, 3: 100 };
 export const FORGE_BLOOD_REQUIREMENTS = { 2: 1, 3: 2 };
 export const FORGE_PROBABILITIES = {
@@ -467,7 +474,8 @@ export function relicCombatBonus(relicId, rank = 1) {
   const bossIndex = Number.isFinite(definition.bossIndex)
     ? definition.bossIndex
     : Math.max(0, ...ingredientBossIndexes);
-  const progressionBonus = Math.min(4, Math.floor(bossIndex / 3) + 1);
+  const progressionBonus = RELIC_COMBAT_BASE_BONUS[relicId]
+    ?? Math.min(4, Math.floor(bossIndex / 3) + 1);
   return {
     stat,
     value: progressionBonus + RELIC_COMBAT_BONUS_BY_RANK[safeRank],

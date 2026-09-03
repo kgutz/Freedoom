@@ -88,7 +88,11 @@ describe('Fusión de reliquias', () => {
     expect(fusionRecipeStatus('relic_02', 'relic_01').definition.id).toBe('fusion_01');
     expect(fusionRecipeStatus('relic_01', 'relic_07').definition.id).toBe('fusion_06');
     expect(fusionRecipeStatus('relic_02', 'relic_07').definition.id).toBe('fusion_07');
-    expect(fusionRecipeStatus('relic_05', 'relic_07').definition.id).toBe('fusion_08');
+    expect(fusionRecipeStatus('relic_05', 'relic_07').definition).toMatchObject({
+      id: 'fusion_08',
+      name: 'Anillo del Antojo Roto',
+      image: 'relics/fusion_08_anillo_antojo_roto.webp',
+    });
     expect(fusionRecipeStatus('relic_02', 'relic_05').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_04', 'relic_06').status).toBe('incompatible');
     expect(fusionRecipeStatus('relic_03', 'relic_06').status).toBe('incompatible');
@@ -160,7 +164,7 @@ describe('Fusión de reliquias', () => {
 
     expect(equippedRelicBonuses(equipped)).toMatchObject({
       physicalAttack: 1,
-      magicAttack: 3,
+      magicAttack: 2,
       defense: 0,
     });
   });

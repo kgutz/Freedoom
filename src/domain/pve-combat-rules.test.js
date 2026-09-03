@@ -58,7 +58,9 @@ describe('PvE combat rules', () => {
   it('escala la estadística de reliquia con el jefe y con su rango', () => {
     expect(relicCombatBonus('relic_01', 1)).toEqual({ stat: 'defense', value: 1 });
     expect(relicCombatBonus('relic_04', 1)).toEqual({ stat: 'defense', value: 2 });
-    expect(relicCombatBonus('relic_07', 1)).toEqual({ stat: 'magicAttack', value: 3 });
+    expect(relicCombatBonus('relic_03', 1)).toEqual({ stat: 'physicalAttack', value: 1 });
+    expect(relicCombatBonus('relic_05', 1)).toEqual({ stat: 'magicAttack', value: 1 });
+    expect(relicCombatBonus('relic_07', 1)).toEqual({ stat: 'magicAttack', value: 4 });
     expect(relicCombatBonus('relic_12', 1)).toEqual({ stat: 'physicalAttack', value: 4 });
     expect(relicCombatBonus('relic_12', 3)).toEqual({ stat: 'physicalAttack', value: 6 });
     expect(relicCombatBonus('fusion_08', 1)).toEqual({ stat: 'magicAttack', value: 3 });
@@ -70,8 +72,12 @@ describe('PvE combat rules', () => {
       relic_05: { rank: 2 },
     })).toEqual([
       { stat: 'physicalAttack', value: 1 },
-      { stat: 'magicAttack', value: 3 },
+      { stat: 'magicAttack', value: 2 },
     ]);
+    expect(relicCombatBonuses('fusion_08', 1, {
+      relic_05: { rank: 1 },
+      relic_07: { rank: 1 },
+    })).toEqual([{ stat: 'magicAttack', value: 5 }]);
   });
 
   it('aplica defensa y crítico con un mínimo de un punto de daño', () => {
