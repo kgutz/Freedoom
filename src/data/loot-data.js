@@ -163,7 +163,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'collar',
     effectFamily: 'experience',
     image: 'relics/relic_07_collar_ansiedad_rota.webp',
-    effectLabel: 'Después de un día fallido, el siguiente día completado concede experiencia adicional. Una activación por semana.',
+    effectLabel: 'El primer hábito completado del día concede XP adicional.',
     affixPool: ['discipline', 'vitality', 'fortune'],
     valueUnit: 'XP',
   },
@@ -267,8 +267,8 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Nudo del Pulso Libre',
     equipmentType: 'collar',
     image: 'relics/fusion_06_nudo_pulso_libre.webp',
-    effectLabel: 'Reduce la primera fuente de daño del día y concede XP al recuperarse de un día fallido. Si el escudo absorbe daño durante la recuperación y completas el día, obtienes 5 XP adicionales.',
-    synergy: { type: 'recovery-shield-xp', values: { 1: 5, 2: 7, 3: 10 } },
+    effectLabel: 'Reduce el primer daño del día y concede XP con el primer hábito. Completarlo antes de consumir la protección otorga XP adicional.',
+    synergy: { type: 'protected-first-habit-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
     id: 'fusion_07',
@@ -277,8 +277,8 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Brújula del Regreso',
     equipmentType: 'collar',
     image: 'relics/fusion_07_brujula_regreso.webp',
-    effectLabel: 'El primer hábito recupera un porcentaje del Maná máximo y concede XP al recuperarse de un día fallido. Si recuperas Maná durante la recuperación y completas el día, obtienes 5 XP adicionales.',
-    synergy: { type: 'recovery-mana-xp', values: { 1: 5, 2: 7, 3: 10 } },
+    effectLabel: 'El primer hábito recupera Maná y concede XP. Al activar ambos efectos simultáneamente otorga XP adicional.',
+    synergy: { type: 'first-habit-mana-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
     id: 'fusion_08',
@@ -287,8 +287,8 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Anillo del Antojo Roto',
     equipmentType: 'collar',
     image: 'relics/fusion_08_anillo_antojo_roto.webp',
-    effectLabel: 'Recupera Maná cada 30 minutos y concede XP al recuperarse de un día fallido. Si recuperas Maná durante esa recuperación y completas el día, obtienes XP adicional.',
-    synergy: { type: 'recovery-periodic-mana-xp', values: { 1: 10, 2: 14, 3: 18 } },
+    effectLabel: 'El primer hábito concede XP y recupera Maná cada 30 minutos. Completar todos los hábitos diarios otorga XP adicional.',
+    synergy: { type: 'all-daily-habits-xp', values: { 1: 10, 2: 14, 3: 18 } },
   },
   {
     id: 'fusion_09',
@@ -400,7 +400,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_04: { 1: 20, 2: 30, 3: 45 },
   relic_05: { 1: 30, 2: 45, 3: 60 },
   relic_06: { 1: 10, 2: 15, 3: 20 },
-  relic_07: { 1: 20, 2: 30, 3: 45 },
+  relic_07: { 1: 3, 2: 5, 3: 7 },
   relic_08: { 1: 2, 2: 3, 3: 5 },
   relic_09: { 1: 20, 2: 30, 3: 40 },
   relic_10: { 1: 10, 2: 15, 3: 20 },
@@ -429,7 +429,7 @@ export const RELIC_COMBAT_BONUS_BY_RANK = Object.freeze({ 1: 0, 2: 1, 3: 2 });
 // con el orden real en que se obtienen sus reliquias.
 export const RELIC_COMBAT_BASE_BONUS = Object.freeze({
   relic_05: 1,
-  relic_07: 4,
+  relic_07: 2,
 });
 
 export const FORGE_COSTS = { 2: 50, 3: 100 };

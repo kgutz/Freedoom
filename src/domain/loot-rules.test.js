@@ -27,6 +27,9 @@ import {
   rollRelic,
   shopOffers,
   shopPriceForRelic,
+  shopRankFromRoll,
+  shopSalePriceForRelic,
+  sellRelicToShop,
   unequipRelic,
 } from './loot-rules.js';
 import { exportBackup, importBackup } from '../storage/state-storage.js';
@@ -149,6 +152,30 @@ describe('loot de bosses', () => {
     expect(result.forge.fusion.dailyActivations[
       'fusion_04:all-habits:2026-08-15'
     ]).toBe(5);
+  });
+
+  it('aplica al Anillo del Antojo Roto su sinergia de lista completa según rango', () => {
+    const state = emptyLootState();
+    state.inventory.relics.fusion_08 = {
+      id: 'fusion_08', unlocked: true, rarity: 'mythic', rank: 2, affixes: [],
+    };
+    state.inventory.equipped = ['fusion_08'];
+    const items = [{
+      id: 'daily', difficulty: 'hard', frequency: 'daily', target: 1, active: true,
+    }];
+    const entries = {
+      'daily|d:2026-08-15': {
+        habitId: 'daily', periodKey: 'd:2026-08-15', frequency: 'daily', count: 1,
+      },
+    };
+    const result = awardFusionAllHabitsXp({
+      state, habitState: { items, entries }, dayKey: '2026-08-15',
+    });
+    expect(result.activated).toBe(true);
+    expect(result.xp).toBe(14);
+    expect(result.forge.fusion.dailyActivations[
+      'fusion_08:all-habits:2026-08-15'
+    ]).toBe(14);
   });
 
   it('delimita 60/30/10', () => {
@@ -511,6 +538,74 @@ describe('Tienda de reliquias falladas', () => {
     expect(shopPriceForRelic('relic_04', 'failed', 'mythic'))
       .toEqual({ coinPrice: 403, bloodPrice: 2 });
     expect(shopPriceForRelic('relic_06')).toEqual({ coinPrice: 290, bloodPrice: 3 });
+    expect(shopPriceForRelic('relic_04', 'failed', 'rare', 2))
+      .toEqual({ coinPrice: 280, bloodPrice: 3 });
+    expect(shopPriceForRelic('relic_04', 'failed', 'rare', 3))
+      .toEqual({ coinPrice: 380, bloodPrice: 5 });
+  });
+
+  it('paga el 70% del valor en oro según rareza y rango', () => {
+    expect(shopSalePriceForRelic('relic_01', { rarity: 'rare', rank: 1 })).toBe(105);
+    expect(shopSalePriceForRelic('relic_04', { rarity: 'legendary', rank: 2 })).toBe(255);
+    expect(shopSalePriceForRelic('relic_07', { rarity: 'mythic', rank: 3 })).toBe(495);
+    expect(shopSalePriceForRelic('fusion_04', { rarity: 'mythic', rank: 3 })).toBe(0);
+  });
+
+  it('compra una reliquia normal y la pone en circulación en la siguiente rotación', () => {
+    const state = emptyLootState();
+    state.economy.coins = 20;
+    state.economy.bossBlood = 4;
+    state.inventory.relics.relic_01 = {
+      id: 'relic_01', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
+    };
+    const sold = sellRelicToShop({
+      state, relicId: 'relic_01', operationId: 'sale-1', nowTimestamp: NOW,
+    });
+    expect(sold.ok).toBe(true);
+    expect(sold.sale.coinsReceived).toBe(105);
+    expect(sold.economy).toMatchObject({ coins: 125, bossBlood: 4 });
+    expect(sold.inventory.relics.relic_01).toBeUndefined();
+    expect(sold.inventory.collection.relic_01.lastOwnedRecord.rarity).toBe('rare');
+    expect(sold.economy.transactions.at(-1)).toMatchObject({
+      type: 'shop_sale', coins: 105, bossBlood: 0,
+    });
+    expect(shopOffers(sold, NOW)).toEqual([]);
+    const nextRotation = sold.shop.rotation.endsAt;
+    const offer = shopOffers(sold, nextRotation)
+      .find((candidate) => candidate.relicId === 'relic_01');
+    expect(offer).toBeTruthy();
+    expect(offer.source).toBe('sold');
+    expect(offer.relic.rarity).not.toBe('rare');
+  });
+
+  it('no compra reliquias equipadas, fusionadas ni repite una venta', () => {
+    const state = emptyLootState();
+    state.inventory.relics.relic_01 = {
+      id: 'relic_01', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
+    };
+    state.inventory.equipped = ['relic_01'];
+    expect(sellRelicToShop({
+      state, relicId: 'relic_01', operationId: 'blocked', nowTimestamp: NOW,
+    }).reason).toBe('equipped');
+    state.inventory.equipped = [];
+    const sold = sellRelicToShop({
+      state, relicId: 'relic_01', operationId: 'sale-once', nowTimestamp: NOW,
+    });
+    expect(sellRelicToShop({
+      state: sold, relicId: 'relic_01', operationId: 'sale-once', nowTimestamp: NOW,
+    }).reason).toBe('duplicate-operation');
+    expect(sellRelicToShop({
+      state, relicId: 'fusion_04', operationId: 'fusion-sale', nowTimestamp: NOW,
+    }).reason).toBe('fusion');
+  });
+
+  it('sortea los rangos con probabilidades 50/35/15', () => {
+    expect(shopRankFromRoll(0)).toBe(1);
+    expect(shopRankFromRoll(0.4999)).toBe(1);
+    expect(shopRankFromRoll(0.5)).toBe(2);
+    expect(shopRankFromRoll(0.8499)).toBe(2);
+    expect(shopRankFromRoll(0.85)).toBe(3);
+    expect(shopRankFromRoll(0.9999)).toBe(3);
   });
 
   it('compra de forma atómica con oro y Sangre suficientes', () => {

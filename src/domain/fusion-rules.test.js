@@ -315,7 +315,7 @@ describe('Tienda tras una Fusión', () => {
     expect(offers.every((offer) => offer.source === 'fusion-consumed')).toBe(true);
   });
 
-  it('conserva el rango, renueva rareza y efectos, y suma los extras de precio', () => {
+  it('renueva rango, rareza y efectos, y suma los extras de precio', () => {
     const state = fusionState(2);
     state.inventory.relics.relic_01 = {
       unlocked: true, rarity: 'legendary', rank: 2, affixes: ['vitality'], bossIndex: 0,
@@ -327,18 +327,20 @@ describe('Tienda tras una Fusión', () => {
       coinPrice: 188,
       bloodPrice: 1,
     });
-    expect(offer.relic.rank).toBe(2);
+    expect([1, 2, 3]).toContain(offer.relic.rank);
     expect(offer.relic.rarity).not.toBe('legendary');
     expect(offer.relic.affixes).toHaveLength(RARITIES[offer.relic.rarity].affixCount);
     expect(offer.coinPrice).toBe(
-      shopPriceForRelic('relic_01', 'fusion-consumed', offer.relic.rarity).coinPrice,
+      shopPriceForRelic(
+        'relic_01', 'fusion-consumed', offer.relic.rarity, offer.relic.rank,
+      ).coinPrice,
     );
     const bought = purchaseShopRelic({
       state: ensureShopRotation(fused, 100), relicId: 'relic_01', operationId: 'buy', nowTimestamp: 100,
     });
     expect(bought.ok).toBe(true);
     expect(bought.inventory.relics.relic_01).toMatchObject({
-      rarity: offer.relic.rarity, rank: 2, affixes: offer.relic.affixes,
+      rarity: offer.relic.rarity, rank: offer.relic.rank, affixes: offer.relic.affixes,
     });
     expect(shopOffers(bought, 100).some((item) => item.relicId === 'relic_01')).toBe(false);
   });

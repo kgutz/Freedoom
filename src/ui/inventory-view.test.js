@@ -180,6 +180,21 @@ describe('interfaz de inventario y botín', () => {
     expect(renderOutfitSelector(document, state, 'celestial-music-studio', { section: 'frames', context: 'shop' }))
       .toBe(null);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Estudio Musical Celestial');
+
+    expect(renderOutfitSelector(document, state, null, {
+      section: 'weave', context: 'shop', previewUnreleased: true,
+    })).toBe(null);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Maestro del Ritmo Celestial');
+
+    expect(renderOutfitSelector(document, state, 'celestial-rhythm-master', {
+      section: 'owned', context: 'collection', previewUnreleased: true,
+    })).toBe('celestial-rhythm-master');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('PREVISUALIZACIÓN');
+
+    expect(renderOutfitSelector(document, state, null, {
+      section: 'frames', context: 'shop', previewUnreleased: true,
+    })).toBe(null);
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Estudio Musical Celestial');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -555,6 +570,16 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('data-open-forge-relic="relic_03"');
   });
 
+  it('presenta el Collar como una mejora diaria de la Daga', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(7);
+    renderRelicDetail(document, state, 'relic_07');
+    const html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('PODER +2');
+    expect(html).toContain('El primer hábito completado del día concede XP adicional');
+    expect(html).toContain('Valor actual: 3 XP');
+  });
+
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
@@ -681,6 +706,10 @@ describe('interfaz de inventario y botín', () => {
     expect(relicShopHtml).toContain('resource-icon--boss-blood');
     expect(relicShopHtml).not.toContain('resource-icon--arcane-fiber');
     expect(relicShopHtml).not.toContain('resource-icon--arcane-ink');
+    expect(relicShopHtml).toContain('VENDE TUS RELIQUIAS');
+    expect(relicShopHtml).toContain('RECIBES EL 70% EN ORO');
+    expect(relicShopHtml).toContain('data-sell-relic=');
+    expect(relicShopHtml).toContain('No recuperas Sangre de Jefe');
     renderShopView(document, state, 20 * 86400000, { section: 'potions' });
     const potionShopHtml = document.elements.shopBody.innerHTML;
     expect(potionShopHtml).toContain('Brebajes para recuperar fuerzas');
@@ -711,6 +740,8 @@ describe('interfaz de inventario y botín', () => {
     const html = document.elements.shopBody.innerHTML;
     expect(html).toContain('Corazón de Hollín');
     expect(html).toContain('data-buy-relic="relic_01"');
+    expect(html).toContain('data-open-shop-relic="relic_01"');
+    expect(html).toContain('aria-label="Ver detalles de Corazón de Hollín"');
     expect(html).toContain('class="shop-relic-buy"');
     expect(html).toContain('aria-label="Comprar Corazón de Hollín"');
     expect(html).toContain(`<b>${offer.coinPrice}</b>`);
@@ -718,6 +749,15 @@ describe('interfaz de inventario y botín', () => {
     if (offer.relic.rarity === 'mythic') expect(html).toContain('RAREZA +75% ORO');
     if (offer.relic.rarity === 'legendary') expect(html).toContain('RAREZA +35% ORO');
     expect(html).toContain('<b>1</b>');
+    expect(renderRelicDetail(document, state, 'relic_01', {
+      relicOverride: offer.relic,
+      shopPreview: true,
+    })).toBe(true);
+    const detail = document.elements.relicDetailBody.innerHTML;
+    expect(detail).toContain('OFERTA DEL CONTRABANDISTA');
+    expect(detail).toContain('ESTADÍSTICAS DE CACERÍA');
+    expect(detail).toContain('EFECTO PRINCIPAL');
+    expect(detail).toContain('EFECTOS EXTRAS');
   });
 
   it('explica un drop fallado y ofrece ir a la Tienda', () => {

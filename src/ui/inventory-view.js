@@ -21,6 +21,7 @@ import {
   equipRelic,
   normalizeLootState,
   shopOffers,
+  shopSalePriceForRelic,
 } from '../domain/loot-rules.js';
 import { BOSSES } from '../data/game-data.js';
 import {
@@ -87,23 +88,28 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const body = document.getElementById('outfitSelectorBody');
   if (!body) return 'original';
   const shopContext = options.context === 'shop';
+  const previewUnreleased = options.previewUnreleased === true;
+  const isVisible = (definition) => definition.released !== false || previewUnreleased;
+  const isPreviewOnly = (definition) => previewUnreleased && definition?.released === false;
+  const isOutfitAvailable = (outfit) => isOutfitUnlocked(outfit, lootState?.game) || isPreviewOnly(outfit);
+  const isFrameAvailable = (frame) => isFrameUnlocked(frame, lootState?.game) || isPreviewOnly(frame);
   const section = shopContext
     ? (options.section === 'frames' ? 'frames' : 'weave')
     : (options.section === 'frames' ? 'frames' : 'owned');
   const classId = outfitClassId(lootState);
   const equipped = equippedOutfit(lootState?.game?.outfit, lootState?.game);
   const equippedFrameDefinition = equippedFrame(lootState?.game?.frame, lootState?.game);
-  const ownedOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isOutfitUnlocked(outfit, lootState?.game));
-  const craftableOutfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.released !== false && outfit.craftable && outfit.recipe);
-  const ownedFrames = FRAME_DEFINITIONS.filter((frame) => isFrameUnlocked(frame, lootState?.game));
+  const ownedOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isOutfitAvailable(outfit));
+  const craftableOutfits = OUTFIT_DEFINITIONS.filter((outfit) => isVisible(outfit) && outfit.craftable && outfit.recipe);
+  const ownedFrames = FRAME_DEFINITIONS.filter((frame) => isFrameAvailable(frame));
   const visibleFrames = shopContext
-    ? FRAME_DEFINITIONS.filter((frame) => frame.released !== false)
+    ? FRAME_DEFINITIONS.filter((frame) => isVisible(frame))
     : ownedFrames;
   const requested = section === 'frames'
     ? visibleFrames.find((frame) => frame.id === selectedOutfitId)
     : OUTFIT_DEFINITIONS.find((outfit) => (
-      outfit.id === selectedOutfitId && outfit.released !== false
-      && (section === 'weave' ? outfit.craftable : isOutfitUnlocked(outfit, lootState?.game))
+      outfit.id === selectedOutfitId && isVisible(outfit)
+      && (section === 'weave' ? outfit.craftable : isOutfitAvailable(outfit))
     ));
   const selected = requested || null;
   const recipe = section === 'weave' ? selected?.recipe : null;
@@ -112,6 +118,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     && Number(lootState?.economy?.arcaneFibers || 0) >= recipe.arcaneFibers;
   const frameRecipe = section === 'frames' ? selected?.recipe : null;
   const frameOwned = selected ? isFrameUnlocked(selected, lootState?.game) : false;
+  const previewOnly = isPreviewOnly(selected);
   const hasFrameResources = frameRecipe && Number(lootState?.economy?.coins || 0) >= frameRecipe.coins
     && Number(lootState?.economy?.arcaneInks || 0) >= frameRecipe.arcaneInks;
   const selectorModal = body.closest?.('.outfit-selector-modal');
@@ -163,9 +170,9 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           </div>` : ''}
           ${shopContext
             ? (frameRecipe
-              ? `<button type="button" class="outfit-equip-button" data-paint-frame="${selected.id}"${frameOwned || !hasFrameResources ? ' disabled' : ''}>${frameOwned ? 'CONSEGUIDO' : hasFrameResources ? 'PINTAR' : 'FALTAN RECURSOS'}</button>`
+              ? `<button type="button" class="outfit-equip-button" data-paint-frame="${selected.id}"${previewOnly || frameOwned || !hasFrameResources ? ' disabled' : ''}>${previewOnly ? 'PREVISUALIZACIÓN' : frameOwned ? 'CONSEGUIDO' : hasFrameResources ? 'PINTAR' : 'FALTAN RECURSOS'}</button>`
               : `<button type="button" class="outfit-equip-button" disabled>NO DISPONIBLE</button>`)
-            : `<button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`}
+            : `<button type="button" class="outfit-equip-button" data-equip-frame="${selected.id}"${previewOnly || selected.id === equippedFrameDefinition.id ? ' disabled' : ''}>${previewOnly ? 'PREVISUALIZACIÓN' : selected.id === equippedFrameDefinition.id ? 'EQUIPADO' : 'EQUIPAR'}</button>`}
         </section>
       </div>` : `
       <div class="frame-selector-grid" role="listbox" aria-label="${shopContext ? 'Fondos disponibles' : 'Colección de fondos'}">
@@ -195,7 +202,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           <h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
-          <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${selected.id === equipped.id ? ' disabled' : ''}>${selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
+          <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${previewOnly || selected.id === equipped.id ? ' disabled' : ''}>${previewOnly ? 'PREVISUALIZACIÓN' : selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
         </section>
       </div>` : `
       <div class="outfit-selector-grid" role="listbox" aria-label="Colección de outfits">
@@ -220,7 +227,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
             ${resourceValue('coin', recipe.coins, 'ORO')}
             ${resourceValue('arcane-fiber', recipe.arcaneFibers, 'FIBRAS ARCANAS')}
           </div>
-          <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${alreadyOwned || !hasResources ? ' disabled' : ''}>${alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
+          <button type="button" class="outfit-equip-button" data-weave-outfit="${selected.id}"${previewOnly || alreadyOwned || !hasResources ? ' disabled' : ''}>${previewOnly ? 'PREVISUALIZACIÓN' : alreadyOwned ? 'CONSEGUIDO' : 'TEJER'}</button>
         </section>
       </div>` : `
       <div class="outfit-weave-grid" role="listbox" aria-label="Outfits para tejer">
@@ -434,15 +441,15 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_06') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. La recuperación concede ${value('relic_07')} XP y, si el escudo absorbe daño, suma ${synergy} XP al completar el día.`;
+    return `Reduce ${value('relic_01')} HP del primer daño. El primer hábito concede ${value('relic_07')} XP y suma ${synergy} XP si la protección seguía disponible.`;
   }
   if (definition.id === 'fusion_07') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
+    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo y concede ${value('relic_07')} XP. Activar ambos efectos suma ${synergy} XP.`;
   }
   if (definition.id === 'fusion_08') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    return `Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. La recuperación concede ${value('relic_07')} XP y, si recuperas Maná, suma ${synergy} XP al completar el día.`;
+    return `El primer hábito concede ${value('relic_07')} XP. Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Completar todos los hábitos diarios otorga ${synergy} XP adicionales.`;
   }
   if (definition.id === 'fusion_09') {
     const synergy = definition.synergy?.values?.[relic.rank] || 2;
@@ -598,9 +605,9 @@ export function renderCollectionView(document, lootState) {
     </section>`;
 }
 
-export function renderRelicDetail(document, lootState, relicId) {
+export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const normalized = normalizeLootState(lootState);
-  const relic = normalized.inventory.relics[relicId] ||
+  const relic = options.relicOverride || normalized.inventory.relics[relicId] ||
     normalized.inventory.collection[relicId]?.lastOwnedRecord;
   const definition = relicDefinition(relicId);
   const body = document.getElementById('relicDetailBody');
@@ -610,7 +617,9 @@ export function renderRelicDetail(document, lootState, relicId) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const owned = Boolean(normalized.inventory.relics[relicId]);
   const equipped = owned && normalized.inventory.equipped.includes(relicId);
-  const equipmentActions = !owned
+  const equipmentActions = options.shopPreview
+    ? '<div class="relic-not-owned">OFERTA DEL CONTRABANDISTA</div>'
+    : !owned
     ? '<div class="relic-not-owned">DESCUBIERTA · NO POSEÍDA</div>'
     : equipped
     ? `<button type="button" data-unequip-relic="${relicId}">DESEQUIPAR</button>`
@@ -995,10 +1004,14 @@ function shopOfferContext(offer) {
   const rarityPremium = offer.relic.rarity === 'mythic'
     ? 'RAREZA +75% ORO'
     : offer.relic.rarity === 'legendary' ? 'RAREZA +35% ORO' : '';
+  const rankPremium = offer.relic.rank === 3
+    ? 'R3 +150 ORO · +3 SANGRES'
+    : offer.relic.rank === 2 ? 'R2 +50 ORO · +1 SANGRE' : '';
   if (offer.source === 'fusion-consumed') {
-    return ['RECUPERACIÓN +25%', rarityPremium].filter(Boolean).join(' · ');
+    return ['RECUPERACIÓN +25%', rarityPremium, rankPremium].filter(Boolean).join(' · ');
   }
-  return rarityPremium || BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`;
+  return [rarityPremium, rankPremium].filter(Boolean).join(' · ') ||
+    BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`;
 }
 
 export function renderShopView(document, lootState, nowTimestamp = Date.now(), options = {}) {
@@ -1019,12 +1032,14 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
         const lacksBlood = normalized.economy.bossBlood < offer.bloodPrice;
         const buttonText = lacksCoins ? 'FALTA ORO' : lacksBlood ? 'FALTA SANGRE' : 'COMPRAR';
         return `<article class="shop-relic ${rarityClass(offer.relic.rarity)}">
-          ${relicArt(offer.definition)}
-          <div class="shop-relic-copy">
-            <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
-            <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
-            <small>${escapeHtml(shopOfferContext(offer))}</small>
-          </div>
+          <button type="button" class="shop-relic-preview" data-open-shop-relic="${offer.relicId}" aria-label="Ver detalles de ${escapeHtml(offer.definition.name)}">
+            ${relicArt(offer.definition)}
+            <span class="shop-relic-copy">
+              <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
+              <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
+              <small>${escapeHtml(shopOfferContext(offer))}</small>
+            </span>
+          </button>
           <div class="shop-price">
             ${resourceValue('coin', offer.coinPrice)}
             ${resourceValue('boss-blood', offer.bloodPrice)}
@@ -1051,10 +1066,35 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     </section>`;
   const relicShop = `<div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
     ${content}`;
+  const ownedBaseRelics = RELIC_DEFINITIONS
+    .filter((definition) => normalized.inventory.relics[definition.id]);
+  const saleContent = ownedBaseRelics.length
+    ? `<div class="shop-grid shop-sale-grid">${ownedBaseRelics.map((definition) => {
+        const relic = normalized.inventory.relics[definition.id];
+        const rarity = RARITIES[relic.rarity] || RARITIES.rare;
+        const equipped = normalized.inventory.equipped.includes(definition.id);
+        const salePrice = shopSalePriceForRelic(definition.id, relic);
+        return `<article class="shop-relic shop-relic--sale ${rarityClass(relic.rarity)}">
+          <button type="button" class="shop-relic-preview" data-open-relic="${definition.id}" aria-label="Ver detalles de ${escapeHtml(definition.name)}">
+            ${relicArt(definition)}
+            <span class="shop-relic-copy">
+              <h4 title="${escapeHtml(definition.name)}">${escapeHtml(definition.name)}</h4>
+              <span class="rarity-label">${rarity.label} · RANGO ${relic.rank}</span>
+              <small>${equipped ? 'EQUIPADA · DESEQUÍPALA PARA VENDER' : 'EL CONTRABANDISTA PAGA EL 70%'}</small>
+            </span>
+          </button>
+          <div class="shop-price">${resourceValue('coin', salePrice)}</div>
+          <button type="button" class="shop-relic-sell" data-sell-relic="${definition.id}" aria-label="Vender ${escapeHtml(definition.name)} por ${salePrice} de oro"${equipped ? ' disabled' : ''}>${equipped ? 'EQUIPADA' : 'VENDER'}</button>
+        </article>`;
+      }).join('')}</div>`
+    : `<div class="shop-empty shop-sale-empty"><p>No tienes reliquias normales disponibles para vender.</p></div>`;
+  const saleShop = `<div class="shop-heading shop-sale-heading"><span>VENDE TUS RELIQUIAS</span><small>RECIBES EL 70% EN ORO</small></div>
+    <p class="shop-sale-copy">No recuperas Sangre de Jefe. La reliquia podrá volver con otra rareza, rango y efectos en una rotación futura.</p>
+    ${saleContent}`;
   const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
-    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular con una rareza nueva cada 3 días. Las legendarias y míticas cuestan más oro.')}${resources}${relicShop}`;
+    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular. También compra las que quieras vender para traerlas transformadas en futuras rotaciones.')}${resources}${relicShop}${saleShop}`;
     return;
   }
   if (section === 'potions') {

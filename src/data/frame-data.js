@@ -1,3 +1,7 @@
+const LOCAL_CELESTIAL_PREVIEW = typeof window !== 'undefined'
+  && ['localhost', '127.0.0.1'].includes(window.location.hostname)
+  && new URLSearchParams(window.location.search).get('demoCelestial') === '1';
+
 export const FRAME_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'original',
@@ -26,7 +30,7 @@ export const FRAME_DEFINITIONS = Object.freeze([
     name: 'Estudio Musical Celestial',
     rarity: 'mythic',
     image: 'hero_background/celestial_music_studio.webp',
-    released: false,
+    released: LOCAL_CELESTIAL_PREVIEW,
     unlocked: false,
     recipe: Object.freeze({ arcaneInks: 35, coins: 350 }),
     lore: 'En este estudio ancestral, cada nota queda grabada en cristal y oro. Sus máquinas celestiales transforman el ritmo de Freedom en tinta capaz de reescribir el destino.',

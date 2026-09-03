@@ -92,10 +92,11 @@ export function emptyLootState() {
       weaving: { history: [] },
     },
     shop: {
-      schemaVersion: 2,
+      schemaVersion: 3,
       rotation: null,
       lastOfferRarities: {},
       purchases: [],
+      sales: [],
     },
   };
 }
@@ -365,7 +366,7 @@ export function normalizeLootState(state = {}) {
       },
     },
     shop: {
-      schemaVersion: Math.max(2, Number(shop.schemaVersion) || 0),
+      schemaVersion: Math.max(3, Number(shop.schemaVersion) || 0),
       rotation: (() => {
         const rotation = objectOf(shop.rotation);
         if (!Number.isInteger(rotation.period)) return null;
@@ -385,6 +386,9 @@ export function normalizeLootState(state = {}) {
                 Boolean(relicDefinition(id)) && Boolean(RARITIES[quality?.rarity]))
               .map(([id, quality]) => [id, {
                 rarity: quality.rarity,
+                ...(Number.isInteger(quality.rank) && quality.rank >= 1 && quality.rank <= 3
+                  ? { rank: quality.rank }
+                  : {}),
                 affixes: [...new Set(arrayOf(quality.affixes))]
                   .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId]))
                   .slice(0, RARITIES[quality.rarity].affixCount),
@@ -397,6 +401,19 @@ export function normalizeLootState(state = {}) {
           .filter(([id, rarity]) => Boolean(relicDefinition(id)) && Boolean(RARITIES[rarity])),
       ),
       purchases: arrayOf(shop.purchases).map((purchase) => ({ ...purchase })).slice(-100),
+      sales: arrayOf(shop.sales)
+        .filter((sale) => isBaseRelic(sale?.relicId))
+        .map((sale) => ({
+          ...sale,
+          relicId: String(sale.relicId),
+          operationId: String(sale.operationId || ''),
+          coinsReceived: Math.max(0, Math.trunc(Number(sale.coinsReceived) || 0)),
+          at: Math.max(0, Number(sale.at) || 0),
+          availableAt: Math.max(0, Number(sale.availableAt) || 0),
+          ...(sale.reacquiredAt ? { reacquiredAt: Math.max(0, Number(sale.reacquiredAt) || 0) } : {}),
+          ...(sale.reacquiredOperationId ? { reacquiredOperationId: String(sale.reacquiredOperationId) } : {}),
+        }))
+        .slice(-100),
     },
   };
 }
@@ -733,7 +750,7 @@ function failedRelicIds(normalized) {
     .map((definition) => definition.id);
 }
 
-function recoverableRelicIds(normalized) {
+function recoverableRelicIds(normalized, nowTimestamp = Date.now()) {
   const failed = failedRelicIds(normalized);
   const consumed = RELIC_DEFINITIONS
     .filter((definition) =>
@@ -742,7 +759,11 @@ function recoverableRelicIds(normalized) {
       normalized.forge.fusion.history.some((entry) =>
         Boolean(entry.ingredients?.[definition.id])))
     .map((definition) => definition.id);
-  return [...new Set([...failed, ...consumed])];
+  const sold = normalized.shop.sales
+    .filter((sale) => !sale.reacquiredAt && sale.availableAt <= nowTimestamp &&
+      !normalized.inventory.relics[sale.relicId])
+    .map((sale) => sale.relicId);
+  return [...new Set([...failed, ...consumed, ...sold])];
 }
 
 function rotationSelection(relicIds, period) {
@@ -759,6 +780,12 @@ const SHOP_RARITY_COIN_MULTIPLIERS = Object.freeze({
   mythic: 1.75,
 });
 
+const SHOP_RANK_RATES = Object.freeze([
+  { rank: 1, rate: 0.5 },
+  { rank: 2, rate: 0.35 },
+  { rank: 3, rate: 0.15 },
+]);
+
 function shopRarityFromRoll(roll, excludedRarity = '') {
   const candidates = RARITY_ORDER.filter((rarity) => rarity !== excludedRarity);
   const totalRate = candidates.reduce((sum, rarity) => sum + RARITIES[rarity].rate, 0);
@@ -771,6 +798,22 @@ function shopRarityFromRoll(roll, excludedRarity = '') {
   return candidates.at(-1) || 'rare';
 }
 
+export function shopRankFromRoll(roll) {
+  const rankRoll = Math.min(0.999999999, Math.max(0, Number(roll) || 0));
+  let accumulatedRankRate = 0;
+  for (const candidate of SHOP_RANK_RATES) {
+    accumulatedRankRate += candidate.rate;
+    if (rankRoll < accumulatedRankRate) return candidate.rank;
+  }
+  return 1;
+}
+
+function shopRankForOffer(relicId, period, startedAt) {
+  return shopRankFromRoll(
+    deterministicRandom(`shop-quality-v2:${period}:${startedAt}:${relicId}:rank`),
+  );
+}
+
 function shopOfferQuality(relicId, period, startedAt, excludedRarity = '') {
   const definition = relicDefinition(relicId);
   if (!definition) return { rarity: 'rare', affixes: [] };
@@ -780,6 +823,7 @@ function shopOfferQuality(relicId, period, startedAt, excludedRarity = '') {
   const rarity = shopRarityFromRoll(random(), excludedRarity);
   return {
     rarity,
+    rank: shopRankForOffer(relicId, period, startedAt),
     affixes: rollAffixes(definition.affixPool, RARITIES[rarity].affixCount, random),
   };
 }
@@ -788,7 +832,7 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   const normalized = normalizeLootState(lootState);
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
   const previous = normalized.shop.rotation;
-  const pending = recoverableRelicIds(normalized);
+  const pending = recoverableRelicIds(normalized, safeNow);
   const elapsedPeriods = previous && safeNow >= previous.endsAt
     ? Math.floor((safeNow - previous.endsAt) / SHOP_ROTATION_MS) + 1
     : 0;
@@ -811,7 +855,12 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   const previousQualities = objectOf(previous?.offerQualities);
   const offerQualities = Object.fromEntries(relicIds.map((relicId) => {
     if (!periodChanged && previousQualities[relicId]) {
-      return [relicId, previousQualities[relicId]];
+      return [relicId, {
+        ...previousQualities[relicId],
+        rank: Number.isInteger(previousQualities[relicId].rank)
+          ? previousQualities[relicId].rank
+          : shopRankForOffer(relicId, effectivePeriod, startedAt),
+      }];
     }
     const definition = relicDefinition(relicId);
     const outcome = definition
@@ -844,17 +893,31 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   return normalized;
 }
 
-export function shopPriceForRelic(relicId, source = 'failed', rarity = 'rare') {
+export function shopPriceForRelic(relicId, source = 'failed', rarity = 'rare', rank = 1) {
   const definition = relicDefinition(relicId);
   const reward = definition ? bossReward(definition.bossIndex) : null;
   if (!reward) return null;
   const normalCoinPrice = reward.coins * 2;
   const recoveryMultiplier = source === 'fusion-consumed' ? 1.25 : 1;
   const rarityMultiplier = SHOP_RARITY_COIN_MULTIPLIERS[rarity] || 1;
+  const safeRank = Math.min(3, Math.max(1, Math.trunc(Number(rank) || 1)));
+  let rankCoinPrice = 0;
+  let rankBloodPrice = 0;
+  for (let targetRank = 2; targetRank <= safeRank; targetRank += 1) {
+    rankCoinPrice += FORGE_COSTS[targetRank] || 0;
+    rankBloodPrice += FORGE_BLOOD_REQUIREMENTS[targetRank] || 0;
+  }
   return {
-    coinPrice: Math.round(normalCoinPrice * recoveryMultiplier * rarityMultiplier),
-    bloodPrice: reward.bossBlood,
+    coinPrice: Math.round(normalCoinPrice * recoveryMultiplier * rarityMultiplier) + rankCoinPrice,
+    bloodPrice: reward.bossBlood + rankBloodPrice,
   };
+}
+
+export function shopSalePriceForRelic(relicId, relic) {
+  if (!isBaseRelic(relicId) || !relic) return 0;
+  const price = shopPriceForRelic(relicId, 'failed', relic.rarity, relic.rank);
+  if (!price) return 0;
+  return Math.max(0, Math.round((price.coinPrice * 0.7) / 5) * 5);
 }
 
 export function shopOffers(lootState, nowTimestamp = Date.now()) {
@@ -868,12 +931,15 @@ export function shopOffers(lootState, nowTimestamp = Date.now()) {
       const collection = normalized.inventory.collection[relicId];
       const consumed = Boolean(collection?.lastOwnedRecord) &&
         normalized.forge.fusion.history.some((entry) => Boolean(entry.ingredients?.[relicId]));
+      const sale = [...normalized.shop.sales].reverse().find((entry) =>
+        entry.relicId === relicId && !entry.reacquiredAt && entry.availableAt <= nowTimestamp);
       const source = outcome?.status === 'failed'
         ? 'failed'
+        : sale ? 'sold'
         : consumed ? 'fusion-consumed' : null;
       const quality = normalized.shop.rotation.offerQualities?.[relicId];
       const price = definition && source && quality
-        ? shopPriceForRelic(definition.id, source, quality.rarity)
+        ? shopPriceForRelic(definition.id, source, quality.rarity, quality.rank)
         : null;
       if (!definition || !price || !source || normalized.inventory.relics[relicId]) return null;
       const historicalRelic = source === 'failed' ? outcome?.relic : collection.lastOwnedRecord;
@@ -883,6 +949,7 @@ export function shopOffers(lootState, nowTimestamp = Date.now()) {
         relic: normalizeRelicRecord(relicId, {
           ...historicalRelic,
           rarity: quality.rarity,
+          rank: quality.rank,
           affixes: quality.affixes,
         }),
         bossIndex: definition.bossIndex,
@@ -936,6 +1003,23 @@ export function purchaseShopRelic({
       operationId,
     };
   }
+  if (offer.source === 'sold') {
+    let saleIndex = -1;
+    for (let index = normalized.shop.sales.length - 1; index >= 0; index -= 1) {
+      const entry = normalized.shop.sales[index];
+      if (entry.relicId === relicId && !entry.reacquiredAt) {
+        saleIndex = index;
+        break;
+      }
+    }
+    if (saleIndex >= 0) {
+      normalized.shop.sales[saleIndex] = {
+        ...normalized.shop.sales[saleIndex],
+        reacquiredAt: nowTimestamp,
+        reacquiredOperationId: operationId,
+      };
+    }
+  }
   const purchase = {
     id: `shop:${operationId}`,
     operationId,
@@ -956,6 +1040,55 @@ export function purchaseShopRelic({
   });
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   return { ...normalized, ok: true, purchase, relic: normalized.inventory.relics[relicId] };
+}
+
+export function sellRelicToShop({
+  state,
+  relicId,
+  operationId,
+  nowTimestamp = Date.now(),
+}) {
+  const normalized = ensureShopRotation(state, nowTimestamp);
+  if (!operationId) return { ...normalized, ok: false, reason: 'missing-operation' };
+  if (normalized.shop.sales.some((entry) => entry.operationId === operationId) ||
+      normalized.economy.transactions.some((entry) => entry.id === `shop-sale:${operationId}`)) {
+    return { ...normalized, ok: false, reason: 'duplicate-operation' };
+  }
+  if (!isBaseRelic(relicId)) return { ...normalized, ok: false, reason: 'fusion' };
+  const relic = normalized.inventory.relics[relicId];
+  if (!relic) return { ...normalized, ok: false, reason: 'unavailable' };
+  if (normalized.inventory.equipped.includes(relicId)) {
+    return { ...normalized, ok: false, reason: 'equipped' };
+  }
+  const coinsReceived = shopSalePriceForRelic(relicId, relic);
+  if (coinsReceived <= 0) return { ...normalized, ok: false, reason: 'unavailable' };
+  normalized.inventory.collection[relicId] = collectionEntry(
+    relicId,
+    normalized.inventory.collection[relicId],
+    relic,
+  );
+  normalized.inventory.collection[relicId].lastOwnedRecord = relic;
+  delete normalized.inventory.relics[relicId];
+  normalized.economy.coins += coinsReceived;
+  const sale = {
+    id: `shop-sale:${operationId}`,
+    operationId,
+    relicId,
+    relic,
+    coinsReceived,
+    at: nowTimestamp,
+    availableAt: Math.max(nowTimestamp, Number(normalized.shop.rotation?.endsAt) || nowTimestamp),
+  };
+  normalized.shop.sales.push(sale);
+  normalized.shop.sales = normalized.shop.sales.slice(-100);
+  normalized.economy.transactions.push({
+    ...sale,
+    type: 'shop_sale',
+    coins: coinsReceived,
+    bossBlood: 0,
+  });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return { ...normalized, ok: true, sale, relic };
 }
 
 export function payClassChange({
@@ -1844,9 +1977,6 @@ export function awardFusionAllHabitsXp({
   const habits = objectOf(habitState);
   const items = arrayOf(habits.items);
   const entries = { ...objectOf(habits.entries) };
-  if (!canActivateFusionDaily(normalized, 'fusion_04', 'all-habits', dayKey)) {
-    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
-  }
   const daily = items.filter((habit) => habit?.active !== false && habit?.frequency === 'daily');
   const periodKey = `d:${dayKey}`;
   const complete = daily.length > 0 && daily.every((habit) =>
@@ -1855,11 +1985,27 @@ export function awardFusionAllHabitsXp({
   if (!complete) {
     return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
   }
-  // Es una recompensa independiente por completar la lista, no una mejora de
-  // la XP de un hábito concreto. Se persiste en las activaciones de la fusión
-  // para que no consuma el presupuesto diario de XP de hábitos.
-  const xp = 5;
-  const marked = markFusionDaily(normalized, 'fusion_04', 'all-habits', dayKey, xp);
+  // Son recompensas independientes por completar la lista, no mejoras de la
+  // XP de un hábito concreto. Se persisten en las activaciones de cada fusión
+  // para que no consuman el presupuesto diario de XP de hábitos.
+  const rewards = [
+    { id: 'fusion_04', xp: 5 },
+    {
+      id: 'fusion_08',
+      xp: Math.max(0, Number(fusionDefinition('fusion_08')?.synergy?.values?.[
+        Math.max(1, Math.min(3, Number(normalized.inventory.relics.fusion_08?.rank) || 1))
+      ]) || 0),
+    },
+  ].filter(({ id }) => canActivateFusionDaily(normalized, id, 'all-habits', dayKey));
+  if (!rewards.length) {
+    return { ...normalized, habitState: { ...habits, items, entries }, activated: false, xp: 0 };
+  }
+  let marked = normalized;
+  let xp = 0;
+  rewards.forEach((reward) => {
+    xp += reward.xp;
+    marked = markFusionDaily(marked, reward.id, 'all-habits', dayKey, reward.xp);
+  });
   return {
     ...marked,
     habitState: { ...habits, items, entries },

@@ -101,7 +101,9 @@ import {
   payClassChange,
   pendingLootNotice,
   purchaseShopRelic,
+  sellRelicToShop,
   shopOffers,
+  shopSalePriceForRelic,
   syncRelicConstancy,
   unequipRelic
 } from './domain/loot-rules.js';
@@ -253,7 +255,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.12';
+const APP_VERSION='2.28.13';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -271,6 +273,9 @@ const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_CELESTIAL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoCelestial')==='1';
+const LOCAL_DEMO_CLASS=LOCAL_DEMO_HOST&&['knight','paladin','sorcerer','druid'].includes(LOCAL_DEMO_PARAMS.get('demoClass'))
+  ? LOCAL_DEMO_PARAMS.get('demoClass')
+  : '';
 const LOCAL_DEMO_QUIET=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoQuiet')==='1';
 const LOCAL_DEMO_HABIT_PAIR=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHabitPair')==='1';
 const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
@@ -304,7 +309,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
     : LOCAL_DEMO_PROFILE==='control'
-    ? `${STORAGE_KEY}:demo-control-complete-v3${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_DEMO_CELESTIAL?'-celestial':''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
+    ? `${STORAGE_KEY}:demo-control-complete-v3${LOCAL_DEMO_LEVEL?`-level-${LOCAL_DEMO_LEVEL}`:''}${LOCAL_DEMO_ALL_OUTFITS?'-all-outfits':''}${LOCAL_DEMO_CELESTIAL?'-celestial':''}${LOCAL_DEMO_CLASS?`-${LOCAL_DEMO_CLASS}`:''}${LOCAL_PROGRESSION_UPDATE_PREVIEW?'-progression-preview-v2':''}${LOCAL_DEMO_HABIT_PAIR?'-habit-pair-v1':''}`
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
@@ -1137,7 +1142,7 @@ function prepareLocalBossDemo(){
     };
     state.game={
       ...state.game,
-      cls:LOCAL_DEMO_ALL_OUTFITS?'sorcerer':'paladin',
+      cls:LOCAL_DEMO_CLASS||(LOCAL_DEMO_ALL_OUTFITS?'sorcerer':'paladin'),
       name:LOCAL_DEMO_LEVEL?`Héroe de prueba · Nv ${LOCAL_DEMO_LEVEL}`:'Héroe de control',
       bonusXp:LOCAL_DEMO_LEVEL?35*(LOCAL_DEMO_LEVEL-1)*(LOCAL_DEMO_LEVEL-1):250000,
       buffs:{},
@@ -1158,7 +1163,7 @@ function prepareLocalBossDemo(){
       const acquiredAt=Date.now();
       state.game={
         ...state.game,
-        outfit:'arcane-weave-01',
+        outfit:LOCAL_DEMO_CELESTIAL?'celestial-rhythm-master':'arcane-weave-01',
         pioneerReward:{
           ...(state.game.pioneerReward||{}),
           claimedAt:state.game.pioneerReward?.claimedAt||acquiredAt,
@@ -1169,15 +1174,19 @@ function prepareLocalBossDemo(){
           owned:{
             ...(state.game.outfits?.owned||{}),
             'beta-tester':{acquiredAt,source:'demo'},
-            'arcane-weave-01':{acquiredAt,source:'demo'}
+            'arcane-weave-01':{acquiredAt,source:'demo'},
+            'arcane-weave-02':{acquiredAt,source:'demo'},
+            ...(LOCAL_DEMO_CELESTIAL?{'celestial-rhythm-master':{acquiredAt,source:'demo'}}:{})
           }
         },
-        frame:'beta-tester',
+        frame:LOCAL_DEMO_CELESTIAL?'celestial-music-studio':'beta-tester',
         frames:{
           ...(state.game.frames||{}),
           owned:{
             ...(state.game.frames?.owned||{}),
-            'beta-tester':{acquiredAt,source:'demo'}
+            'beta-tester':{acquiredAt,source:'demo'},
+            'welder-beta':{acquiredAt,source:'demo'},
+            ...(LOCAL_DEMO_CELESTIAL?{'celestial-music-studio':{acquiredAt,source:'demo'}}:{})
           }
         }
       };
@@ -1226,15 +1235,14 @@ function storedRelicXp(){
   const relicXp=Object.entries(state.inventory?.dailyActivations||{})
     .filter(([key,value])=>(
       key.startsWith('relic_06:')||key.includes(':relic_06:')||
-      key.startsWith('relic_07:')||key.includes(':relic_07:')||
       key.includes(':synergy-xp:')||
       ((key.startsWith('relic_11:')||key.includes(':relic_11:'))&&
         !legacyEntries[`relic_11|d:${key.split(':').pop()}`])
     )&&Number(value)>0)
     .reduce((total,[,value])=>total+Number(value),0);
   const fusionXp=Object.entries(state.forge?.fusion?.dailyActivations||{})
-    .filter(([key,value])=>key.startsWith('fusion_04:all-habits:')&&
-      !legacyEntries[`fusion_04|d:${key.split(':').pop()}`]&&Number(value)>0)
+    .filter(([key,value])=>/^(fusion_04|fusion_08):all-habits:/.test(key)&&
+      !legacyEntries[`${key.split(':')[0]}|d:${key.split(':').pop()}`]&&Number(value)>0)
     .reduce((total,[,value])=>total+Number(value),0);
   return relicXp+fusionXp;
 }
@@ -1328,10 +1336,6 @@ function syncPeriodicRelicMana(now=Date.now(),notify=false){
   applyLootSlices(result);
   state.game.mp=result.mana;
   const timerChanged=previousTimer!==JSON.stringify(state.inventory?.periodicEffects?.manaRecovery||null);
-  if(result.manaRecovered>0&&result.sourceIds.includes('fusion_08')&&
-      collarRecoverySourcesForKey(todayKey()).some(source=>source.relicId==='fusion_08')){
-    state.inventory.dailyActivations[`fusion_08:mana-recovered:${todayKey()}`]=true;
-  }
   if(result.manaRecovered>0&&result.sourceIds.includes('fusion_16')){
     state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
   }
@@ -1354,10 +1358,6 @@ function applyFirstDamageRelic(damage,key=todayKey()){
   }
   const reduction=Math.min(damage,sources.reduce((total,source)=>total+source.value,0));
   applyLootSlices(markDailyEffectSources(state,'relic_01',key,sources,true));
-  if(reduction>0&&sources.some(source=>source.relicId==='fusion_06')&&
-      collarRecoverySourcesForKey(key).some(source=>source.relicId==='fusion_06')){
-    state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]=true;
-  }
   if(reduction>0&&sources.some(source=>source.relicId==='fusion_11')){
     state.inventory.dailyActivations[`fusion_11:shield-used:${key}`]=true;
   }
@@ -1374,22 +1374,6 @@ function applyFirstDamageRelic(damage,key=todayKey()){
   };
 }
 
-function previousDayFailedForKey(key){
-  const previousDate=parseKey(key);
-  previousDate.setDate(previousDate.getDate()-1);
-  return smokeFreeStatusOf(getDay(keyOf(previousDate)))===SMOKE_FREE_STATUS_SMOKED;
-}
-
-function collarRecoveryWeekKey(key){
-  return `week-${Math.max(0,weekIndexOf(parseKey(key)))}`;
-}
-
-function collarRecoverySourcesForKey(key){
-  return previousDayFailedForKey(key)
-    ? availableDailyEffectSources(state,'relic_07',collarRecoveryWeekKey(key))
-    : [];
-}
-
 function fusionSynergyXp(fusionId){
   const relic=state.inventory?.relics?.[fusionId];
   const values=relicDefinition(fusionId)?.synergy?.values||{};
@@ -1403,7 +1387,6 @@ function restoreRelicActivation(activationKey){
     activationKey.forEach(sourceId=>{
       const key=sourceId==='relic_01'?`relic_01:${todayKey()}`:`${sourceId}:relic_01:${todayKey()}`;
       delete state.inventory.dailyActivations[key];
-      if(sourceId==='fusion_06') delete state.inventory.dailyActivations[`fusion_06:shield-used:${todayKey()}`];
       if(sourceId==='fusion_10') delete state.forge?.fusion?.dailyActivations?.[`fusion_10:shield-mana:${todayKey()}`];
       if(sourceId==='fusion_11') delete state.inventory.dailyActivations[`fusion_11:shield-used:${todayKey()}`];
     });
@@ -1432,22 +1415,6 @@ function awardRelicDayXp(key){
     }
     applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],source.value));
   });
-  if(previousDayFailedForKey(key)){
-    const weekKey=collarRecoveryWeekKey(key);
-    const recoverySources=availableDailyEffectSources(state,'relic_07',weekKey);
-    recoverySources.forEach(source=>{
-      amount+=source.value;
-      let synergyXp=0;
-      if(source.relicId==='fusion_06'&&state.inventory.dailyActivations[`fusion_06:shield-used:${key}`]) synergyXp=fusionSynergyXp('fusion_06');
-      if(source.relicId==='fusion_07'&&state.inventory.dailyActivations[`fusion_07:mana-used:${key}`]) synergyXp=fusionSynergyXp('fusion_07');
-      if(source.relicId==='fusion_08'&&state.inventory.dailyActivations[`fusion_08:mana-recovered:${key}`]) synergyXp=fusionSynergyXp('fusion_08');
-      if(synergyXp>0){
-        amount+=synergyXp;
-        state.inventory.dailyActivations[`${source.relicId}:synergy-xp:${key}`]=synergyXp;
-      }
-      applyLootSlices(markDailyEffectSources(state,'relic_07',weekKey,[source],source.value));
-    });
-  }
   return amount;
 }
 
@@ -1459,14 +1426,7 @@ function revokeRelicDayXp(key){
       delete state.inventory.dailyActivations[activationKey];
     }
   });
-  const weekKey=`week-${Math.max(0,weekIndexOf(parseKey(key)))}`;
-  Object.keys(state.inventory?.dailyActivations||{}).forEach(activationKey=>{
-    if(activationKey===`relic_07:${weekKey}`||activationKey.endsWith(`:relic_07:${weekKey}`)){
-      amount+=Number(state.inventory.dailyActivations[activationKey])||0;
-      delete state.inventory.dailyActivations[activationKey];
-    }
-  });
-  for(const fusionId of ['fusion_06','fusion_07','fusion_08','fusion_11','fusion_14','fusion_16']){
+  for(const fusionId of ['fusion_11','fusion_14','fusion_16']){
     const synergyKey=`${fusionId}:synergy-xp:${key}`;
     amount+=Number(state.inventory?.dailyActivations?.[synergyKey])||0;
     delete state.inventory.dailyActivations[synergyKey];
@@ -2581,6 +2541,7 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   inventorySheet?.classList.remove('inventory-shop-active');
   inventorySheet?.classList.toggle('inventory-shop-map-overlay',shopMapExpanded);
   inventorySheet?.classList.toggle('inventory-shop-destination',shopExperience&&!shopMapExpanded);
+  inventorySheet?.classList.toggle('inventory-shop-relics',shopSelected&&shopViewSection==='relics');
   if(bagSelected){
     renderInventoryView(document,state,potionViewOptions());
     renderCollectionView(document,state);
@@ -2818,6 +2779,15 @@ window.addEventListener('resize',scheduleInventorySheetPosition);
 window.visualViewport?.addEventListener('resize',scheduleInventorySheetPosition);
 function openRelicDetail(relicId){
   if(!renderRelicDetail(document,state,relicId)) return;
+  showSheet(document,'sheetRelicDetail');
+}
+function openShopRelicDetail(relicId){
+  const offer=shopOffers(normalizeLootState(state),Date.now())
+    .find(item=>item.relicId===relicId);
+  if(!offer||!renderRelicDetail(document,state,relicId,{
+    relicOverride:offer.relic,
+    shopPreview:true
+  })) return;
   showSheet(document,'sheetRelicDetail');
 }
 async function showPendingLootNotice(){
@@ -4702,7 +4672,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const buffs=state.game.buffs||{};
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const dayKey=habitDayKey();
-    const habitXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
+    const daggerXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
+    const collarXpSources=availableDailyEffectSources(state,'relic_07',dayKey);
+    const habitXpSources=[...daggerXpSources,...collarXpSources];
     const relicHabitXpActive=habitXpSources.length>0;
     const protectionSources=availableDailyEffectSources(state,'relic_01',dayKey);
     const firstHabitManaSources=availableDailyEffectSources(state,'relic_02',dayKey);
@@ -4716,6 +4688,16 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         firstHabitManaSources.some(source=>source.relicId==='fusion_12')&&
         canActivateFusionDaily(state,'fusion_12','first-habit-mana-xp',dayKey)){
       firstHabitFusionBonuses.push(['fusion_12','first-habit-mana-xp',fusionSynergyXp('fusion_12')]);
+    }
+    if(collarXpSources.some(source=>source.relicId==='fusion_06')&&
+        protectionSources.some(source=>source.relicId==='fusion_06')&&
+        canActivateFusionDaily(state,'fusion_06','protected-first-habit-xp',dayKey)){
+      firstHabitFusionBonuses.push(['fusion_06','protected-first-habit-xp',fusionSynergyXp('fusion_06')]);
+    }
+    if(collarXpSources.some(source=>source.relicId==='fusion_07')&&
+        firstHabitManaSources.some(source=>source.relicId==='fusion_07')&&
+        canActivateFusionDaily(state,'fusion_07','first-habit-mana-xp',dayKey)){
+      firstHabitFusionBonuses.push(['fusion_07','first-habit-mana-xp',fusionSynergyXp('fusion_07')]);
     }
     const firstHabitFusionXp=firstHabitFusionBonuses.reduce((total,item)=>total+item[2],0);
     const flatRewardBonus=relicBonuses().habitXpBonus+
@@ -4791,7 +4773,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
     }
     if(result.xpDelta>0&&relicHabitXpActive){
-      applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,habitXpSources,true));
+      if(daggerXpSources.length){
+        applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,daggerXpSources,true));
+      }
+      if(collarXpSources.length){
+        applyLootSlices(markDailyEffectSources(state,'relic_07',dayKey,collarXpSources,true));
+      }
       firstHabitFusionBonuses.forEach(([fusionId,effect,value])=>{
         applyLootSlices(markFusionDaily(state,fusionId,effect,dayKey,value));
       });
@@ -4807,10 +4794,6 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       }
       const recovered=recoverMana(Math.max(1,Math.round(heroMaxes().maxMp*manaPercent/100)));
       applyLootSlices(markDailyEffectSources(state,'relic_02',dayKey,manaSources,true));
-      if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_07')&&
-          collarRecoverySourcesForKey(dayKey).some(source=>source.relicId==='fusion_07')){
-        state.inventory.dailyActivations[`fusion_07:mana-used:${dayKey}`]=true;
-      }
       if(recovered>0&&manaSources.some(source=>source.relicId==='fusion_14')){
         state.inventory.dailyActivations[`fusion_14:mana-used:${dayKey}`]=true;
       }
@@ -5392,7 +5375,12 @@ function openShopPurchaseConfirmation(purchase){
   const accept=document.getElementById('shopPurchaseConfirmAccept');
   const kicker=document.getElementById('shopPurchaseConfirmKicker');
   const title=document.getElementById('shopPurchaseConfirmTitle');
-  if(purchase.type==='potion'){
+  if(purchase.type==='sale'){
+    kicker.textContent='CONFIRMAR VENTA';
+    title.textContent='¿Quieres venderla?';
+    body.innerHTML=`<p><b>${purchase.name}</b></p><p>Recibirás <b>${purchase.coinValue} de oro</b>.</p><p>La reliquia desaparecerá de tu Inventario, pero seguirá registrada en la Colección. No recuperarás Sangre de Jefe.</p>`;
+    accept.textContent='VENDER';
+  }else if(purchase.type==='potion'){
     kicker.textContent='CONFIRMAR COMPRA';
     title.textContent='¿Quieres comprarlo?';
     body.innerHTML=`<p><b>${purchase.name}</b> × ${purchase.quantity}</p><p>Se descontarán <b>${purchase.coinCost} de oro</b>.</p>`;
@@ -5427,7 +5415,7 @@ function handleOutfitWeave(outfitId){
   applyLootSlices(result);
   state.game=result.game;
   outfitSelectorSection=outfitSelectorContext==='shop'?'weave':'owned';
-  selectedOutfitDraft=renderOutfitSelector(document,state,outfitSelectorContext==='shop'?outfitId:null,{section:outfitSelectorSection,context:outfitSelectorContext});
+  selectedOutfitDraft=renderOutfitSelector(document,state,outfitSelectorContext==='shop'?outfitId:null,{section:outfitSelectorSection,context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
   scheduleSave({type:'outfit:woven',outfitId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -5444,7 +5432,7 @@ function handleFramePaint(frameId){
   }
   applyLootSlices(result);
   state.game=result.game;
-  selectedOutfitDraft=renderOutfitSelector(document,state,frameId,{section:'frames',context:'shop'});
+  selectedOutfitDraft=renderOutfitSelector(document,state,frameId,{section:'frames',context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
   scheduleSave({type:'frame:painted',frameId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -5478,6 +5466,39 @@ async function handleRelicPurchase(relicId){
     showToast(message,'dmg');
     renderShopView(document,state,Date.now(),shopRenderOptions());
   }
+  shopLocked=false;
+  return result.ok;
+}
+
+async function handleRelicSale(relicId){
+  if(shopLocked) return false;
+  shopLocked=true;
+  const operationId=`sale-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const previousLootState=normalizeLootState(state);
+  const result=sellRelicToShop({state,relicId,operationId,nowTimestamp:Date.now()});
+  if(result.ok){
+    const commit=await commitLootOperation({
+      previousState:previousLootState,
+      nextState:result,
+      applyState:applyLootSlices,
+      persist:()=>store.set(ACTIVE_STORAGE_KEY,serializeState(state))
+    });
+    if(!commit.ok){
+      console.error('No se pudo guardar la venta al Contrabandista',commit.error);
+      showToast('No se pudo confirmar la venta','dmg');
+    }else{
+      handleSaveResult(commit.saveResult);
+      showToast(`Reliquia vendida · +${result.sale.coinsReceived} oro`,'heal');
+    }
+  }else{
+    const message=result.reason==='equipped'?'Desequipa la reliquia antes de venderla'
+      :result.reason==='fusion'?'Las reliquias fusionadas se separan en la Forja'
+      :'Esta reliquia ya no está disponible';
+    showToast(message,'dmg');
+  }
+  renderShopView(document,state,Date.now(),shopRenderOptions());
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
   shopLocked=false;
   return result.ok;
 }
@@ -5587,7 +5608,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     if(destination==='weave'||destination==='frames'){
       outfitSelectorContext='shop';
       outfitSelectorSection=destination;
-      selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'shop'});
+      selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
       document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
       document.getElementById('outfitSelectorBg').classList.add('show');
       return;
@@ -5603,7 +5624,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     dismissAureoNotice('outfits');
     outfitSelectorContext='collection';
     outfitSelectorSection='owned';
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -5628,6 +5649,11 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
       document.getElementById('relicEffectInfoBg').classList.add('show');
     }
+    return;
+  }
+  const shopRelic=event.target.closest('[data-open-shop-relic]');
+  if(shopRelic){
+    openShopRelicDetail(shopRelic.dataset.openShopRelic);
     return;
   }
   const purchase=event.target.closest('[data-buy-relic]');
@@ -5666,6 +5692,19 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     fusionRightId=selection.rightId;
     fusionErrorId=selection.errorId;
     renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
+    return;
+  }
+  const sale=event.target.closest('[data-sell-relic]');
+  if(sale){
+    if(sale.disabled||shopLocked) return;
+    const relicId=sale.dataset.sellRelic;
+    const relic=state.inventory?.relics?.[relicId];
+    const definition=relicDefinition(relicId);
+    if(!relic||!definition) return;
+    const price=shopSalePriceForRelic(relicId,relic);
+    openShopPurchaseConfirmation({
+      type:'sale',relicId,name:definition.name,coinValue:price
+    });
     return;
   }
   const defusionChoice=event.target.closest('[data-select-defusion-relic]');
@@ -5831,7 +5870,7 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
     dismissFeatureDiscovery('character-backgrounds');
     outfitSelectorContext='collection';
     outfitSelectorSection='owned';
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned',context:'collection'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'owned',context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
     document.getElementById('outfitSelectorBg').classList.add('show');
     return;
   }
@@ -5848,7 +5887,7 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   }
   if(event.target.closest('#outfitSelectorBack')){
     selectedOutfitDraft=null;
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:outfitSelectorContext});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
     return;
   }
   const sectionButton=event.target.closest('[data-outfit-section]');
@@ -5856,22 +5895,22 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
     outfitSelectorContext='collection';
     outfitSelectorSection=sectionButton.dataset.outfitSection==='frames'?'frames':'owned';
     if(outfitSelectorSection==='frames') dismissAureoNotice('backgrounds');
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
     return;
   }
   const option=event.target.closest('[data-select-outfit]');
   if(option){
-    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned',context:'collection'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,option.dataset.selectOutfit,{section:'owned',context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
     return;
   }
   const weaveOption=event.target.closest('[data-select-weave-outfit]');
   if(weaveOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave',context:'shop'});
+    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave',context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
     return;
   }
   const frameOption=event.target.closest('[data-select-frame]');
   if(frameOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,frameOption.dataset.selectFrame,{section:'frames',context:outfitSelectorContext});
+    selectedOutfitDraft=renderOutfitSelector(document,state,frameOption.dataset.selectFrame,{section:'frames',context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
     return;
   }
   const weave=event.target.closest('[data-weave-outfit]');
@@ -6178,7 +6217,8 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   pendingShopPurchase=null;
   event.currentTarget.disabled=true;
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
-  if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
+  else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else if(purchase.type==='frame') handleFramePaint(purchase.frameId);
   else await handleRelicPurchase(purchase.relicId);
@@ -6354,7 +6394,7 @@ document.getElementById('betaTesterRewardContinue').addEventListener('click',()=
     openInventory('shop');
     document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
   }
-  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:outfitSelectorContext});
+  selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
   document.getElementById('outfitSelectorBg').classList.add('show');
   showToast(inkRewardVisible?'+20 Tintas · +192 oro':'Fondo · +140 oro · +10 Fibras · +2 Energía','heal');
 });
