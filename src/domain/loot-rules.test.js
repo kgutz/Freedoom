@@ -526,7 +526,7 @@ describe('Tienda de reliquias falladas', () => {
   });
 
   it('deriva los precios del boss y aplica el extra de rareza solo al oro', () => {
-    const offers = shopOffers(failedBosses(6), NOW);
+    const offers = shopOffers(failedBosses(1), NOW);
     const first = offers.find((offer) => offer.relicId === 'relic_01');
     expect(first).toMatchObject({
       coinPrice: shopPriceForRelic('relic_01', 'failed', first.relic.rarity).coinPrice,
@@ -669,19 +669,19 @@ describe('Tienda de reliquias falladas', () => {
     expect(duplicate.economy.coins).toBe(first.economy.coins);
   });
 
-  it('rota cada tres días, mantiene una única pendiente y limita a tres', () => {
+  it('rota cada día, mantiene una única pendiente y limita a tres', () => {
     const one = ensureShopRotation(failedBosses(1), NOW);
     expect(one.shop.rotation.relicIds).toEqual(['relic_01']);
     expect(one.shop.rotation.offerQualities.relic_01.rarity)
       .not.toBe(one.loot.bossRelicOutcomes.boss_reward_01.relic.rarity);
-    const oneNext = ensureShopRotation(one, NOW + 3 * DAY);
+    const oneNext = ensureShopRotation(one, NOW + DAY);
     expect(oneNext.shop.rotation.offerQualities.relic_01.rarity)
       .not.toBe(one.shop.rotation.offerQualities.relic_01.rarity);
     const many = ensureShopRotation(failedBosses(6), NOW);
     expect(many.shop.rotation.relicIds).toHaveLength(3);
     const same = ensureShopRotation(JSON.parse(JSON.stringify(many)), NOW + DAY / 2);
     expect(same.shop.rotation).toEqual(many.shop.rotation);
-    const next = ensureShopRotation(same, NOW + 3 * DAY);
+    const next = ensureShopRotation(same, NOW + DAY);
     expect(next.shop.rotation.period).toBeGreaterThan(same.shop.rotation.period);
     expect(next.shop.rotation.relicIds).not.toEqual(same.shop.rotation.relicIds);
     const clockMovedBack = ensureShopRotation(next, NOW);
@@ -690,7 +690,7 @@ describe('Tienda de reliquias falladas', () => {
     const lastSeenRarity = new Map();
     let rotating = many;
     for (let index = 0; index < 6; index += 1) {
-      rotating = ensureShopRotation(rotating, NOW + index * 3 * DAY);
+      rotating = ensureShopRotation(rotating, NOW + index * DAY);
       rotating.shop.rotation.relicIds.forEach((id) => {
         const rarity = rotating.shop.rotation.offerQualities[id].rarity;
         if (lastSeenRarity.has(id)) expect(rarity).not.toBe(lastSeenRarity.get(id));
@@ -701,6 +701,20 @@ describe('Tienda de reliquias falladas', () => {
     expect(seen).toEqual(new Set([
       'relic_01', 'relic_02', 'relic_03', 'relic_04', 'relic_05', 'relic_06',
     ]));
+  });
+
+  it('cambia exactamente al llegar a las 00:00 de la hora local', () => {
+    const beforeMidnight = new Date(2026, 8, 3, 23, 59, 59, 999).getTime();
+    const midnight = new Date(2026, 8, 4, 0, 0, 0, 0).getTime();
+    const before = ensureShopRotation(failedBosses(4), beforeMidnight);
+    expect(before.shop.rotation.startedAt)
+      .toBe(new Date(2026, 8, 3, 0, 0, 0, 0).getTime());
+    expect(before.shop.rotation.endsAt).toBe(midnight);
+    const after = ensureShopRotation(before, midnight);
+    expect(after.shop.rotation.period).toBeGreaterThan(before.shop.rotation.period);
+    expect(after.shop.rotation.startedAt).toBe(midnight);
+    expect(after.shop.rotation.endsAt)
+      .toBe(new Date(2026, 8, 5, 0, 0, 0, 0).getTime());
   });
 
   it('serializa, recupera y recalcula sin rerollear drop ni Tienda', () => {

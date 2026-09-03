@@ -676,7 +676,7 @@ describe('interfaz de inventario y botín', () => {
     renderShopView(document, state, 20 * 86400000);
     const html = document.elements.shopBody.innerHTML;
     expect(html).toContain('No hay reliquias disponibles');
-    expect(html).toContain('cambia cada 3 días');
+    expect(html).toContain('cambia todos los días a las 00:00');
     expect(html).toContain('SANGRE DE JEFE');
   });
 

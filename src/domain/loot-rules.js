@@ -22,7 +22,6 @@ import {
   RARITIES,
   RELIC_DEFINITIONS,
   SHOP_MAX_VISIBLE_RELICS,
-  SHOP_ROTATION_DAYS,
   bossReward,
   fusionDefinition,
   isBaseRelic,
@@ -35,7 +34,6 @@ import { emptyPotionState, normalizePotionState } from './potion-rules.js';
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const arrayOf = (value) => (Array.isArray(value) ? value : []);
-const SHOP_ROTATION_MS = SHOP_ROTATION_DAYS * 24 * 60 * 60 * 1000;
 const OUTCOME_STATUSES = new Set(['obtained', 'failed', 'purchased']);
 const FUSION_HISTORY_LIMIT = 100;
 
@@ -833,14 +831,22 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
   const previous = normalized.shop.rotation;
   const pending = recoverableRelicIds(normalized, safeNow);
-  const elapsedPeriods = previous && safeNow >= previous.endsAt
-    ? Math.floor((safeNow - previous.endsAt) / SHOP_ROTATION_MS) + 1
-    : 0;
-  const effectivePeriod = previous ? previous.period + elapsedPeriods : 0;
-  const startedAt = previous
-    ? previous.startedAt + elapsedPeriods * SHOP_ROTATION_MS
-    : safeNow;
-  const periodChanged = !previous || elapsedPeriods > 0;
+  const now = new Date(safeNow);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+  const calendarPeriod = Math.floor(Date.UTC(year, month, day) / 86400000);
+  const calendarStartedAt = Math.max(0, new Date(year, month, day, 0, 0, 0, 0).getTime());
+  const calendarEndsAt = new Date(year, month, day + 1, 0, 0, 0, 0).getTime();
+  const clockMovedBack = previous && previous.period > calendarPeriod;
+  const effectivePeriod = clockMovedBack ? previous.period : calendarPeriod;
+  const startedAt = clockMovedBack ? previous.startedAt : calendarStartedAt;
+  const endsAt = clockMovedBack ? previous.endsAt : calendarEndsAt;
+  const periodChanged = !previous || (!clockMovedBack && (
+    previous.period !== effectivePeriod ||
+    previous.startedAt !== startedAt ||
+    previous.endsAt !== endsAt
+  ));
   let relicIds = periodChanged
     ? rotationSelection(pending, effectivePeriod)
     : [...previous.relicIds];
@@ -880,7 +886,7 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   normalized.shop.rotation = {
     period: effectivePeriod,
     startedAt,
-    endsAt: startedAt + SHOP_ROTATION_MS,
+    endsAt,
     relicIds,
     offerQualities,
   };

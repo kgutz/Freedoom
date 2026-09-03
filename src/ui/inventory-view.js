@@ -1050,7 +1050,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     : `<div class="shop-empty">
         <div class="shop-empty-art" aria-hidden="true">?</div>
         <h4>No hay reliquias disponibles</h4>
-        <p>Las reliquias que no consigas al derrotar a un jefe podrán aparecer aquí. La tienda cambia cada 3 días y podrás recuperarlas usando Oro y Sangre de Jefe.</p>
+        <p>Las reliquias que no consigas al derrotar a un jefe podrán aparecer aquí. La tienda cambia todos los días a las 00:00 y podrás recuperarlas usando Oro y Sangre de Jefe.</p>
       </div>`;
   const shopResourceValues = section === 'potions'
     ? resourceValue('coin', normalized.economy.coins, 'ORO')
