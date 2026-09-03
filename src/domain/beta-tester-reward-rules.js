@@ -1,9 +1,11 @@
 import { grantRewardHuntEnergy } from './pve-combat-rules.js';
 import { isPioneerRewardClaimed } from './pioneer-reward-rules.js';
+import { normalizePotionState } from './potion-rules.js';
 
 export const BETA_TESTER_REWARD_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'pioneer-beta-reward-v2',
+    displayNumber: '02',
     active: true,
     title: 'Entre bugs y victorias',
     intro: 'Freedom sigue creciendo gracias a cada prueba, cada idea y cada error que nos ayudaste a encontrar.',
@@ -14,6 +16,7 @@ export const BETA_TESTER_REWARD_DEFINITIONS = Object.freeze([
   }),
   Object.freeze({
     id: 'pioneer-beta-reward-v3',
+    displayNumber: '03',
     active: true,
     title: 'El color de los pioneros',
     intro: 'Tu huella ya forma parte de Freedom. Recibe recursos para descubrir la Tinta Arcana y el Santuario del Crisol.',
@@ -22,6 +25,19 @@ export const BETA_TESTER_REWARD_DEFINITIONS = Object.freeze([
     arcaneInks: 20,
     energy: 0,
     frameId: 'welder-beta',
+    grantsFrame: false,
+  }),
+  Object.freeze({
+    id: 'pioneer-beta-reward-v4',
+    displayNumber: '04',
+    active: true,
+    title: 'Energía para seguir farmeando',
+    intro: 'Gracias por seguir explorando cada rincón de Freedom. Este impulso es para tus próximas cacerías.',
+    coins: 80,
+    arcaneFibers: 0,
+    arcaneInks: 0,
+    energy: 0,
+    energyPotions: 2,
     grantsFrame: false,
   }),
 ]);
@@ -59,8 +75,15 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
     amount: reward.energy,
     nowTimestamp: claimedAt,
   });
+  const potions = normalizePotionState(state?.inventory?.potions);
+  const energyPotions = Math.max(0, Math.trunc(Number(reward.energyPotions) || 0));
+  potions.owned.energy = Math.max(0, Number(potions.owned.energy) || 0) + energyPotions;
   const nextState = {
     ...state,
+    inventory: {
+      ...(state?.inventory || {}),
+      potions,
+    },
     game: {
       ...state.game,
       hunt: energyGrant.hunt,
@@ -81,6 +104,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
             arcaneFibers: reward.arcaneFibers,
             arcaneInks: reward.arcaneInks || 0,
             energy: energyGrant.granted,
+            energyPotions,
             frameId: reward.frameId,
           },
         },
@@ -100,6 +124,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
           arcaneFibers: reward.arcaneFibers,
           arcaneInks: reward.arcaneInks || 0,
           energy: energyGrant.granted,
+          energyPotions,
           frameId: reward.frameId,
           at: claimedAt,
         },

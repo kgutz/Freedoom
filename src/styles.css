@@ -1843,6 +1843,7 @@
   .bag-resources{grid-template-columns:repeat(4,minmax(0,1fr))}
   .beta-tester-ink-source{margin:-5px auto 15px!important;color:var(--muted);font-size:8px!important;line-height:1.45!important;text-align:center}
   .beta-tester-resource-reward[hidden],.beta-tester-ink-source[hidden]{display:none!important}
+  .beta-tester-potion-art{width:42px;height:42px;margin-bottom:3px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 4px 4px rgba(0,0,0,.6)) drop-shadow(0 0 8px rgba(111,205,119,.2))}
   .beta-tester-frame-reward[hidden]{display:none!important}
   .beta-tester-reward-items--third{grid-template-columns:repeat(2,minmax(0,1fr))}
 

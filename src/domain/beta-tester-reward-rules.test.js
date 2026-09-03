@@ -38,6 +38,38 @@ describe('regalos sucesivos para beta testers', () => {
     expect(result.state.game.frames?.owned?.['welder-beta']).toBeUndefined();
   });
 
+  it('ofrece después el nuevo regalo con 80 de oro y dos Pociones de Vigor', () => {
+    const state = betaTesterState();
+    state.game.betaTesterRewards = { claimed: {
+      'pioneer-beta-reward-v2': { claimedAt: 200 },
+      'pioneer-beta-reward-v3': { claimedAt: 300 },
+    } };
+    state.inventory = { potions: { owned: { energy: 1 } } };
+    const pending = pendingBetaTesterReward(state);
+    expect(pending).toMatchObject({
+      id: 'pioneer-beta-reward-v4', coins: 80, energyPotions: 2,
+    });
+
+    const result = claimBetaTesterReward(state, pending.id, 3456);
+    expect(result.granted).toBe(true);
+    expect(result.state.economy.coins).toBe(100);
+    expect(result.state.inventory.potions.owned.energy).toBe(3);
+    expect(result.state.game.betaTesterRewards.claimed[pending.id]).toMatchObject({ energyPotions: 2 });
+  });
+
+  it('no pierde las pociones regaladas aunque el bolso ya tenga cuatro tipos distintos', () => {
+    const state = betaTesterState();
+    state.game.betaTesterRewards = { claimed: {
+      'pioneer-beta-reward-v2': { claimedAt: 200 },
+      'pioneer-beta-reward-v3': { claimedAt: 300 },
+    } };
+    state.inventory = { potions: { owned: { fortune: 1, experience: 1, life: 1, mana: 1 } } };
+
+    const result = claimBetaTesterReward(state, 'pioneer-beta-reward-v4', 4567);
+    expect(result.granted).toBe(true);
+    expect(result.state.inventory.potions.owned.energy).toBe(2);
+  });
+
   it('entrega y guarda una sola vez todos los elementos del regalo', () => {
     const first = claimBetaTesterReward(betaTesterState(), 'pioneer-beta-reward-v2', 1234);
     expect(first.granted).toBe(true);
