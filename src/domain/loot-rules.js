@@ -92,8 +92,9 @@ export function emptyLootState() {
       weaving: { history: [] },
     },
     shop: {
-      schemaVersion: 1,
+      schemaVersion: 2,
       rotation: null,
+      lastOfferRarities: {},
       purchases: [],
     },
   };
@@ -364,7 +365,7 @@ export function normalizeLootState(state = {}) {
       },
     },
     shop: {
-      schemaVersion: Math.max(1, Number(shop.schemaVersion) || 0),
+      schemaVersion: Math.max(2, Number(shop.schemaVersion) || 0),
       rotation: (() => {
         const rotation = objectOf(shop.rotation);
         if (!Number.isInteger(rotation.period)) return null;
@@ -378,8 +379,23 @@ export function normalizeLootState(state = {}) {
           relicIds: [...new Set(arrayOf(rotation.relicIds))]
             .filter((id) => Boolean(relicDefinition(id)))
             .slice(0, SHOP_MAX_VISIBLE_RELICS),
+          offerQualities: Object.fromEntries(
+            Object.entries(objectOf(rotation.offerQualities))
+              .filter(([id, quality]) =>
+                Boolean(relicDefinition(id)) && Boolean(RARITIES[quality?.rarity]))
+              .map(([id, quality]) => [id, {
+                rarity: quality.rarity,
+                affixes: [...new Set(arrayOf(quality.affixes))]
+                  .filter((affixId) => Boolean(AFFIX_DEFINITIONS[affixId]))
+                  .slice(0, RARITIES[quality.rarity].affixCount),
+              }]),
+          ),
         };
       })(),
+      lastOfferRarities: Object.fromEntries(
+        Object.entries(objectOf(shop.lastOfferRarities))
+          .filter(([id, rarity]) => Boolean(relicDefinition(id)) && Boolean(RARITIES[rarity])),
+      ),
       purchases: arrayOf(shop.purchases).map((purchase) => ({ ...purchase })).slice(-100),
     },
   };
@@ -737,6 +753,37 @@ function rotationSelection(relicIds, period) {
     sorted[(offset + index) % sorted.length]);
 }
 
+const SHOP_RARITY_COIN_MULTIPLIERS = Object.freeze({
+  rare: 1,
+  legendary: 1.35,
+  mythic: 1.75,
+});
+
+function shopRarityFromRoll(roll, excludedRarity = '') {
+  const candidates = RARITY_ORDER.filter((rarity) => rarity !== excludedRarity);
+  const totalRate = candidates.reduce((sum, rarity) => sum + RARITIES[rarity].rate, 0);
+  const target = Math.min(0.999999999, Math.max(0, Number(roll) || 0)) * totalRate;
+  let accumulated = 0;
+  for (const rarity of candidates) {
+    accumulated += RARITIES[rarity].rate;
+    if (target < accumulated) return rarity;
+  }
+  return candidates.at(-1) || 'rare';
+}
+
+function shopOfferQuality(relicId, period, startedAt, excludedRarity = '') {
+  const definition = relicDefinition(relicId);
+  if (!definition) return { rarity: 'rare', affixes: [] };
+  const seed = `shop-quality-v2:${period}:${startedAt}:${relicId}`;
+  let rollIndex = 0;
+  const random = () => deterministicRandom(seed, rollIndex++);
+  const rarity = shopRarityFromRoll(random(), excludedRarity);
+  return {
+    rarity,
+    affixes: rollAffixes(definition.affixPool, RARITIES[rarity].affixCount, random),
+  };
+}
+
 export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
   const normalized = normalizeLootState(lootState);
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
@@ -761,24 +808,51 @@ export function ensureShopRotation(lootState, nowTimestamp = Date.now()) {
     relicIds = [...relicIds, ...additions]
       .slice(0, SHOP_MAX_VISIBLE_RELICS);
   }
+  const previousQualities = objectOf(previous?.offerQualities);
+  const offerQualities = Object.fromEntries(relicIds.map((relicId) => {
+    if (!periodChanged && previousQualities[relicId]) {
+      return [relicId, previousQualities[relicId]];
+    }
+    const definition = relicDefinition(relicId);
+    const outcome = definition
+      ? normalized.loot.bossRelicOutcomes[definition.rewardId]
+      : null;
+    const historicalRarity = normalized.inventory.collection[relicId]
+      ?.lastOwnedRecord?.rarity || outcome?.relic?.rarity || '';
+    const excludedRarity = normalized.shop.lastOfferRarities[relicId] ||
+      previousQualities[relicId]?.rarity || historicalRarity;
+    return [relicId, shopOfferQuality(
+      relicId,
+      effectivePeriod,
+      startedAt,
+      excludedRarity,
+    )];
+  }));
   normalized.shop.rotation = {
     period: effectivePeriod,
     startedAt,
     endsAt: startedAt + SHOP_ROTATION_MS,
     relicIds,
+    offerQualities,
+  };
+  normalized.shop.lastOfferRarities = {
+    ...normalized.shop.lastOfferRarities,
+    ...Object.fromEntries(
+      Object.entries(offerQualities).map(([relicId, quality]) => [relicId, quality.rarity]),
+    ),
   };
   return normalized;
 }
 
-export function shopPriceForRelic(relicId, source = 'failed') {
+export function shopPriceForRelic(relicId, source = 'failed', rarity = 'rare') {
   const definition = relicDefinition(relicId);
   const reward = definition ? bossReward(definition.bossIndex) : null;
   if (!reward) return null;
   const normalCoinPrice = reward.coins * 2;
+  const recoveryMultiplier = source === 'fusion-consumed' ? 1.25 : 1;
+  const rarityMultiplier = SHOP_RARITY_COIN_MULTIPLIERS[rarity] || 1;
   return {
-    coinPrice: source === 'fusion-consumed'
-      ? Math.round(normalCoinPrice * 1.25)
-      : normalCoinPrice,
+    coinPrice: Math.round(normalCoinPrice * recoveryMultiplier * rarityMultiplier),
     bloodPrice: reward.bossBlood,
   };
 }
@@ -797,13 +871,20 @@ export function shopOffers(lootState, nowTimestamp = Date.now()) {
       const source = outcome?.status === 'failed'
         ? 'failed'
         : consumed ? 'fusion-consumed' : null;
-      const price = definition && source ? shopPriceForRelic(definition.id, source) : null;
+      const quality = normalized.shop.rotation.offerQualities?.[relicId];
+      const price = definition && source && quality
+        ? shopPriceForRelic(definition.id, source, quality.rarity)
+        : null;
       if (!definition || !price || !source || normalized.inventory.relics[relicId]) return null;
       const historicalRelic = source === 'failed' ? outcome?.relic : collection.lastOwnedRecord;
       return {
         relicId,
         definition,
-        relic: normalizeRelicRecord(relicId, historicalRelic),
+        relic: normalizeRelicRecord(relicId, {
+          ...historicalRelic,
+          rarity: quality.rarity,
+          affixes: quality.affixes,
+        }),
         bossIndex: definition.bossIndex,
         source,
         ...price,

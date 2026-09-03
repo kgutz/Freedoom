@@ -498,49 +498,61 @@ describe('Tienda de reliquias falladas', () => {
     expect(shopOffers(emptyLootState(), NOW)).toEqual([]);
   });
 
-  it('deriva los precios del reward del boss', () => {
+  it('deriva los precios del boss y aplica el extra de rareza solo al oro', () => {
     const offers = shopOffers(failedBosses(6), NOW);
     const first = offers.find((offer) => offer.relicId === 'relic_01');
-    expect(first).toMatchObject({ coinPrice: 150, bloodPrice: 1 });
+    expect(first).toMatchObject({
+      coinPrice: shopPriceForRelic('relic_01', 'failed', first.relic.rarity).coinPrice,
+      bloodPrice: 1,
+    });
     expect(shopPriceForRelic('relic_04')).toEqual({ coinPrice: 230, bloodPrice: 2 });
+    expect(shopPriceForRelic('relic_04', 'failed', 'legendary'))
+      .toEqual({ coinPrice: 311, bloodPrice: 2 });
+    expect(shopPriceForRelic('relic_04', 'failed', 'mythic'))
+      .toEqual({ coinPrice: 403, bloodPrice: 2 });
     expect(shopPriceForRelic('relic_06')).toEqual({ coinPrice: 290, bloodPrice: 3 });
   });
 
   it('compra de forma atómica con oro y Sangre suficientes', () => {
     const state = failedBosses(1);
-    state.economy.coins = 200;
+    const offer = shopOffers(state, NOW)[0];
+    state.economy.coins = offer.coinPrice + 50;
     state.economy.bossBlood = 2;
     const result = purchaseShopRelic({
       state, relicId: 'relic_01', operationId: 'buy-1', nowTimestamp: NOW,
     });
     expect(result.ok).toBe(true);
     expect(result.economy).toMatchObject({ coins: 50, bossBlood: 1 });
-    expect(result.inventory.relics.relic_01).toBeTruthy();
+    expect(result.inventory.relics.relic_01).toMatchObject({
+      rarity: offer.relic.rarity,
+      affixes: offer.relic.affixes,
+    });
     expect(result.loot.bossRelicOutcomes.boss_reward_01.status).toBe('purchased');
     expect(result.economy.transactions.at(-1)).toMatchObject({
-      type: 'shop_purchase', coins: -150, bossBlood: -1,
+      type: 'shop_purchase', coins: -offer.coinPrice, bossBlood: -1,
     });
     expect(shopOffers(result, NOW)).toEqual([]);
   });
 
   it('no modifica nada cuando falta oro o Sangre', () => {
     const noCoins = failedBosses(1);
-    noCoins.economy.coins = 149;
+    const coinPrice = shopOffers(noCoins, NOW)[0].coinPrice;
+    noCoins.economy.coins = coinPrice - 1;
     noCoins.economy.bossBlood = 5;
     const coinsResult = purchaseShopRelic({
       state: noCoins, relicId: 'relic_01', operationId: 'no-coins', nowTimestamp: NOW,
     });
     expect(coinsResult.reason).toBe('coins');
-    expect(coinsResult.economy).toMatchObject({ coins: 149, bossBlood: 5 });
+    expect(coinsResult.economy).toMatchObject({ coins: coinPrice - 1, bossBlood: 5 });
     expect(coinsResult.inventory.relics.relic_01).toBeUndefined();
     const noBlood = failedBosses(1);
-    noBlood.economy.coins = 200;
+    noBlood.economy.coins = coinPrice;
     noBlood.economy.bossBlood = 0;
     const bloodResult = purchaseShopRelic({
       state: noBlood, relicId: 'relic_01', operationId: 'no-blood', nowTimestamp: NOW,
     });
     expect(bloodResult.reason).toBe('blood');
-    expect(bloodResult.economy.coins).toBe(200);
+    expect(bloodResult.economy.coins).toBe(coinPrice);
     expect(bloodResult.inventory.relics.relic_01).toBeUndefined();
   });
 
@@ -565,6 +577,11 @@ describe('Tienda de reliquias falladas', () => {
   it('rota cada tres días, mantiene una única pendiente y limita a tres', () => {
     const one = ensureShopRotation(failedBosses(1), NOW);
     expect(one.shop.rotation.relicIds).toEqual(['relic_01']);
+    expect(one.shop.rotation.offerQualities.relic_01.rarity)
+      .not.toBe(one.loot.bossRelicOutcomes.boss_reward_01.relic.rarity);
+    const oneNext = ensureShopRotation(one, NOW + 3 * DAY);
+    expect(oneNext.shop.rotation.offerQualities.relic_01.rarity)
+      .not.toBe(one.shop.rotation.offerQualities.relic_01.rarity);
     const many = ensureShopRotation(failedBosses(6), NOW);
     expect(many.shop.rotation.relicIds).toHaveLength(3);
     const same = ensureShopRotation(JSON.parse(JSON.stringify(many)), NOW + DAY / 2);
@@ -575,10 +592,16 @@ describe('Tienda de reliquias falladas', () => {
     const clockMovedBack = ensureShopRotation(next, NOW);
     expect(clockMovedBack.shop.rotation).toEqual(next.shop.rotation);
     const seen = new Set();
+    const lastSeenRarity = new Map();
     let rotating = many;
     for (let index = 0; index < 6; index += 1) {
       rotating = ensureShopRotation(rotating, NOW + index * 3 * DAY);
-      rotating.shop.rotation.relicIds.forEach((id) => seen.add(id));
+      rotating.shop.rotation.relicIds.forEach((id) => {
+        const rarity = rotating.shop.rotation.offerQualities[id].rarity;
+        if (lastSeenRarity.has(id)) expect(rarity).not.toBe(lastSeenRarity.get(id));
+        lastSeenRarity.set(id, rarity);
+        seen.add(id);
+      });
     }
     expect(seen).toEqual(new Set([
       'relic_01', 'relic_02', 'relic_03', 'relic_04', 'relic_05', 'relic_06',

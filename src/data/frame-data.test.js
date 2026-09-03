@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FRAME_DEFINITIONS,
   equippedFrame,
   heroBackgroundSource,
   isFrameUnlocked,
@@ -29,13 +30,13 @@ describe('marcos del héroe', () => {
     expect(heroBackgroundSource('welder-beta', 'paladin', 'hero', game)).toBe('hero_background/welder_beta_forge.webp');
   });
 
-  it('aplica el Estudio Musical Celestial a cualquier clase y superficie', () => {
+  it('mantiene preparado pero oculto el Estudio Musical Celestial', () => {
     const game = { frames: { owned: { 'celestial-music-studio': { acquiredAt: 1 } } } };
-    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
-      expect(heroBackgroundSource('celestial-music-studio', classId, 'today', game))
-        .toBe('hero_background/celestial_music_studio.webp');
-      expect(heroBackgroundSource('celestial-music-studio', classId, 'habits', game))
-        .toBe('hero_background/celestial_music_studio.webp');
-    }
+    const frame = FRAME_DEFINITIONS.find((candidate) => candidate.id === 'celestial-music-studio');
+    expect(frame).toMatchObject({ released: false, recipe: { arcaneInks: 35, coins: 350 } });
+    expect(isFrameUnlocked('celestial-music-studio', game)).toBe(false);
+    expect(equippedFrame('celestial-music-studio', game).id).toBe('original');
+    expect(heroBackgroundSource('celestial-music-studio', 'druid', 'today', game))
+      .toBe('hero_background/druid_today_bg.webp');
   });
 });

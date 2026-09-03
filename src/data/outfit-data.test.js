@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  OUTFIT_DEFINITIONS,
   equippedOutfit,
   heroFaceSource,
   heroSpriteSource,
@@ -44,14 +45,13 @@ describe('outfits de héroe', () => {
     expect(outfitUsesTransparentPortrait('arcane-weave-02')).toBe(true);
   });
 
-  it('mapea las cuatro clases del Maestro del Ritmo Celestial', () => {
+  it('mantiene preparado pero oculto el Maestro del Ritmo Celestial', () => {
     const game = { outfits: { owned: { 'celestial-rhythm-master': { acquiredAt: 1 } } } };
-    expect(isOutfitUnlocked('celestial-rhythm-master', game)).toBe(true);
-    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
-      expect(heroFaceSource(classId, 'celestial-rhythm-master'))
-        .toBe(`outfits/celestial-rhythm/${classId}_face.webp`);
-      expect(heroSpriteSource(classId, 'happy', 'celestial-rhythm-master'))
-        .toBe(`outfits/celestial-rhythm/${classId}_happy.webp`);
-    }
+    const outfit = OUTFIT_DEFINITIONS.find((candidate) => candidate.id === 'celestial-rhythm-master');
+    expect(outfit).toMatchObject({ released: false, recipe: { arcaneFibers: 20, coins: 320 } });
+    expect(isOutfitUnlocked('celestial-rhythm-master', game)).toBe(false);
+    expect(equippedOutfit('celestial-rhythm-master', game).id).toBe('original');
+    expect(heroFaceSource('knight', 'celestial-rhythm-master')).toBe('hero_face/knight_face.webp');
+    expect(heroSpriteSource('knight', 'happy', 'celestial-rhythm-master')).toBe('sprites/knight_happy.webp');
   });
 });

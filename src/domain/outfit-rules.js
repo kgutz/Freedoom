@@ -162,7 +162,7 @@ export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.
 
 export function paintFrame({ state, frameId, operationId, nowTimestamp = Date.now() }) {
   const normalized = normalizeLootState(state);
-  const frame = FRAME_DEFINITIONS.find((item) => item.id === frameId && item.recipe);
+  const frame = FRAME_DEFINITIONS.find((item) => item.id === frameId && item.released !== false && item.recipe);
   if (!frame || !operationId) return { ...slices(normalized), game: state.game, ok: false, reason: 'invalid' };
   if (isFrameUnlocked(frame, state.game)) return { ...slices(normalized), game: state.game, ok: false, reason: 'owned' };
   if (normalized.forge.weaving.history.some((entry) => entry.operationId === operationId)) {

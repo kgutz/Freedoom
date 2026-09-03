@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fuseRelics, grantBossRewards } from '../domain/loot-rules.js';
+import { fuseRelics, grantBossRewards, shopOffers } from '../domain/loot-rules.js';
+import { RARITIES } from '../data/loot-data.js';
 import {
   defusionResultMarkup,
   fusionResultMarkup,
@@ -166,26 +167,19 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('>PINTAR</button>');
   });
 
-  it('muestra el conjunto mítico, sus costes y su naturaleza cosmética en Telar y Pintor', () => {
+  it('oculta el conjunto mítico del Telar y del Pintor hasta publicarlo', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
     state.game = { cls: 'druid', outfit: 'original', frame: 'original' };
     state.economy = { ...state.economy, coins: 700, arcaneFibers: 35, arcaneInks: 35 };
 
     expect(renderOutfitSelector(document, state, 'celestial-rhythm-master', { section: 'weave', context: 'shop' }))
-      .toBe('celestial-rhythm-master');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Maestro del Ritmo Celestial');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('35</b><small>FIBRAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('350</b><small>ORO');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/celestial-rhythm/druid_happy.webp');
+      .toBe(null);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Maestro del Ritmo Celestial');
 
     expect(renderOutfitSelector(document, state, 'celestial-music-studio', { section: 'frames', context: 'shop' }))
-      .toBe('celestial-music-studio');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Estudio Musical Celestial');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COSMÉTICO · NO MODIFICA ESTADÍSTICAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('35</b><small>TINTAS ARCANAS');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('hero_background/celestial_music_studio.webp');
+      .toBe(null);
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Estudio Musical Celestial');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {
@@ -710,7 +704,8 @@ describe('interfaz de inventario y botín', () => {
       dropRandom: () => 0.99, relicRandom: () => 0.2,
       nowTimestamp: 20 * 86400000,
     });
-    state.economy.coins = 200;
+    const offer = shopOffers(state, 20 * 86400000)[0];
+    state.economy.coins = offer.coinPrice;
     state.economy.bossBlood = 2;
     renderShopView(document, state, 20 * 86400000);
     const html = document.elements.shopBody.innerHTML;
@@ -718,7 +713,10 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('data-buy-relic="relic_01"');
     expect(html).toContain('class="shop-relic-buy"');
     expect(html).toContain('aria-label="Comprar Corazón de Hollín"');
-    expect(html).toContain('<b>150</b>');
+    expect(html).toContain(`<b>${offer.coinPrice}</b>`);
+    expect(html).toContain(`${RARITIES[offer.relic.rarity].label} · RANGO 1`);
+    if (offer.relic.rarity === 'mythic') expect(html).toContain('RAREZA +75% ORO');
+    if (offer.relic.rarity === 'legendary') expect(html).toContain('RAREZA +35% ORO');
     expect(html).toContain('<b>1</b>');
   });
 

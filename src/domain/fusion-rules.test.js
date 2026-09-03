@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { castSpellEffect } from './spell-rules.js';
 import { exportBackup, importBackup } from '../storage/state-storage.js';
+import { RARITIES } from '../data/loot-data.js';
 import {
   activateRelicConstancy,
   awardFusionAllHabitsXp,
@@ -314,7 +315,7 @@ describe('Tienda tras una Fusión', () => {
     expect(offers.every((offer) => offer.source === 'fusion-consumed')).toBe(true);
   });
 
-  it('aplica +25% solo al oro y recompra exactamente la misma rareza y efectos', () => {
+  it('conserva el rango, renueva rareza y efectos, y suma los extras de precio', () => {
     const state = fusionState(2);
     state.inventory.relics.relic_01 = {
       unlocked: true, rarity: 'legendary', rank: 2, affixes: ['vitality'], bossIndex: 0,
@@ -326,13 +327,18 @@ describe('Tienda tras una Fusión', () => {
       coinPrice: 188,
       bloodPrice: 1,
     });
-    expect(offer.relic).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['vitality'] });
+    expect(offer.relic.rank).toBe(2);
+    expect(offer.relic.rarity).not.toBe('legendary');
+    expect(offer.relic.affixes).toHaveLength(RARITIES[offer.relic.rarity].affixCount);
+    expect(offer.coinPrice).toBe(
+      shopPriceForRelic('relic_01', 'fusion-consumed', offer.relic.rarity).coinPrice,
+    );
     const bought = purchaseShopRelic({
       state: ensureShopRotation(fused, 100), relicId: 'relic_01', operationId: 'buy', nowTimestamp: 100,
     });
     expect(bought.ok).toBe(true);
     expect(bought.inventory.relics.relic_01).toMatchObject({
-      rarity: 'legendary', rank: 2, affixes: ['vitality'],
+      rarity: offer.relic.rarity, rank: 2, affixes: offer.relic.affixes,
     });
     expect(shopOffers(bought, 100).some((item) => item.relicId === 'relic_01')).toBe(false);
   });

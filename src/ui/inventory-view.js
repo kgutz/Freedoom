@@ -991,6 +991,16 @@ function shopDestinationHeading(name, description) {
     <p class="shop-destination-copy">${escapeHtml(description)}</p>`;
 }
 
+function shopOfferContext(offer) {
+  const rarityPremium = offer.relic.rarity === 'mythic'
+    ? 'RAREZA +75% ORO'
+    : offer.relic.rarity === 'legendary' ? 'RAREZA +35% ORO' : '';
+  if (offer.source === 'fusion-consumed') {
+    return ['RECUPERACIÓN +25%', rarityPremium].filter(Boolean).join(' · ');
+  }
+  return rarityPremium || BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`;
+}
+
 export function renderShopView(document, lootState, nowTimestamp = Date.now(), options = {}) {
   const normalized = ensureShopRotation(lootState, nowTimestamp);
   const body = document.getElementById('shopBody');
@@ -1013,7 +1023,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
           <div class="shop-relic-copy">
             <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
             <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
-            <small>${offer.source === 'fusion-consumed' ? 'CONSUMIDA EN FUSIÓN · +25% ORO' : escapeHtml(BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`)}</small>
+            <small>${escapeHtml(shopOfferContext(offer))}</small>
           </div>
           <div class="shop-price">
             ${resourceValue('coin', offer.coinPrice)}
@@ -1044,7 +1054,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
-    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular por vías… poco oficiales.')}${resources}${relicShop}`;
+    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular con una rareza nueva cada 3 días. Las legendarias y míticas cuestan más oro.')}${resources}${relicShop}`;
     return;
   }
   if (section === 'potions') {

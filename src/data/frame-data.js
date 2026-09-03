@@ -26,7 +26,7 @@ export const FRAME_DEFINITIONS = Object.freeze([
     name: 'Estudio Musical Celestial',
     rarity: 'mythic',
     image: 'hero_background/celestial_music_studio.webp',
-    released: true,
+    released: false,
     unlocked: false,
     recipe: Object.freeze({ arcaneInks: 35, coins: 350 }),
     lore: 'En este estudio ancestral, cada nota queda grabada en cristal y oro. Sus máquinas celestiales transforman el ritmo de Freedom en tinta capaz de reescribir el destino.',
@@ -43,6 +43,7 @@ export function isFrameUnlocked(frameOrId, game = {}) {
     ? FRAME_DEFINITIONS.find((candidate) => candidate.id === frameOrId)
     : frameOrId;
   if (!frame) return false;
+  if (frame.released === false) return false;
   if (frame.id === 'original') return true;
   if (game?.frames?.owned?.[frame.id]) return true;
   return Boolean(frame.unlocked);
