@@ -37,6 +37,16 @@ const arrayOf = (value) => (Array.isArray(value) ? value : []);
 const OUTCOME_STATUSES = new Set(['obtained', 'failed', 'purchased']);
 const FUSION_HISTORY_LIMIT = 100;
 
+function nextLocalMidnight(timestamp) {
+  const date = new Date(Math.max(0, Number(timestamp) || 0));
+  return new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate() + 1,
+    0, 0, 0, 0,
+  ).getTime();
+}
+
 function higherRarity(left = 'rare', right = 'rare') {
   return RARITY_ORDER.indexOf(right) > RARITY_ORDER.indexOf(left) ? right : left;
 }
@@ -401,16 +411,23 @@ export function normalizeLootState(state = {}) {
       purchases: arrayOf(shop.purchases).map((purchase) => ({ ...purchase })).slice(-100),
       sales: arrayOf(shop.sales)
         .filter((sale) => isBaseRelic(sale?.relicId))
-        .map((sale) => ({
-          ...sale,
-          relicId: String(sale.relicId),
-          operationId: String(sale.operationId || ''),
-          coinsReceived: Math.max(0, Math.trunc(Number(sale.coinsReceived) || 0)),
-          at: Math.max(0, Number(sale.at) || 0),
-          availableAt: Math.max(0, Number(sale.availableAt) || 0),
-          ...(sale.reacquiredAt ? { reacquiredAt: Math.max(0, Number(sale.reacquiredAt) || 0) } : {}),
-          ...(sale.reacquiredOperationId ? { reacquiredOperationId: String(sale.reacquiredOperationId) } : {}),
-        }))
+        .map((sale) => {
+          const soldAt = Math.max(0, Number(sale.at) || 0);
+          const dailyAvailableAt = soldAt ? nextLocalMidnight(soldAt) : 0;
+          const storedAvailableAt = Math.max(0, Number(sale.availableAt) || 0);
+          return {
+            ...sale,
+            relicId: String(sale.relicId),
+            operationId: String(sale.operationId || ''),
+            coinsReceived: Math.max(0, Math.trunc(Number(sale.coinsReceived) || 0)),
+            at: soldAt,
+            availableAt: dailyAvailableAt
+              ? Math.min(storedAvailableAt || dailyAvailableAt, dailyAvailableAt)
+              : storedAvailableAt,
+            ...(sale.reacquiredAt ? { reacquiredAt: Math.max(0, Number(sale.reacquiredAt) || 0) } : {}),
+            ...(sale.reacquiredOperationId ? { reacquiredOperationId: String(sale.reacquiredOperationId) } : {}),
+          };
+        })
         .slice(-100),
     },
   };

@@ -578,6 +578,35 @@ describe('Tienda de reliquias falladas', () => {
     expect(offer.relic.rarity).not.toBe('rare');
   });
 
+  it('migra las ventas bloqueadas por la antigua rotación de tres días', () => {
+    const soldAt = new Date(2026, 8, 3, 19, 59, 42).getTime();
+    const nextMidnight = new Date(2026, 8, 4, 0, 0, 0, 0).getTime();
+    const legacyAvailableAt = new Date(2026, 8, 6, 17, 46, 8).getTime();
+    const state = emptyLootState();
+    state.inventory.collection.relic_07 = {
+      discoveredAt: soldAt,
+      lastOwnedRecord: {
+        id: 'relic_07', unlocked: true, rarity: 'rare', rank: 1,
+        affixes: [], obtainedAt: soldAt, bossIndex: 6,
+      },
+    };
+    state.shop.sales = [{
+      id: 'shop-sale:legacy', operationId: 'legacy', relicId: 'relic_07',
+      relic: state.inventory.collection.relic_07.lastOwnedRecord,
+      coinsReceived: 225, at: soldAt, availableAt: legacyAvailableAt,
+    }];
+
+    const beforeMidnight = ensureShopRotation(state, nextMidnight - 1);
+    expect(beforeMidnight.shop.sales[0].availableAt).toBe(nextMidnight);
+    expect(shopOffers(beforeMidnight, nextMidnight - 1)).toEqual([]);
+
+    const afterMidnight = ensureShopRotation(beforeMidnight, nextMidnight);
+    const offer = shopOffers(afterMidnight, nextMidnight)
+      .find((candidate) => candidate.relicId === 'relic_07');
+    expect(offer).toBeTruthy();
+    expect(offer.source).toBe('sold');
+  });
+
   it('no compra reliquias equipadas, fusionadas ni repite una venta', () => {
     const state = emptyLootState();
     state.inventory.relics.relic_01 = {
