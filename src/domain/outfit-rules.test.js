@@ -148,15 +148,17 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(repeated).toMatchObject({ ok: false, reason: 'owned' });
   });
 
-  it('impide comprar el conjunto mítico mientras no esté publicado', () => {
+  it('permite comprar el conjunto y el fondo celestiales publicados', () => {
     const outfitState = stateWithGame();
     outfitState.economy = { ...outfitState.economy, coins: 320, arcaneFibers: 20 };
     const outfit = weaveOutfit({ state: outfitState, outfitId: 'celestial-rhythm-master', operationId: 'celestial-outfit' });
-    expect(outfit).toMatchObject({ ok: false, reason: 'invalid', economy: { coins: 320, arcaneFibers: 20 } });
+    expect(outfit).toMatchObject({ ok: true, economy: { coins: 0, arcaneFibers: 0 } });
+    expect(outfit.game.outfits.owned['celestial-rhythm-master']).toMatchObject({ source: 'woven' });
 
     const frameState = stateWithGame();
     frameState.economy = { ...frameState.economy, coins: 350, arcaneInks: 35 };
     const frame = paintFrame({ state: frameState, frameId: 'celestial-music-studio', operationId: 'celestial-frame' });
-    expect(frame).toMatchObject({ ok: false, reason: 'invalid', economy: { coins: 350, arcaneInks: 35 } });
+    expect(frame).toMatchObject({ ok: true, economy: { coins: 0, arcaneInks: 0 } });
+    expect(frame.game.frames.owned['celestial-music-studio']).toMatchObject({ source: 'painted' });
   });
 });

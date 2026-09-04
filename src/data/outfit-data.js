@@ -1,7 +1,3 @@
-const LOCAL_CELESTIAL_PREVIEW = typeof window !== 'undefined'
-  && ['localhost', '127.0.0.1'].includes(window.location.hostname)
-  && new URLSearchParams(window.location.search).get('demoCelestial') === '1';
-
 export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'original',
@@ -44,7 +40,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     id: 'celestial-rhythm-master',
     name: 'Maestro del Ritmo Celestial',
     rarity: 'mythic',
-    released: LOCAL_CELESTIAL_PREVIEW,
+    released: true,
     unlocked: false,
     craftable: true,
     assetId: 'celestial-rhythm',

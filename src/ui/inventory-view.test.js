@@ -167,34 +167,23 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('>PINTAR</button>');
   });
 
-  it('oculta el conjunto mítico del Telar y del Pintor hasta publicarlo', () => {
+  it('muestra el conjunto mítico publicado en el Telar y el Pintor', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
     state.game = { cls: 'druid', outfit: 'original', frame: 'original' };
     state.economy = { ...state.economy, coins: 700, arcaneFibers: 35, arcaneInks: 35 };
 
     expect(renderOutfitSelector(document, state, 'celestial-rhythm-master', { section: 'weave', context: 'shop' }))
-      .toBe(null);
-    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Maestro del Ritmo Celestial');
+      .toBe('celestial-rhythm-master');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Maestro del Ritmo Celestial');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-weave-outfit="celestial-rhythm-master"');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('PREVISUALIZACIÓN');
 
     expect(renderOutfitSelector(document, state, 'celestial-music-studio', { section: 'frames', context: 'shop' }))
-      .toBe(null);
-    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Estudio Musical Celestial');
-
-    expect(renderOutfitSelector(document, state, null, {
-      section: 'weave', context: 'shop', previewUnreleased: true,
-    })).toBe(null);
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Maestro del Ritmo Celestial');
-
-    expect(renderOutfitSelector(document, state, 'celestial-rhythm-master', {
-      section: 'owned', context: 'collection', previewUnreleased: true,
-    })).toBe('celestial-rhythm-master');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('PREVISUALIZACIÓN');
-
-    expect(renderOutfitSelector(document, state, null, {
-      section: 'frames', context: 'shop', previewUnreleased: true,
-    })).toBe(null);
+      .toBe('celestial-music-studio');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Estudio Musical Celestial');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-paint-frame="celestial-music-studio"');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('PREVISUALIZACIÓN');
   });
 
   it('integra los detalles de todas las pociones dentro de Efecto sin mostrar Reglas', () => {

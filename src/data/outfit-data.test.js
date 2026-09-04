@@ -45,13 +45,15 @@ describe('outfits de héroe', () => {
     expect(outfitUsesTransparentPortrait('arcane-weave-02')).toBe(true);
   });
 
-  it('mantiene preparado pero oculto el Maestro del Ritmo Celestial', () => {
+  it('publica el Maestro del Ritmo Celestial con sus recursos definitivos', () => {
     const game = { outfits: { owned: { 'celestial-rhythm-master': { acquiredAt: 1 } } } };
     const outfit = OUTFIT_DEFINITIONS.find((candidate) => candidate.id === 'celestial-rhythm-master');
-    expect(outfit).toMatchObject({ released: false, recipe: { arcaneFibers: 20, coins: 320 } });
-    expect(isOutfitUnlocked('celestial-rhythm-master', game)).toBe(false);
-    expect(equippedOutfit('celestial-rhythm-master', game).id).toBe('original');
-    expect(heroFaceSource('knight', 'celestial-rhythm-master')).toBe('hero_face/knight_face.webp');
-    expect(heroSpriteSource('knight', 'happy', 'celestial-rhythm-master')).toBe('sprites/knight_happy.webp');
+    expect(outfit).toMatchObject({ released: true, recipe: { arcaneFibers: 20, coins: 320 } });
+    expect(isOutfitUnlocked('celestial-rhythm-master', game)).toBe(true);
+    expect(equippedOutfit('celestial-rhythm-master', game).id).toBe('celestial-rhythm-master');
+    expect(heroFaceSource('knight', 'celestial-rhythm-master'))
+      .toBe('outfits/celestial-rhythm/knight_face.webp');
+    expect(heroSpriteSource('knight', 'happy', 'celestial-rhythm-master'))
+      .toBe('outfits/celestial-rhythm/knight_happy.webp');
   });
 });
