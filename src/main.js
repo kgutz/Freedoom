@@ -256,7 +256,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.17';
+const APP_VERSION='2.28.18';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2415,6 +2415,7 @@ let pendingForgeAttempt=null;
 let shopLocked=false;
 let pendingShopPurchase=null;
 let shopViewSection='map';
+let relicShopMode='buy';
 let forgeFromCity=false;
 let selectedForgeRelicId=null;
 let forgeMode='upgrade';
@@ -2453,7 +2454,7 @@ function confirmConstancyLoss(result, action='Desequipar'){
 function forgeRenderOptions(){
   return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId,cityEntry:forgeFromCity};
 }
-function shopRenderOptions(){return {...potionViewOptions(),section:shopViewSection};}
+function shopRenderOptions(){return {...potionViewOptions(),section:shopViewSection,relicMode:relicShopMode};}
 function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
@@ -2790,6 +2791,11 @@ function openShopRelicDetail(relicId){
     relicOverride:offer.relic,
     shopPreview:true
   })) return;
+  showSheet(document,'sheetRelicDetail');
+}
+function openShopSaleRelicDetail(relicId){
+  const relic=state.inventory?.relics?.[relicId];
+  if(!relic||!renderRelicDetail(document,state,relicId,{shopSale:true})) return;
   showSheet(document,'sheetRelicDetail');
 }
 async function showPendingLootNotice(){
@@ -5500,6 +5506,7 @@ async function handleRelicSale(relicId){
       :'Esta reliquia ya no está disponible';
     showToast(message,'dmg');
   }
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
   renderShopView(document,state,Date.now(),shopRenderOptions());
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -5537,6 +5544,7 @@ function returnToShopMap(){
   document.getElementById('sheetInventory')?.classList.remove('inventory-shop-cosmetic-open');
   forgeFromCity=false;
   shopViewSection='map';
+  relicShopMode='buy';
   showInventoryPanel('shop');
 }
 
@@ -5548,6 +5556,7 @@ function returnToCharacterSheetFromShop(){
   document.getElementById('sheetInventory')?.classList.remove('show','inventory-shop-cosmetic-open');
   forgeFromCity=false;
   shopViewSection='map';
+  relicShopMode='buy';
   renderCurrentCharacterSheet();
   showSheet(document,'sheetCharacter');
 }
@@ -5579,6 +5588,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     dismissFeatureDiscovery('inventory-market');
     forgeFromCity=false;
     shopViewSection='map';
+    relicShopMode='buy';
     showInventoryPanel('shop');
     return;
   }
@@ -5606,6 +5616,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     }
     if(destination==='potions'||destination==='relics'){
       shopViewSection=destination;
+      if(destination==='relics') relicShopMode='buy';
       showInventoryPanel('shop');
       return;
     }
@@ -5621,6 +5632,14 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('[data-open-potion-shop]')){
     shopViewSection='potions';
     showInventoryPanel('shop');
+    return;
+  }
+  const relicShopModeButton=event.target.closest('[data-shop-relic-mode]');
+  if(relicShopModeButton){
+    relicShopMode=relicShopModeButton.dataset.shopRelicMode==='sell'?'sell':'buy';
+    renderShopView(document,state,Date.now(),shopRenderOptions());
+    const shopBody=document.getElementById('shopBody');
+    if(shopBody) shopBody.scrollTop=0;
     return;
   }
   const outfitShortcut=event.target.closest('[data-open-outfits]');
@@ -5658,6 +5677,11 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   const shopRelic=event.target.closest('[data-open-shop-relic]');
   if(shopRelic){
     openShopRelicDetail(shopRelic.dataset.openShopRelic);
+    return;
+  }
+  const saleRelic=event.target.closest('[data-open-sale-relic]');
+  if(saleRelic){
+    openShopSaleRelicDetail(saleRelic.dataset.openSaleRelic);
     return;
   }
   const purchase=event.target.closest('[data-buy-relic]');
@@ -6033,6 +6057,18 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
 });
 document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>document.getElementById('forgeRelicPickerBg').classList.remove('show'));
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const sale=event.target.closest('[data-sell-relic]');
+  if(sale){
+    if(sale.disabled||shopLocked) return;
+    const relicId=sale.dataset.sellRelic;
+    const relic=state.inventory?.relics?.[relicId];
+    const definition=relicDefinition(relicId);
+    if(!relic||!definition) return;
+    openShopPurchaseConfirmation({
+      type:'sale',relicId,name:definition.name,coinValue:shopSalePriceForRelic(relicId,relic)
+    });
+    return;
+  }
   const quantityStep=event.target.closest('[data-potion-quantity-step]');
   if(quantityStep){
     const output=event.currentTarget.querySelector('[data-potion-quantity]');
@@ -6434,7 +6470,7 @@ document.getElementById('lootNoticeActions').addEventListener('click',event=>{
   const shop=event.target.closest('[data-loot-shop]');
   const keepGoing=event.target.closest('[data-loot-continue]');
   if(inventory){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory('collection'); return; }
-  if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); shopViewSection='relics'; showInventoryPanel('shop'); return; }
+  if(shop){ acknowledgeActiveLootNotice(); switchView('view-hero','navHero'); renderHero(); openInventory(); shopViewSection='relics'; relicShopMode='buy'; showInventoryPanel('shop'); return; }
   if(keepGoing){ acknowledgeActiveLootNotice(); renderAll(); }
 });
 document.getElementById('lootNoticeRewards').addEventListener('click',event=>{

@@ -617,8 +617,12 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const owned = Boolean(normalized.inventory.relics[relicId]);
   const equipped = owned && normalized.inventory.equipped.includes(relicId);
+  const salePrice = options.shopSale ? shopSalePriceForRelic(relicId, relic) : 0;
   const equipmentActions = options.shopPreview
     ? '<div class="relic-not-owned">OFERTA DEL CONTRABANDISTA</div>'
+    : options.shopSale
+    ? `<div class="relic-sale-detail-price"><span>EL CONTRABANDISTA PAGA</span>${resourceValue('coin', salePrice)}</div>
+      <button type="button" data-sell-relic="${relicId}"${equipped ? ' disabled' : ''}>${equipped ? 'DESEQUÍPALA PARA VENDER' : `VENDER · ${salePrice} ORO`}</button>`
     : !owned
     ? '<div class="relic-not-owned">DESCUBIERTA · NO POSEÍDA</div>'
     : equipped
@@ -658,7 +662,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     <div class="relic-affixes"><span>EFECTOS EXTRAS</span><ul>${affixes}</ul></div>
     <div class="relic-equip-actions">
       ${equipmentActions}
-      ${owned && !fusion ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
+      ${owned && !fusion && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
     </div>`;
   return true;
 }
@@ -1014,6 +1018,13 @@ function shopOfferContext(offer) {
     BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`;
 }
 
+function relicShopModeTabs(active) {
+  return `<div class="shop-relic-mode-tabs" role="tablist" aria-label="Operación del Contrabandista">
+    <button type="button" data-shop-relic-mode="buy" class="${active === 'buy' ? 'active' : ''}" role="tab" aria-selected="${active === 'buy'}">Comprar</button>
+    <button type="button" data-shop-relic-mode="sell" class="${active === 'sell' ? 'active' : ''}" role="tab" aria-selected="${active === 'sell'}">Vender</button>
+  </div>`;
+}
+
 export function renderShopView(document, lootState, nowTimestamp = Date.now(), options = {}) {
   const normalized = ensureShopRotation(lootState, nowTimestamp);
   const body = document.getElementById('shopBody');
@@ -1023,6 +1034,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     body.innerHTML = shopCityMapMarkup();
     return;
   }
+  const relicMode = options.relicMode === 'sell' ? 'sell' : 'buy';
   const offers = shopOffers(normalized, nowTimestamp);
   const rotation = normalized.shop.rotation;
   const content = offers.length
@@ -1069,23 +1081,17 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const ownedBaseRelics = RELIC_DEFINITIONS
     .filter((definition) => normalized.inventory.relics[definition.id]);
   const saleContent = ownedBaseRelics.length
-    ? `<div class="shop-grid shop-sale-grid">${ownedBaseRelics.map((definition) => {
+    ? `<div class="shop-sale-relic-grid">${ownedBaseRelics.map((definition) => {
         const relic = normalized.inventory.relics[definition.id];
         const rarity = RARITIES[relic.rarity] || RARITIES.rare;
         const equipped = normalized.inventory.equipped.includes(definition.id);
         const salePrice = shopSalePriceForRelic(definition.id, relic);
-        return `<article class="shop-relic shop-relic--sale ${rarityClass(relic.rarity)}">
-          <button type="button" class="shop-relic-preview" data-open-relic="${definition.id}" aria-label="Ver detalles de ${escapeHtml(definition.name)}">
-            ${relicArt(definition)}
-            <span class="shop-relic-copy">
-              <h4 title="${escapeHtml(definition.name)}">${escapeHtml(definition.name)}</h4>
-              <span class="rarity-label">${rarity.label} · RANGO ${relic.rank}</span>
-              <small>${equipped ? 'EQUIPADA · DESEQUÍPALA PARA VENDER' : 'EL CONTRABANDISTA PAGA EL 70%'}</small>
-            </span>
-          </button>
-          <div class="shop-price">${resourceValue('coin', salePrice)}</div>
-          <button type="button" class="shop-relic-sell" data-sell-relic="${definition.id}" aria-label="Vender ${escapeHtml(definition.name)} por ${salePrice} de oro"${equipped ? ' disabled' : ''}>${equipped ? 'EQUIPADA' : 'VENDER'}</button>
-        </article>`;
+        const accessibleName = `${definition.name}, ${rarity.label}, rango ${relic.rank}, venta por ${salePrice} de oro${equipped ? ', Equipada' : ''}`;
+        return `<button type="button" class="shop-sale-relic-item ${rarityClass(relic.rarity)}${equipped ? ' equipped' : ''}" data-open-sale-relic="${definition.id}" aria-label="${escapeHtml(accessibleName)}" title="${escapeHtml(accessibleName)}">
+          ${relicArt(definition)}
+          ${equipped ? '<span class="shop-sale-equipped" aria-hidden="true">◆</span>' : ''}
+          <span class="shop-sale-relic-price">${resourceIcon('coin')}<b>${salePrice}</b></span>
+        </button>`;
       }).join('')}</div>`
     : `<div class="shop-empty shop-sale-empty"><p>No tienes reliquias normales disponibles para vender.</p></div>`;
   const saleShop = `<div class="shop-heading shop-sale-heading"><span>VENDE TUS RELIQUIAS</span><small>RECIBES EL 70% EN ORO</small></div>
@@ -1094,7 +1100,10 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
-    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', 'Reliquias perdidas vuelven a circular. También compra las que quieras vender para traerlas transformadas en futuras rotaciones.')}${resources}${relicShop}${saleShop}`;
+    const description = relicMode === 'sell'
+      ? 'Vende reliquias normales para recuperar oro y darles otra oportunidad en futuras rotaciones.'
+      : 'Recupera reliquias perdidas con una nueva rareza, rango y combinación de efectos.';
+    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', description)}${relicShopModeTabs(relicMode)}${resources}${relicMode === 'sell' ? saleShop : relicShop}`;
     return;
   }
   if (section === 'potions') {
