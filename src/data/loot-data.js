@@ -24,7 +24,7 @@ export const SHOP_ROTATION_DAYS = 1;
 export const SHOP_MAX_VISIBLE_RELICS = 3;
 export const FUSION_COIN_COST = 100;
 export const FUSION_BLOOD_COST = 1;
-export const DEFUSION_COIN_COST = 250;
+export const DEFUSION_COIN_COST = 150;
 export const DEFUSION_BLOOD_COST = 1;
 export const FUSION_SUCCESS_PROBABILITIES = Object.freeze([70, 85, 100]);
 

@@ -888,7 +888,7 @@ describe('preview puro de Fusión', () => {
       rarity: 'legendary', rank: 2, affixes: ['vitality'],
     });
     Object.assign(state.inventory.relics.relic_02, {
-      rarity: 'legendary', rank: 1, affixes: ['arcane'],
+      rarity: 'legendary', rank: 2, affixes: ['arcane'],
     });
     return state;
   }
@@ -911,12 +911,12 @@ describe('preview puro de Fusión', () => {
       resultRank: 2,
       resultRarity: 'mythic',
       resultAffixes: ['vitality', 'arcane'],
-      inheritedEffects: { relic_01: 7, relic_02: 5 },
+      inheritedEffects: { relic_01: 7, relic_02: 7 },
     });
     expect(preview.definition.name).toBe('Corazón Espectral');
     expect(preview.resultRelic).toMatchObject({
       rank: 2, rarity: 'mythic',
-      inheritedEffects: { relic_01: 7, relic_02: 5 },
+      inheritedEffects: { relic_01: 7, relic_02: 7 },
     });
     expect(JSON.stringify(state)).toBe(before);
     expect(state.economy).toMatchObject({ coins: 500, bossBlood: 4 });
@@ -955,22 +955,22 @@ describe('preview puro de Fusión', () => {
     expect(result.economy.transactions.at(-1).id).toBe('fusion:after-preview');
   });
 
-  it('desfusiona por 250 de oro y una Sangre conservando las reliquias originales', () => {
+  it('desfusiona por 150 de oro, devuelve una Sangre y conserva las reliquias originales', () => {
     const fused = fuseRelics({
       state: fusionState(), leftId: 'relic_01', rightId: 'relic_02',
       operationId: 'fusion-before-defusion', randomValue: 0, nowTimestamp: 20,
     });
     const preview = getDefusionPreview(fused, 'fusion_01');
-    expect(preview).toMatchObject({ ok: true, coinCost: 250, bloodCost: 1 });
+    expect(preview).toMatchObject({ ok: true, coinCost: 150, bloodCost: 0, bloodRefund: 1 });
     const result = defuseRelic({
       state: fused, relicId: 'fusion_01', operationId: 'defusion-1', nowTimestamp: 30,
     });
     expect(result.ok).toBe(true);
-    expect(result.economy).toMatchObject({ coins: 150, bossBlood: 2 });
+    expect(result.economy).toMatchObject({ coins: 250, bossBlood: 4 });
     expect(result.inventory.relics.fusion_01).toBeUndefined();
     expect(result.inventory.relics.relic_01).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['vitality'] });
-    expect(result.inventory.relics.relic_02).toMatchObject({ rarity: 'legendary', rank: 1, affixes: ['arcane'] });
-    expect(result.forge.fusion.history.at(-1)).toMatchObject({ type: 'defusion', coinsSpent: 250, bossBloodSpent: 1 });
+    expect(result.inventory.relics.relic_02).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['arcane'] });
+    expect(result.forge.fusion.history.at(-1)).toMatchObject({ type: 'defusion', coinsSpent: 150, bossBloodSpent: 0, bossBloodRefunded: 1 });
     expect(result.economy.transactions.at(-1)).toMatchObject({ id: 'defusion:defusion-1', type: 'relic_defusion' });
   });
 

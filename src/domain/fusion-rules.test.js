@@ -44,10 +44,7 @@ function fuse(state, leftId, rightId, operationId = 'fusion-op') {
 describe('Fusión de reliquias', () => {
   it.each([
     [1, 1, 1],
-    [2, 1, 2],
     [2, 2, 2],
-    [3, 1, 3],
-    [3, 2, 3],
     [3, 3, 3],
   ])('Rango %i + Rango %i produce una fusión de Rango %i sin alterar cada potencia',
     (leftRank, rightRank, expectedRank) => {
@@ -69,6 +66,15 @@ describe('Fusión de reliquias', () => {
         relic_02: expectedRightValue,
       });
     });
+
+  it('bloquea la fusión de reliquias con rangos diferentes', () => {
+    const state = fusionState(2);
+    state.inventory.relics.relic_01.rank = 2;
+    state.inventory.relics.relic_02.rank = 1;
+    expect(fusionPreview(state, 'relic_01', 'relic_02')).toMatchObject({
+      ok: false, reason: 'rank-mismatch',
+    });
+  });
 
   it('mantiene oculta una receta desconocida y la descubre permanentemente al fusionar', () => {
     const state = fusionState(2);
@@ -129,7 +135,7 @@ describe('Fusión de reliquias', () => {
   it('consume ingredientes, entrega el resultado y conserva valores históricos sin reroll', () => {
     const state = fusionState(2);
     state.inventory.relics.relic_01 = {
-      unlocked: true, rarity: 'legendary', rank: 2, affixes: ['vitality'], bossIndex: 0,
+      unlocked: true, rarity: 'legendary', rank: 3, affixes: ['vitality'], bossIndex: 0,
     };
     state.inventory.relics.relic_02 = {
       unlocked: true, rarity: 'mythic', rank: 3, affixes: ['arcane', 'vitality'], bossIndex: 1,
@@ -141,30 +147,30 @@ describe('Fusión de reliquias', () => {
       kind: 'fusion',
       rank: 3,
       rarity: 'mythic',
-      inheritedEffects: { relic_01: 7, relic_02: 10 },
+      inheritedEffects: { relic_01: 10, relic_02: 10 },
       affixes: ['vitality', 'arcane'],
     });
     expect(result.economy).toMatchObject({ coins: 900, bossBlood: 19 });
-    expect(result.forge.fusion.history.at(-1).ingredients.relic_01.rank).toBe(2);
+    expect(result.forge.fusion.history.at(-1).ingredients.relic_01.rank).toBe(3);
     const restored = normalizeLootState(JSON.parse(JSON.stringify(result)));
     expect(restored.inventory.relics.fusion_01.inheritedEffects).toEqual({
-      relic_01: 7, relic_02: 10,
+      relic_01: 10, relic_02: 10,
     });
     const equipped = equipRelic(restored, 'fusion_01');
-    expect(equippedRelicEffectSources(equipped, 'relic_01')[0].value).toBe(7);
+    expect(equippedRelicEffectSources(equipped, 'relic_01')[0].value).toBe(10);
     expect(equippedRelicEffectSources(equipped, 'relic_02')[0].value).toBe(10);
     expect(equippedRelicBonuses(equipped)).toMatchObject({ maxHpPercent: 5, maxManaPercent: 5 });
   });
 
   it('la Daga del Antojo conserva ataque y poder mágico de sus dos ingredientes', () => {
     const state = fusionState(6);
-    state.inventory.relics.relic_03.rank = 1;
+    state.inventory.relics.relic_03.rank = 2;
     state.inventory.relics.relic_05.rank = 2;
     const result = fuse(state, 'relic_03', 'relic_05', 'combat-stats');
     const equipped = equipRelic(result, 'fusion_04');
 
     expect(equippedRelicBonuses(equipped)).toMatchObject({
-      physicalAttack: 1,
+      physicalAttack: 2,
       magicAttack: 2,
       defense: 0,
     });
@@ -251,7 +257,7 @@ describe('Fusión de reliquias', () => {
   it('exportar, importar y restaurar conserva rango global y potencias individuales', () => {
     const state = fusionState(2);
     state.inventory.relics.relic_01.rank = 3;
-    state.inventory.relics.relic_02.rank = 1;
+    state.inventory.relics.relic_02.rank = 3;
     const result = fuse(state, 'relic_01', 'relic_02', 'persistent-ranks');
     result.inventory.relics.fusion_01.futureField = { preserved: true };
     const completeState = { ...result, config: { journeyMode: 'reduction' }, days: {} };
@@ -262,16 +268,16 @@ describe('Fusión de reliquias', () => {
     const restored = normalizeLootState(JSON.parse(JSON.stringify(imported)));
     expect(restored.inventory.relics.fusion_01).toMatchObject({
       rank: 3,
-      inheritedEffects: { relic_01: 10, relic_02: 5 },
+      inheritedEffects: { relic_01: 10, relic_02: 10 },
       ingredientSnapshots: {
         relic_01: { rank: 3, effectValue: 10 },
-        relic_02: { rank: 1, effectValue: 5 },
+        relic_02: { rank: 3, effectValue: 10 },
       },
       futureField: { preserved: true },
     });
   });
 
-  it('migra una fusión anterior usando el rango máximo de sus snapshots sin recalcular efectos', () => {
+  it('migra una fusión anterior igualando ambos componentes al rango máximo', () => {
     const legacy = emptyLootState();
     legacy.inventory.relics.fusion_01 = {
       unlocked: true,
@@ -288,12 +294,13 @@ describe('Fusión de reliquias', () => {
     };
     const migrated = normalizeLootState(legacy).inventory.relics.fusion_01;
     expect(migrated.rank).toBe(3);
-    expect(migrated.inheritedEffects).toEqual({ relic_01: 10, relic_02: 5 });
+    expect(migrated.inheritedEffects).toEqual({ relic_01: 10, relic_02: 10 });
     expect(migrated.ingredientSnapshots).toMatchObject({
       relic_01: { rank: 3, effectValue: 10 },
-      relic_02: { rank: 1, effectValue: 5 },
+      relic_02: { rank: 3, effectValue: 10 },
     });
   });
+
 
   it('conserva en la colección los ingredientes sacrificados y distingue posesión', () => {
     const result = fuse(fusionState(2), 'relic_01', 'relic_02');
@@ -320,6 +327,7 @@ describe('Tienda tras una Fusión', () => {
     state.inventory.relics.relic_01 = {
       unlocked: true, rarity: 'legendary', rank: 2, affixes: ['vitality'], bossIndex: 0,
     };
+    state.inventory.relics.relic_02.rank = 2;
     const fused = fuse(state, 'relic_01', 'relic_02');
     const offer = shopOffers(ensureShopRotation(fused, 100), 100)
       .find((item) => item.relicId === 'relic_01');

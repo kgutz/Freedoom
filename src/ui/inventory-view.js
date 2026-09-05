@@ -2,7 +2,6 @@ import {
   AFFIX_DEFINITIONS,
   ALL_RELIC_DEFINITIONS,
   CHARGE_MECHANICS,
-  DEFUSION_BLOOD_COST,
   DEFUSION_COIN_COST,
   FUSION_RELIC_DEFINITIONS,
   RARITIES,
@@ -788,7 +787,7 @@ export function renderDefusionView(document, lootState, selectedRelicId = null) 
   const selectedDefinition = fusedDefinitions.find((definition) => definition.id === selectedRelicId) || null;
   let content = `<div class="forge-empty"><div class="forge-focus-art fusion-slot forge-animated-slot forge-animated-slot--defusion" aria-hidden="true"></div><h3>NO HAY FUSIONES</h3><p>Las reliquias fusionadas que poseas aparecerán aquí.</p></div>`;
   if (fusedDefinitions.length && !selectedDefinition) {
-    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p><p>La reliquia fusionada se consume. El proceso cuesta oro y Sangre de Jefe.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus forge-focus--empty"><button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Elegir reliquia para desfusionar"></button><h3>ELIGE UNA RELIQUIA</h3><p class="fusion-status">Solo se mostrarán tus reliquias fusionadas.</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', DEFUSION_COIN_COST)}${resourceValue('boss-blood', DEFUSION_BLOOD_COST)}</div><button type="button" class="forge-attempt defusion-attempt" disabled>DESFUSIONAR</button></div></section>`;
+    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p><p>Solo cuesta oro y recuperas la Sangre de Jefe usada al fusionar.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus forge-focus--empty"><button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Elegir reliquia para desfusionar"></button><h3>ELIGE UNA RELIQUIA</h3><p class="fusion-status">Solo se mostrarán tus reliquias fusionadas.</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', DEFUSION_COIN_COST)}<span>RECUPERAS</span>${resourceValue('boss-blood', 1)}</div><button type="button" class="forge-attempt defusion-attempt" disabled>DESFUSIONAR</button></div></section>`;
   } else if (selectedDefinition) {
     const relic = normalized.inventory.relics[selectedDefinition.id];
     const preview = getDefusionPreview(normalized, selectedDefinition.id);
@@ -806,7 +805,7 @@ export function renderDefusionView(document, lootState, selectedRelicId = null) 
           : preview.reason === 'missing-snapshots'
             ? 'Esta fusión antigua no conserva los datos necesarios.'
             : 'Recuperarás exactamente las dos reliquias originales.';
-    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus ${rarityClass(relic.rarity)}"><button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button><h3>${escapeHtml(selectedDefinition.name)}</h3><div class="defusion-arrow" aria-hidden="true">↓</div><div class="defusion-ingredients">${ingredients}</div><p class="fusion-status ${preview.ok ? '' : 'error'}">${escapeHtml(reason)}</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}${resourceValue('boss-blood', preview.bloodCost)}</div><button type="button" class="forge-attempt defusion-attempt" data-defuse-relic="${selectedDefinition.id}"${preview.ok ? '' : ' disabled'}>DESFUSIONAR</button></div></section>`;
+    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p><p>La Sangre de Jefe usada en la fusión también vuelve a ti.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus ${rarityClass(relic.rarity)}"><button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button><h3>${escapeHtml(selectedDefinition.name)}</h3><div class="defusion-arrow" aria-hidden="true">↓</div><div class="defusion-ingredients">${ingredients}</div><p class="fusion-status ${preview.ok ? '' : 'error'}">${escapeHtml(reason)}</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}<span>RECUPERAS</span>${resourceValue('boss-blood', preview.bloodRefund)}</div><button type="button" class="forge-attempt defusion-attempt" data-defuse-relic="${selectedDefinition.id}"${preview.ok ? '' : ' disabled'}>DESFUSIONAR</button></div></section>`;
   }
   body.innerHTML = `${forgeModeTabs('defusion')}${content}`;
   return selectedDefinition?.id || null;
@@ -937,6 +936,8 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
         ? 'Esta combinación todavía no está disponible.'
         : preview.reason === 'already-owned'
           ? 'Ya posees esta reliquia fusionada.'
+          : preview.reason === 'rank-mismatch'
+            ? 'Ambas reliquias deben tener el mismo rango.'
           : preview.reason === 'coins'
             ? 'No tienes suficiente oro.'
             : preview.reason === 'blood'
@@ -949,15 +950,16 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
       const selected = definition.id === leftId || definition.id === rightId;
       const position = definition.id === leftId ? 1 : definition.id === rightId ? 2 : null;
       const incompatible = Boolean(leftId && !selected &&
-        fusionRecipeStatus(leftId, definition.id).status !== 'available');
+        (fusionRecipeStatus(leftId, definition.id).status !== 'available' ||
+          normalized.inventory.relics[leftId]?.rank !== relic.rank));
       const rejected = options.errorId === definition.id;
       return `<button type="button" class="forge-relic-choice ${rarityClass(relic.rarity)}${selected ? ' selected' : ''}${position === 1 ? ' fusion-first-selected' : ''}${incompatible ? ' fusion-incompatible' : ''}${rejected ? ' fusion-choice-error' : ''}" data-select-fusion-relic="${definition.id}" aria-label="Seleccionar ${escapeHtml(definition.name)}${incompatible ? ', incompatible con la primera reliquia' : ''}"${incompatible ? ' aria-disabled="true"' : ''}>${relicArt(definition)}<span class="forge-choice-rank">${relic.rank}</span>${position ? `<span class="fusion-choice-order" aria-hidden="true">${position}</span>` : ''}</button>`;
     }).join('');
   const selectionFeedback = options.errorId
-    ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible.</small></p>'
-    : `<p class="fusion-status ${preview.status === 'incompatible' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
+    ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible. También debe tener el mismo rango.</small></p>'
+    : `<p class="fusion-status ${preview.status === 'incompatible' || preview.reason === 'rank-mismatch' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
-    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Cada intento consume oro. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. La rareza y el rango más altos están garantizados.</p><p>Cada efecto conserva la potencia exacta que tenía en su reliquia de origen. Los efectos diferentes se conservan sin duplicarse.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Las dos reliquias deben tener el mismo rango.</p><p>Cada intento consume oro. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. Cada efecto conserva la potencia exacta de su reliquia de origen.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
     <section class="fusion-flow${left && right ? ' has-pair' : ''}" aria-label="Receta de Fusión">
       <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
       ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
@@ -1219,5 +1221,5 @@ export function defusionResultMarkup(result) {
     const relic = result.restoredRelics[relicId];
     return `<div class="defusion-result-relic">${relicArt(definition)}<b>${escapeHtml(definition?.name || relicId)}</b><small>RANGO ${relic.rank}</small></div>`;
   }).join('');
-  return `<div class="forge-result success fusion-result"><span>DESFUSIÓN COMPLETADA</span><h3>Las reliquias originales han regresado</h3><div class="defusion-result-grid">${restored}</div><p>Conservan la rareza, el rango y los efectos que tenían antes de fusionarse.</p><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', result.spentCoins)}${resourceValue('boss-blood', result.spentBossBlood)}</div></div>`;
+  return `<div class="forge-result success fusion-result"><span>DESFUSIÓN COMPLETADA</span><h3>Las reliquias originales han regresado</h3><div class="defusion-result-grid">${restored}</div><p>Conservan la rareza, el rango y los efectos que tenían antes de fusionarse.</p><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', result.spentCoins)}<span>RECUPERADO</span>${resourceValue('boss-blood', result.refundedBossBlood)}</div></div>`;
 }

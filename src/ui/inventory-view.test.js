@@ -428,6 +428,7 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.relics.relic_01.rank = 2;
     state.inventory.relics.relic_01.affixes = ['vitality'];
     state.inventory.relics.relic_02.rarity = 'legendary';
+    state.inventory.relics.relic_02.rank = 2;
     state.inventory.relics.relic_02.affixes = ['arcane'];
     const beforePreview = JSON.stringify(state);
     renderFusionView(document, state, 'relic_01', 'relic_02');
@@ -437,9 +438,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
-    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 8% del Maná máximo.');
+    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 10% del Maná máximo.');
     expect(document.elements.forgeBody.innerHTML).toContain('POTENCIA HEREDADA');
-    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 5% MANÁ MÁX.');
+    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 7% MANÁ MÁX.');
     expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
@@ -462,7 +463,7 @@ describe('interfaz de inventario y botín', () => {
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     expect(document.elements.relicDetailBody.innerHTML).toContain('RANGO 2 · RELIQUIA FUSIONADA');
     expect(document.elements.relicDetailBody.innerHTML).toContain('DEFENSA +2');
-    expect(document.elements.relicDetailBody.innerHTML).toContain('PODER +1');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('PODER +2');
   });
 
   it('permite cambiar el slot ocupado, abre el vacío y muestra feedback dentro de la Forja', () => {
@@ -621,15 +622,15 @@ describe('interfaz de inventario y botín', () => {
     expect(html).not.toContain('data-select-defusion-relic');
     expect(html).not.toContain('defusion-relic-grid');
     expect(html).toContain('resource-icon--coin');
-    expect(html).toContain('<b>250</b>');
+    expect(html).toContain('<b>150</b>');
     expect(html).toContain('resource-icon--boss-blood');
     expect(defusionResultMarkup({
       restoredRelics: {
         relic_01: fused.inventory.collection.relic_01.lastOwnedRecord,
         relic_02: fused.inventory.collection.relic_02.lastOwnedRecord,
       },
-      spentCoins: 250,
-      spentBossBlood: 1,
+      spentCoins: 150,
+      refundedBossBlood: 1,
     })).toContain('DESFUSIÓN COMPLETADA');
 
     expect(renderForgeView(document, fused, null, { mode: 'defusion' })).toBe(null);

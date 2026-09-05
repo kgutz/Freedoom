@@ -256,7 +256,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.19';
+const APP_VERSION='2.28.20';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5799,7 +5799,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
       (id===leftId||id===rightId)&&(id==='relic_04'||Number(state.inventory?.relics?.[id]?.inheritedEffects?.relic_04)>0)
     )&&(Number(state.inventory?.constancy?.charge)||0)>0;
     const preview=getForgeFusionPreview(state,leftId,rightId);
-    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Probabilidad de éxito: <b>${preview.successProbability}%</b>. El intento cuesta <b>100 de oro</b>.</p><p>Las reliquias y <b>1 Sangre de Jefe</b> solo se consumirán si tiene éxito.</p>${losesConstancy?`<p><b>Si tiene éxito, perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
+    const rankWarning=preview.resultRank<3
+      ? `<p><b>Atención:</b> esta fusión quedará en rango ${preview.resultRank}. Las reliquias fusionadas no pueden mejorarse directamente; tendrás que desfusionarla para subir sus componentes.</p>`
+      : '';
+    document.getElementById('fusionConfirmBody').innerHTML=`<p><b>${left.name}</b> + <b>${right.name}</b></p><p>Probabilidad de éxito: <b>${preview.successProbability}%</b>. El intento cuesta <b>100 de oro</b>.</p><p>Las reliquias y <b>1 Sangre de Jefe</b> solo se consumirán si tiene éxito.</p>${rankWarning}${losesConstancy?`<p><b>Si tiene éxito, perderás tu carga de Constancia actual (${state.inventory.constancy.charge}/6).</b></p>`:''}`;
     document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }

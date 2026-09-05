@@ -1,7 +1,6 @@
 import {
   AFFIX_DEFINITIONS,
   BOSS_BLOOD_DOUBLE_RATE,
-  DEFUSION_BLOOD_COST,
   DEFUSION_COIN_COST,
   EARLY_VICTORY_BLOOD_RATE,
   EARLY_VICTORY_COIN_BONUS,
@@ -149,9 +148,17 @@ function normalizeRelicRecord(id, value) {
     }
   }
   const storedRank = Math.min(3, Math.max(1, Number(relic.rank) || 1));
-  const normalizedRank = fusion
-    ? Math.max(storedRank, ...Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank))
-    : storedRank;
+  const snapshotRanks = Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank);
+  const normalizedRank = fusion ? Math.max(storedRank, ...snapshotRanks) : storedRank;
+  // Early beta builds allowed mixed-rank ingredients. Promote both halves to the
+  // highest rank already earned so loading the save repairs those fusions fairly.
+  if (fusion && snapshotRanks.length > 1 && snapshotRanks.some((rank) => rank !== normalizedRank)) {
+    Object.entries(ingredientSnapshots).forEach(([baseId, snapshot]) => {
+      snapshot.rank = normalizedRank;
+      snapshot.effectValue = relicRankEffect(baseId, normalizedRank);
+      inheritedEffects[baseId] = snapshot.effectValue;
+    });
+  }
   return {
     ...relic,
     unlocked: relic.unlocked !== false,
@@ -1198,6 +1205,9 @@ export function getForgeFusionPreview(lootState, leftId, rightId) {
   const computedRank = previewIngredients
     ? Math.max(...Object.values(previewIngredients).map((relic) => relic.rank))
     : null;
+  const matchingRanks = previewIngredients
+    ? new Set(Object.values(previewIngredients).map((relic) => relic.rank)).size === 1
+    : true;
   const existingResult = recipe.definition
     ? normalized.inventory.relics[recipe.definition.id] || null
     : null;
@@ -1238,6 +1248,7 @@ export function getForgeFusionPreview(lootState, leftId, rightId) {
   else if (!baseIngredients) reason = 'base-only';
   else if (normalized.inventory.relics[recipe.definition.id]) reason = 'already-owned';
   else if (!ownsLeft || !ownsRight) reason = 'missing-ingredients';
+  else if (!matchingRanks) reason = 'rank-mismatch';
   else if (normalized.economy.coins < FUSION_COIN_COST) reason = 'coins';
   else if (normalized.economy.bossBlood < FUSION_BLOOD_COST) reason = 'blood';
   return {
@@ -1421,7 +1432,6 @@ export function getDefusionPreview(lootState, relicId) {
   else if (ingredientAlreadyOwned) reason = 'ingredient-owned';
   else if (ingredientIds.some((id) => !relic.ingredientSnapshots?.[id])) reason = 'missing-snapshots';
   else if (normalized.economy.coins < DEFUSION_COIN_COST) reason = 'coins';
-  else if (normalized.economy.bossBlood < DEFUSION_BLOOD_COST) reason = 'blood';
   return {
     ok: reason === null,
     reason,
@@ -1430,7 +1440,8 @@ export function getDefusionPreview(lootState, relicId) {
     ingredientIds,
     ingredientAlreadyOwned,
     coinCost: DEFUSION_COIN_COST,
-    bloodCost: DEFUSION_BLOOD_COST,
+    bloodCost: 0,
+    bloodRefund: FUSION_BLOOD_COST,
     coinsAvailable: normalized.economy.coins,
     bloodAvailable: normalized.economy.bossBlood,
   };
@@ -1476,7 +1487,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
   );
   normalized.inventory.collection[relicId].lastOwnedRecord = preview.relic;
   normalized.economy.coins -= DEFUSION_COIN_COST;
-  normalized.economy.bossBlood -= DEFUSION_BLOOD_COST;
+  normalized.economy.bossBlood += FUSION_BLOOD_COST;
   const historyEntry = {
     id: transactionId,
     operationId,
@@ -1486,7 +1497,8 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
     ingredientIds: [...preview.ingredientIds],
     restoredRelics,
     coinsSpent: DEFUSION_COIN_COST,
-    bossBloodSpent: DEFUSION_BLOOD_COST,
+    bossBloodSpent: 0,
+    bossBloodRefunded: FUSION_BLOOD_COST,
     at: nowTimestamp,
   };
   normalized.forge.fusion.history.push(historyEntry);
@@ -1498,7 +1510,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
     recipeId: preview.definition.recipeId,
     relicId,
     coins: -DEFUSION_COIN_COST,
-    bossBlood: -DEFUSION_BLOOD_COST,
+    bossBlood: FUSION_BLOOD_COST,
     at: nowTimestamp,
   });
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
@@ -1509,7 +1521,8 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
     restoredRelics,
     historyEntry,
     spentCoins: DEFUSION_COIN_COST,
-    spentBossBlood: DEFUSION_BLOOD_COST,
+    spentBossBlood: 0,
+    refundedBossBlood: FUSION_BLOOD_COST,
   };
 }
 
