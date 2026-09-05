@@ -256,7 +256,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.22';
+const APP_VERSION='2.28.23';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -292,6 +292,7 @@ const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPal
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
 const LOCAL_DEMO_DEFUSION=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoDefusion')==='1';
+const LOCAL_DEMO_PENDING_HUNT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPendingHunt')==='1';
 const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoConstancy')||'0',10)||0))
   : null;
@@ -315,7 +316,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
-    ? `${STORAGE_KEY}:${LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
+    ? `${STORAGE_KEY}:${LOCAL_DEMO_PENDING_HUNT?'demo-pending-hunt-v2':LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
     : LOCAL_DEMO_CONSTANCY!==null
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
@@ -1110,6 +1111,19 @@ function prepareLocalBossDemo(){
     ? ['relic_04','relic_01']
     : ['relic_01','relic_03'])
     .filter(id=>state.inventory.relics[id]);
+  if(LOCAL_DEMO_PENDING_HUNT){
+    const nowTimestamp=Date.now();
+    state.game.hunt=normalizeHuntState({
+      energyDay:todayKey(),dayStartTime:state.config.dayStartTime,baseEnergy:10,
+      energyCapacityVersion:3,bonusEnergyLedgerVersion:1,
+      bonusEnergyEarned:0,bonusEnergyRemaining:0,rewardEnergyRemaining:0,energy:1,
+      active:{
+        id:`demo-pending-hunt-${nowTimestamp}`,regionId:'dead-hours-bunker',difficultyId:'easy',
+        startedAt:nowTimestamp-120000,endsAt:nowTimestamp-60000,seed:nowTimestamp-120000,
+        entryHpRatio:1,entryManaRatio:1,autoUsePotions:false,fortune:null,relicBonuses:{}
+      }
+    },nowTimestamp,10,state.config.dayStartTime);
+  }
   state.loot.notices=state.loot.notices.map((notice,index,notices)=>({
     ...notice,
     acknowledged:LOCAL_LOOT_NOTICE_PREVIEW
@@ -3805,6 +3819,15 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   if(!state.game?.cls) return;
   if(event.target.closest('[data-open-character-sheet]')){
     openCharacterSheet();
+    return;
+  }
+  const pendingHuntButton=event.target.closest('[data-open-pending-hunt]');
+  if(pendingHuntButton){
+    const huntContent=document.getElementById('huntContent');
+    huntContent.dataset.huntScreen='region';
+    huntContent.dataset.huntRegion=pendingHuntButton.dataset.openPendingHunt||state.game.hunt?.active?.regionId||'fields-of-mist';
+    renderHunt();
+    if(Number(state.game.hunt?.active?.endsAt)<=Date.now()) requestAnimationFrame(()=>document.querySelector('[data-resolve-hunt]')?.click());
     return;
   }
   const huntRegionButton=event.target.closest('[data-open-hunt-region]');

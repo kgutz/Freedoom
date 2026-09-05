@@ -43,6 +43,32 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
   });
 
+  it('señala desde el mapa dónde hay un informe pendiente y ofrece acceso directo', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: {
+        cls: 'paladin',
+        hunt: {
+          energyDay: '2026-08-26',
+          energy: 1,
+          active: {
+            id: 'pending-hunt', regionId: 'dead-hours-bunker', difficultyId: 'easy',
+            startedAt: nowTimestamp - 120000, endsAt: nowTimestamp - 60000,
+          },
+        },
+      },
+      stats: { lvl: 20 },
+      nowTimestamp,
+    });
+    expect(root.innerHTML).toContain('INFORME PENDIENTE');
+    expect(root.innerHTML).toContain('Búnker de las Horas Muertas · Fácil');
+    expect(root.innerHTML).toContain('data-open-pending-hunt="dead-hours-bunker"');
+    expect(root.innerHTML).toContain('hunt-map-zone--bunker active report-ready');
+    expect(root.innerHTML).toContain('VER RESULTADO');
+  });
+
   it('muestra el Búnker como una zona pulsable igual que Campos de la Bruma', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({

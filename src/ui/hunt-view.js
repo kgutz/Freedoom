@@ -207,9 +207,18 @@ function reportMarkup(report) {
   </section>`;
 }
 
-function regionMapMarkup(hunt) {
+function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   const energy = huntEnergyDisplay(hunt);
   const activeRegionId = hunt.active ? hunt.active.regionId || 'fields-of-mist' : null;
+  const activeRegion = activeRegionId ? HUNT_REGIONS[activeRegionId] : null;
+  const activeDifficulty = hunt.active ? huntDifficultyForRegion(activeRegionId, hunt.active.difficultyId) : null;
+  const reportReady = Boolean(hunt.active) && nowTimestamp >= hunt.active.endsAt;
+  const activeNotice = hunt.active ? `<button type="button" class="hunt-map-active-notice${reportReady ? ' is-ready' : ''}" data-open-pending-hunt="${activeRegionId}">
+    <span>${reportReady ? 'INFORME PENDIENTE' : 'CACERÍA EN CURSO'}</span>
+    <strong>${activeRegion?.name || 'Zona de cacería'} · ${activeDifficulty?.name || ''}</strong>
+    <small>${reportReady ? 'La expedición terminó. Recoge el resultado para volver a cazar.' : remainingLabel(hunt.active.endsAt - nowTimestamp)}</small>
+    <b>${reportReady ? 'VER RESULTADO' : 'VER EXPEDICIÓN'} →</b>
+  </button>` : '';
   return `<div class="hunt-map-heading">
     <span>MAPA DE CACERÍA</span>
     <div class="hunt-map-title-row">
@@ -218,13 +227,14 @@ function regionMapMarkup(hunt) {
     </div>
     <p>Cada región guarda enemigos, recursos y peligros diferentes.</p>
   </div>
+  ${activeNotice}
   <section class="hunt-world-map" aria-label="Mapa de zonas de caza">
     <img src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
-    <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ' active' : ''}" data-open-hunt-region="fields-of-mist">
-      Campos de la Bruma
+    <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="fields-of-mist">
+      Campos de la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ' active' : ''}" data-open-hunt-region="dead-hours-bunker">
-      Búnker de las Horas Muertas
+    <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="dead-hours-bunker">
+      Búnker de las Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
     <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>PRÓXIMAMENTE</span></div>
   </section>
@@ -242,7 +252,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const heroLevel = Math.max(1, Number(stats?.lvl) || 1);
   const isRegionScreen = root.dataset.huntScreen === 'region';
   if (!isRegionScreen) {
-    root.innerHTML = regionMapMarkup(hunt);
+    root.innerHTML = regionMapMarkup(hunt, nowTimestamp);
     return;
   }
   const active = hunt.active;
