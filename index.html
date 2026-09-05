@@ -157,7 +157,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.28.20</div>
+  <div class="ob-version" id="obVersion">v2.28.21</div>
 </div>
 
 <div id="loading" class="loading">
@@ -428,7 +428,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.20</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.21</span></p>
       </div>
     </div>
   </div>
@@ -436,7 +436,7 @@
 
 <!-- CENTRO DE AYUDA (superpuesto) -->
 <div class="sheet-bg" id="sheetInstr">
-  <!-- HELP_CONTENT_VERSION: 2.28.8 — actualizar cuando cambien las reglas documentadas -->
+  <!-- HELP_CONTENT_VERSION: 2.28.20 — actualizar cuando cambien las reglas documentadas -->
   <div class="sheet faq-sheet">
     <div class="sheet-head"><h3>Ayuda</h3><button class="sheet-close" data-sheet="sheetInstr" aria-label="Cerrar ayuda">✕</button></div>
     <section class="faq-hero" aria-labelledby="faqHeading">
@@ -770,6 +770,7 @@
     <h3 id="backupTitle">Copia de seguridad</h3>
     <div class="backup-scroll-body">
       <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…"></textarea>
+      <input id="backupFile" type="file" accept=".txt,.json,text/plain,application/json" hidden>
       <button class="close" id="backupAction">Importar</button>
     </div>
   </div>
@@ -1213,6 +1214,7 @@
       <div class="recovery-manual-actions">
         <button class="mini-btn" id="btnExport" type="button">Exportar partida</button>
         <button class="mini-btn" id="btnImport" type="button">Importar partida</button>
+        <button class="mini-btn" id="btnImportText" type="button">Pegar copia manualmente</button>
       </div>
     </div>
     <button class="close" id="recoveryClose" type="button">Cerrar</button>

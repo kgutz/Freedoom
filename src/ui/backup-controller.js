@@ -47,6 +47,17 @@ export function bindBackupControls({
   let mode = 'export';
   const background = document.getElementById('backupBg');
   const textArea = document.getElementById('backupText');
+  const fileInput = document.getElementById('backupFile');
+
+  const openManualImport = () => {
+    mode = 'import';
+    document.getElementById('backupTitle').textContent = 'Importar datos';
+    textArea.value = '';
+    textArea.readOnly = false;
+    textArea.placeholder = 'Pega aquí tu copia de seguridad…';
+    document.getElementById('backupAction').textContent = 'Importar';
+    background.classList.add('show');
+  };
 
   document.getElementById('btnExport').addEventListener('click', async () => {
     const data = exportBackup(getState());
@@ -85,17 +96,33 @@ export function bindBackupControls({
   });
 
   document.getElementById('btnImport').addEventListener('click', () => {
-    mode = 'import';
-    document.getElementById('backupTitle').textContent = 'Importar datos';
-    textArea.value = '';
-    textArea.readOnly = false;
-    textArea.placeholder = 'Pega aquí tu copia de seguridad…';
-    document.getElementById('backupAction').textContent = 'Importar';
-    background.classList.add('show');
+    if (fileInput?.click) fileInput.click();
+    else openManualImport();
+  });
+
+  document.getElementById('btnImportText')?.addEventListener('click', openManualImport);
+
+  fileInput?.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.text();
+      importBackup(getState(), data);
+      mode = 'file-import';
+      textArea.value = data;
+      textArea.readOnly = true;
+      document.getElementById('backupTitle').textContent = 'Confirmar restauración';
+      document.getElementById('backupAction').textContent = 'Restaurar partida';
+      background.classList.add('show');
+    } catch {
+      showToast('No se pudo leer la copia', 'dmg');
+    } finally {
+      fileInput.value = '';
+    }
   });
 
   document.getElementById('backupAction').addEventListener('click', () => {
-    if (mode === 'import') {
+    if (mode === 'import' || mode === 'file-import') {
       try {
         const command = isImportCommand(textArea.value);
         onImported(importBackup(getState(), textArea.value));

@@ -8,16 +8,18 @@ function element(id) {
     value: '',
     textContent: '',
     readOnly: false,
+    files: [],
     classList: { add: vi.fn(), remove: vi.fn() },
     addEventListener: (type, listener) => listeners.set(type, listener),
-    click: () => listeners.get('click')?.({ target: { id } }),
+    click: vi.fn(() => listeners.get('click')?.({ target: { id } })),
+    dispatch: (type) => listeners.get(type)?.({ target: { id } }),
     focus: vi.fn(),
     select: vi.fn(),
   };
 }
 
 function fixture() {
-  const ids = ['backupBg', 'backupText', 'backupTitle', 'backupAction', 'btnExport', 'btnImport'];
+  const ids = ['backupBg', 'backupText', 'backupTitle', 'backupAction', 'backupFile', 'btnExport', 'btnImport', 'btnImportText'];
   const elements = Object.fromEntries(ids.map((id) => [id, element(id)]));
   return {
     elements,
@@ -126,7 +128,7 @@ describe('herramientas de recuperación manual', () => {
       onImported,
       showToast: vi.fn(),
     });
-    elements.btnImport.click();
+    elements.btnImportText.click();
     elements.backupText.value = '{"config":{"startLimit":8},"days":{}}';
     elements.backupAction.click();
     expect(onImported).toHaveBeenCalledOnce();
@@ -144,10 +146,33 @@ describe('herramientas de recuperación manual', () => {
       onImported,
       showToast,
     });
-    elements.btnImport.click();
+    elements.btnImportText.click();
     elements.backupText.value = '!+sangre 1';
     elements.backupAction.click();
     expect(onImported.mock.calls[0][0].economy.bossBlood).toBe(3);
     expect(showToast).toHaveBeenCalledWith('Comando aplicado ✓', 'heal');
+  });
+
+  it('elige un archivo, lo valida y pide confirmación antes de restaurarlo', async () => {
+    const { document, elements } = fixture();
+    const onImported = vi.fn();
+    const data = '{"config":{"startLimit":9},"days":{}}';
+    elements.backupFile.files = [{ text: vi.fn().mockResolvedValue(data) }];
+    bindBackupControls({
+      document,
+      navigator: {},
+      getState: () => ({ config: {}, days: {} }),
+      onImported,
+      showToast: vi.fn(),
+    });
+    elements.btnImport.click();
+    expect(elements.backupFile.click).toHaveBeenCalledOnce();
+    elements.backupFile.dispatch('change');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(elements.backupTitle.textContent).toBe('Confirmar restauración');
+    expect(onImported).not.toHaveBeenCalled();
+    elements.backupAction.click();
+    expect(onImported.mock.calls[0][0].config.startLimit).toBe(9);
   });
 });
