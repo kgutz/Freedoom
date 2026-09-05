@@ -256,7 +256,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.21';
+const APP_VERSION='2.28.22';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -291,6 +291,7 @@ const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4'].includes(LOCAL_BETA_TESTER_
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
+const LOCAL_DEMO_DEFUSION=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoDefusion')==='1';
 const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
   ? Math.max(0,Math.min(6,parseInt(LOCAL_DEMO_PARAMS.get('demoConstancy')||'0',10)||0))
   : null;
@@ -314,7 +315,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
-    ? `${STORAGE_KEY}:demo-fusions-v2`
+    ? `${STORAGE_KEY}:${LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
     : LOCAL_DEMO_CONSTANCY!==null
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
@@ -1084,6 +1085,10 @@ function prepareLocalBossDemo(){
     });
     state.forge.fusion.discoveredRecipes=FUSION_RELIC_DEFINITIONS.map(({recipeId})=>recipeId);
     applyLootSlices(normalizeLootState(state));
+    if(LOCAL_DEMO_DEFUSION){
+      delete state.inventory.relics.relic_01;
+      delete state.inventory.relics.relic_02;
+    }
     state.economy.coins=999;
     state.economy.bossBlood=20;
   }
@@ -1097,7 +1102,9 @@ function prepareLocalBossDemo(){
     state.economy.bossBlood=2;
     applyLootSlices(ensureShopRotation(state,Date.now()));
   }
-  state.inventory.equipped=(LOCAL_DEMO_FUSIONS
+  state.inventory.equipped=(LOCAL_DEMO_DEFUSION
+    ? ['fusion_01']
+    : LOCAL_DEMO_FUSIONS
     ? ['fusion_06','relic_02']
     : LOCAL_DEMO_CONSTANCY!==null
     ? ['relic_04','relic_01']
@@ -5593,9 +5600,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     return;
   }
   if(event.target.closest('[data-close-shop-map]')){
-    forgeFromCity=false;
-    shopViewSection='map';
-    showInventoryPanel('bag');
+    returnToCharacterSheetFromShop();
     return;
   }
   if(event.target.closest('[data-close-shop-destination]')){
@@ -5806,6 +5811,11 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     document.getElementById('fusionConfirmBg').classList.add('show');
     return;
   }
+  const defusionButton=event.target.closest('[data-defuse-relic]');
+  if(defusionButton&&!defusionButton.disabled){
+    openDefusionConfirmation(defusionButton.dataset.defuseRelic);
+    return;
+  }
   const relic=event.target.closest('[data-open-relic]');
   if(relic){
     if(relic.dataset.doubleTapUnequip){
@@ -5850,6 +5860,32 @@ function confirmAttributeReset(){
   showToast('Atributos reseteados','ok');
 }
 
+function openDefusionConfirmation(relicId){
+  const preview=getDefusionPreview(state,relicId);
+  if(!preview.ok) return false;
+  pendingDefusionRelicId=relicId;
+  const ingredientNames=preview.ingredientIds.map(id=>relicDefinition(id)?.name||id);
+  document.getElementById('defusionConfirmBody').innerHTML=`
+    <div class="defusion-confirm-flow">
+      <div class="defusion-confirm-block defusion-confirm-consume">
+        <span>SEPARAS</span>
+        <strong>${preview.definition.name}</strong>
+      </div>
+      <div class="defusion-confirm-arrow" aria-hidden="true">↓</div>
+      <div class="defusion-confirm-block defusion-confirm-restore">
+        <span>RECUPERAS</span>
+        <strong>${ingredientNames.join('</strong><i>+</i><strong>')}</strong>
+        <small>Con su rareza, rango y efectos originales</small>
+      </div>
+    </div>
+    <div class="defusion-confirm-summary">
+      <div><span>COSTE</span><b>${preview.coinCost} ORO</b></div>
+      <div><span>DEVOLUCIÓN</span><b>+${preview.bloodRefund} SANGRE</b></div>
+    </div>`;
+  document.getElementById('defusionConfirmBg').classList.add('show');
+  return true;
+}
+
 document.getElementById('attributeResetConfirmCancel').addEventListener('click',closeAttributeResetConfirmation);
 document.getElementById('attributeResetConfirmAccept').addEventListener('click',confirmAttributeReset);
 document.getElementById('attributeResetConfirmBg').addEventListener('click',event=>{
@@ -5860,17 +5896,6 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
   const resetAttributes=event.target.closest('[data-character-reset-attributes]');
   if(resetAttributes&&!resetAttributes.disabled){
     openAttributeResetConfirmation();
-    return;
-  }
-  const defusionButton=event.target.closest('[data-defuse-relic]');
-  if(defusionButton&&!defusionButton.disabled){
-    const relicId=defusionButton.dataset.defuseRelic;
-    const preview=getDefusionPreview(state,relicId);
-    if(!preview.ok) return;
-    pendingDefusionRelicId=relicId;
-    const ingredientNames=preview.ingredientIds.map(id=>relicDefinition(id)?.name||id);
-    document.getElementById('defusionConfirmBody').innerHTML=`<p>Vas a consumir <b>${preview.definition.name}</b>.</p><p>Recuperarás <b>${ingredientNames.join('</b> y <b>')}</b> con su rareza, rango y efectos originales.</p><p>Coste: <b>${preview.coinCost} de oro</b> y <b>${preview.bloodCost} Sangre de Jefe</b>.</p>`;
-    document.getElementById('defusionConfirmBg').classList.add('show');
     return;
   }
   const attribute=event.target.closest('[data-character-attribute]');
