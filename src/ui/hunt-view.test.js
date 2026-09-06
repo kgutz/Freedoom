@@ -39,6 +39,8 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('hunt/world-map-bunker.webp');
     expect(root.innerHTML).toContain('data-open-hunt-region="fields-of-mist"');
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
+    expect(root.innerHTML).toContain('data-hunt-zoom-surface');
+    expect(root.innerHTML).toContain('data-hunt-zoom-image');
     expect(root.innerHTML).not.toContain('🔒');
     expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
   });

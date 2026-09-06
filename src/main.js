@@ -256,7 +256,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.23';
+const APP_VERSION='2.28.24';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -3814,6 +3814,121 @@ document.getElementById('deathContinue').addEventListener('click',()=>{
     showPendingWeekResult();
   }
 });
+
+const huntZoom={surface:null,scale:1,x:0,y:0,startScale:1,startX:0,startY:0,startDistance:0,startFocusX:0,startFocusY:0,pointerX:0,pointerY:0,moved:false,lastTapAt:0};
+function huntTouchDistance(touches){
+  return Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+}
+function huntTouchCenter(touches){
+  return {x:(touches[0].clientX+touches[1].clientX)/2,y:(touches[0].clientY+touches[1].clientY)/2};
+}
+function resetHuntZoom(surface=huntZoom.surface){
+  if(surface){
+    const image=surface.querySelector('[data-hunt-zoom-image]');
+    if(image) image.style.transform='';
+    surface.classList.remove('is-hunt-zoomed','is-hunt-zooming');
+  }
+  Object.assign(huntZoom,{surface:null,scale:1,x:0,y:0,startScale:1,startX:0,startY:0,startDistance:0,moved:false});
+}
+function applyHuntZoom(){
+  const surface=huntZoom.surface;
+  const image=surface?.querySelector('[data-hunt-zoom-image]');
+  if(!surface||!image) return;
+  const maxX=Math.max(0,surface.clientWidth*(huntZoom.scale-1)/2);
+  const maxY=Math.max(0,surface.clientHeight*(huntZoom.scale-1)/2);
+  huntZoom.x=Math.max(-maxX,Math.min(maxX,huntZoom.x));
+  huntZoom.y=Math.max(-maxY,Math.min(maxY,huntZoom.y));
+  image.style.transform=`translate3d(${huntZoom.x}px,${huntZoom.y}px,0) scale(${huntZoom.scale})`;
+  surface.classList.toggle('is-hunt-zoomed',huntZoom.scale>1.01);
+}
+const huntContentElement=document.getElementById('huntContent');
+huntContentElement?.addEventListener('touchstart',event=>{
+  const surface=event.target.closest?.('[data-hunt-zoom-surface]');
+  if(!surface) return;
+  if(huntZoom.surface&&huntZoom.surface!==surface) resetHuntZoom();
+  huntZoom.surface=surface;
+  huntZoom.moved=false;
+  if(event.touches.length===2){
+    const center=huntTouchCenter(event.touches);
+    const rect=surface.getBoundingClientRect();
+    Object.assign(huntZoom,{
+      startDistance:huntTouchDistance(event.touches),startScale:huntZoom.scale,startX:huntZoom.x,startY:huntZoom.y,
+      startFocusX:center.x-(rect.left+rect.width/2),startFocusY:center.y-(rect.top+rect.height/2)
+    });
+    surface.classList.add('is-hunt-zooming');
+    event.preventDefault();
+  }else if(event.touches.length===1&&huntZoom.scale>1.01){
+    Object.assign(huntZoom,{startX:huntZoom.x,startY:huntZoom.y,pointerX:event.touches[0].clientX,pointerY:event.touches[0].clientY});
+    surface.classList.add('is-hunt-zooming');
+    event.preventDefault();
+  }
+},{passive:false});
+huntContentElement?.addEventListener('touchmove',event=>{
+  if(!huntZoom.surface) return;
+  if(event.touches.length===2&&huntZoom.startDistance){
+    const center=huntTouchCenter(event.touches);
+    const rect=huntZoom.surface.getBoundingClientRect();
+    const focusX=center.x-(rect.left+rect.width/2);
+    const focusY=center.y-(rect.top+rect.height/2);
+    huntZoom.scale=Math.max(1,Math.min(4,huntZoom.startScale*(huntTouchDistance(event.touches)/huntZoom.startDistance)));
+    const contentX=(huntZoom.startFocusX-huntZoom.startX)/huntZoom.startScale;
+    const contentY=(huntZoom.startFocusY-huntZoom.startY)/huntZoom.startScale;
+    huntZoom.x=focusX-huntZoom.scale*contentX;
+    huntZoom.y=focusY-huntZoom.scale*contentY;
+    huntZoom.moved=true;
+    applyHuntZoom();
+    event.preventDefault();
+  }else if(event.touches.length===1&&huntZoom.scale>1.01){
+    huntZoom.x=huntZoom.startX+(event.touches[0].clientX-huntZoom.pointerX);
+    huntZoom.y=huntZoom.startY+(event.touches[0].clientY-huntZoom.pointerY);
+    huntZoom.moved=true;
+    applyHuntZoom();
+    event.preventDefault();
+  }
+},{passive:false});
+huntContentElement?.addEventListener('touchend',event=>{
+  if(!huntZoom.surface) return;
+  huntZoom.surface.classList.remove('is-hunt-zooming');
+  if(huntZoom.scale<=1.03){ resetHuntZoom(); return; }
+  if(event.touches.length===0&&!huntZoom.moved&&event.target.closest?.('[data-hunt-zoom-image]')){
+    const now=Date.now();
+    if(now-huntZoom.lastTapAt<320) resetHuntZoom();
+    huntZoom.lastTapAt=now;
+  }
+},{passive:true});
+huntContentElement?.addEventListener('dblclick',event=>{
+  const image=event.target.closest?.('[data-hunt-zoom-image]');
+  const surface=image?.closest('[data-hunt-zoom-surface]');
+  if(!surface) return;
+  event.preventDefault();
+  if(huntZoom.surface===surface&&huntZoom.scale>1.01) resetHuntZoom(surface);
+  else{
+    resetHuntZoom();
+    const rect=surface.getBoundingClientRect();
+    const focusX=event.clientX-(rect.left+rect.width/2);
+    const focusY=event.clientY-(rect.top+rect.height/2);
+    Object.assign(huntZoom,{surface,scale:2,x:-focusX,y:-focusY});
+    applyHuntZoom();
+  }
+});
+huntContentElement?.addEventListener('wheel',event=>{
+  const surface=event.target.closest?.('[data-hunt-zoom-surface]');
+  if(!surface||!event.ctrlKey) return;
+  event.preventDefault();
+  if(huntZoom.surface&&huntZoom.surface!==surface) resetHuntZoom();
+  huntZoom.surface=surface;
+  const rect=surface.getBoundingClientRect();
+  const focusX=event.clientX-(rect.left+rect.width/2);
+  const focusY=event.clientY-(rect.top+rect.height/2);
+  const previousScale=huntZoom.scale;
+  const nextScale=Math.max(1,Math.min(4,previousScale+(event.deltaY<0?.25:-.25)));
+  const contentX=(focusX-huntZoom.x)/previousScale;
+  const contentY=(focusY-huntZoom.y)/previousScale;
+  huntZoom.scale=nextScale;
+  huntZoom.x=focusX-nextScale*contentX;
+  huntZoom.y=focusY-nextScale*contentY;
+  if(huntZoom.scale<=1.01) resetHuntZoom(surface); else applyHuntZoom();
+},{passive:false});
 
 document.getElementById('view-habits').addEventListener('click',event=>{
   if(!state.game?.cls) return;

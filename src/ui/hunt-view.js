@@ -228,8 +228,8 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
     <p>Cada región guarda enemigos, recursos y peligros diferentes.</p>
   </div>
   ${activeNotice}
-  <section class="hunt-world-map" aria-label="Mapa de zonas de caza">
-    <img src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
+  <section class="hunt-world-map" data-hunt-zoom-surface aria-label="Mapa de zonas de caza. Pellizca con dos dedos para ampliar.">
+    <img data-hunt-zoom-image src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="fields-of-mist">
       Campos de la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
@@ -281,7 +281,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   }).join('');
   const otherRegionActive = active && !regionActive;
   root.innerHTML = `<div class="hunt-region hunt-region--${region.id}"><button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>${region.name}</h2><div class="hunt-map-energy" aria-label="${energy.aria}"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${energy.html}</strong></div></div><p>${region.description}</p>${regionLocked ? `<div class="hunt-region-lock-notice"><span aria-hidden="true">🔒</span> Alcanza el nivel ${regionMinLevel} para iniciar esta cacería</div>` : ''}</div>
-    <div class="hunt-region-art"><img src="${region.art}" alt="${region.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">${region.name.toUpperCase()}<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}</div>
+    <div class="hunt-region-art" data-hunt-zoom-surface aria-label="${region.name}. Pellizca con dos dedos para ampliar."><img data-hunt-zoom-image src="${region.art}" alt="${region.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">${region.name.toUpperCase()}<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}</div>
     <section class="card hunt-roster"><div class="hunt-section-title"><span>Enemigos</span></div><div class="hunt-monsters">${region.enemies.map(monsterCard).join('')}</div></section>
     <section class="card hunt-launch"><div class="hunt-section-title"><span>Elegir dificultad</span>${active ? `<b>${otherRegionActive ? 'Expedición activa en otra zona' : 'Una expedición activa'}</b>` : ''}</div><div class="hunt-difficulties">${difficulties}</div><small>La energía se recupera al comenzar un nuevo día. La Sangre de Jefe solo puede caer en Difícil.</small></section>
     ${(hunt.lastReport?.regionId || 'fields-of-mist') === region.id ? reportMarkup(hunt.lastReport) : ''}</div>`;
