@@ -150,11 +150,16 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
       ${resourceValue(saleResourceType, saleOwned, saleResourcePlural.toUpperCase())}
     </div>
-    <section class="arcane-resource-sale-card">
+    <section class="arcane-resource-sale-card" data-arcane-resource-sale-card>
       <div class="arcane-resource-sale-icon">${resourceIcon(saleResourceType)}</div>
-      <div class="arcane-resource-sale-copy"><h4>${saleResourceName}</h4><p>Vende 1 unidad por ${saleUnitPrice} de oro.</p></div>
-      <div class="arcane-resource-sale-price">${resourceValue('coin', saleUnitPrice, 'POR UNIDAD')}</div>
-      <button type="button" data-sell-arcane-resource="${saleResourceId}"${saleOwned < 1 ? ' disabled' : ''}>${saleOwned < 1 ? 'SIN EXISTENCIAS' : 'VENDER 1'}</button>
+      <div class="arcane-resource-sale-copy"><h4>${saleResourceName}</h4><p>Cada unidad vale ${saleUnitPrice} de oro · tienes ${saleOwned}.</p></div>
+      <div class="potion-buy-quantity arcane-resource-sale-quantity" aria-label="Cantidad a vender">
+        <button type="button" data-arcane-sale-quantity-step="-1" aria-label="Reducir cantidad"${saleOwned < 1 ? ' disabled' : ''}>−</button>
+        <input type="number" inputmode="numeric" min="1" max="${Math.max(1, saleOwned)}" value="1" data-arcane-sale-quantity aria-label="Cantidad de ${saleResourcePlural} a vender"${saleOwned < 1 ? ' disabled' : ''}>
+        <button type="button" data-arcane-sale-quantity-step="1" aria-label="Aumentar cantidad"${saleOwned < 1 ? ' disabled' : ''}>+</button>
+      </div>
+      <div class="arcane-resource-sale-price">${resourceValue('coin', saleOwned < 1 ? 0 : saleUnitPrice, 'TOTAL')}</div>
+      <button type="button" data-sell-arcane-resource="${saleResourceId}" data-unit-price="${saleUnitPrice}"${saleOwned < 1 ? ' disabled' : ''}>${saleOwned < 1 ? 'SIN EXISTENCIAS' : `VENDER 1 · ${saleUnitPrice} ORO`}</button>
     </section>`;
   body.innerHTML = `
     ${shopContext ? '' : `<div class="outfit-modal-tabs" role="tablist" aria-label="Colecciones cosméticas">

@@ -115,12 +115,12 @@ describe('Fibras Arcanas y tejido de outfits', () => {
   it('vende Fibra y Tinta por su precio correspondiente sin permitir saldos negativos', () => {
     const initial = stateWithGame();
     initial.economy = { ...initial.economy, coins: 10, arcaneFibers: 2, arcaneInks: 1 };
-    const fiber = sellArcaneResource({ state: initial, resourceId: 'arcaneFibers', operationId: 'fiber-1', nowTimestamp: 10 });
-    expect(fiber).toMatchObject({ ok: true, quantity: 1, coinValue: 10 });
-    expect(fiber.economy).toMatchObject({ coins: 20, arcaneFibers: 1, arcaneInks: 1 });
+    const fiber = sellArcaneResource({ state: initial, resourceId: 'arcaneFibers', quantity: 2, operationId: 'fiber-1', nowTimestamp: 10 });
+    expect(fiber).toMatchObject({ ok: true, quantity: 2, coinValue: 20 });
+    expect(fiber.economy).toMatchObject({ coins: 30, arcaneFibers: 0, arcaneInks: 1 });
     const ink = sellArcaneResource({ state: { ...initial, ...fiber }, resourceId: 'arcaneInks', operationId: 'ink-1', nowTimestamp: 20 });
     expect(ink).toMatchObject({ ok: true, quantity: 1, coinValue: 14 });
-    expect(ink.economy).toMatchObject({ coins: 34, arcaneFibers: 1, arcaneInks: 0 });
+    expect(ink.economy).toMatchObject({ coins: 44, arcaneFibers: 0, arcaneInks: 0 });
     expect(sellArcaneResource({ state: { ...initial, ...ink }, resourceId: 'arcaneInks', operationId: 'ink-2' }))
       .toMatchObject({ ok: false, reason: 'empty' });
   });

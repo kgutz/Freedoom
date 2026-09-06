@@ -257,7 +257,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.25';
+const APP_VERSION='2.28.26';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5535,7 +5535,7 @@ function openShopPurchaseConfirmation(purchase){
   if(purchase.type==='resource-sale'){
     kicker.textContent='CONFIRMAR VENTA';
     title.textContent='¿Quieres vender este material?';
-    body.innerHTML=`<p><b>1 ${purchase.name}</b></p><p>Recibirás <b>${purchase.coinValue} de oro</b>.</p><p>El material se descontará de tus recursos inmediatamente.</p>`;
+    body.innerHTML=`<p><b>${purchase.quantity} ${purchase.name}${purchase.quantity===1?'':'s'}</b></p><p>Recibirás <b>${purchase.coinValue} de oro</b>.</p><p>Los materiales se descontarán de tus recursos inmediatamente.</p>`;
     accept.textContent='VENDER';
   }else if(purchase.type==='sale'){
     kicker.textContent='CONFIRMAR VENTA';
@@ -5576,9 +5576,9 @@ function renderCurrentCosmeticShop(selectedId=null){
   });
 }
 
-function handleArcaneResourceSale(resourceId){
+function handleArcaneResourceSale(resourceId,quantity=1){
   const operationId=`resource-${resourceId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const result=sellArcaneResource({state,resourceId,operationId,nowTimestamp:Date.now()});
+  const result=sellArcaneResource({state,resourceId,quantity,operationId,nowTimestamp:Date.now()});
   if(!result.ok){
     showToast('No tienes unidades disponibles','dmg');
     return false;
@@ -6127,11 +6127,24 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   if(resourceSale&&!resourceSale.disabled&&outfitSelectorContext==='shop'){
     const resourceId=resourceSale.dataset.sellArcaneResource;
     const isInk=resourceId==='arcaneInks';
+    const quantityInput=resourceSale.closest('[data-arcane-resource-sale-card]')?.querySelector('[data-arcane-sale-quantity]');
+    const quantity=Math.max(1,Number(quantityInput?.value)||1);
+    const unitPrice=Number(resourceSale.dataset.unitPrice)||(isInk?14:10);
     openShopPurchaseConfirmation({
       type:'resource-sale',resourceId,
       name:isInk?'Tinta Arcana':'Fibra Arcana',
-      coinValue:isInk?14:10,
+      quantity,coinValue:unitPrice*quantity,
     });
+    return;
+  }
+  const resourceQuantityStep=event.target.closest('[data-arcane-sale-quantity-step]');
+  if(resourceQuantityStep&&!resourceQuantityStep.disabled){
+    const card=resourceQuantityStep.closest('[data-arcane-resource-sale-card]');
+    const input=card?.querySelector('[data-arcane-sale-quantity]');
+    if(!input) return;
+    const next=Math.min(Number(input.max)||1,Math.max(1,(Number(input.value)||1)+Number(resourceQuantityStep.dataset.arcaneSaleQuantityStep)));
+    input.value=String(next);
+    input.dispatchEvent(new Event('input',{bubbles:true}));
     return;
   }
   const sectionButton=event.target.closest('[data-outfit-section]');
@@ -6225,6 +6238,19 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
       returnToShopMap();
     }
   }
+});
+document.getElementById('outfitSelectorBg').addEventListener('input',event=>{
+  const input=event.target.closest?.('[data-arcane-sale-quantity]');
+  if(!input) return;
+  const quantity=Math.min(Number(input.max)||1,Math.max(1,Math.trunc(Number(input.value)||1)));
+  input.value=String(quantity);
+  const card=input.closest('[data-arcane-resource-sale-card]');
+  const saleButton=card?.querySelector('[data-sell-arcane-resource]');
+  const unitPrice=Number(saleButton?.dataset.unitPrice)||0;
+  const total=quantity*unitPrice;
+  const totalValue=card?.querySelector('.arcane-resource-sale-price .resource-value b');
+  if(totalValue) totalValue.textContent=String(total);
+  if(saleButton) saleButton.textContent=`VENDER ${quantity} · ${total} ORO`;
 });
 document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   if(event.target.id==='forgeRelicPickerBg'){event.currentTarget.classList.remove('show');return;}
@@ -6474,7 +6500,7 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   event.currentTarget.disabled=true;
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
   if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
-  else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId);
+  else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId,purchase.quantity);
   else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else if(purchase.type==='frame') handleFramePaint(purchase.frameId);
