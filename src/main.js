@@ -175,6 +175,7 @@ import {
   pendingFiberCatchupNotice,
   paintFrame,
   reconcileHistoricalBossFibers,
+  sellArcaneResource,
   weaveOutfit,
 } from './domain/outfit-rules.js';
 import {
@@ -256,7 +257,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.24';
+const APP_VERSION='2.28.25';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -359,6 +360,7 @@ let pendingSkillCast=null;
 let selectedOutfitDraft=null;
 let outfitSelectorSection='owned';
 let outfitSelectorContext='collection';
+let outfitShopMode='buy';
 let pioneerRewardTimer=null;
 let pioneerRewardOpening=false;
 let betaTesterRewardTimer=null;
@@ -5530,7 +5532,12 @@ function openShopPurchaseConfirmation(purchase){
   const accept=document.getElementById('shopPurchaseConfirmAccept');
   const kicker=document.getElementById('shopPurchaseConfirmKicker');
   const title=document.getElementById('shopPurchaseConfirmTitle');
-  if(purchase.type==='sale'){
+  if(purchase.type==='resource-sale'){
+    kicker.textContent='CONFIRMAR VENTA';
+    title.textContent='¿Quieres vender este material?';
+    body.innerHTML=`<p><b>1 ${purchase.name}</b></p><p>Recibirás <b>${purchase.coinValue} de oro</b>.</p><p>El material se descontará de tus recursos inmediatamente.</p>`;
+    accept.textContent='VENDER';
+  }else if(purchase.type==='sale'){
     kicker.textContent='CONFIRMAR VENTA';
     title.textContent='¿Quieres venderla?';
     body.innerHTML=`<p><b>${purchase.name}</b></p><p>Recibirás <b>${purchase.coinValue} de oro</b>.</p><p>La reliquia desaparecerá de tu Inventario, pero seguirá registrada en la Colección. No recuperarás Sangre de Jefe.</p>`;
@@ -5558,6 +5565,31 @@ function openShopPurchaseConfirmation(purchase){
   }
   accept.disabled=false;
   document.getElementById('shopPurchaseConfirmBg').classList.add('show');
+}
+
+function renderCurrentCosmeticShop(selectedId=null){
+  return renderOutfitSelector(document,state,selectedId,{
+    section:outfitSelectorSection,
+    context:outfitSelectorContext,
+    shopMode:outfitShopMode,
+    previewUnreleased:LOCAL_DEMO_CELESTIAL,
+  });
+}
+
+function handleArcaneResourceSale(resourceId){
+  const operationId=`resource-${resourceId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const result=sellArcaneResource({state,resourceId,operationId,nowTimestamp:Date.now()});
+  if(!result.ok){
+    showToast('No tienes unidades disponibles','dmg');
+    return false;
+  }
+  applyLootSlices(result);
+  selectedOutfitDraft=renderCurrentCosmeticShop();
+  scheduleSave({type:'shop:arcane-resource-sale',resourceId,quantity:result.quantity,coins:result.coinValue});
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  showToast(`+${result.coinValue} oro`,'heal');
+  return true;
 }
 
 function handleOutfitWeave(outfitId){
@@ -5766,7 +5798,8 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     if(destination==='weave'||destination==='frames'){
       outfitSelectorContext='shop';
       outfitSelectorSection=destination;
-      selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
+      outfitShopMode='buy';
+      selectedOutfitDraft=renderCurrentCosmeticShop();
       document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
       document.getElementById('outfitSelectorBg').classList.add('show');
       return;
@@ -6081,7 +6114,24 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   }
   if(event.target.closest('#outfitSelectorBack')){
     selectedOutfitDraft=null;
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:outfitSelectorSection,context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    selectedOutfitDraft=renderCurrentCosmeticShop();
+    return;
+  }
+  const shopModeButton=event.target.closest('[data-outfit-shop-mode]');
+  if(shopModeButton&&outfitSelectorContext==='shop'){
+    outfitShopMode=shopModeButton.dataset.outfitShopMode==='sell'?'sell':'buy';
+    selectedOutfitDraft=renderCurrentCosmeticShop();
+    return;
+  }
+  const resourceSale=event.target.closest('[data-sell-arcane-resource]');
+  if(resourceSale&&!resourceSale.disabled&&outfitSelectorContext==='shop'){
+    const resourceId=resourceSale.dataset.sellArcaneResource;
+    const isInk=resourceId==='arcaneInks';
+    openShopPurchaseConfirmation({
+      type:'resource-sale',resourceId,
+      name:isInk?'Tinta Arcana':'Fibra Arcana',
+      coinValue:isInk?14:10,
+    });
     return;
   }
   const sectionButton=event.target.closest('[data-outfit-section]');
@@ -6099,12 +6149,12 @@ document.getElementById('outfitSelectorBg').addEventListener('click',event=>{
   }
   const weaveOption=event.target.closest('[data-select-weave-outfit]');
   if(weaveOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,weaveOption.dataset.selectWeaveOutfit,{section:'weave',context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    selectedOutfitDraft=renderCurrentCosmeticShop(weaveOption.dataset.selectWeaveOutfit);
     return;
   }
   const frameOption=event.target.closest('[data-select-frame]');
   if(frameOption){
-    selectedOutfitDraft=renderOutfitSelector(document,state,frameOption.dataset.selectFrame,{section:'frames',context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    selectedOutfitDraft=renderCurrentCosmeticShop(frameOption.dataset.selectFrame);
     return;
   }
   const weave=event.target.closest('[data-weave-outfit]');
@@ -6424,6 +6474,7 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   event.currentTarget.disabled=true;
   document.getElementById('shopPurchaseConfirmBg').classList.remove('show');
   if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
+  else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId);
   else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else if(purchase.type==='frame') handleFramePaint(purchase.frameId);

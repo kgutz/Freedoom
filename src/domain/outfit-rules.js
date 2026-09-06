@@ -3,6 +3,7 @@ import { FRAME_DEFINITIONS, isFrameUnlocked } from '../data/frame-data.js';
 import { normalizeLootState } from './loot-rules.js';
 
 export const BOSS_FIBER_BONUS_RATE = 0.25;
+export const ARCANE_RESOURCE_SALE_PRICES = Object.freeze({ arcaneFibers: 10, arcaneInks: 14 });
 const MAX_BOSS_FIBER_REWARDS = 21;
 
 function deterministicRoll(seed = '') {
@@ -126,6 +127,32 @@ export function acknowledgeFiberCatchupNotice(state, noticeId) {
     };
   }
   return slices(normalized);
+}
+
+export function sellArcaneResource({ state, resourceId, quantity = 1, operationId, nowTimestamp = Date.now() }) {
+  const normalized = normalizeLootState(state);
+  const price = ARCANE_RESOURCE_SALE_PRICES[resourceId];
+  const safeQuantity = Math.max(1, Math.trunc(Number(quantity) || 1));
+  if (!price || !operationId) return { ...slices(normalized), ok: false, reason: 'invalid' };
+  if (normalized.economy.transactions.some((entry) => entry.id === `arcane-resource-sale:${operationId}`)) {
+    return { ...slices(normalized), ok: false, reason: 'duplicate' };
+  }
+  if (normalized.economy[resourceId] < safeQuantity) {
+    return { ...slices(normalized), ok: false, reason: 'empty' };
+  }
+  const coinValue = price * safeQuantity;
+  normalized.economy[resourceId] -= safeQuantity;
+  normalized.economy.coins += coinValue;
+  normalized.economy.transactions.push({
+    id: `arcane-resource-sale:${operationId}`,
+    type: 'arcane-resource-sale',
+    resourceId,
+    quantity: -safeQuantity,
+    coins: coinValue,
+    at: nowTimestamp,
+  });
+  normalized.economy.transactions = normalized.economy.transactions.slice(-200);
+  return { ...slices(normalized), ok: true, resourceId, quantity: safeQuantity, coinValue };
 }
 
 export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.now() }) {

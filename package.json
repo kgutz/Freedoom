@@ -1,7 +1,7 @@
 {
   "name": "freedoom",
   "private": true,
-  "version": "2.28.24",
+  "version": "2.28.25",
   "type": "module",
   "scripts": {
     "dev": "vite",

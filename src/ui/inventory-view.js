@@ -87,6 +87,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const body = document.getElementById('outfitSelectorBody');
   if (!body) return 'original';
   const shopContext = options.context === 'shop';
+  const shopMode = shopContext && options.shopMode === 'sell' ? 'sell' : 'buy';
   const previewUnreleased = options.previewUnreleased === true;
   const isVisible = (definition) => definition.released !== false || previewUnreleased;
   const isPreviewOnly = (definition) => previewUnreleased && definition?.released === false;
@@ -121,7 +122,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const hasFrameResources = frameRecipe && Number(lootState?.economy?.coins || 0) >= frameRecipe.coins
     && Number(lootState?.economy?.arcaneInks || 0) >= frameRecipe.arcaneInks;
   const selectorModal = body.closest?.('.outfit-selector-modal');
-  selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected);
+  selectorModal?.classList.toggle('outfit-selector-modal--compact', !selected && shopMode === 'buy');
   selectorModal?.classList.toggle('outfit-selector-modal--shop', shopContext);
   const selectorTitle = document.getElementById('outfitSelectorTitle');
   const selectorBack = document.getElementById('outfitSelectorBack');
@@ -129,7 +130,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   if (selectorTitle) selectorTitle.textContent = shopContext
     ? (section === 'frames' ? 'Pintor de Mundos' : 'Telar Arcano')
     : 'Cosméticos';
-  if (selectorBack) selectorBack.hidden = !shopContext || !selected;
+  if (selectorBack) selectorBack.hidden = !shopContext || !selected || shopMode === 'sell';
   if (selectorReturnCharacter) selectorReturnCharacter.hidden = !shopContext;
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
   const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
@@ -138,13 +139,34 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       ? 'Paisajes encantados transforman el lugar desde el que tu héroe emprende su viaje.'
       : 'Hilos arcanos y oficio antiguo convierten tus recursos en nuevos atuendos.'}</p></div>`
     : '';
+  const saleResourceId = section === 'frames' ? 'arcaneInks' : 'arcaneFibers';
+  const saleResourceName = section === 'frames' ? 'Tinta Arcana' : 'Fibra Arcana';
+  const saleResourcePlural = section === 'frames' ? 'Tintas Arcanas' : 'Fibras Arcanas';
+  const saleResourceType = section === 'frames' ? 'arcane-ink' : 'arcane-fiber';
+  const saleUnitPrice = section === 'frames' ? 14 : 10;
+  const saleOwned = Math.max(0, Number(lootState?.economy?.[saleResourceId]) || 0);
+  const saleMarkup = `<div class="shop-outfit-heading"><p>Convierte los materiales que no necesites en oro. Cada venta entrega oro al instante.</p></div>
+    <div class="outfit-weave-resources" aria-label="Tus recursos">
+      ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
+      ${resourceValue(saleResourceType, saleOwned, saleResourcePlural.toUpperCase())}
+    </div>
+    <section class="arcane-resource-sale-card">
+      <div class="arcane-resource-sale-icon">${resourceIcon(saleResourceType)}</div>
+      <div class="arcane-resource-sale-copy"><h4>${saleResourceName}</h4><p>Vende 1 unidad por ${saleUnitPrice} de oro.</p></div>
+      <div class="arcane-resource-sale-price">${resourceValue('coin', saleUnitPrice, 'POR UNIDAD')}</div>
+      <button type="button" data-sell-arcane-resource="${saleResourceId}"${saleOwned < 1 ? ' disabled' : ''}>${saleOwned < 1 ? 'SIN EXISTENCIAS' : 'VENDER 1'}</button>
+    </section>`;
   body.innerHTML = `
     ${shopContext ? '' : `<div class="outfit-modal-tabs" role="tablist" aria-label="Colecciones cosméticas">
       <button type="button" role="tab" data-outfit-section="owned" aria-selected="${section === 'owned'}" class="${section === 'owned' ? 'active' : ''}">Outfits</button>
       <button type="button" role="tab" data-outfit-section="frames" aria-selected="${section === 'frames'}" class="${section === 'frames' ? 'active' : ''}">Fondos</button>
     </div>`}
+    ${shopContext ? `<div class="shop-relic-mode-tabs outfit-shop-mode-tabs" role="tablist" aria-label="Comprar o vender materiales">
+      <button type="button" role="tab" data-outfit-shop-mode="buy" aria-selected="${shopMode === 'buy'}" class="${shopMode === 'buy' ? 'active' : ''}">Comprar</button>
+      <button type="button" role="tab" data-outfit-shop-mode="sell" aria-selected="${shopMode === 'sell'}" class="${shopMode === 'sell' ? 'active' : ''}">Vender</button>
+    </div>` : ''}
     <div class="outfit-selector-scroll-content">
-    ${sectionIntro}
+    ${shopMode === 'sell' ? saleMarkup : `${sectionIntro}
     ${section === 'weave' ? `<div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
       ${resourceValue('arcane-fiber', lootState?.economy?.arcaneFibers || 0, 'FIBRAS')}
@@ -236,7 +258,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         ${Array.from({ length: 4 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
           <span aria-hidden="true">?</span>
         </div>`).join('')}
-      </div>`)}</div>`;
+      </div>`)}`}</div>`;
   return selected?.id || null;
 }
 

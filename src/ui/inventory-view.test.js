@@ -167,6 +167,24 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('>PINTAR</button>');
   });
 
+  it('muestra la venta correspondiente de Fibra en el Telar y Tinta en el Pintor', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(2);
+    state.game = { cls: 'paladin', outfit: 'original', frame: 'original' };
+    state.economy = { ...state.economy, coins: 100, arcaneFibers: 3, arcaneInks: 2 };
+
+    renderOutfitSelector(document, state, null, { section: 'weave', context: 'shop', shopMode: 'sell' });
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-outfit-shop-mode="sell"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-sell-arcane-resource="arcaneFibers"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Vende 1 unidad por 10 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-weave-outfit');
+
+    renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop', shopMode: 'sell' });
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-sell-arcane-resource="arcaneInks"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Vende 1 unidad por 14 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-frame');
+  });
+
   it('muestra el conjunto mítico publicado en el Telar y el Pintor', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
