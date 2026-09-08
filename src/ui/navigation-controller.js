@@ -74,6 +74,13 @@ export function bindNavigation({
       filterFaq();
       faqSearch.focus();
     });
+    document.querySelectorAll('[data-faq-guide]').forEach((button) => {
+      button.addEventListener('click', () => {
+        faqSearch.value = button.dataset.faqGuide || '';
+        filterFaq(faqSearch.value);
+        faqCategories.find((category) => !category.hidden)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+      });
+    });
   }
 
   const switchView = (viewId, buttonId) => {

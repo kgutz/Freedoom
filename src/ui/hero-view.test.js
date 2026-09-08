@@ -270,6 +270,55 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('hero-skill-used">HOY');
   });
 
+  it('mantiene visible 1/2 durante el segundo reto antes de mostrar el cooldown', () => {
+    const now = new Date(2026, 6, 26, 12);
+    const heroContent = { innerHTML: '' };
+    const heroSkillsModalBody = { innerHTML: '' };
+    renderHeroView({
+      document: {
+        getElementById(id) {
+          if (id === 'heroContent') return heroContent;
+          if (id === 'heroSkillsModalBody') return heroSkillsModalBody;
+          return null;
+        },
+      },
+      ...base({
+        now,
+        dayKey: '2026-07-26',
+        config: { wakeTime: '07:00', startLimit: 20, dayStartTime: '04:00' },
+        game: {
+          ...base().game,
+          powerProgress: {
+            habitChallenge: {
+              spellId: 'certero',
+              habitIds: ['a', 'b'],
+              completedIds: ['a'],
+              day: '2026-07-26',
+            },
+            challengeDayUses: {
+              '2026-07-26:certero': { count: 2, lastCompletedAt: now.getTime() - 120_000 },
+            },
+          },
+        },
+        stats: { ...base().stats, lvl: 9 },
+        boss: {
+          ...base().boss,
+          completedDays: 0,
+          requiredDays: 6,
+          damageThisWeek: 0,
+          damageToday: 0,
+          breakdownToday: {},
+          recentHits: [],
+        },
+      }),
+    });
+
+    expect(heroContent.innerHTML).toContain('data-cast="certero"');
+    expect(heroContent.innerHTML).toContain('Efecto activo: 1/2');
+    expect(heroContent.innerHTML).not.toContain('data-cast="certero" aria-disabled="true"');
+    expect(heroSkillsModalBody.innerHTML).toContain('spell-effect-active');
+  });
+
   it('muestra la ulti en cooldown hasta el siguiente día después de usarla', () => {
     const now = new Date(2026, 6, 26, 12);
     const heroContent = { innerHTML: '' };

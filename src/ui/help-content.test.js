@@ -8,14 +8,22 @@ const help = html.match(/<!-- CENTRO DE AYUDA \(superpuesto\) -->([\s\S]*?)<!-- 
 
 describe('contenido del Centro de ayuda', () => {
   it('cubre las funciones principales de la versión actual', () => {
-    expect(help).toContain('<b>Cacería</b>');
-    expect(help).toContain('<b>Mercado y pociones</b>');
+    expect(help).toContain('<b>Guía de Cacería</b>');
+    expect(help).toContain('<b>Guía del Mercado</b>');
     expect(help).toContain('¿Para qué sirven los Atributos?');
     expect(help).toContain('¿Cómo funcionan Fusión y Desfusión?');
     expect(help).toContain('un <b>60% de probabilidad</b>');
     expect(help).toContain('Fortuna');
     expect(help).toContain('Experiencia');
     expect(help).toContain('Vida, Maná y Sangre');
+    expect(help).toContain('¿Cómo funcionan los topes de XP de hábitos?');
+    expect(help).toContain('¿Conviene mejorar antes de fusionar?');
+    expect(help).toContain('¿Por qué no puedo iniciar otra Cacería?');
+    expect(help).toContain('¿Puedo vender Fibra y Tinta Arcana?');
+    expect(help).toContain('todos los días a las 00:00');
+    expect(help).not.toContain('cambia cada tres días');
+    expect(help).toContain('data-faq-guide="forja"');
+    expect(help).toContain('Buscar una guía o mecánica');
   });
 
   it('explica correctamente el cambio a Consumo controlado', () => {
@@ -28,6 +36,14 @@ describe('contenido del Centro de ayuda', () => {
     const indexedCount = (help.match(/data-faq-item=/g) || []).length;
     expect(itemCount).toBeGreaterThanOrEqual(30);
     expect(indexedCount).toBe(itemCount);
+  });
+
+  it('evita respuestas superficiales de una sola idea', () => {
+    const answers = [...help.matchAll(/<div class="faq-answer">([\s\S]*?)<\/div>/g)];
+    expect(answers.length).toBeGreaterThanOrEqual(30);
+    answers.forEach(([, answer]) => {
+      expect((answer.match(/<p>/g) || []).length).toBeGreaterThanOrEqual(2);
+    });
   });
 });
 

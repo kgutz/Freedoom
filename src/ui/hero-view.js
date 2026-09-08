@@ -514,14 +514,15 @@ export function renderHeroView({
     const ultimateAvailability = ability.ulti && ability.modern
       ? ultimateSpellAvailability({ game, currentWeek, today })
       : null;
+    const levelEightChallengeActive = Boolean(levelEightAvailability?.challengeActive);
     let cooldownUntil = 0;
     if (levelTwoAvailability?.cooldownRemainingMs > 0) {
       cooldownUntil = levelTwoAvailability.cooldownUntil;
     } else if (ultimateAvailability?.dailyExhausted) {
       cooldownUntil = nextLogicalDayStart(now, config.dayStartTime || '04:00');
-    } else if (levelEightAvailability?.exhausted) {
+    } else if (levelEightAvailability?.exhausted && !levelEightChallengeActive) {
       cooldownUntil = nextLogicalDayStart(now, config.dayStartTime || '04:00');
-    } else if (levelEightAvailability?.cooldownRemainingMs > 0) {
+    } else if (levelEightAvailability?.cooldownRemainingMs > 0 && !levelEightChallengeActive) {
       cooldownUntil = levelEightAvailability.cooldownUntil;
     }
     const cooldown = cooldownUntil > now.getTime();
