@@ -4,6 +4,7 @@ import { intoxicationStage } from '../domain/intoxication-rules.js';
 import {
   heroFaceSource,
   heroSpriteSource,
+  outfitDisplayStyle,
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
 import { heroBackgroundSource } from '../data/frame-data.js';
@@ -76,6 +77,8 @@ export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, li
   const outfitPortraitClass = outfitUsesTransparentPortrait(game?.outfit)
     ? ` outfit-transparent-portrait outfit-id-${game?.outfit || 'original'}`
     : '';
+  const displayStyle = outfitDisplayStyle(classId, game?.outfit);
+  const displayProfile = displayStyle ? ` data-outfit-display style="${displayStyle}"` : '';
   const resolvedBackgroundSrc = backgroundSrc || heroBackgroundSource(
     game?.frame,
     classId,
@@ -85,7 +88,7 @@ export function habitHeroCardMarkup({ game, stats, intoxication, earnedLabel, li
   return `<div class="habit-hero-card${intoxicationStageValue > 0 ? ' hero-card--intoxicated' : ''}${variantClass ? ` ${escapeHtml(variantClass)}` : ''}" data-open-character-sheet role="button" tabindex="0" aria-label="Abrir ficha de personaje">
       <img class="habit-hero-bg" src="${escapeHtml(resolvedBackgroundSrc)}" alt="" aria-hidden="true" loading="lazy" decoding="async">
       <span class="inventory-shortcut-card-shimmer" aria-hidden="true"></span>
-      <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img src="${heroFaceSource(classId, game?.outfit)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
+      <span class="habit-hero-sprite${intoxicationClass}${outfitPortraitClass}" aria-hidden="true"><img${displayProfile} src="${heroFaceSource(classId, game?.outfit)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', game?.outfit)}';this.className='face-full'"></span>
       <div class="habit-hero-info">
         <div class="habit-hero-line"><span>${escapeHtml(game?.name || className)} · Nivel ${level}</span><b>${escapeHtml(earnedLabel)}</b></div>
         <div class="habit-xp-track"><i style="width:${progress}%"></i></div>

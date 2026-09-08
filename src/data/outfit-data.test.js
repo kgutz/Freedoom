@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   OUTFIT_DEFINITIONS,
+  OUTFIT_DISPLAY_PROFILES,
   equippedOutfit,
   heroFaceSource,
   heroSpriteSource,
   isOutfitUnlocked,
+  outfitDisplayProfile,
+  outfitDisplayStyle,
   outfitUsesTransparentPortrait,
 } from './outfit-data.js';
 
@@ -55,5 +58,48 @@ describe('outfits de héroe', () => {
       .toBe('outfits/celestial-rhythm/knight_face.webp');
     expect(heroSpriteSource('knight', 'happy', 'celestial-rhythm-master'))
       .toBe('outfits/celestial-rhythm/knight_happy.webp');
+  });
+
+  it('exige una calibracion completa para cada outfit y cada heroe', () => {
+    const remastered = OUTFIT_DEFINITIONS;
+    const classes = ['knight', 'paladin', 'sorcerer', 'druid'];
+    for (const outfit of remastered) {
+      expect(OUTFIT_DISPLAY_PROFILES[outfit.id]).toBeDefined();
+      for (const classId of classes) {
+        const profile = outfitDisplayProfile(classId, outfit.id);
+        expect(profile).toBeDefined();
+        expect(Object.keys(profile)).toEqual(['hero', 'sheet', 'card', 'face']);
+        for (const values of Object.values(profile)) {
+          expect(values).toHaveLength(3);
+          expect(values.every(Number.isFinite)).toBe(true);
+          expect(values[0]).toBeGreaterThan(0);
+        }
+        const style = outfitDisplayStyle(classId, outfit.id);
+        expect(style).toContain('--outfit-hero-size:');
+        expect(style).toContain('--outfit-sheet-size:');
+        expect(style).toContain('--outfit-card-size:');
+        expect(style).toContain('--outfit-face-size:');
+      }
+    }
+    expect(outfitDisplayProfile('paladin', 'original')).toBeDefined();
+    expect(outfitDisplayStyle('paladin', 'original')).toContain('--outfit-hero-size:78%');
+  });
+
+  it('mantiene todos los pies en la misma linea de tienda e inventario', () => {
+    const alphaBottom = {
+      original: { knight: 312 / 320, paladin: 312 / 320, sorcerer: 312 / 320, druid: 312 / 320 },
+      'beta-tester': { knight: 368 / 384, paladin: 368 / 384, sorcerer: 368 / 384, druid: 368 / 384 },
+      'arcane-weave-01': { knight: 368 / 384, paladin: 368 / 384, sorcerer: 368 / 384, druid: 368 / 384 },
+      'arcane-weave-02': { knight: 368 / 384, paladin: 368 / 384, sorcerer: 368 / 384, druid: 368 / 384 },
+      'celestial-rhythm-master': { knight: 373 / 384, paladin: 372 / 384, sorcerer: 372 / 384, druid: 372 / 384 },
+    };
+
+    for (const [outfitId, classes] of Object.entries(alphaBottom)) {
+      for (const [classId, bottom] of Object.entries(classes)) {
+        const [size, , y] = outfitDisplayProfile(classId, outfitId).card;
+        const renderedFootLine = 50 + y + (0.8 * size * (bottom - 0.5));
+        expect(renderedFootLine).toBeCloseTo(88, 1);
+      }
+    }
   });
 });

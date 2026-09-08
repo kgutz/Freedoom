@@ -35,6 +35,7 @@ import {
   heroFaceSource,
   heroSpriteSource,
   isOutfitUnlocked,
+  outfitDisplayStyle,
 } from '../data/outfit-data.js';
 import {
   FRAME_DEFINITIONS,
@@ -53,14 +54,18 @@ function outfitClassId(lootState) {
 }
 
 function outfitPortrait(classId, outfit, extraClass = '') {
+  const displayStyle = outfitDisplayStyle(classId, outfit.id);
+  const displayProfile = displayStyle ? ` data-outfit-display style="${displayStyle}"` : '';
   return `<span class="outfit-portrait outfit-portrait--${classId} outfit-portrait--outfit-${outfit.id}${extraClass ? ` ${extraClass}` : ''}" aria-hidden="true">
-    <img src="${heroFaceSource(classId, outfit.id)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', outfit.id)}'">
+    <img${displayProfile} src="${heroFaceSource(classId, outfit.id)}" alt="" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='${heroSpriteSource(classId, 'happy', outfit.id)}'">
   </span>`;
 }
 
 function outfitFullBody(classId, outfit) {
+  const displayStyle = outfitDisplayStyle(classId, outfit.id);
+  const displayProfile = displayStyle ? ` data-outfit-display style="${displayStyle}"` : '';
   return `<span class="outfit-full-body outfit-full-body--${classId} outfit-full-body--outfit-${outfit.id}" aria-hidden="true">
-    <img src="${heroSpriteSource(classId, 'happy', outfit.id)}" alt="" loading="lazy" decoding="async">
+    <img${displayProfile} src="${heroSpriteSource(classId, 'happy', outfit.id)}" alt="" loading="lazy" decoding="async">
   </span>`;
 }
 

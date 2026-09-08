@@ -22,7 +22,7 @@ import {
   levelTwoSpellAvailability,
   ultimateSpellAvailability,
 } from '../domain/spell-rules.js';
-import { heroSpriteSource } from '../data/outfit-data.js';
+import { heroSpriteSource, outfitDisplayStyle } from '../data/outfit-data.js';
 import { heroBackgroundSource } from '../data/frame-data.js';
 import { resourceValue } from './inventory-view.js';
 
@@ -44,7 +44,9 @@ export function spriteImage(classId, mood, extraClass = '', outfitId = 'original
   const outfitClass = outfitId !== 'original'
     ? ` sprite-svg--outfit-${outfitId} sprite-svg--${classId}`
     : '';
-  return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}" src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false" loading="lazy" decoding="async">`;
+  const displayStyle = outfitDisplayStyle(classId, outfitId);
+  const displayProfile = displayStyle ? ` data-outfit-display style="${displayStyle}"` : '';
+  return `<img class="sprite-svg${hurt}${outfitClass} ${extraClass}"${displayProfile} src="${heroSpriteSource(classId, file, outfitId)}" alt="${classId}" draggable="false" loading="lazy" decoding="async">`;
 }
 
 const HERO_ENERGY_CLASSES = new Set(['knight', 'paladin', 'sorcerer', 'druid']);

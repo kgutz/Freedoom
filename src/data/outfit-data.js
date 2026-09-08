@@ -50,6 +50,64 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   }),
 ]);
 
+const DISPLAY_CLASSES = Object.freeze(['knight', 'paladin', 'sorcerer', 'druid']);
+
+// Fuente unica de escala y anclaje para todos los lugares donde se muestra un
+// cuerpo completo. Cada tripleta es [tamano, desplazamiento X, desplazamiento Y]
+// en porcentajes. El perfil original también se declara para que tienda e
+// inventario compartan exactamente la misma línea de pies que los remasteres.
+export const OUTFIT_DISPLAY_PROFILES = Object.freeze({
+  original: Object.freeze({
+    knight: Object.freeze({ hero: [83, 0, 0.13], sheet: [81.7, 0, 0.13], card: [105, 0, -1.9], face: [100, 0, 0] }),
+    paladin: Object.freeze({ hero: [78, 0, 2.5], sheet: [76.7, 0, 2.5], card: [100, 0, 0], face: [100, 0, 0] }),
+    sorcerer: Object.freeze({ hero: [78, 0, 2.5], sheet: [76.7, 0, 2.5], card: [100, 0, 0], face: [100, 0, 0] }),
+    druid: Object.freeze({ hero: [78, 0, 2.5], sheet: [76.7, 0, 2.5], card: [100, 0, 0], face: [100, 0, 0] }),
+  }),
+  'beta-tester': Object.freeze({
+    knight: Object.freeze({ hero: [95.3333, -2.0833, -4.12], sheet: [94.05, -2.0833, -4.12], card: [119.68, -2.67, -5.88], face: [100, 0.2, 0] }),
+    paladin: Object.freeze({ hero: [97.63, 1.6667, -5.22], sheet: [96, 1.6667, -5.13], card: [116, 2.14, -4.53], face: [100, 0, 0] }),
+    sorcerer: Object.freeze({ hero: [95.6, -1.6667, -4.25], sheet: [94, -1.6667, -4.18], card: [122.56, -2.14, -6.94], face: [100, 0, 0] }),
+    druid: Object.freeze({ hero: [95.3333, 0, -4.33], sheet: [93.81, 0, -4.33], card: [121.09, 0, -6.4], face: [100, 0.2, 0] }),
+  }),
+  'arcane-weave-01': Object.freeze({
+    knight: Object.freeze({ hero: [100.3333, -2.0833, -5.29], sheet: [98.8733, -2.0833, -5.29], card: [127.73, -2.67, -8.84], face: [100, 0.2, 0] }),
+    paladin: Object.freeze({ hero: [95.5, 1.6667, 0], sheet: [93.91, 1.6667, 0], card: [107, 2.14, -1.23], face: [100, 0, 0] }),
+    sorcerer: Object.freeze({ hero: [94.9633, -1.6667, -3.97], sheet: [93.4333, -1.6667, -3.93], card: [121.18, -2.14, -6.43], face: [110.5, -5.25, -10.37] }),
+    druid: Object.freeze({ hero: [93, 0, -3.26], sheet: [91.4767, 0, -3.26], card: [118.94, 0, -5.61], face: [100, 0, 0] }),
+  }),
+  'arcane-weave-02': Object.freeze({
+    knight: Object.freeze({ hero: [106.5, -2.0833, -8.12], sheet: [105.04, -2.0833, -8.12], card: [134.85, -2.67, -11.45], face: [108.44, -4.42, -3.81] }),
+    paladin: Object.freeze({ hero: [89.6666, 1.6667, -1.6], sheet: [88.0766, 1.6667, -1.47], card: [109.22, 2.14, -2.05], face: [111.93, -5.96, -7.24] }),
+    sorcerer: Object.freeze({ hero: [92.03, -1.6667, -2.62], sheet: [90.5, -1.6667, -2.58], card: [121.53, -2.14, -6.56], face: [109.91, -4.96, -5.25] }),
+    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [116.9, 0, -4.86], face: [112.96, -6.68, -8.26] }),
+  }),
+  'celestial-rhythm-master': Object.freeze({
+    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [125, -12.25, -14.4] }),
+    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [125, -12.5, -13.9] }),
+    sorcerer: Object.freeze({ hero: [90.4467, -1.6667, -2.83], sheet: [88.9667, -1.6667, -2.8], card: [115.67, -2.14, -5.38], face: [128.5, -14.25, -17] }),
+    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [125, -12.25, -13.9] }),
+  }),
+});
+
+export function outfitDisplayProfile(classId, outfitId) {
+  if (!DISPLAY_CLASSES.includes(classId)) return null;
+  return OUTFIT_DISPLAY_PROFILES[outfitId]?.[classId] || null;
+}
+
+export function outfitDisplayStyle(classId, outfitId) {
+  const profile = outfitDisplayProfile(classId, outfitId);
+  if (!profile) return '';
+  const variables = Object.entries(profile).flatMap(([surface, values]) => {
+    const [size, x, y] = values;
+    return [
+      `--outfit-${surface}-size:${size}%`,
+      `--outfit-${surface}-x:${x}%`,
+      `--outfit-${surface}-y:${y}%`,
+    ];
+  });
+  return variables.join(';');
+}
+
 function outfitDefinition(outfitId) {
   return OUTFIT_DEFINITIONS.find((outfit) => outfit.id === outfitId && outfit.released !== false)
     || OUTFIT_DEFINITIONS[0];

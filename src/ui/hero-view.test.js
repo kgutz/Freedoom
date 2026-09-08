@@ -552,6 +552,15 @@ describe('modelo de Héroe', () => {
     expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
       'sprite-svg--paladin',
     );
+    expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
+      'data-outfit-display',
+    );
+    expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
+      '--outfit-hero-size:',
+    );
+    expect(spriteImage('paladin', 'happy', '', 'beta-tester')).toContain(
+      '--outfit-sheet-size:',
+    );
     expect(spriteImage('paladin', 'happy', '', 'original')).not.toContain(
       'sprite-svg--outfit-beta-tester',
     );

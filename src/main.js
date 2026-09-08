@@ -113,6 +113,7 @@ import {
   relicDefinition,
   relicRankEffect
 } from './data/loot-data.js';
+import { mountOutfitAudit } from './ui/outfit-audit-view.js';
 import {
   RESET_CONFIRMATION_PHRASE,
   matchesResetConfirmation
@@ -257,7 +258,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.27';
+const APP_VERSION='2.28.28';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -269,6 +270,7 @@ const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-ba
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const LOCAL_OUTFIT_AUDIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoOutfitAudit')==='1';
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
@@ -7019,6 +7021,8 @@ resetGuardContinue.addEventListener('click',()=>{
   if(!confirm(`¿Reiniciar definitivamente? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos. Frase verificada: ${RESET_CONFIRMATION_PHRASE}.`)) return;
   resetApp();
 });
+
+if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
 
 (async function(){
   await load();

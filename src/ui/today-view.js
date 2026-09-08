@@ -25,6 +25,7 @@ import { intoxicationStage } from '../domain/intoxication-rules.js';
 import {
   heroFaceSource,
   heroSpriteSource,
+  outfitDisplayStyle,
   outfitUsesTransparentPortrait,
 } from '../data/outfit-data.js';
 import { heroBackgroundSource } from '../data/frame-data.js';
@@ -366,7 +367,7 @@ export function renderTodayView({
     todayHeroCard.querySelector('.hero-intoxication-badge')?.remove();
   }
   if (heroFace) {
-    heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01', 'outfit-id-arcane-weave-02');
+    heroFace.classList.remove('outfit-id-original', 'outfit-id-beta-tester', 'outfit-id-arcane-weave-01', 'outfit-id-arcane-weave-02', 'outfit-id-celestial-rhythm-master');
     heroFace.classList.add(`outfit-id-${game?.outfit || 'original'}`);
     heroFace.classList.toggle(
       'outfit-transparent-portrait',
@@ -401,8 +402,10 @@ export function renderTodayView({
     document.getElementById('hoyHeroCls').textContent = model.hero.className;
     const faceSource = heroFaceSource(model.hero.classId, game?.outfit);
     const spriteFallback = heroSpriteSource(model.hero.classId, 'happy', game?.outfit);
+    const displayStyle = outfitDisplayStyle(model.hero.classId, game?.outfit);
+    const displayProfile = displayStyle ? ` data-outfit-display style="${displayStyle}"` : '';
     document.getElementById('hoyFace').innerHTML =
-      `<img src="${faceSource}" alt="" decoding="async" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full'">`;
+      `<img${displayProfile} src="${faceSource}" alt="" decoding="async" onerror="this.onerror=null;this.src='${spriteFallback}';this.className='face-full'">`;
     const fill = document.getElementById('hoyHpFill');
     fill.style.width = `${model.hero.hpPercent}%`;
     fill.className = `stat-fill ${model.hero.hpClass}`;

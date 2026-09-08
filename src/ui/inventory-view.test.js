@@ -68,6 +68,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/beta-tester/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-outfit-display');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('--outfit-card-size:');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option equipped');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option selected');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-collection-back');

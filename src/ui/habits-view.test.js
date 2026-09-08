@@ -151,6 +151,8 @@ describe('vista de hábitos', () => {
     );
     expect(html).toContain('habit-hero-sprite outfit-transparent-portrait');
     expect(html).toContain('outfits/beta-tester/paladin_face.webp');
+    expect(html).toContain('data-outfit-display');
+    expect(html).toContain('--outfit-face-size:');
   });
 
   it('muestra la recompensa real total en la descripción y conserva lo ganado debajo', () => {
