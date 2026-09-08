@@ -258,7 +258,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.28';
+const APP_VERSION='2.28.29';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5582,7 +5582,7 @@ function handleArcaneResourceSale(resourceId,quantity=1){
   const operationId=`resource-${resourceId}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const result=sellArcaneResource({state,resourceId,quantity,operationId,nowTimestamp:Date.now()});
   if(!result.ok){
-    showToast('No tienes unidades disponibles','dmg');
+    showToast(result.reason==='demand'?'La demanda de hoy está agotada':'No tienes unidades disponibles','dmg');
     return false;
   }
   applyLootSlices(result);

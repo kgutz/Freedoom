@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyLootState } from './loot-rules.js';
 import {
   acknowledgeFiberCatchupNotice,
+  arcaneResourceDailyDemand,
   bossFiberBase,
   bossInkBase,
   grantBossFiberReward,
@@ -123,6 +124,39 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(ink.economy).toMatchObject({ coins: 44, arcaneFibers: 0, arcaneInks: 0 });
     expect(sellArcaneResource({ state: { ...initial, ...ink }, resourceId: 'arcaneInks', operationId: 'ink-2' }))
       .toMatchObject({ ok: false, reason: 'empty' });
+  });
+
+  it('limita las ventas a una demanda diaria estable y la renueva a medianoche', () => {
+    const initial = stateWithGame();
+    initial.forge.seed = 'mercado-diario';
+    initial.economy.arcaneFibers = 99;
+    const today = new Date(2026, 8, 8, 12).getTime();
+    const tomorrow = new Date(2026, 8, 9, 12).getTime();
+    const demand = arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneFibers', nowTimestamp: today });
+
+    expect(demand.capacity).toBeGreaterThanOrEqual(6);
+    expect(demand.capacity).toBeLessThanOrEqual(15);
+    expect(arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneFibers', nowTimestamp: today }))
+      .toEqual(demand);
+
+    const sold = sellArcaneResource({
+      state: initial,
+      resourceId: 'arcaneFibers',
+      quantity: demand.capacity,
+      operationId: 'daily-cap',
+      nowTimestamp: today,
+    });
+    expect(sold).toMatchObject({ ok: true, demand: { remaining: 0, sold: demand.capacity } });
+    expect(sellArcaneResource({
+      state: { ...initial, ...sold },
+      resourceId: 'arcaneFibers',
+      quantity: 1,
+      operationId: 'over-cap',
+      nowTimestamp: today,
+    })).toMatchObject({ ok: false, reason: 'demand' });
+    expect(arcaneResourceDailyDemand({
+      state: { ...initial, ...sold }, resourceId: 'arcaneFibers', nowTimestamp: tomorrow,
+    }).remaining).toBeGreaterThan(0);
   });
 
   it('teje una vez, descuenta el coste y conserva la propiedad', () => {

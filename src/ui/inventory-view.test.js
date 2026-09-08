@@ -182,12 +182,15 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-arcane-sale-quantity');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('max="3"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Cada unidad vale 10 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('DEMANDA DE HOY');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('La demanda cambia cada día a las 00:00');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-weave-outfit');
 
     renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop', shopMode: 'sell' });
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-sell-arcane-resource="arcaneInks"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('max="2"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Cada unidad vale 14 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('COMPRADAS');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-frame');
   });
 

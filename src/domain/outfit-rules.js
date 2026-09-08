@@ -4,6 +4,10 @@ import { normalizeLootState } from './loot-rules.js';
 
 export const BOSS_FIBER_BONUS_RATE = 0.25;
 export const ARCANE_RESOURCE_SALE_PRICES = Object.freeze({ arcaneFibers: 10, arcaneInks: 14 });
+export const ARCANE_RESOURCE_DAILY_DEMAND_RANGES = Object.freeze({
+  arcaneFibers: Object.freeze({ min: 6, max: 15 }),
+  arcaneInks: Object.freeze({ min: 4, max: 10 }),
+});
 const MAX_BOSS_FIBER_REWARDS = 21;
 
 function deterministicRoll(seed = '') {
@@ -17,6 +21,40 @@ function deterministicRoll(seed = '') {
 
 function slices(state) {
   return { economy: state.economy, loot: state.loot, inventory: state.inventory, forge: state.forge, shop: state.shop };
+}
+
+function localDayKey(timestamp) {
+  const date = new Date(timestamp);
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function nextLocalMidnight(timestamp) {
+  const next = new Date(timestamp);
+  next.setHours(24, 0, 0, 0);
+  return next.getTime();
+}
+
+export function arcaneResourceDailyDemand({ state, resourceId, nowTimestamp = Date.now() }) {
+  const normalized = normalizeLootState(state);
+  const range = ARCANE_RESOURCE_DAILY_DEMAND_RANGES[resourceId];
+  if (!range) return null;
+  const day = localDayKey(nowTimestamp);
+  const roll = deterministicRoll(`${normalized.forge.seed}|arcane-market|${resourceId}|${day}`);
+  const capacity = range.min + Math.floor(roll * (range.max - range.min + 1));
+  const sold = normalized.economy.transactions.reduce((total, entry) => {
+    if (entry?.type !== 'arcane-resource-sale' || entry.resourceId !== resourceId) return total;
+    if (localDayKey(Number(entry.at) || 0) !== day) return total;
+    return total + Math.abs(Math.trunc(Number(entry.quantity) || 0));
+  }, 0);
+  return {
+    resourceId,
+    day,
+    capacity,
+    sold: Math.min(capacity, sold),
+    remaining: Math.max(0, capacity - sold),
+    resetsAt: nextLocalMidnight(nowTimestamp),
+  };
 }
 
 export function bossFiberBase(bossIndex = 0) {
@@ -137,6 +175,10 @@ export function sellArcaneResource({ state, resourceId, quantity = 1, operationI
   if (normalized.economy.transactions.some((entry) => entry.id === `arcane-resource-sale:${operationId}`)) {
     return { ...slices(normalized), ok: false, reason: 'duplicate' };
   }
+  const demand = arcaneResourceDailyDemand({ state: normalized, resourceId, nowTimestamp });
+  if (!demand?.remaining || safeQuantity > demand.remaining) {
+    return { ...slices(normalized), ok: false, reason: 'demand', demand };
+  }
   if (normalized.economy[resourceId] < safeQuantity) {
     return { ...slices(normalized), ok: false, reason: 'empty' };
   }
@@ -152,7 +194,14 @@ export function sellArcaneResource({ state, resourceId, quantity = 1, operationI
     at: nowTimestamp,
   });
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
-  return { ...slices(normalized), ok: true, resourceId, quantity: safeQuantity, coinValue };
+  return {
+    ...slices(normalized),
+    ok: true,
+    resourceId,
+    quantity: safeQuantity,
+    coinValue,
+    demand: { ...demand, sold: demand.sold + safeQuantity, remaining: demand.remaining - safeQuantity },
+  };
 }
 
 export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.now() }) {

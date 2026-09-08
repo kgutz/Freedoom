@@ -44,6 +44,7 @@ import {
   isFrameUnlocked,
 } from '../data/frame-data.js';
 import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
+import { arcaneResourceDailyDemand } from '../domain/outfit-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 
 export { resourceIcon, resourceValue } from './resource-icons.js';
@@ -150,6 +151,12 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const saleResourceType = section === 'frames' ? 'arcane-ink' : 'arcane-fiber';
   const saleUnitPrice = section === 'frames' ? 14 : 10;
   const saleOwned = Math.max(0, Number(lootState?.economy?.[saleResourceId]) || 0);
+  const saleDemand = arcaneResourceDailyDemand({
+    state: lootState,
+    resourceId: saleResourceId,
+    nowTimestamp: options.nowTimestamp ?? Date.now(),
+  });
+  const saleAvailable = Math.min(saleOwned, saleDemand?.remaining || 0);
   const saleMarkup = `<div class="shop-outfit-heading"><p>Convierte los materiales que no necesites en oro. Cada venta entrega oro al instante.</p></div>
     <div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
@@ -158,13 +165,18 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     <section class="arcane-resource-sale-card" data-arcane-resource-sale-card>
       <div class="arcane-resource-sale-icon">${resourceIcon(saleResourceType)}</div>
       <div class="arcane-resource-sale-copy"><h4>${saleResourceName}</h4><p>Cada unidad vale ${saleUnitPrice} de oro · tienes ${saleOwned}.</p></div>
-      <div class="potion-buy-quantity arcane-resource-sale-quantity" aria-label="Cantidad a vender">
-        <button type="button" data-arcane-sale-quantity-step="-1" aria-label="Reducir cantidad"${saleOwned < 1 ? ' disabled' : ''}>−</button>
-        <input type="number" inputmode="numeric" min="1" max="${Math.max(1, saleOwned)}" value="1" data-arcane-sale-quantity aria-label="Cantidad de ${saleResourcePlural} a vender"${saleOwned < 1 ? ' disabled' : ''}>
-        <button type="button" data-arcane-sale-quantity-step="1" aria-label="Aumentar cantidad"${saleOwned < 1 ? ' disabled' : ''}>+</button>
+      <div class="arcane-market-demand">
+        <span><small>DEMANDA DE HOY</small><b>${saleDemand?.remaining || 0} disponibles</b></span>
+        <span><small>COMPRADAS</small><b>${saleDemand?.sold || 0}/${saleDemand?.capacity || 0}</b></span>
+        <p>La demanda cambia cada día a las 00:00.</p>
       </div>
-      <div class="arcane-resource-sale-price">${resourceValue('coin', saleOwned < 1 ? 0 : saleUnitPrice, 'TOTAL')}</div>
-      <button type="button" data-sell-arcane-resource="${saleResourceId}" data-unit-price="${saleUnitPrice}"${saleOwned < 1 ? ' disabled' : ''}>${saleOwned < 1 ? 'SIN EXISTENCIAS' : `VENDER 1 · ${saleUnitPrice} ORO`}</button>
+      <div class="potion-buy-quantity arcane-resource-sale-quantity" aria-label="Cantidad a vender">
+        <button type="button" data-arcane-sale-quantity-step="-1" aria-label="Reducir cantidad"${saleAvailable < 1 ? ' disabled' : ''}>−</button>
+        <input type="number" inputmode="numeric" min="1" max="${Math.max(1, saleAvailable)}" value="1" data-arcane-sale-quantity aria-label="Cantidad de ${saleResourcePlural} a vender"${saleAvailable < 1 ? ' disabled' : ''}>
+        <button type="button" data-arcane-sale-quantity-step="1" aria-label="Aumentar cantidad"${saleAvailable < 1 ? ' disabled' : ''}>+</button>
+      </div>
+      <div class="arcane-resource-sale-price">${resourceValue('coin', saleAvailable < 1 ? 0 : saleUnitPrice, 'TOTAL')}</div>
+      <button type="button" data-sell-arcane-resource="${saleResourceId}" data-unit-price="${saleUnitPrice}"${saleAvailable < 1 ? ' disabled' : ''}>${saleDemand?.remaining < 1 ? 'DEMANDA AGOTADA' : saleOwned < 1 ? 'SIN EXISTENCIAS' : `VENDER 1 · ${saleUnitPrice} ORO`}</button>
     </section>`;
   body.innerHTML = `
     ${shopContext ? '' : `<div class="outfit-modal-tabs" role="tablist" aria-label="Colecciones cosméticas">
