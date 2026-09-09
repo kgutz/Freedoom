@@ -62,8 +62,8 @@ export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => 
 export const BUNKER_ENEMIES = Object.freeze(BUNKER_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
   easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0, inkAmount: [0, 0] }),
-  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.3, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
-  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.7, fiberAmount: [1, 2], inkChance: 0.5, inkAmount: [1, 1] }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.25, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
+  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.5, fiberAmount: [1, 1], inkChance: 0.5, inkAmount: [1, 1] }),
 });
 export const HUNT_REGIONS = Object.freeze({
   'fields-of-mist': Object.freeze({
@@ -109,9 +109,9 @@ export const HUNT_REGIONS = Object.freeze({
     }),
     rewardMultiplier: 1,
     dropOverrides: Object.freeze({
-      easy: Object.freeze({ fiberChance: 0.75, fiberAmount: Object.freeze([1, 2]), inkChance: 0.55, inkAmount: Object.freeze([1, 1]) }),
-      medium: Object.freeze({ fiberChance: 0.8, fiberAmount: Object.freeze([2, 3]), inkChance: 0.65, inkAmount: Object.freeze([1, 2]) }),
-      hard: Object.freeze({ fiberChance: 0.9, fiberAmount: Object.freeze([3, 4]), inkChance: 0.8, inkAmount: Object.freeze([2, 3]) }),
+      easy: Object.freeze({ fiberChance: 0.35, fiberAmount: Object.freeze([1, 1]), inkChance: 0.35, inkAmount: Object.freeze([1, 1]) }),
+      medium: Object.freeze({ fiberChance: 0.45, fiberAmount: Object.freeze([1, 1]), inkChance: 0.45, inkAmount: Object.freeze([1, 1]) }),
+      hard: Object.freeze({ fiberChance: 0.6, fiberAmount: Object.freeze([1, 2]), inkChance: 0.6, inkAmount: Object.freeze([1, 2]) }),
     }),
     bossBloodChance: 0.15,
     victoryMessage: 'Los hilos del Titiritero se quiebran',
@@ -464,7 +464,7 @@ export function fiberChanceForHunt({ hunt, difficultyId, regionId = 'fields-of-m
     Number(report?.rewards?.arcaneFibers) > 0
     && localHuntDayKey(report.completedAt, normalized.dayStartTime) === normalized.energyDay
   )).length;
-  return Math.max(0.01, dropRules.fiberChance - dropsToday * 0.06);
+  return Math.max(0.05, dropRules.fiberChance - dropsToday * 0.05);
 }
 
 export function fiberChanceForProgress({

@@ -219,19 +219,19 @@ describe('PvE combat rules', () => {
     BRUMA_ENEMIES.forEach((enemy) => expect(enemy.lore.length).toBeGreaterThan(60));
   });
 
-  it('escala la fibra arcana con la dificultad', () => {
+  it('iguala el drop de Fibra al de Tinta en cada dificultad de la Bruma', () => {
     expect(HUNT_DIFFICULTIES.easy).toMatchObject({ fiberChance: 0, fiberAmount: [0, 0] });
-    expect(HUNT_DIFFICULTIES.medium).toMatchObject({ fiberChance: 0.3, fiberAmount: [1, 1] });
-    expect(HUNT_DIFFICULTIES.hard).toMatchObject({ fiberChance: 0.7, fiberAmount: [1, 2] });
+    expect(HUNT_DIFFICULTIES.medium).toMatchObject({ fiberChance: 0.25, fiberAmount: [1, 1] });
+    expect(HUNT_DIFFICULTIES.hard).toMatchObject({ fiberChance: 0.5, fiberAmount: [1, 1] });
   });
 
   it('hace la tirada completa de Fibra al vencer al Líder aunque no caiga el Minijefe', () => {
     const now = new Date(2026, 7, 26, 12).getTime();
     expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 1, nowTimestamp: now })).toBe(0);
     expect(fiberChanceForProgress({ hunt: null, difficultyId: 'easy', defeatedEnemies: 2, nowTimestamp: now })).toBe(0);
-    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.3);
-    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.7);
-    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 3, nowTimestamp: now })).toBeCloseTo(0.7);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'medium', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.25);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 2, nowTimestamp: now })).toBeCloseTo(0.5);
+    expect(fiberChanceForProgress({ hunt: null, difficultyId: 'hard', defeatedEnemies: 3, nowTimestamp: now })).toBeCloseTo(0.5);
   });
 
   it('entrega Tinta solo desde el Líder en Medio o Difícil y reduce un 5% por drop diario', () => {
@@ -257,7 +257,7 @@ describe('PvE combat rules', () => {
     expect(huntRecoveryRates(3)).toEqual({ hpPercent: 0.25, manaPercent: 0.15 });
   });
 
-  it('reduce seis puntos la probabilidad por cada drop del día y reinicia al día siguiente', () => {
+  it('reduce cinco puntos la probabilidad de Fibra por cada drop del día y reinicia al día siguiente', () => {
     const today = new Date(2026, 7, 25, 12).getTime();
     const yesterday = new Date(2026, 7, 24, 12).getTime();
     const hunt = {
@@ -270,10 +270,10 @@ describe('PvE combat rules', () => {
       ],
     };
     expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: today })).toBe(0);
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: today })).toBeCloseTo(0.18);
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'hard', nowTimestamp: today })).toBeCloseTo(0.58);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: today })).toBeCloseTo(0.15);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'hard', nowTimestamp: today })).toBeCloseTo(0.4);
     expect(fiberChanceForHunt({ hunt, difficultyId: 'easy', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBe(0);
-    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBeCloseTo(0.3);
+    expect(fiberChanceForHunt({ hunt, difficultyId: 'medium', nowTimestamp: new Date(2026, 7, 26, 12).getTime() })).toBeCloseTo(0.25);
   });
 
   it('concede hasta dos energías extra con probabilidades de diez y ocho por ciento', () => {
@@ -554,33 +554,33 @@ describe('PvE combat rules', () => {
     expect(started.hunt.energy).toBe(7);
   });
 
-  it('aumenta la Fibra y la Tinta del Búnker sin alterar el drop de la Bruma', () => {
+  it('mantiene Fibra y Tinta con el mismo drop dentro de cada zona y dificultad', () => {
     expect(huntDropRules('fields-of-mist', 'medium')).toEqual({
-      fiberChance: 0.3,
+      fiberChance: 0.25,
       fiberAmount: [1, 1],
       inkChance: 0.25,
       inkAmount: [1, 1],
     });
     expect(huntDropRules('dead-hours-bunker', 'easy')).toEqual({
-      fiberChance: 0.75,
-      fiberAmount: [1, 2],
-      inkChance: 0.55,
+      fiberChance: 0.35,
+      fiberAmount: [1, 1],
+      inkChance: 0.35,
       inkAmount: [1, 1],
     });
     expect(huntDropRules('dead-hours-bunker', 'medium')).toEqual({
-      fiberChance: 0.8,
-      fiberAmount: [2, 3],
-      inkChance: 0.65,
-      inkAmount: [1, 2],
+      fiberChance: 0.45,
+      fiberAmount: [1, 1],
+      inkChance: 0.45,
+      inkAmount: [1, 1],
     });
     expect(huntDropRules('dead-hours-bunker', 'hard')).toEqual({
-      fiberChance: 0.9,
-      fiberAmount: [3, 4],
-      inkChance: 0.8,
-      inkAmount: [2, 3],
+      fiberChance: 0.6,
+      fiberAmount: [1, 2],
+      inkChance: 0.6,
+      inkAmount: [1, 2],
     });
-    expect(fiberChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'medium', defeatedEnemies: 2 })).toBeCloseTo(0.8);
-    expect(inkChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'hard', defeatedEnemies: 2 })).toBeCloseTo(0.8);
+    expect(fiberChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'medium', defeatedEnemies: 2 })).toBeCloseTo(0.45);
+    expect(inkChanceForProgress({ hunt: null, regionId: 'dead-hours-bunker', difficultyId: 'hard', defeatedEnemies: 2 })).toBeCloseTo(0.6);
   });
 
   it('entrega la XP y el oro propios del Búnker al resolver la expedición', () => {
