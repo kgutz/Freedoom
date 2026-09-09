@@ -57,7 +57,7 @@ describe('interfaz de inventario y botín', () => {
     state.game.pioneerReward = { claimedAt: 1234, outfitId: 'beta-tester', coins: 130 };
     expect(renderOutfitSelector(document, state)).toBeNull();
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Colección de outfits"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option cosmetic-rarity-normal equipped');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-owned-detail');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-equip-outfit');
     expect(renderOutfitSelector(document, state, 'beta-tester')).toBe('beta-tester');
@@ -70,8 +70,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-full-body--outfit-beta-tester');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-outfit-display');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('--outfit-card-size:');
-    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option equipped');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option selected');
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-option cosmetic-rarity-normal equipped');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfit-option cosmetic-rarity-mythic selected');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('>MÍTICO</span>');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-collection-back');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('outfit-selector-preview');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('hero_background/');
@@ -149,9 +150,10 @@ describe('interfaz de inventario y botín', () => {
       .toBeLessThan(document.elements.outfitSelectorBody.innerHTML.indexOf('resource-icon--arcane-ink'));
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Fondos disponibles"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="beta-tester"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option equipped frame-option--owned"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option cosmetic-rarity-mythic equipped frame-option--owned"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Corazón de Freedom, equipado"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option" data-select-frame="welder-beta"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option cosmetic-rarity-legendary" data-select-frame="welder-beta"');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('class="frame-option cosmetic-rarity-legendary" data-select-frame="celestial-music-studio"');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('Próximo fondo');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('frame-option--future');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-outfit-section="owned"');

@@ -199,12 +199,12 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     ${section === 'frames' ? (selected ? `
       <div class="outfit-owned-view frame-owned-view">
         <div class="outfit-owned-preview frame-owned-preview">
-          <div class="frame-option selected${selected.id === equippedFrameDefinition.id ? ' equipped' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equippedFrameDefinition.id ? ', equipado' : ''}">
+          <div class="frame-option ${cosmeticRarityClass(selected)} selected${selected.id === equippedFrameDefinition.id ? ' equipped' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equippedFrameDefinition.id ? ', equipado' : ''}">
             ${framePreview(classId, selected, 'frame-preview--large')}
           </div>
         </div>
         <section class="outfit-weave-detail outfit-owned-detail">
-          <h4>${escapeHtml(selected.name)}</h4>
+          ${cosmeticRarityLabel(selected)}<h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore)}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
           ${shopContext && frameRecipe ? `<div class="outfit-weave-cost">
@@ -227,7 +227,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
           const status = frame.id === equippedFrameDefinition.id
             ? ', equipado'
             : shopContext && unlocked ? ', conseguido' : '';
-          return `<button type="button" class="frame-option${equippedClass}${ownedClass}${lockedClass}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${status}">
+          return `<button type="button" class="frame-option ${cosmeticRarityClass(frame)}${equippedClass}${ownedClass}${lockedClass}" data-select-frame="${frame.id}" role="option" aria-label="${escapeHtml(frame.name)}${status}">
             ${framePreview(classId, frame)}
           </button>`;
         }).join('')}
@@ -237,19 +237,19 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       </div>`) : section === 'owned' ? (selected ? `
       <div class="outfit-owned-view">
         <div class="outfit-owned-preview">
-          <div class="outfit-option selected${selected.id === equipped.id ? ' equipped' : ''}${selected.provisional ? ' outfit-option--arcane' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equipped.id ? ', equipado' : ''}">
+          <div class="outfit-option ${cosmeticRarityClass(selected)} selected${selected.id === equipped.id ? ' equipped' : ''}${selected.provisional ? ' outfit-option--arcane' : ''}" aria-label="${escapeHtml(selected.name)}${selected.id === equipped.id ? ', equipado' : ''}">
             ${outfitFullBody(classId, selected)}
           </div>
         </div>
         <section class="outfit-weave-detail outfit-owned-detail">
-          <h4>${escapeHtml(selected.name)}</h4>
+          ${cosmeticRarityLabel(selected)}<h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
           <button type="button" class="outfit-equip-button" data-equip-outfit="${selected.id}"${previewOnly || selected.id === equipped.id ? ' disabled' : ''}>${previewOnly ? 'PREVISUALIZACIÓN' : selected.id === equipped.id ? 'EQUIPADO' : 'EQUIPAR'}</button>
         </section>
       </div>` : `
       <div class="outfit-selector-grid" role="listbox" aria-label="Colección de outfits">
-        ${ownedOutfits.map((outfit) => `<button type="button" class="outfit-option${outfit.id === equipped.id ? ' equipped' : ''}${outfit.provisional ? ' outfit-option--arcane' : ''}" data-select-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}${outfit.id === equipped.id ? ', equipado' : ''}">
+        ${ownedOutfits.map((outfit) => `<button type="button" class="outfit-option ${cosmeticRarityClass(outfit)}${outfit.id === equipped.id ? ' equipped' : ''}${outfit.provisional ? ' outfit-option--arcane' : ''}" data-select-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}${outfit.id === equipped.id ? ', equipado' : ''}">
           ${outfitFullBody(classId, outfit)}
         </button>`).join('')}
         ${Array.from({ length: emptyCollectionSlots }, (_, index) => `<div class="outfit-option outfit-option--locked outfit-collection-empty" aria-label="Espacio de outfit bloqueado ${index + 1}">
@@ -258,12 +258,12 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       </div>`) : (selected ? `
       <div class="outfit-owned-view outfit-weave-view">
         <div class="outfit-owned-preview">
-          <div class="outfit-option outfit-weave-option selected${alreadyOwned ? ' owned' : ''}" aria-label="${escapeHtml(selected.name)}">
+          <div class="outfit-option outfit-weave-option ${cosmeticRarityClass(selected)} selected${alreadyOwned ? ' owned' : ''}" aria-label="${escapeHtml(selected.name)}">
             ${outfitFullBody(classId, selected)}
           </div>
         </div>
         <section class="outfit-weave-detail">
-          <h4>${escapeHtml(selected.name)}</h4>
+          ${cosmeticRarityLabel(selected)}<h4>${escapeHtml(selected.name)}</h4>
           <p>${escapeHtml(selected.lore || 'Un atuendo que transforma la apariencia de tus cuatro héroes.')}</p>
           <small class="outfit-cosmetic-note">COSMÉTICO · NO MODIFICA ESTADÍSTICAS</small>
           <div class="outfit-weave-cost">
@@ -274,7 +274,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         </section>
       </div>` : `
       <div class="outfit-weave-grid" role="listbox" aria-label="Outfits para tejer">
-        ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}">
+        ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option ${cosmeticRarityClass(outfit)}${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}">
           ${outfitFullBody(classId, outfit)}
         </button>`).join('')}
         ${Array.from({ length: 4 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
@@ -282,6 +282,15 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         </div>`).join('')}
       </div>`)}`}</div>`;
   return selected?.id || null;
+}
+
+function cosmeticRarityClass(definition) {
+  return `cosmetic-rarity-${['legendary', 'mythic'].includes(definition?.rarity) ? definition.rarity : 'normal'}`;
+}
+
+function cosmeticRarityLabel(definition) {
+  const label = definition?.rarity === 'mythic' ? 'MÍTICO' : definition?.rarity === 'legendary' ? 'LEGENDARIO' : 'NORMAL';
+  return `<span class="cosmetic-rarity-label ${cosmeticRarityClass(definition)}">${label}</span>`;
 }
 
 function escapeHtml(value) {

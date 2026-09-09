@@ -10,7 +10,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'beta-tester',
     name: 'Beta Tester',
-    rarity: 'rare',
+    rarity: 'mythic',
     unlocked: false,
     transparentPortrait: true,
     lore: 'Un atuendo reservado para quienes ayudaron a construir los primeros pasos de Freedom.',
@@ -18,6 +18,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'arcane-weave-01',
     name: 'Operador del Nexo',
+    rarity: 'legendary',
     unlocked: false,
     craftable: true,
     assetId: 'telecom-beta',
@@ -28,6 +29,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'arcane-weave-02',
     name: 'Forjador del Crisol',
+    rarity: 'legendary',
     released: true,
     unlocked: false,
     craftable: true,
@@ -39,7 +41,7 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'celestial-rhythm-master',
     name: 'Maestro del Ritmo Celestial',
-    rarity: 'mythic',
+    rarity: 'legendary',
     released: true,
     unlocked: false,
     craftable: true,

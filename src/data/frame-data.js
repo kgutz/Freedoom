@@ -8,6 +8,7 @@ export const FRAME_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'beta-tester',
     name: 'Corazón de Freedom',
+    rarity: 'mythic',
     image: 'hero_background/beta_tester_bg_final.webp',
     unlocked: false,
     lore: 'La central arcana donde vive el corazón de Freedom. Un recuerdo reservado para quienes ayudaron a construir este mundo.',
@@ -15,6 +16,7 @@ export const FRAME_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'welder-beta',
     name: 'Santuario del Crisol',
+    rarity: 'legendary',
     image: 'hero_background/welder_beta_forge.webp',
     unlocked: false,
     compatibleOutfitId: 'arcane-weave-02',
@@ -24,7 +26,7 @@ export const FRAME_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: 'celestial-music-studio',
     name: 'Estudio Musical Celestial',
-    rarity: 'mythic',
+    rarity: 'legendary',
     image: 'hero_background/celestial_music_studio.webp',
     released: true,
     unlocked: false,

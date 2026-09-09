@@ -1851,6 +1851,15 @@
   html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut>.resource-icon,html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut>b{position:relative;z-index:1}
   @media(prefers-reduced-motion:reduce){.character-hero-art::before,html.feature-discovery-character-entry-unseen .hoy-hero,html.feature-discovery-character-entry-unseen .habit-hero-card,html.feature-discovery-character-entry-unseen .hoy-hero .inventory-shortcut-card-shimmer,html.feature-discovery-character-entry-unseen .habit-hero-card .inventory-shortcut-card-shimmer,html.feature-discovery-character-bag-unseen .character-bag-primary,html.feature-discovery-character-bag-unseen .character-bag-primary::after,html.feature-discovery-character-bag-market-unseen .character-bag-primary,html.feature-discovery-character-bag-market-unseen .character-bag-primary::after,html.feature-discovery-inventory-market-unseen #shopTab,html.feature-discovery-inventory-market-unseen #shopTab::before,html.feature-discovery-inventory-market-unseen #shopTab::after,html.feature-discovery-character-hero-unseen .character-hero-art,html.feature-discovery-character-hero-unseen .character-hero-art::after,html.feature-discovery-nav-habits-unseen #navHabits svg,html.feature-discovery-nav-habits-unseen #navHabits span,html.feature-discovery-hunt-tab-unseen .habit-section-tabs button[data-habit-section="hunt"] span,html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut,html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut::after,html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut .resource-icon,html.feature-discovery-hero-energy-unseen .hero-hunt-energy-shortcut b{animation:none!important}}
 
+  /* Rareza cosmética: independiente de las reliquias y del estado equipado. */
+  .cosmetic-rarity-normal{--cosmetic-color:#756653;--cosmetic-glow:transparent}
+  .cosmetic-rarity-legendary{--cosmetic-color:#e8b44a;--cosmetic-glow:rgba(232,180,74,.22)}
+  .cosmetic-rarity-mythic{--cosmetic-color:#b77bea;--cosmetic-glow:rgba(183,123,234,.24)}
+  .outfit-option[class*="cosmetic-rarity-"],.frame-option[class*="cosmetic-rarity-"]{border-color:var(--cosmetic-color);box-shadow:inset 0 0 0 1px var(--cosmetic-glow),0 0 10px var(--cosmetic-glow)}
+  .outfit-option[class*="cosmetic-rarity-"].equipped,.frame-option[class*="cosmetic-rarity-"].equipped{outline:1px solid var(--cosmetic-color);outline-offset:3px}
+  .cosmetic-rarity-label{display:block;margin:0 0 8px;color:var(--cosmetic-color);font:400 9px/1.5 var(--font-display);letter-spacing:.12em}
+  .outfit-option[class*="cosmetic-rarity-"].equipped::before,.frame-option[class*="cosmetic-rarity-"].equipped::before{content:'';position:absolute;inset:0;z-index:3;padding:0;border:1px solid var(--kodak);border-radius:inherit;background:none;mask:none;-webkit-mask:none;animation:none;pointer-events:none}
+
   /* Página interna para comparar todos los perfiles de escala de outfits. */
   html.outfit-audit-active,html.outfit-audit-active body{min-width:0;background:#100d0b}
   html.outfit-audit-active body{width:100%;max-width:none;margin:0}
