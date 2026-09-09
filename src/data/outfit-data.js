@@ -82,10 +82,10 @@ export const OUTFIT_DISPLAY_PROFILES = Object.freeze({
     druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [116.9, 0, -4.86], face: [112.96, -6.68, -8.26] }),
   }),
   'celestial-rhythm-master': Object.freeze({
-    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [125, 0, -14.4] }),
-    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [125, 0, -13.9] }),
+    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [125, 0, -6.4] }),
+    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [125, 0, -5.9] }),
     sorcerer: Object.freeze({ hero: [90.4467, 0, -2.83], sheet: [88.9667, 0, -2.8], card: [115.67, 0, -5.38], face: [128.5, 0, -9] }),
-    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [125, 0, -13.9] }),
+    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [125, 0, -5.9] }),
   }),
 });
 

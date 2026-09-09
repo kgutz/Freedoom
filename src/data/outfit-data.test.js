@@ -110,10 +110,10 @@ describe('outfits de héroe', () => {
 
   it('mantiene centradas las caras del Maestro del Ritmo Celestial', () => {
     const expectedFaces = {
-      knight: [125, 0, -14.4],
-      paladin: [125, 0, -13.9],
+      knight: [125, 0, -6.4],
+      paladin: [125, 0, -5.9],
       sorcerer: [128.5, 0, -9],
-      druid: [125, 0, -13.9],
+      druid: [125, 0, -5.9],
     };
 
     for (const [classId, expected] of Object.entries(expectedFaces)) {
