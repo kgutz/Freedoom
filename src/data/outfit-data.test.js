@@ -98,8 +98,34 @@ describe('outfits de héroe', () => {
       for (const [classId, bottom] of Object.entries(classes)) {
         const [size, , y] = outfitDisplayProfile(classId, outfitId).card;
         const renderedFootLine = 50 + y + (0.8 * size * (bottom - 0.5));
-        expect(renderedFootLine).toBeCloseTo(88, 1);
+        // El Forjador hechicero necesita una compensación óptica: su base
+        // recta parece más alta aunque el alfa termine en el mismo píxel.
+        const expectedFootLine = outfitId === 'arcane-weave-02' && classId === 'sorcerer'
+          ? 90.2
+          : 88;
+        expect(renderedFootLine).toBeCloseTo(expectedFootLine, 1);
       }
     }
+  });
+
+  it('mantiene centradas las caras del Maestro del Ritmo Celestial', () => {
+    const expectedFaces = {
+      knight: [125, 0, -14.4],
+      paladin: [125, 0, -13.9],
+      sorcerer: [128.5, 0, -9],
+      druid: [125, 0, -13.9],
+    };
+
+    for (const [classId, expected] of Object.entries(expectedFaces)) {
+      expect(outfitDisplayProfile(classId, 'celestial-rhythm-master').face).toEqual(expected);
+    }
+  });
+
+  it('centra el ojo del hechicero celestial en todos los cuerpos completos', () => {
+    const profile = outfitDisplayProfile('sorcerer', 'celestial-rhythm-master');
+
+    expect(profile.hero[1]).toBe(0);
+    expect(profile.sheet[1]).toBe(0);
+    expect(profile.card[1]).toBe(0);
   });
 });

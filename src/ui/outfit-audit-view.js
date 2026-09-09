@@ -9,10 +9,10 @@ import { heroBackgroundSource } from '../data/frame-data.js';
 import { heroVisualMarkup } from './hero-view.js';
 
 const AUDIT_CLASSES = Object.freeze([
-  Object.freeze({ id: 'knight', name: 'Caballero' }),
-  Object.freeze({ id: 'paladin', name: 'Paladín' }),
-  Object.freeze({ id: 'sorcerer', name: 'Hechicero' }),
-  Object.freeze({ id: 'druid', name: 'Druida' }),
+  Object.freeze({ id: 'knight', name: 'Caballero', eyeLine: 52 }),
+  Object.freeze({ id: 'paladin', name: 'Paladín', eyeLine: 44 }),
+  Object.freeze({ id: 'sorcerer', name: 'Hechicero', eyeLine: 47 }),
+  Object.freeze({ id: 'druid', name: 'Druida', eyeLine: 43 }),
 ]);
 
 function displayAttributes(classId, outfitId) {
@@ -48,15 +48,36 @@ function cardPreview(classId, outfit) {
   </div>`;
 }
 
-function facePreview(classId, outfit) {
+function portraitPreview(classId, outfit, surfaceClass) {
   const transparentClass = outfitUsesTransparentPortrait(outfit.id)
     ? ' outfit-transparent-portrait'
     : '';
-  return `<span class="hoy-face outfit-audit-face-stage${transparentClass}" aria-hidden="true">
+  return `<span class="${surfaceClass} outfit-id-${outfit.id}${transparentClass}" aria-hidden="true">
     <img${displayAttributes(classId, outfit.id)} src="${heroFaceSource(classId, outfit.id)}" alt="">
-    <span class="outfit-audit-guide outfit-audit-guide--face-center"></span>
-    <span class="outfit-audit-guide outfit-audit-guide--face-base"></span>
+    <span class="outfit-audit-portrait-guide outfit-audit-portrait-guide--center"></span>
+    <span class="outfit-audit-portrait-guide outfit-audit-portrait-guide--eyes"></span>
   </span>`;
+}
+
+function todayPreview(classId, outfit) {
+  return `<div class="hoy-hero outfit-audit-today-card" aria-hidden="true">
+    <img class="hoy-hero-bg" src="${heroBackgroundSource('original', classId, 'today')}" alt="">
+    <div class="hoy-hero-top">
+      <div class="hoy-hero-id">
+        ${portraitPreview(classId, outfit, 'hoy-face')}
+        <div class="hoy-hero-txt"><div class="hoy-hero-name">Héroe</div><div class="hoy-hero-cls">${classId}</div></div>
+      </div>
+    </div>
+    <div class="hoy-hp"><div class="hoy-hp-lbl"><span>Salud</span><b>210 / 210</b></div><div class="habit-xp-track"><i style="width:72%"></i></div></div>
+  </div>`;
+}
+
+function habitsPreview(classId, outfit) {
+  return `<div class="habit-hero-card outfit-audit-habits-card" aria-hidden="true">
+    <img class="habit-hero-bg" src="${heroBackgroundSource('original', classId, 'habits')}" alt="">
+    ${portraitPreview(classId, outfit, 'habit-hero-sprite')}
+    <div class="habit-hero-info"><div class="habit-hero-line"><span>Héroe · Nivel 50</span></div><div class="habit-xp-track"><i style="width:64%"></i></div><div class="habit-xp-label"><span>Progreso</span><b>64%</b></div></div>
+  </div>`;
 }
 
 function outfitColumn(classId, outfit) {
@@ -75,12 +96,16 @@ function outfitColumn(classId, outfit) {
       ${sheetPreview(classId, outfit.id)}
     </div>
     <div class="outfit-audit-surface outfit-audit-surface--card">
-      <span class="outfit-audit-surface-label">TIENDA / INVENTARIO · 4:5</span>
+      <span class="outfit-audit-surface-label">TIENDA / COLECCIÓN · 4:5</span>
       ${cardPreview(classId, outfit)}
     </div>
-    <div class="outfit-audit-surface outfit-audit-surface--face">
-      <span class="outfit-audit-surface-label">HOY / HÁBITOS · 56 × 56</span>
-      ${facePreview(classId, outfit)}
+    <div class="outfit-audit-surface outfit-audit-surface--today">
+      <span class="outfit-audit-surface-label">HOY · 56 × 56 + FONDO</span>
+      ${todayPreview(classId, outfit)}
+    </div>
+    <div class="outfit-audit-surface outfit-audit-surface--habits">
+      <span class="outfit-audit-surface-label">HÁBITOS · 58 × 58 + FONDO</span>
+      ${habitsPreview(classId, outfit)}
     </div>
   </article>`;
 }
@@ -90,10 +115,10 @@ export function outfitAuditMarkup() {
   const navigation = AUDIT_CLASSES.map((heroClass) => (
     `<a href="#audit-${heroClass.id}">${heroClass.name}</a>`
   )).join('');
-  const sections = AUDIT_CLASSES.map((heroClass) => `<section class="outfit-audit-class" id="audit-${heroClass.id}">
+  const sections = AUDIT_CLASSES.map((heroClass) => `<section class="outfit-audit-class" id="audit-${heroClass.id}" style="--audit-eye-line:${heroClass.eyeLine}%">
     <div class="outfit-audit-class-heading">
       <div><span>CONTROL DE ESCALA</span><h2>${heroClass.name}</h2></div>
-      <small>${outfits.length} outfits · cuerpo y cara</small>
+      <small>${outfits.length} outfits · 5 contextos reales</small>
     </div>
     <div class="outfit-audit-grid">
       ${outfits.map((outfit) => outfitColumn(heroClass.id, outfit)).join('')}
@@ -106,7 +131,7 @@ export function outfitAuditMarkup() {
       <a class="outfit-audit-close" href="?demoProfile=control&demoLevel=50&demoAllOutfits=1&demoQuiet=1&demoClass=paladin">VOLVER A LA APP</a>
     </header>
     <nav class="outfit-audit-nav" aria-label="Héroes">${navigation}</nav>
-    <aside class="outfit-audit-legend"><i></i> Línea de cabeza / ojos <i></i> Línea de pies / base</aside>
+    <aside class="outfit-audit-legend"><i></i> Ojos del original de cada vocación <i></i> Pies / base <i class="outfit-audit-legend-center"></i> Centro del retrato</aside>
     ${sections}
   </div>`;
 }

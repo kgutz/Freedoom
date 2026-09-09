@@ -65,10 +65,11 @@ describe('informe de Cacería', () => {
       nowTimestamp,
     });
     expect(root.innerHTML).toContain('INFORME PENDIENTE');
-    expect(root.innerHTML).toContain('Búnker de las Horas Muertas · Fácil');
+    expect(root.innerHTML).toContain('Búnker · Fácil');
+    expect(root.innerHTML).toContain('aria-label="Informe pendiente · Búnker de las Horas Muertas · Fácil"');
     expect(root.innerHTML).toContain('data-open-pending-hunt="dead-hours-bunker"');
     expect(root.innerHTML).toContain('hunt-map-zone--bunker active report-ready');
-    expect(root.innerHTML).toContain('VER RESULTADO');
+    expect(root.innerHTML).toContain('RESULTADO');
   });
 
   it('muestra el Búnker como una zona pulsable igual que Campos de la Bruma', () => {

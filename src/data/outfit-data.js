@@ -78,14 +78,14 @@ export const OUTFIT_DISPLAY_PROFILES = Object.freeze({
   'arcane-weave-02': Object.freeze({
     knight: Object.freeze({ hero: [106.5, -2.0833, -8.12], sheet: [105.04, -2.0833, -8.12], card: [134.85, -2.67, -11.45], face: [108.44, -4.42, -3.81] }),
     paladin: Object.freeze({ hero: [89.6666, 1.6667, -1.6], sheet: [88.0766, 1.6667, -1.47], card: [109.22, 2.14, -2.05], face: [111.93, -5.96, -7.24] }),
-    sorcerer: Object.freeze({ hero: [92.03, -1.6667, -2.62], sheet: [90.5, -1.6667, -2.58], card: [121.53, -2.14, -6.56], face: [109.91, -4.96, -5.25] }),
+    sorcerer: Object.freeze({ hero: [92.03, -1.6667, -2.62], sheet: [90.5, -1.6667, -2.58], card: [121.53, -2.14, -4.34], face: [109.91, -4.96, -5.25] }),
     druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [116.9, 0, -4.86], face: [112.96, -6.68, -8.26] }),
   }),
   'celestial-rhythm-master': Object.freeze({
-    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [125, -12.25, -14.4] }),
-    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [125, -12.5, -13.9] }),
-    sorcerer: Object.freeze({ hero: [90.4467, -1.6667, -2.83], sheet: [88.9667, -1.6667, -2.8], card: [115.67, -2.14, -5.38], face: [128.5, -14.25, -17] }),
-    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [125, -12.25, -13.9] }),
+    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [125, 0, -14.4] }),
+    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [125, 0, -13.9] }),
+    sorcerer: Object.freeze({ hero: [90.4467, 0, -2.83], sheet: [88.9667, 0, -2.8], card: [115.67, 0, -5.38], face: [128.5, 0, -9] }),
+    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [125, 0, -13.9] }),
   }),
 });
 
