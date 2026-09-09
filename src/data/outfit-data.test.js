@@ -110,15 +110,38 @@ describe('outfits de héroe', () => {
 
   it('mantiene centradas las caras del Maestro del Ritmo Celestial', () => {
     const expectedFaces = {
-      knight: [125, 0, -6.4],
-      paladin: [125, 0, -5.9],
-      sorcerer: [128.5, 0, -9],
-      druid: [125, 0, -5.9],
+      knight: [139, 0, -2.8],
+      paladin: [134, 0, -2.3],
+      sorcerer: [134, 0, -2],
+      druid: [139, 0, -0.6],
     };
 
     for (const [classId, expected] of Object.entries(expectedFaces)) {
       expect(outfitDisplayProfile(classId, 'celestial-rhythm-master').face).toEqual(expected);
     }
+  });
+
+  it('amplia todas las caras del Caballero en las tarjetas compactas', () => {
+    expect(outfitDisplayProfile('knight', 'original').face).toEqual([107, 0, 0]);
+    expect(outfitDisplayProfile('knight', 'beta-tester').face).toEqual([125, 0.2, 0]);
+    expect(outfitDisplayProfile('knight', 'arcane-weave-01').face).toEqual([125, 0.2, 0]);
+    expect(outfitDisplayProfile('knight', 'arcane-weave-02').face).toEqual([121, -4.42, -3.81]);
+    expect(outfitDisplayProfile('knight', 'celestial-rhythm-master').face).toEqual([139, 0, -2.8]);
+  });
+
+  it('calibra las caras Beta Tester y Operador del Nexo del Hechicero en las tarjetas compactas', () => {
+    expect(outfitDisplayProfile('sorcerer', 'beta-tester').face).toEqual([112, 0, 0]);
+    expect(outfitDisplayProfile('sorcerer', 'arcane-weave-01').face).toEqual([128.5, 3.65, 0.13]);
+  });
+
+  it('calibra las caras Beta Tester, Operador del Nexo y Celestial del Druida', () => {
+    expect(outfitDisplayProfile('druid', 'beta-tester').face).toEqual([112, 0.2, 0]);
+    expect(outfitDisplayProfile('druid', 'arcane-weave-01').face).toEqual([119, 0, 0]);
+    expect(outfitDisplayProfile('druid', 'celestial-rhythm-master').face).toEqual([139, 0, -0.6]);
+  });
+
+  it('calibra la cara del Forjador del Crisol del Druida', () => {
+    expect(outfitDisplayProfile('druid', 'arcane-weave-02').face).toEqual([118.5, 0, -10.1]);
   });
 
   it('centra el ojo del hechicero celestial en todos los cuerpos completos', () => {
