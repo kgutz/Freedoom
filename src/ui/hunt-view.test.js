@@ -28,6 +28,9 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
 }
 
 describe('informe de Cacería', () => {
+  it.each([['easy', 'Fácil'], ['medium', 'Medio'], ['hard', 'Difícil']])('muestra la dificultad guardada del informe: %s', (id, name) => {
+    expect(renderReport({}, id)).toContain(`<div class="hunt-report-difficulty">Dificultad <b>${name}</b></div>`);
+  });
   it('muestra el nuevo mapa con Bruma, Búnker y una futura zona al noroeste', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({

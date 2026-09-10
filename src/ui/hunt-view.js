@@ -127,6 +127,7 @@ export function huntResultSummaryMarkup(report = {}) {
 function reportMarkup(report) {
   if (!report) return '';
   const region = HUNT_REGIONS[report.regionId] || HUNT_REGIONS['fields-of-mist'];
+  const difficulty = huntDifficultyForRegion(region.id, report.difficultyId);
   const rows = report.encounters.map((encounter, encounterIndex) => {
     const recoveryAfterHp = Math.max(0, Number(encounter.recoveryAfter?.hp) || 0);
     const recoveryAfterMana = Math.max(0, Number(encounter.recoveryAfter?.mana) || 0);
@@ -201,6 +202,7 @@ function reportMarkup(report) {
   const resultLabel = report.won ? 'EXPEDICIÓN SUPERADA' : Number(report.defeatedEnemies) > 0 ? 'AVANCE PARCIAL' : 'EXPEDICIÓN FALLIDA';
   return `<section class="card hunt-report">
     <div class="hunt-section-title"><span>Último informe</span><b>${resultLabel}</b></div>
+    <div class="hunt-report-difficulty">Dificultad <b>${difficulty.name}</b></div>
     <div class="hunt-report-result ${report.won ? 'won' : 'lost'}"><strong>${report.won ? region.victoryMessage : 'Tu héroe tuvo que retirarse'}</strong>${recoveryMarkup}</div>
     <div class="hunt-report-list">${rows}</div>
     <div class="hunt-rewards">${rewardItems || '<span>Sin botín obtenido</span>'}${fortuneMarkup}</div>
