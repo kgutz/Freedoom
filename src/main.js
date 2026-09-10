@@ -50,12 +50,11 @@ import {
   HUNT_REGIONS,
   MAX_HUNT_ENERGY,
   grantRewardHuntEnergy,
-  grantHabitHuntEnergy,
+  syncHabitRepetitionEnergy,
   huntDifficultyForRegion,
   huntDropRules,
   huntDifficultyMinLevel,
   syncHabitSetHuntEnergy,
-  revokeHabitHuntEnergy,
   pveHeroStats,
   normalizeHuntState,
   resolveHunt,
@@ -258,7 +257,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.35';
+const APP_VERSION='2.28.36';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4433,19 +4432,11 @@ function applyYesterdayHabitCorrection(habit,count){
   });
   state.game.hunt=setEnergyResult.hunt;
   const energyRewardKey=`${habit.id}|${result.entry.periodKey}`;
-  const energyResult=result.becameIncomplete
-    ? revokeHabitHuntEnergy({
-        hunt:state.game.hunt,
-        rewardKey:energyRewardKey,
-        becameIncomplete:true,
-        nowTimestamp:Date.now(),
-      })
-    : grantHabitHuntEnergy({
-        hunt:state.game.hunt,
-        rewardKey:energyRewardKey,
-        becameCompleted:result.becameCompleted,
-        nowTimestamp:Date.now(),
-      });
+  const energyResult=syncHabitRepetitionEnergy({
+    hunt:state.game.hunt,rewardKey:energyRewardKey,
+    previousCount:currentCount,count:result.entry.count,target:habit.target,
+    nowTimestamp:Date.now(),
+  });
   state.game.hunt=energyResult.hunt;
   return true;
 }
@@ -4914,19 +4905,11 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     });
     state.game.hunt=setEnergyResult.hunt;
     const huntEnergyRewardKey=`${habit.id}|${result.entry.periodKey}`;
-    const huntEnergyResult=result.becameIncomplete
-      ? revokeHabitHuntEnergy({
-        hunt:state.game.hunt,
-        rewardKey:huntEnergyRewardKey,
-        becameIncomplete:true,
-        nowTimestamp:Date.now()
-      })
-      : grantHabitHuntEnergy({
-        hunt:state.game.hunt,
-        rewardKey:huntEnergyRewardKey,
-        becameCompleted:result.becameCompleted,
-        nowTimestamp:Date.now()
-      });
+    const huntEnergyResult=syncHabitRepetitionEnergy({
+      hunt:state.game.hunt,rewardKey:huntEnergyRewardKey,
+      previousCount:Number(previousHabitEntry?.count)||0,
+      count:result.entry.count,target:habit.target,nowTimestamp:Date.now()
+    });
     state.game.hunt=huntEnergyResult.hunt;
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);

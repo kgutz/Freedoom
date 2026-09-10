@@ -9,6 +9,7 @@ import {
   huntDropRules,
   inkChanceForProgress,
   grantHabitHuntEnergy,
+  syncHabitRepetitionEnergy,
   grantRewardHuntEnergy,
   HUNT_DIFFICULTIES,
   HUNT_FORTUNE_BONUS_PERCENT,
@@ -26,6 +27,41 @@ import {
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it('sortea cada repetición y mantiene el límite diario de dos', () => {
+    const args = { rewardKey: 'repeat|d:today', target: 3 };
+    const first = syncHabitRepetitionEnergy({ ...args, previousCount: 0, count: 1, roll: () => 0.09 });
+    expect(first.granted).toBe(1);
+    const second = syncHabitRepetitionEnergy({ ...args, hunt: first.hunt, previousCount: 1, count: 2, roll: () => 0.07 });
+    expect(second.granted).toBe(1);
+    const third = syncHabitRepetitionEnergy({ ...args, hunt: second.hunt, previousCount: 2, count: 3, roll: () => 0 });
+    expect(third.granted).toBe(0);
+    expect(third.hunt.bonusEnergyEarned).toBe(2);
+  });
+
+  it('no vuelve a sortear al desmarcar y marcar una repetición fallida', () => {
+    const args = { rewardKey: 'repeat', target: 3 };
+    const missed = syncHabitRepetitionEnergy({ ...args, previousCount: 0, count: 1, roll: () => 0.99 });
+    const undone = syncHabitRepetitionEnergy({ ...args, hunt: missed.hunt, previousCount: 1, count: 0 });
+    const repeated = syncHabitRepetitionEnergy({ ...args, hunt: undone.hunt, previousCount: 0, count: 1, roll: () => { throw new Error('Nueva tirada'); } });
+    expect(repeated.granted).toBe(0);
+  });
+
+  it('restaura el premio de una repetición sin duplicarlo ni repetir su tirada', () => {
+    const args = { rewardKey: 'repeat', target: 3 };
+    const won = syncHabitRepetitionEnergy({ ...args, previousCount: 0, count: 1, roll: () => 0 });
+    const undone = syncHabitRepetitionEnergy({ ...args, hunt: won.hunt, previousCount: 1, count: 0 });
+    expect(undone.revoked).toBe(1);
+    const restored = syncHabitRepetitionEnergy({ ...args, hunt: undone.hunt, previousCount: 0, count: 1, roll: () => { throw new Error('Nueva tirada'); } });
+    expect(restored.hunt.energy).toBe(won.hunt.energy);
+    expect(restored.hunt.bonusEnergyEarned).toBe(1);
+  });
+
+  it('conserva las tiradas anteriores al corregir varios pasos y al migrar un hábito completo', () => {
+    const legacy = grantHabitHuntEnergy({ rewardKey: 'repeat', becameCompleted: true, roll: () => 0.99 });
+    const result = syncHabitRepetitionEnergy({ hunt: legacy.hunt, rewardKey: 'repeat', target: 3, previousCount: 0, count: 3, roll: () => 0.99 });
+    expect(result.hunt.habitEnergyRolls).toHaveLength(3);
+    expect(result.granted).toBe(0);
+  });
   it('cambia el día de energía con la hora configurada', () => {
     expect(localHuntDayKey(new Date(2026, 8, 2, 3, 59).getTime(), '04:00')).toBe('2026-09-01');
     expect(localHuntDayKey(new Date(2026, 8, 2, 4, 0).getTime(), '04:00')).toBe('2026-09-02');

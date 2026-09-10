@@ -225,7 +225,7 @@ export function normalizeHuntState(
     ? safeInteger(hunt?.energy)
     : dailyRefillEnergy + rewardEnergyRemaining;
   const rawHabitEnergyRolls = sameDay && Array.isArray(hunt?.habitEnergyRolls)
-    ? hunt.habitEnergyRolls.slice(-60)
+    ? hunt.habitEnergyRolls
     : [];
   const storedBonusEnergyEarned = sameDay
     ? clamp(safeInteger(hunt?.bonusEnergyEarned), 0, DAILY_HUNT_BONUS_ENERGY_CAP)
@@ -389,6 +389,26 @@ export function syncHabitSetHuntEnergy({
   };
 }
 
+export function syncHabitRepetitionEnergy({ hunt, rewardKey, previousCount, count, target, nowTimestamp = Date.now(), roll = Math.random }) {
+  let current = normalizeHuntState(hunt, nowTimestamp);
+  let granted = 0;
+  let revoked = 0;
+  const limit = Math.max(1, safeInteger(target));
+  const before = Math.min(limit, safeInteger(previousCount));
+  const after = Math.min(limit, safeInteger(count));
+  for (let repetition = Math.min(before, after) + 1; repetition <= Math.max(before, after); repetition += 1) {
+    // Preserve the old completion key for the final repetition and legacy rewards.
+    const key = repetition === limit ? rewardKey : `${rewardKey}|rep:${repetition}`;
+    const result = after > before
+      ? grantHabitHuntEnergy({ hunt: current, rewardKey: key, becameCompleted: true, nowTimestamp, roll })
+      : revokeHabitHuntEnergy({ hunt: current, rewardKey: key, becameIncomplete: true, nowTimestamp });
+    current = result.hunt;
+    granted += result.granted || 0;
+    revoked += result.revoked || 0;
+  }
+  return { hunt: current, granted, revoked };
+}
+
 export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTimestamp = Date.now(), roll = Math.random }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   if (!becameCompleted || !rewardKey) {
@@ -431,7 +451,7 @@ export function grantHabitHuntEnergy({ hunt, rewardKey, becameCompleted, nowTime
         granted,
         chance,
         status: granted ? 'available' : 'missed',
-      }].slice(-60),
+      }],
     },
   };
 }
