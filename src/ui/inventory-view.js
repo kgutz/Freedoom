@@ -149,7 +149,6 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const saleResourceName = section === 'frames' ? 'Tinta Arcana' : 'Fibra Arcana';
   const saleResourcePlural = section === 'frames' ? 'Tintas Arcanas' : 'Fibras Arcanas';
   const saleResourceType = section === 'frames' ? 'arcane-ink' : 'arcane-fiber';
-  const saleUnitPrice = section === 'frames' ? 14 : 10;
   const saleOwned = Math.max(0, Number(lootState?.economy?.[saleResourceId]) || 0);
   const saleDemand = arcaneResourceDailyDemand({
     state: lootState,
@@ -157,6 +156,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
     nowTimestamp: options.nowTimestamp ?? Date.now(),
   });
   const saleAvailable = Math.min(saleOwned, saleDemand?.remaining || 0);
+  const saleUnitPrice = saleDemand?.unitPrice || 0;
   const saleMarkup = `<div class="shop-outfit-heading"><p>Convierte los materiales que no necesites en oro. Cada venta entrega oro al instante.</p></div>
     <div class="outfit-weave-resources" aria-label="Tus recursos">
       ${resourceValue('coin', lootState?.economy?.coins || 0, 'ORO')}
@@ -168,7 +168,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       <div class="arcane-market-demand">
         <span><small>DEMANDA DE HOY</small><b>${saleDemand?.remaining || 0} disponibles</b></span>
         <span><small>COMPRADAS</small><b>${saleDemand?.sold || 0}/${saleDemand?.capacity || 0}</b></span>
-        <p>La demanda cambia cada día a las 00:00.</p>
+        <p>La demanda y el precio cambian cada día a las 00:00.</p>
       </div>
       <div class="potion-buy-quantity arcane-resource-sale-quantity" aria-label="Cantidad a vender">
         <button type="button" data-arcane-sale-quantity-step="-1" aria-label="Reducir cantidad"${saleAvailable < 1 ? ' disabled' : ''}>−</button>
@@ -277,7 +277,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
         ${craftableOutfits.map((outfit) => `<button type="button" class="outfit-option outfit-weave-option ${cosmeticRarityClass(outfit)}${isOutfitUnlocked(outfit, lootState?.game) ? ' owned' : ''}" data-select-weave-outfit="${outfit.id}" role="option" aria-label="${escapeHtml(outfit.name)}">
           ${outfitFullBody(classId, outfit)}
         </button>`).join('')}
-        ${Array.from({ length: 4 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
+        ${Array.from({ length: 3 }, (_, index) => `<div class="outfit-option outfit-weave-option outfit-weave-future" aria-label="Próximo outfit ${index + 1}">
           <span aria-hidden="true">?</span>
         </div>`).join('')}
       </div>`)}`}</div>`;
@@ -415,6 +415,7 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
     : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
   const usageCopy=limit===null?'Usos diarios: SIN LÍMITE':`Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}`;
   body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
+  if (shopMode) body.innerHTML = `<div class="shop-potion-detail">${body.innerHTML}</div>`;
   return true;
 }
 
@@ -546,9 +547,16 @@ function fusionEffectDescription(definition, relic) {
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
   const current = relicEffectValue(relicId, relicRankEffect(relicId, currentRank));
   const target = relicEffectValue(relicId, relicRankEffect(relicId, targetRank));
+  const labels = { physicalAttack: 'Ataque', magicAttack: 'Poder', defense: 'Defensa' };
+  const before = relicCombatBonuses(relicId, currentRank);
+  const attributes = relicCombatBonuses(relicId, targetRank).map(bonus => {
+    const previous = before.find(item => item.stat === bonus.stat)?.value || 0;
+    return `<div class="forge-attribute-preview"><b>${labels[bonus.stat] || bonus.stat} +${previous}</b><i aria-hidden="true">→</i><strong>+${bonus.value} (+${bonus.value - previous})</strong></div>`;
+  }).join('');
   return `<div class="forge-upgrade-preview">
     <span>RANGO ${currentRank} <i aria-hidden="true">→</i> RANGO ${targetRank}</span>
     <div><b>${current}</b><i aria-hidden="true">→</i><strong>${target}</strong></div>
+    ${attributes}
   </div>`;
 }
 
@@ -702,11 +710,13 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const constancy = relicId === 'relic_04' || relic.inheritedEffects?.relic_04
     ? `<div class="relic-constancy" aria-label="Carga de Constancia"><span>CONSTANCIA</span><b>Carga actual: ${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b></div>`
     : '';
-  body.innerHTML = `<div class="relic-detail-frame ${rarityClass(relic.rarity)}">
+  body.innerHTML = `<div class="relic-inspect ${rarityClass(relic.rarity)}"><div class="relic-detail-frame ${rarityClass(relic.rarity)}">
       <div class="relic-detail-art">${relicArt(definition)}</div>
+      <div class="relic-detail-identity">
       <div class="rarity-label">${rarity.label}</div>
       <h3>${escapeHtml(definition.name)}</h3>
       <div class="relic-rank">RANGO ${relic.rank}${fusion ? ' · RELIQUIA FUSIONADA' : ''}</div>
+      </div>
     </div>
     ${combatMarkup}
     ${constancy}
@@ -715,7 +725,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     <div class="relic-equip-actions">
       ${equipmentActions}
       ${owned && !fusion && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
-    </div>`;
+    </div></div>`;
   return true;
 }
 
@@ -765,10 +775,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   }
   if (!selectedDefinition) {
     body.innerHTML = `${cityHeading}${forgeModeTabs('upgrade')}
-      <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong><details class="forge-info forge-toolbar-info">
-        <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
-        <div class="forge-info-popover"><p>El oro se gasta en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
-      </details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+      <div class="forge-toolbar"><div class="outfit-weave-resources forge-resources">${resourceValue('coin', normalized.economy.coins, 'ORO')}${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}</div></div>
       <section class="forge-focus forge-focus--empty">
         <button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Elegir reliquia para mejorar"></button>
         <div class="forge-panel">
@@ -786,11 +793,6 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   const relic = normalized.inventory.relics[relicId];
   const rarity = RARITIES[relic.rarity] || RARITIES.rare;
   const preview = forgePreview(normalized, relicId);
-  const upgradeInfoMarkup = `<details class="forge-info forge-toolbar-info">
-    <summary aria-label="Cómo funciona Mejorar"><span aria-hidden="true">ⓘ</span></summary>
-    <div class="forge-info-popover">${preview.ok ? `<div><span>Probabilidad <b>${preview.finalProbability}%</b></span><span>Pity <b>${preview.pityProbability}%</b></span><span>Fortuna <b>+${preview.fortune}%</b></span></div>` : ''}
-    <p>El oro se gasta en cada intento. La Sangre de Jefe solo se consume si la mejora tiene éxito.</p></div>
-  </details>`;
   const forgeControls = preview.ok
     ? `${forgeUpgradeMarkup(relicId, relic.rank, preview.targetRank)}
       <div class="forge-cost" aria-label="Coste de la mejora">
@@ -812,7 +814,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
   }).join('');
   body.innerHTML = `
     ${cityHeading}${forgeModeTabs('upgrade')}
-    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>MEJORAR</strong>${upgradeInfoMarkup}</div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <div class="forge-toolbar"><div class="outfit-weave-resources forge-resources">${resourceValue('coin', normalized.economy.coins, 'ORO')}${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}</div></div>
     <section class="forge-focus ${rarityClass(relic.rarity)}">
       <button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button>
       <h3>${escapeHtml(selectedDefinition.name)}</h3>
@@ -840,14 +842,14 @@ export function renderDefusionView(document, lootState, selectedRelicId = null) 
   const selectedDefinition = fusedDefinitions.find((definition) => definition.id === selectedRelicId) || null;
   let content = `<div class="forge-empty"><div class="forge-focus-art fusion-slot forge-animated-slot forge-animated-slot--defusion" aria-hidden="true"></div><h3>NO HAY FUSIONES</h3><p>Las reliquias fusionadas que poseas aparecerán aquí.</p></div>`;
   if (fusedDefinitions.length && !selectedDefinition) {
-    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p><p>Solo cuesta oro y recuperas la Sangre de Jefe usada al fusionar.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus forge-focus--empty"><button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Elegir reliquia para desfusionar"></button><h3>ELIGE UNA RELIQUIA</h3><p class="fusion-status">Solo se mostrarán tus reliquias fusionadas.</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', DEFUSION_COIN_COST)}<span>RECUPERAS</span>${resourceValue('boss-blood', 1)}</div><button type="button" class="forge-attempt defusion-attempt" disabled>DESFUSIONAR</button></div></section>`;
+    content = `<div class="forge-toolbar"><div class="outfit-weave-resources forge-resources">${resourceValue('coin', normalized.economy.coins, 'ORO')}${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}</div></div><section class="forge-focus defusion-focus forge-focus--empty"><button type="button" class="forge-focus-art forge-focus-picker fusion-slot forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Elegir reliquia para desfusionar"></button><h3>ELIGE UNA RELIQUIA</h3><p class="fusion-status">Solo se mostrarán tus reliquias fusionadas.</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', DEFUSION_COIN_COST)}<span>RECUPERAS</span>${resourceValue('boss-blood', 1)}</div><button type="button" class="forge-attempt defusion-attempt" disabled>DESFUSIONAR</button></div></section>`;
   } else if (selectedDefinition) {
     const relic = normalized.inventory.relics[selectedDefinition.id];
     const preview = getDefusionPreview(normalized, selectedDefinition.id);
     const ingredients = preview.ingredientIds.map((ingredientId) => {
       const definition = relicDefinition(ingredientId);
       const snapshot = relic.ingredientSnapshots?.[ingredientId];
-      return `<div class="defusion-ingredient">${relicArt(definition)}<b>${escapeHtml(definition?.name || ingredientId)}</b><small>RANGO ${snapshot?.rank || 1}</small></div>`;
+      return `<div class="defusion-ingredient ${rarityClass(snapshot?.rarity)}">${relicArt(definition)}<b>${escapeHtml(definition?.name || ingredientId)}</b><small>${(RARITIES[snapshot?.rarity] || RARITIES.rare).label} · RANGO ${snapshot?.rank || 1}</small></div>`;
     }).join('');
     const reason = preview.reason === 'coins'
       ? 'No tienes suficiente oro.'
@@ -858,7 +860,7 @@ export function renderDefusionView(document, lootState, selectedRelicId = null) 
           : preview.reason === 'missing-snapshots'
             ? 'Esta fusión antigua no conserva los datos necesarios.'
             : 'Recuperarás exactamente las dos reliquias originales.';
-    content = `<div class="forge-toolbar"><div class="forge-toolbar-title"><strong>DESFUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Desfusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Recuperas las dos reliquias originales con el rango, rareza y efectos que tenían antes de fusionarlas.</p><p>La Sangre de Jefe usada en la fusión también vuelve a ti.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div><section class="forge-focus defusion-focus ${rarityClass(relic.rarity)}"><button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button><h3>${escapeHtml(selectedDefinition.name)}</h3><div class="defusion-arrow" aria-hidden="true">↓</div><div class="defusion-ingredients">${ingredients}</div><p class="fusion-status ${preview.ok ? '' : 'error'}">${escapeHtml(reason)}</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}<span>RECUPERAS</span>${resourceValue('boss-blood', preview.bloodRefund)}</div><button type="button" class="forge-attempt defusion-attempt" data-defuse-relic="${selectedDefinition.id}"${preview.ok ? '' : ' disabled'}>DESFUSIONAR</button></div></section>`;
+    content = `<div class="forge-toolbar"><div class="outfit-weave-resources forge-resources">${resourceValue('coin', normalized.economy.coins, 'ORO')}${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}</div></div><section class="forge-focus defusion-focus ${rarityClass(relic.rarity)}"><button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--defusion" data-open-forge-picker="defusion" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button><h3>${escapeHtml(selectedDefinition.name)}</h3><div class="defusion-arrow" aria-hidden="true">↓</div><div class="defusion-ingredients">${ingredients}</div><p class="fusion-status ${preview.ok ? '' : 'error'}">${escapeHtml(reason)}</p><div class="forge-panel"><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', preview.coinCost)}<span>RECUPERAS</span>${resourceValue('boss-blood', preview.bloodRefund)}</div><button type="button" class="forge-attempt defusion-attempt" data-defuse-relic="${selectedDefinition.id}"${preview.ok ? '' : ' disabled'}>DESFUSIONAR</button></div></section>`;
   }
   body.innerHTML = `${forgeModeTabs('defusion')}${content}`;
   return selectedDefinition?.id || null;
@@ -1012,7 +1014,7 @@ export function renderFusionView(document, lootState, leftId = null, rightId = n
     ? '<p class="fusion-status error" role="status"><strong>Estas reliquias no pueden fusionarse.</strong><small>Selecciona otra reliquia compatible. También debe tener el mismo rango.</small></p>'
     : `<p class="fusion-status ${preview.status === 'incompatible' || preview.reason === 'rank-mismatch' ? 'error' : ''}">${escapeHtml(statusCopy)}</p>`;
   body.innerHTML = `${forgeModeTabs('fusion')}
-    <div class="forge-toolbar"><div class="forge-toolbar-title"><strong>FUSIONAR</strong><details class="forge-info forge-toolbar-info"><summary aria-label="Cómo funciona Fusionar"><span aria-hidden="true">ⓘ</span></summary><div class="forge-info-popover"><p>Las dos reliquias deben tener el mismo rango.</p><p>Cada intento consume oro. Si falla, conservas las dos reliquias y la Sangre de Jefe; la probabilidad aumenta hasta garantizar el tercer intento.</p><p>Al tener éxito se consumen las dos reliquias base y la Sangre de Jefe. Cada efecto conserva la potencia exacta de su reliquia de origen.</p></div></details></div><span>${resourceValue('coin', normalized.economy.coins)} ${resourceValue('boss-blood', normalized.economy.bossBlood)}</span></div>
+    <div class="forge-toolbar"><div class="outfit-weave-resources forge-resources">${resourceValue('coin', normalized.economy.coins, 'ORO')}${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}</div></div>
     <section class="fusion-flow${left && right ? ' has-pair' : ''}" aria-label="Receta de Fusión">
       <div class="fusion-ingredients">${fusionSlotMarkup(left, 'SLOT A')}<b>+</b>${fusionSlotMarkup(right, 'SLOT B')}</div>
       ${resultMarkup ? `<b class="fusion-result-arrow" aria-hidden="true">↓</b>${resultMarkup}` : ''}
@@ -1128,7 +1130,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
         ${resourceValue('boss-blood', normalized.economy.bossBlood, 'SANGRE DE JEFE')}
         ${resourceValue('arcane-fiber', normalized.economy.arcaneFibers, 'FIBRAS')}
         ${resourceValue('arcane-ink', normalized.economy.arcaneInks, 'TINTAS')}`;
-  const resources = `<section class="inventory-resources" aria-label="Recursos de esta tienda">
+  const resources = `<section class="${section === 'potions' ? 'outfit-weave-resources' : 'inventory-resources'}" aria-label="Recursos de esta tienda">
       ${shopResourceValues}
     </section>`;
   const relicShop = `<div class="shop-heading"><span>RELIQUIAS PERDIDAS</span><small>CAMBIA EN ${shopTimeLabel(rotation?.endsAt || nowTimestamp, nowTimestamp)}</small></div>
@@ -1152,7 +1154,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const saleShop = `<div class="shop-heading shop-sale-heading"><span>VENDE TUS RELIQUIAS</span><small>RECIBES EL 70% EN ORO</small></div>
     <p class="shop-sale-copy">No recuperas Sangre de Jefe. La reliquia podrá volver con otra rareza, rango y efectos en una rotación futura.</p>
     ${saleContent}`;
-  const potionShop = `<div class="shop-heading shop-potion-heading"><span>POCIONES</span><small>SIEMPRE DISPONIBLES</small></div>
+  const potionShop = `
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
     const description = relicMode === 'sell'
@@ -1272,7 +1274,7 @@ export function defusionResultMarkup(result) {
   const restored = Object.keys(result.restoredRelics || {}).map((relicId) => {
     const definition = relicDefinition(relicId);
     const relic = result.restoredRelics[relicId];
-    return `<div class="defusion-result-relic">${relicArt(definition)}<b>${escapeHtml(definition?.name || relicId)}</b><small>RANGO ${relic.rank}</small></div>`;
+    return `<div class="defusion-result-relic ${rarityClass(relic.rarity)}">${relicArt(definition)}<b>${escapeHtml(definition?.name || relicId)}</b><small>${(RARITIES[relic.rarity] || RARITIES.rare).label} · RANGO ${relic.rank}</small></div>`;
   }).join('');
   return `<div class="forge-result success fusion-result"><span>DESFUSIÓN COMPLETADA</span><h3>Las reliquias originales han regresado</h3><div class="defusion-result-grid">${restored}</div><p>Conservan la rareza, el rango y los efectos que tenían antes de fusionarse.</p><div class="forge-cost"><span>COSTE</span>${resourceValue('coin', result.spentCoins)}<span>RECUPERADO</span>${resourceValue('boss-blood', result.refundedBossBlood)}</div></div>`;
 }

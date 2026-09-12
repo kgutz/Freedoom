@@ -117,11 +117,13 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     const initial = stateWithGame();
     initial.economy = { ...initial.economy, coins: 10, arcaneFibers: 2, arcaneInks: 1 };
     const fiber = sellArcaneResource({ state: initial, resourceId: 'arcaneFibers', quantity: 2, operationId: 'fiber-1', nowTimestamp: 10 });
-    expect(fiber).toMatchObject({ ok: true, quantity: 2, coinValue: 20 });
-    expect(fiber.economy).toMatchObject({ coins: 30, arcaneFibers: 0, arcaneInks: 1 });
+    const fiberPrice = arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneFibers', nowTimestamp: 10 }).unitPrice;
+    expect(fiber).toMatchObject({ ok: true, quantity: 2, coinValue: 2 * fiberPrice });
+    expect(fiber.economy).toMatchObject({ coins: 10 + 2 * fiberPrice, arcaneFibers: 0, arcaneInks: 1 });
     const ink = sellArcaneResource({ state: { ...initial, ...fiber }, resourceId: 'arcaneInks', operationId: 'ink-1', nowTimestamp: 20 });
-    expect(ink).toMatchObject({ ok: true, quantity: 1, coinValue: 14 });
-    expect(ink.economy).toMatchObject({ coins: 44, arcaneFibers: 0, arcaneInks: 0 });
+    const inkPrice = arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneInks', nowTimestamp: 20 }).unitPrice;
+    expect(ink).toMatchObject({ ok: true, quantity: 1, coinValue: inkPrice });
+    expect(ink.economy).toMatchObject({ coins: 10 + 2 * fiberPrice + inkPrice, arcaneFibers: 0, arcaneInks: 0 });
     expect(sellArcaneResource({ state: { ...initial, ...ink }, resourceId: 'arcaneInks', operationId: 'ink-2' }))
       .toMatchObject({ ok: false, reason: 'empty' });
   });
@@ -134,8 +136,8 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     const tomorrow = new Date(2026, 8, 9, 12).getTime();
     const demand = arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneFibers', nowTimestamp: today });
 
-    expect(demand.capacity).toBeGreaterThanOrEqual(6);
-    expect(demand.capacity).toBeLessThanOrEqual(15);
+    expect(demand.capacity).toBeGreaterThanOrEqual(2);
+    expect(demand.capacity).toBeLessThanOrEqual(7);
     expect(arcaneResourceDailyDemand({ state: initial, resourceId: 'arcaneFibers', nowTimestamp: today }))
       .toEqual(demand);
 
@@ -157,6 +159,25 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(arcaneResourceDailyDemand({
       state: { ...initial, ...sold }, resourceId: 'arcaneFibers', nowTimestamp: tomorrow,
     }).remaining).toBeGreaterThan(0);
+  });
+
+  it('favorece demanda y precios bajos y nunca repite capacidad en días consecutivos', () => {
+    const state = stateWithGame();
+    for (const resourceId of ['arcaneFibers', 'arcaneInks']) {
+      let previous;
+      let lowDemand = 0;
+      let cheap = 0;
+      for (let day = 0; day < 730; day += 1) {
+        const quote = arcaneResourceDailyDemand({ state, resourceId, nowTimestamp: new Date(2026, 0, 1 + day, 12).getTime() });
+        expect(quote.capacity).not.toBe(previous);
+        expect(quote.unitPrice).toBeLessThanOrEqual(resourceId === 'arcaneFibers' ? 8 : 10);
+        if (quote.capacity <= 3) lowDemand++;
+        if (quote.unitPrice <= (resourceId === 'arcaneFibers' ? 5 : 6)) cheap++;
+        previous = quote.capacity;
+      }
+      expect(lowDemand).toBeGreaterThan(365);
+      expect(cheap).toBeGreaterThan(365);
+    }
   });
 
   it('teje una vez, descuenta el coste y conserva la propiedad', () => {

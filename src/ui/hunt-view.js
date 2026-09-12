@@ -240,7 +240,7 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
     <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="dead-hours-bunker">
       Búnker de las Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>PRÓXIMAMENTE</span></div>
+    <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>Próximamente</span></div>
   </section>
   `;
 }

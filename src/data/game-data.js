@@ -93,7 +93,7 @@ export const CLASSES={
     pas:[
       {lvl:1,icon:'absorber',name:'Absorber Esencia',d:'Primer hábito del día: +5% Maná.'},
       {lvl:5,icon:'cosecha',name:'Cosecha Oscura',d:'4 hábitos: +5 XP (4/semana).'},
-      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Gasta 50 de Maná: +2 oro y −15% Vida (2/semana).'}
+      {lvl:12,icon:'filacteria',name:'Filacteria',d:'Cada 50 de Maná gastado: +2 oro y recuperas 5% de Vida máxima (2/semana).'}
     ],
     act:[
       {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima.'},

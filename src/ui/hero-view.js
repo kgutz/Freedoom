@@ -846,9 +846,9 @@ export function renderSkillsView({
       ${detailedIcon(classId, ability, 'act')}
       <div style="flex:1">
         <span class="lv" style="float:right">Nv ${ability.lvl}</span>
-        <div class="an">${ability.name}${ability.ulti ? ' <span style="color:var(--kodak);font-size:10px">ULTI</span>' : ''}</div>
+        <div class="an">${ability.name}${ability.ulti ? ' <span class="ability-ultimate-label" style="color:var(--kodak);font-size:10px">ULTI</span>' : ''}</div>
         <div class="ad">${ability.d}</div>
-        <div class="ad-cost">Coste: ${ability.cost} 💧</div>
+        <div class="ad-cost" aria-label="${ability.cost} de maná">${ability.cost} 💧</div>
       </div>
     </div>`;
     })

@@ -2,6 +2,25 @@ function cappedHealth(hp, maxHp) {
   return Math.max(0, Math.min(maxHp, hp));
 }
 
+export function applyFilacteriaRecovery({ game, level, spentMana, maxHp, week }) {
+  if (game?.cls !== 'sorcerer' || level < 12 || spentMana <= 0) return { game, healing: 0, activations: 0 };
+  const progress = { ...(game.powerProgress || {}) };
+  const manaKey = `filacteria-mana:${week}`;
+  const usesKey = `filacteria-uses:${week}`;
+  let mana = (Number(progress[manaKey]) || 0) + spentMana;
+  let uses = Number(progress[usesKey]) || 0;
+  let activations = 0;
+  while (mana >= 50 && uses < 2) {
+    mana -= 50;
+    uses++;
+    activations++;
+  }
+  progress[manaKey] = mana;
+  progress[usesKey] = uses;
+  const hp = Math.min(maxHp, (Number(game.hp) || 0) + activations * Math.max(1, Math.round(maxHp * .05)));
+  return { game: { ...game, hp, powerProgress: progress }, healing: hp - (Number(game.hp) || 0), activations };
+}
+
 export const LEVEL_EIGHT_DAILY_USES = 2;
 export const LEVEL_EIGHT_COOLDOWN_MS = 60_000;
 export const LEVEL_TWO_COOLDOWN_MS = 3_000;
@@ -13,6 +32,18 @@ export const ULTIMATE_WEEKLY_USES = 2;
 export const ULTIMATE_DAILY_USES = 1;
 const LEVEL_EIGHT_GLOBAL_USE_ID = 'level-8';
 const LEVEL_TWO_GLOBAL_COOLDOWN_ID = 'level-2';
+
+export function reservedHabitIdsForSpell({ progress = {}, spell, today }) {
+  const other = spell.ulti ? progress.habitChallenge : progress.ultimateChallenge;
+  if (!other || other.day !== today) return [];
+  return [...new Set([...(other.habitIds || []), ...(other.completedIds || [])])];
+}
+
+export function canCompleteUltimateHabit({ challenge, habitId, day, becameCompleted, count, target = 1 }) {
+  return Boolean(becameCompleted && Number(count) >= Math.max(1, Number(target) || 1)
+    && challenge && !challenge.rewarded && challenge.day === day
+    && challenge.habitIds.includes(habitId) && !challenge.completedIds.includes(habitId));
+}
 
 export function ultimateHabitReward({ completedCount, target = 3 }) {
   const completesChallenge = completedCount >= target;
@@ -101,6 +132,10 @@ export function completeLevelEightHabitChallenge({
   const selected = Array.isArray(challenge?.habitIds) && challenge.habitIds.includes(habitId);
   const automatic = Number(challenge?.autoNextHabitCount) > 0;
   const target = Math.max(1, Number(challenge?.autoNextHabitCount) || challenge?.habitIds?.length || 2);
+  const reserved = reservedHabitIdsForSpell({ progress: current, spell: { ulti: false }, today });
+  if (reserved.includes(habitId) || completedIds.length >= target) {
+    return { progress: current, advanced: false, completed: false };
+  }
   if (!challenge || challenge.day !== today || (!selected && !automatic) || completedIds.includes(habitId)) {
     return { progress: current, advanced: false, completed: false };
   }
@@ -213,6 +248,8 @@ export function castSpellEffect({
     }
   }
   if (spell.habitChallenge && !spell.autoHabitChallenge) {
+    const reserved = reservedHabitIdsForSpell({ progress: game.powerProgress, spell, today });
+    if (selectedHabitIds.some(id => reserved.includes(id))) return { ok: false, reason: 'habit-reserved' };
     const minimum = spell.ulti ? 3 : 2;
     if (selectedHabitIds.length < minimum && (!targetHabitId || spell.ulti)) {
       return { ok: false, reason: 'habits', requiredHabits: minimum };

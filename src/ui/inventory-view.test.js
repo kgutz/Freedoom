@@ -93,7 +93,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Outfits para tejer"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/telecom-beta/sorcerer_happy.webp');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('outfits/welder-beta/sorcerer_happy.webp');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(4);
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/outfit-weave-future/g)).toHaveLength(3);
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-weave-outfit');
     expect(renderOutfitSelector(document, state, 'arcane-weave-01', { section: 'weave', context: 'shop' })).toBe('arcane-weave-01');
     expect(document.elements.outfitSelectorBack.hidden).toBe(false);
@@ -182,16 +182,16 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-sell-arcane-resource="arcaneFibers"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-arcane-sale-quantity-step="-1"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-arcane-sale-quantity');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('max="3"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Cada unidad vale 10 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).toMatch(/max="[23]"/);
+    expect(document.elements.outfitSelectorBody.innerHTML).toMatch(/Cada unidad vale [4568] de oro/);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('DEMANDA DE HOY');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('La demanda cambia cada día a las 00:00');
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('La demanda y el precio cambian cada día a las 00:00');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-weave-outfit');
 
     renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop', shopMode: 'sell' });
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-sell-arcane-resource="arcaneInks"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('max="2"');
-    expect(document.elements.outfitSelectorBody.innerHTML).toContain('Cada unidad vale 14 de oro');
+    expect(document.elements.outfitSelectorBody.innerHTML).toMatch(/Cada unidad vale (5|6|8|10) de oro/);
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('COMPRADAS');
     expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('data-select-frame');
   });
@@ -402,7 +402,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('rarity-mythic');
   });
 
-  it('muestra selección, requisitos, pity y probabilidad en la vista de Forja', () => {
+  it('muestra selección, requisitos y atributos sin la ayuda desplegable de Forja', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
     expect(renderForgeView(document, state, 'relic_02')).toBe('relic_02');
@@ -410,12 +410,15 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Lágrima de Espectro');
     expect(html).toContain('data-open-forge-picker="upgrade"');
     expect(html).toContain('forge-animated-slot--upgrade');
-    expect(html).toContain('Pity');
-    expect(html).toContain('Probabilidad <b>70%</b>');
+    expect(html).not.toContain('forge-info-popover');
+    expect(html).toContain('outfit-weave-resources forge-resources');
     expect(html).toContain('RANGO 1 <i aria-hidden="true">→</i> RANGO 2');
     expect(html).toContain('5% MANÁ MÁX.');
     expect(html).toContain('7% MANÁ MÁX.');
-    expect(html).toContain('La Sangre de Jefe solo se consume si la mejora tiene éxito');
+    expect(html).toContain('forge-attribute-preview');
+    expect(html).toContain('Poder +1');
+    expect(html).toContain('+2 (+1)');
+    expect(html).not.toContain('Cómo funciona Mejorar');
     expect(html).toContain('class="forge-attempt"');
     expect(html).toContain('>FORJAR</button>');
     expect(html).toContain('class="forge-toolbar"');
@@ -646,6 +649,9 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Corazón de Hollín');
     expect(html).toContain('Lágrima de Espectro');
     expect(html).toContain('data-defuse-relic="fusion_01"');
+    for (const snapshot of Object.values(fused.inventory.relics.fusion_01.ingredientSnapshots)) {
+      expect(html).toContain(`${RARITIES[snapshot.rarity].label} · RANGO ${snapshot.rank}`);
+    }
     expect(html).toContain('data-open-forge-picker="defusion"');
     expect(html).toContain('aria-label="Cambiar Corazón Espectral"');
     expect(html).not.toContain('data-select-defusion-relic');

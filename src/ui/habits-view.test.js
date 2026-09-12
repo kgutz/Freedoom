@@ -32,6 +32,9 @@ describe('vista de hábitos', () => {
     expect(html).toContain('data-habit-section="hunt" class="active"');
     expect(html).toContain('<span>Cacería</span>');
     expect(html).not.toContain('habit-section-icon');
+    expect(html).toContain('<span class="habit-create-placeholder" aria-hidden="true"></span>');
+    expect(html).not.toContain('data-add-habit');
+    expect(html).not.toContain('data-add-todo');
     expect(html).not.toContain('⚔');
   });
 

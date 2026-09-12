@@ -1996,5 +1996,259 @@
   .hunt-difficulty-level{color:#8fa36a;font:400 7px var(--font-display);line-height:1.2}
   .hunt-difficulty.level-locked:disabled{opacity:.62}
 
+  /* Lectura de la aplicación: ajustes por función, sin escalar ilustraciones ni tiendas. */
+  :root{--ui-reading:12px;--ui-label:11px;--ui-value:13px;--ui-reading-leading:1.55}
+  /* Hoy: datos auxiliares legibles, sin modificar el encuadre del retrato. */
+  .daily-wake-copy,.pace-label,.pace-info,.beer-status-info,.smoke-free-pending,
+  .controlled-summary,.filmstrip-label,.restantes{font-size:var(--ui-reading);line-height:var(--ui-reading-leading)}
+  .hoy-hp-lbl,.hoy-hp-lbl b{font-size:var(--ui-label);line-height:1.4}
+  /* Hábitos y tareas conservan su escala original; la cabecera evita desbordamientos. */
+  .habits-head{gap:8px;min-width:0}
+  .habit-section-tabs{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}
+  .habit-section-tabs button{min-width:0;padding:10px 3px;font-size:12px}
+  .habit-create,.habit-create-placeholder{width:36px;height:36px;flex-shrink:0}
+  /* Ficha, habilidades y jefes: conservar los tamaños grandes; subir los auxiliares. */
+  .character-xp span,.character-xp b{font-size:11px;line-height:1.45}
+  .character-vitals span{font-size:13px;line-height:1.45}
+  .character-xp small{font-size:9px;line-height:1.4}
+  .character-attribute small{font-size:9px;line-height:1.4;margin-top:0}
+  .character-vitals b,.character-attribute>b{font-size:13px}
+  .character-attribute span,.character-outfit b{font-size:12px;line-height:1.4}
+  .character-attributes-panel>header{flex-wrap:wrap;gap:6px}
+  .character-attributes-panel>header b{font-size:11px}
+  .character-derived--compact b{font-size:11px!important}
+  .character-derived--compact>header>span{font-size:11px!important}
+  .character-reset-attributes{font-size:11px!important;min-height:36px}
+  .skill-used-label,.skill-cooldown-timer{font-size:11px;line-height:1.2}
+  .skill-confirm-unavailable,.skill-habit-picker-modal>p,
+  .skill-habit-option-copy small,.skill-habit-picker-count{font-size:12px;line-height:1.5}
+  .skill-habit-option-copy{min-width:0;overflow-wrap:anywhere}
+  .skill-habit-option-copy b,.skill-habit-option-xp{font-size:13px;line-height:1.4}
+  .abil>div{min-width:0}.abil .an{line-height:1.4;overflow-wrap:anywhere}.abil .ad{line-height:1.6}
+  #sheetHeroSkills .abil .an{font-size:16px;line-height:1.4}
+  #sheetHeroSkills .abil .ad{font-size:11px;line-height:1.55;margin-top:4px}
+  #sheetHeroSkills .abil>div:not(.abil-ico){display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:start}
+  #sheetHeroSkills .abil .lv{grid-column:2;grid-row:1;white-space:nowrap}
+  #sheetHeroSkills .abil .an{grid-column:1;grid-row:1}
+  #sheetHeroSkills .ability-ultimate-label{display:inline-block;margin-left:6px}
+  #sheetHeroSkills .abil .ad{grid-column:1;grid-row:2;overflow-wrap:break-word}
+  #sheetHeroSkills .abil .ad-cost{grid-column:1;grid-row:3}
+  .boss-count,.boss-name small,.boss-gate-warning,.boss-damage-summary,
+  .boss-projection,.boss-log-row,.boss-history-intro,.boss-log-empty,
+  .boss-medals-head p,.boss-medal-detail>p{font-size:12px;line-height:1.55}
+  /* Campaña: nombres por encima de estados y cifras legibles en el historial. */
+  #bossHistoryBody .boss-gate{font-size:11px;line-height:1.4;flex-wrap:wrap}
+  #bossHistoryBody .boss-duel-summary small{font-size:9px;line-height:1.4;letter-spacing:0}
+  #bossHistoryBody .boss-duel-summary b{font-size:12px;line-height:1.3}
+  .boss-combat-report-title,.boss-combat-report-title b{font-size:11px;line-height:1.4;letter-spacing:0}
+  .boss-combat-report-title{flex-wrap:wrap}
+  .boss-combat-report-copy>b{font-size:12px;line-height:1.5}
+  .boss-combat-report-copy small{font-size:10px;line-height:1.4;white-space:normal}
+  .boss-combat-report-damage{font-size:12px}
+  .boss-medals-head h4{font-size:18px;line-height:1.4}
+  .boss-medal-name{font-size:11px;line-height:1.45;overflow-wrap:break-word}
+  .boss-medal-name strong{font-size:10px;line-height:1.4;letter-spacing:.03em}
+  .boss-medal.locked .boss-medal-name{letter-spacing:0}
+  .boss-medal-share{font-size:11px;min-height:32px}
+  .boss-medal-detail h2{font-size:22px;line-height:1.35}
+  .boss-medal-detail-state{font-size:11px;line-height:1.4;letter-spacing:.06em}
+  .boss-medal-combat-head{font-size:11px;line-height:1.4;letter-spacing:0;flex-wrap:wrap}
+  .boss-medal-combat-result{flex-wrap:wrap}
+  .boss-medal-combat-result small{font-size:10px;line-height:1.4;letter-spacing:0}
+  .boss-medal-combat-result strong{font-size:11px;line-height:1.4}
+  .boss-medal-combat-stats small{font-size:10px;line-height:1.4}
+  .boss-medal-combat-stats b{font-size:12px;line-height:1.4;white-space:normal;overflow-wrap:anywhere}
+  .boss-medal-combat-stats span{padding:0 4px}
+  .boss-medal-combat-empty{font-size:12px!important;line-height:1.55}
+  .boss-combat-current-copy small,.boss-combat-current-copy em{font-size:11px;line-height:1.4}
+  .hero-resource-wallet{max-width:100%;flex-wrap:wrap;gap:5px 9px}
+  .hero-summary-primary{width:auto;max-width:100%;flex-wrap:wrap;row-gap:3px}
+  .hero-id>.nombre,.hero-id>.nivel,.hero-id>.hero-resource-wallet,.hero-id>.hero-summary{position:relative;top:-5px}
+  .pips{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0;gap:4px}
+  .pips .pip{width:100%;min-width:0}
+  /* Inventario fuera de las tiendas, sin alterar los retratos calibrados. */
+  #bagBody{padding-right:8px;box-sizing:border-box;scrollbar-gutter:stable}
+  #bagBody .inventory-section-head{flex-wrap:wrap;gap:6px}
+  #bagBody .inventory-section-head span,#bagBody .inventory-section-head small{font-size:11px;line-height:1.4}
+  #bagBody .resource-value b{font-size:13px}
+  #bagBody .bag-resources .resource-value small{display:none}
+  #bagBody .bag-resources{display:flex;justify-content:center;flex-wrap:wrap;gap:18px}
+  #bagBody .bag-resources .resource-value{padding-bottom:0}
+  #bagBody .relic-card-copy>b{font-size:11px;line-height:1.4}
+  #bagBody .relic-card-copy small{font-size:10px;line-height:1.4}
+  #bagBody .inventory-empty{font-size:12px;line-height:1.55}
+  #bagBody .collection-hint{font-size:12px;line-height:1.55}
+  #bagBody .relic-kind-filters button{font-size:11px;line-height:1.3;min-height:32px}
+  #relicDetailBody .relic-combat-bonus{font-size:11px;line-height:1.4;flex-wrap:wrap;gap:6px}
+  #relicDetailBody .relic-equip-actions button,#relicDetailBody .relic-forge-shortcut{font-size:11px;line-height:1.4;padding:8px;white-space:normal}
+  #relicDetailBody .relic-effect p,#relicDetailBody .relic-affixes p,
+  #relicDetailBody .relic-affixes li span,#relicDetailBody .relic-constancy{font-size:12px;line-height:1.55}
+  /* Ficha de reliquia: identidad compacta y efectos organizados por importancia. */
+  .relic-inspect{--inspect-accent:var(--rarity-rare)}
+  .relic-inspect.rarity-legendary{--inspect-accent:var(--rarity-legendary)}
+  .relic-inspect.rarity-mythic{--inspect-accent:var(--rarity-mythic)}
+  #relicDetailBody .relic-inspect .relic-detail-frame{display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:16px;padding:4px 0 16px;text-align:left;border-bottom:1px solid var(--line);border-radius:0}
+  #relicDetailBody .relic-inspect .relic-detail-art{width:92px;height:92px;margin:0}
+  .relic-detail-identity{min-width:0}
+  #relicDetailBody .relic-detail-identity h3{font:400 16px/1.25 var(--font-display);margin:7px 0 9px;overflow-wrap:break-word}
+  #relicDetailBody .relic-detail-identity .rarity-label{font-size:10px;letter-spacing:.08em;color:var(--inspect-accent)}
+  #relicDetailBody .relic-detail-identity .relic-rank{display:inline-block;font:400 10px/1.5 var(--font-display);padding:3px 7px;border:1px solid var(--line);border-radius:5px;color:var(--muted)}
+  #relicDetailBody .relic-inspect .relic-combat-bonus{margin-top:14px;padding:12px;border:1px solid var(--line);border-left:3px solid var(--inspect-accent);border-radius:8px;background:linear-gradient(100deg,rgba(232,180,74,.06),transparent);gap:8px}
+  #relicDetailBody .relic-inspect .relic-combat-bonus>span{font:400 13px/1.4 var(--font-display);color:var(--kodak)}
+  #relicDetailBody .relic-inspect .relic-combat-values b{font:400 12px/1.4 var(--font-display);color:var(--text)}
+  #relicDetailBody .relic-inspect .relic-effect{padding:15px;border-color:var(--line);background:linear-gradient(135deg,rgba(232,180,74,.055),rgba(255,255,255,.015))}
+  #relicDetailBody .relic-inspect .relic-effect>span,#relicDetailBody .relic-inspect .relic-affixes>span{font:400 14px/1.4 var(--font-display);letter-spacing:0;color:var(--text);text-transform:none}
+  #relicDetailBody .relic-inspect .relic-effect p,#relicDetailBody .relic-inspect .relic-affixes p{font-size:11px;line-height:1.55;margin-top:7px}
+  #relicDetailBody .relic-inspect .relic-effect p>b{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);color:var(--inspect-accent);font-size:12px;line-height:1.5}
+  #relicDetailBody .relic-inspect .relic-affixes{padding:15px;background:transparent}
+  #relicDetailBody .relic-inspect .relic-affixes li{padding:10px 0 0;margin-top:8px}
+  #relicDetailBody .relic-inspect .relic-effect-link{font:400 13px/1.4 var(--font-display);color:var(--kodak)}
+  #relicDetailBody .relic-inspect .no-affixes{font-size:11px;line-height:1.5}
+  #relicDetailBody .relic-inspect .relic-equip-actions{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+  #relicDetailBody .relic-inspect .relic-sale-detail-price>span{font:400 10px/1.4 var(--font-display);color:var(--muted)}
+  @media(max-width:360px){#relicDetailBody .relic-inspect .relic-detail-frame{grid-template-columns:76px minmax(0,1fr);gap:12px}#relicDetailBody .relic-inspect .relic-detail-art{width:76px;height:76px}#relicDetailBody .relic-detail-identity h3{font-size:15px}}
+  /* Cacería: resúmenes, confirmación e informe, con cifras de ancho flexible. */
+  .hunt-confirm-summary span,.hunt-fortune-notice span,.hunt-potion-toggle-copy small,
+  .hunt-round-log-note,.hunt-result-modal>p,.hunt-result-no-loot,.hunt-locked p{font-size:12px;line-height:1.55}
+  .hunt-confirm-summary b,.hunt-map-energy strong,.hunt-rewards .resource-value,
+  .hunt-encounter-totals b{font-size:13px;line-height:1.4}
+  .hunt-confirm-summary>div,.hunt-fortune-notice{flex-wrap:wrap;gap:6px 10px}
+  .hunt-fortune-notice span{max-width:100%;text-align:left}
+  .hunt-potion-toggle-copy b,.hunt-fortune-notice b,.hunt-monster>span,
+  .hunt-report-role,.hunt-report-row>summary>b,.hunt-encounter-totals small,
+  .hunt-round-report-row>small,.hunt-round-report-row>em,
+  .hunt-round-action span,.hunt-round-resources span,.hunt-encounter-recovery span,
+  .hunt-encounter-rewards>span,.hunt-encounter-next span,.hunt-result-battle-summary span,
+  .hunt-result-battle-summary>small{font-size:11px;line-height:1.45;letter-spacing:0}
+  .hunt-monster>b,.hunt-round-action b,.hunt-round-resources b,
+  .hunt-encounter-recovery b,.hunt-encounter-rewards .resource-value,
+  .hunt-encounter-next b,.hunt-result-battle-summary b{font-size:12px;line-height:1.4}
+  .hunt-round-action,.hunt-round-resources{grid-template-columns:minmax(0,1fr) auto;gap:10px}
+  .hunt-report-enemy>strong{white-space:normal;font-size:13px;line-height:1.4}
+  .hunt-result-full-report{font-size:11px}
+  .hunt-rewards-disclosure{border:1px solid var(--line);border-radius:10px;background:var(--panel2);overflow:hidden}
+  .hunt-rewards-disclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:10px 12px;box-sizing:border-box;list-style:none;cursor:pointer;color:var(--muted);font-size:12px;line-height:1.4}
+  .hunt-rewards-disclosure>summary::-webkit-details-marker{display:none}
+  .hunt-rewards-disclosure>summary:focus-visible{outline:2px solid var(--kodak);outline-offset:-3px}
+  .hunt-rewards-disclosure .hunt-rewards-chevron{display:block;width:18px;height:12px;flex-shrink:0;align-self:center;color:var(--kodak);transition:transform .15s}
+  .hunt-rewards-disclosure[open] .hunt-rewards-chevron{transform:rotate(180deg)}
+  .hunt-potential-rewards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px 12px;border-top:1px solid var(--line)}
+  .hunt-confirm-summary .hunt-potential-reward{display:flex;align-items:center;gap:7px;color:var(--text);font:400 14px/1.4 var(--font-display);white-space:nowrap}
+  .hunt-potential-reward .resource-icon{width:22px;height:22px;flex-shrink:0}
+  .hunt-potion-toggle-copy b{font-size:13px;line-height:1.4}
+  .hunt-potion-toggle-copy small{font-size:11px;line-height:1.5}
+  .hunt-heading p,.hunt-launch>small,.hunt-active p{font-size:12px;line-height:1.55}
+  .hunt-difficulty-level{font-size:10px;line-height:1.4}
+  .hunt-section-title{flex-wrap:wrap}.hunt-section-title b{font-size:10px;line-height:1.4}
+  .hunt-report-resource-comparison>div{grid-template-columns:minmax(0,1fr)}
+  .hunt-report-resource-comparison span{font-size:10px;line-height:1.4}
+  .hunt-report-resource-comparison b{font-size:11px;line-height:1.4}
+  .death-penalty>p{font-size:12px;line-height:1.55}
+  .death-penalty>small,.death-rebirth>small,.death-rebirth-status b,.death-rebirth-status em{font-size:10px;line-height:1.4;letter-spacing:0}
+  .death-rebirth-status>span{padding:8px 5px;grid-template-columns:18px minmax(0,1fr)}
+  /* Días y gráfica mantienen sus tamaños originales; el resumen semanal conserva la mejora. */
+  .wk-row{gap:10px;flex-wrap:wrap}.wk-row .rng,.wk-row .stat .sub{font-size:11px;line-height:1.5}
+  /* Ayuda y ajustes: no reducir el texto ya cómodo; abrir espacio para leer. */
+  .faq-featured>span{font-size:11px;letter-spacing:.05em}
+  .faq-hero h4{font-size:22px;line-height:1.35}
+  .faq-featured button b{font-family:var(--font-display);font-weight:400;font-size:12px;line-height:1.4;white-space:normal}
+  .faq-category>summary b{font-size:15px;line-height:1.4}
+  .faq-category>summary small{font-size:11px;line-height:1.45}
+  .faq-answer{padding-right:8px}.faq-answer p{line-height:1.65}.faq-answer p+p{margin-top:10px}
+  .set-row{flex-wrap:wrap}.set-row>*{min-width:0;max-width:100%}
+  .storage-health small,.recovery-manual-copy small,.recovery-row small,
+  .recovery-section-heading>small,.journey-change-pending span{font-size:12px;line-height:1.5}
+  .ob-note,#ob4 .cls-card .cd{font-size:12px;line-height:1.55}
+  .ob-mode-card p{font-size:12px;line-height:1.55}
+  /* Los diálogos largos pueden desplazarse sin perder sus acciones. */
+  .modal-bg.center>.modal:not(.outfit-selector-modal){max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+  /* La expansión de recompensas no recentra verticalmente la confirmación. */
+  #huntConfirmBg{--hunt-modal-top:clamp(24px,10dvh,80px);align-items:flex-start;padding:var(--hunt-modal-top) 24px 16px;box-sizing:border-box}
+  #huntConfirmBg>.hunt-confirm-modal{max-height:calc(100dvh - var(--hunt-modal-top) - 16px);overflow-y:auto;overflow-anchor:none}
+  @media(max-width:360px){
+    .character-attribute-grid{grid-template-columns:minmax(0,1fr)}
+    .character-attribute-grid .character-attribute{grid-template-columns:minmax(0,1fr) 28px 30px;min-height:48px}
+    .character-attribute-grid .character-attribute:nth-child(2){border-top:1px solid #302a24}
+    .character-derived--compact>div{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+    .hunt-result-reward-grid{grid-template-columns:repeat(var(--hunt-reward-count),minmax(0,1fr));gap:6px}
+    .set-row input{width:100%}.set-static{text-align:left;max-width:100%}
+  }
+
+  /* Escala de lectura compartida de tiendas. No cambia botones ni tarjetas de otras pantallas. */
+  .shop-city-zone span{font-size:11px;line-height:1.3}
+  .hunt-world-map .hunt-map-zone,.hunt-world-map .hunt-map-zone--detailed strong{font-size:11px;line-height:1.3}
+  .hunt-world-map .hunt-map-zone{max-width:calc(100% - 16px);white-space:nowrap}
+  .hunt-world-map .hunt-map-zone--bunker{left:50%;width:max-content;box-sizing:border-box}
+  .hunt-map-coming-soon span{font-size:11px;line-height:1.3;white-space:nowrap}
+  .shop-return-character{font-size:11px;line-height:1.3}
+  :root{--shop-type-title:22px;--shop-type-subtitle:18px;--shop-type-copy:14px;--shop-type-help:12px}
+  #forgeBody .shop-destination-nav h2,#shopBody .shop-destination-nav h2{font-size:var(--shop-type-title);line-height:1.35;white-space:normal;overflow-wrap:break-word}
+  .inventory-shop-destination .sheet-head h3,
+  .outfit-selector-modal--shop .outfit-selector-top h3{font-size:var(--shop-type-title);line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word}
+  .outfit-selector-modal--shop .outfit-selector-top{grid-template-columns:72px minmax(0,1fr) 72px}
+  .outfit-selector-modal--shop .outfit-selector-top:has(#outfitSelectorBack[hidden]){grid-template-columns:32px minmax(0,1fr) 32px}
+  .outfit-selector-modal--shop .outfit-selector-top #outfitSelectorBack[hidden]+h3{grid-column:2}
+  /* Mantener el eje central incluso cuando aparece la barra de desplazamiento. */
+  .inventory-sheet.inventory-shop-destination>#forgeBody,
+  .inventory-sheet.inventory-shop-destination>#shopBody,
+  .outfit-selector-modal--shop .outfit-selector-scroll-content{scrollbar-gutter:stable both-edges}
+  #forgeBody .forge-focus h3,#shopBody .shop-outfit-heading h4,
+  .outfit-selector-modal--shop .outfit-owned-detail h4,
+  .outfit-selector-modal--shop .outfit-weave-detail h4,
+  .outfit-selector-modal--shop .arcane-resource-sale-copy h4{font-size:var(--shop-type-subtitle);line-height:1.4;margin-bottom:10px;white-space:normal;overflow-wrap:break-word}
+  #forgeBody .forge-focus>p,#forgeBody .forge-empty p,
+  #shopBody .shop-destination-heading p,#shopBody .shop-sale-copy,#shopBody .shop-empty p,
+  .outfit-selector-modal--shop .shop-outfit-heading p,
+  .outfit-selector-modal--shop .outfit-owned-detail p,
+  .outfit-selector-modal--shop .outfit-weave-detail p,
+  .outfit-selector-modal--shop .arcane-resource-sale-copy p{font-size:var(--shop-type-copy);line-height:1.6;white-space:normal;overflow-wrap:break-word}
+  #forgeBody .forge-info-popover p{font-size:var(--shop-type-help);line-height:1.6}
+  #forgeBody .forge-info-popover{width:min(330px,calc(100vw - 32px))}
+  #forgeBody .forge-info-popover:popover-open{box-sizing:border-box;position:fixed;inset:auto;left:var(--forge-info-left,16px);top:var(--forge-info-top);margin:0;transform:none;max-height:calc(100dvh - var(--forge-info-top) - 16px)}
+  #forgeBody .fusion-status,#forgeBody .defusion-ingredient small,
+  #forgeBody .forge-cost>span,#forgeBody .forge-probability,
+  #shopBody .shop-heading small,
+  .outfit-selector-modal--shop .arcane-market-demand small,
+  .outfit-selector-modal--shop .arcane-market-demand p,
+  .outfit-selector-modal--shop .cosmetic-rarity-label{font-size:var(--shop-type-help);line-height:1.5;white-space:normal}
+  #forgeBody .forge-cost,#shopBody .shop-heading{flex-wrap:wrap;gap:8px}
+  #forgeBody .forge-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:0}
+  #forgeBody .forge-toolbar .forge-resources{order:-1;width:100%;box-sizing:border-box}
+  #forgeBody .outfit-weave-resources,#shopBody .outfit-weave-resources{align-items:center;flex-wrap:wrap}
+  #forgeBody .forge-toolbar-title{align-self:flex-end}
+  #forgeBody .forge-toolbar .resource-icon{transform:none}
+  #forgeBody .forge-toolbar-title>strong,
+  #shopBody .shop-potion-heading>span{font-size:13px;line-height:1.4}
+  #forgeBody .forge-upgrade-preview>div{flex-wrap:wrap;gap:6px;font-size:var(--shop-type-help);line-height:1.5}
+  #forgeBody .forge-upgrade-preview>div b,#forgeBody .forge-upgrade-preview>div strong{font-size:var(--shop-type-help);line-height:1.5}
+  .shop-potion-detail .potion-detail-frame h3{font-size:var(--shop-type-subtitle);line-height:1.4}
+  .shop-potion-detail .potion-detail-effect p{font-size:var(--shop-type-copy);line-height:1.6}
+  .shop-potion-detail .relic-rank,.shop-potion-detail .rarity-label,.shop-potion-detail .potion-detail-effect>span{font-size:var(--shop-type-help);line-height:1.5}
+  /* Descripción introductoria idéntica en las cinco tiendas y ambos modos. */
+  #forgeBody .resource-value>small,
+  #shopBody .resource-value>small,
+  .outfit-selector-modal--shop .resource-value>small{display:none}
+  .outfit-selector-modal--shop .arcane-resource-sale-price .resource-value>small{display:inline}
+  #forgeBody .resource-value,#forgeBody .resource-value>b,
+  #shopBody .resource-value,#shopBody .resource-value>b,
+  .outfit-selector-modal--shop .resource-value,
+  .outfit-selector-modal--shop .resource-value>b{font-size:13px;line-height:1.5}
+  #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
+  .outfit-selector-modal--shop .shop-outfit-heading p{text-align:center}
+  #forgeBody .forge-focus>p,#forgeBody .forge-empty p,
+  #shopBody .shop-empty p,#shopBody .shop-sale-copy,
+  #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
+  .outfit-selector-modal--shop .shop-outfit-heading p{
+    font-family:var(--font-copy);font-size:var(--shop-type-help);font-weight:400;
+    line-height:1.6;color:var(--muted);white-space:normal;overflow-wrap:break-word;
+  }
+  /* Venta de Fibra y Tinta: escala compacta propia para la tarjeta de mercado. */
+  .outfit-selector-modal--shop .arcane-resource-sale-copy h4{font-size:16px;line-height:1.35;margin-bottom:5px}
+  .outfit-selector-modal--shop .arcane-resource-sale-copy p{font-size:11px;line-height:1.45}
+  .outfit-selector-modal--shop .arcane-market-demand{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
+  .outfit-selector-modal--shop .arcane-market-demand small{font-size:9px;line-height:1.4}
+  .outfit-selector-modal--shop .arcane-market-demand b{font-size:11px;line-height:1.4}
+  .outfit-selector-modal--shop .arcane-market-demand p{font-size:10px;line-height:1.45}
+
 
 

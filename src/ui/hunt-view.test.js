@@ -46,6 +46,7 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('data-hunt-zoom-image');
     expect(root.innerHTML).not.toContain('🔒');
     expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
+    expect(root.innerHTML).toContain('<span>Próximamente</span>');
   });
 
   it('señala desde el mapa dónde hay un informe pendiente y ofrece acceso directo', () => {

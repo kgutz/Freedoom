@@ -3,10 +3,11 @@ import { FRAME_DEFINITIONS, isFrameUnlocked } from '../data/frame-data.js';
 import { normalizeLootState } from './loot-rules.js';
 
 export const BOSS_FIBER_BONUS_RATE = 0.25;
-export const ARCANE_RESOURCE_SALE_PRICES = Object.freeze({ arcaneFibers: 10, arcaneInks: 14 });
+// Maximum daily buying prices; actual quotes are weighted below.
+export const ARCANE_RESOURCE_SALE_PRICES = Object.freeze({ arcaneFibers: 8, arcaneInks: 10 });
 export const ARCANE_RESOURCE_DAILY_DEMAND_RANGES = Object.freeze({
-  arcaneFibers: Object.freeze({ min: 6, max: 15 }),
-  arcaneInks: Object.freeze({ min: 4, max: 10 }),
+  arcaneFibers: Object.freeze({ min: 2, max: 7 }),
+  arcaneInks: Object.freeze({ min: 2, max: 5 }),
 });
 const MAX_BOSS_FIBER_REWARDS = 21;
 
@@ -40,8 +41,17 @@ export function arcaneResourceDailyDemand({ state, resourceId, nowTimestamp = Da
   const range = ARCANE_RESOURCE_DAILY_DEMAND_RANGES[resourceId];
   if (!range) return null;
   const day = localDayKey(nowTimestamp);
-  const roll = deterministicRoll(`${normalized.forge.seed}|arcane-market|${resourceId}|${day}`);
-  const capacity = range.min + Math.floor(roll * (range.max - range.min + 1));
+  const seed = `${normalized.forge.seed}|arcane-market-v2|${resourceId}|${day}`;
+  const roll = deterministicRoll(`${seed}|demand`);
+  // Alternating disjoint pools guarantee different quantities on consecutive local days.
+  const date = new Date(nowTimestamp);
+  const dayIndex = Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
+  const capacities = Array.from({ length: range.max - range.min + 1 }, (_, i) => range.min + i)
+    .filter(value => value % 2 === Math.abs(dayIndex % 2));
+  const capacity = capacities[Math.min(capacities.length - 1, Math.floor(roll ** 3 * capacities.length))];
+  const prices = resourceId === 'arcaneFibers' ? [4, 5, 6, 8] : [5, 6, 8, 10];
+  const priceRoll = deterministicRoll(`${seed}|price`);
+  const unitPrice = prices[priceRoll < .5 ? 0 : priceRoll < .8 ? 1 : priceRoll < .95 ? 2 : 3];
   const sold = normalized.economy.transactions.reduce((total, entry) => {
     if (entry?.type !== 'arcane-resource-sale' || entry.resourceId !== resourceId) return total;
     if (localDayKey(Number(entry.at) || 0) !== day) return total;
@@ -51,6 +61,7 @@ export function arcaneResourceDailyDemand({ state, resourceId, nowTimestamp = Da
     resourceId,
     day,
     capacity,
+    unitPrice,
     sold: Math.min(capacity, sold),
     remaining: Math.max(0, capacity - sold),
     resetsAt: nextLocalMidnight(nowTimestamp),
@@ -182,7 +193,7 @@ export function sellArcaneResource({ state, resourceId, quantity = 1, operationI
   if (normalized.economy[resourceId] < safeQuantity) {
     return { ...slices(normalized), ok: false, reason: 'empty' };
   }
-  const coinValue = price * safeQuantity;
+  const coinValue = demand.unitPrice * safeQuantity;
   normalized.economy[resourceId] -= safeQuantity;
   normalized.economy.coins += coinValue;
   normalized.economy.transactions.push({

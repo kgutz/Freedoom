@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   castSpellEffect,
+  applyFilacteriaRecovery,
   completeLevelEightHabitChallenge,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
+  canCompleteUltimateHabit,
+  reservedHabitIdsForSpell,
 } from './spell-rules.js';
 
 const spell = (id, overrides = {}) => ({
@@ -27,6 +30,43 @@ const cast = (selectedSpell, overrides = {}) =>
   });
 
 describe('validación de hechizos', () => {
+  it('reserva hábitos entre nivel ocho y definitiva en ambos sentidos', () => {
+    const progress = {
+      habitChallenge: { day: 'today', habitIds: ['a', 'b'], completedIds: ['a'] },
+      ultimateChallenge: { day: 'today', habitIds: ['c', 'd', 'e'], completedIds: [] },
+    };
+    expect(reservedHabitIdsForSpell({ progress, spell: { ulti: true }, today: 'today' })).toEqual(['a', 'b']);
+    expect(reservedHabitIdsForSpell({ progress, spell: { ulti: false }, today: 'today' })).toEqual(['c', 'd', 'e']);
+    expect(reservedHabitIdsForSpell({ progress, spell: { ulti: true }, today: 'tomorrow' })).toEqual([]);
+    const automatic = { ...progress, habitChallenge: { day: 'today', spellId: 'ceniza', habitIds: [], completedIds: [], autoNextHabitCount: 2 } };
+    expect(completeLevelEightHabitChallenge({ progress: automatic, habitId: 'c', today: 'today' }).advanced).toBe(false);
+    expect(completeLevelEightHabitChallenge({ progress: automatic, habitId: 'a', today: 'today' }).advanced).toBe(true);
+  });
+  it('la definitiva espera 3/3 y no cuenta repeticiones parciales ni hábitos ajenos', () => {
+    const args = { challenge: { day: 'today', habitIds: ['repeat'], completedIds: [] },
+      habitId: 'repeat', day: 'today', target: 3 };
+    expect(canCompleteUltimateHabit({ ...args, count: 1, becameCompleted: false })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 2, becameCompleted: false })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 2, becameCompleted: true })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true })).toBe(true);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true, habitId: 'other' })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true, day: 'tomorrow' })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true,
+      challenge: { ...args.challenge, completedIds: ['repeat'] } })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true,
+      challenge: { ...args.challenge, rewarded: true } })).toBe(false);
+  });
+  it('Filacteria cura al gastar maná, respeta el máximo y solo activa dos veces por semana', () => {
+    const args = { level: 12, maxHp: 100, week: 3 };
+    const first = applyFilacteriaRecovery({ ...args, game: { cls: 'sorcerer', hp: 80 }, spentMana: 45 });
+    expect(first.activations).toBe(0);
+    const second = applyFilacteriaRecovery({ ...args, game: first.game, spentMana: 45 });
+    expect(second).toMatchObject({ healing: 5, activations: 1, game: { hp: 85 } });
+    const third = applyFilacteriaRecovery({ ...args, game: { ...second.game, hp: 98 }, spentMana: 50 });
+    expect(third).toMatchObject({ healing: 2, activations: 1, game: { hp: 100 } });
+    expect(applyFilacteriaRecovery({ ...args, game: third.game, spentMana: 100 }).activations).toBe(0);
+    expect(applyFilacteriaRecovery({ ...args, week: 4, game: third.game, spentMana: 50 }).activations).toBe(1);
+  });
   it('cierra el reto de nivel 8 al completar los hábitos y habilita el siguiente uso',()=>{
     const started=cast(spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,

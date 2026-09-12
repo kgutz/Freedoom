@@ -67,11 +67,14 @@ import {
 } from './domain/smoking-rules.js';
 import {
   LEVEL_EIGHT_COOLDOWN_MS,
+  applyFilacteriaRecovery,
   castSpellEffect,
   completeLevelEightHabitChallenge,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
+  canCompleteUltimateHabit,
+  reservedHabitIdsForSpell,
   ultimateSpellAvailability,
 } from './domain/spell-rules.js';
 import {
@@ -257,7 +260,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.36';
+const APP_VERSION='2.28.37';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2170,10 +2173,11 @@ function renderSkillHabitPicker(){
 }
 
 function openSkillHabitPicker(spell){
-  const available=pendingDailyHabits();
+  const reserved=reservedHabitIdsForSpell({progress:state.game.powerProgress,spell,today:habitDayKey()});
+  const available=pendingDailyHabits().filter(habit=>!reserved.includes(habit.id));
   const limit=skillSelectionLimit(spell);
   if(available.length<limit.min){
-    showToast(`Faltan ${limit.min} hábitos diarios`,'dmg');
+    showToast(`Necesitas ${limit.min} hábitos diarios libres, sin asignar a otra habilidad`,'dmg');
     return;
   }
   pendingSkillCast={spell,available,selected:[]};
@@ -2199,24 +2203,11 @@ function weakestPendingHabit(){
 }
 
 function applyFilacteria(spentMana){
-  const g=state.game;
-  if(g?.cls!=='sorcerer'||gameStats().lvl<12||spentMana<=0) return '';
-  const rewards=g.powerProgress=g.powerProgress||{};
-  const week=Math.max(0,weekIndexOf(currentHabitDate()));
-  const progressKey=`filacteria-mana:${week}`;
-  const usesKey=`filacteria-uses:${week}`;
-  rewards[progressKey]=(Number(rewards[progressKey])||0)+spentMana;
-  rewards[usesKey]=Number(rewards[usesKey])||0;
-  let activations=0;
-  while(rewards[progressKey]>=50&&rewards[usesKey]<2){
-    rewards[progressKey]-=50;
-    rewards[usesKey]+=1;
-    state.economy.coins+=2;
-    const sacrifice=Math.max(1,Math.round(heroMaxes().maxHp*0.15));
-    g.hp=Math.max(1,(g.hp||1)-sacrifice);
-    activations+=1;
-  }
-  return activations?` · Filacteria ×${activations} · +${activations*2} 🪙`:'';
+  const recovery=applyFilacteriaRecovery({game:state.game,level:gameStats().lvl,
+    spentMana,maxHp:heroMaxes().maxHp,week:Math.max(0,weekIndexOf(currentHabitDate()))});
+  Object.assign(state.game,recovery.game);
+  state.economy.coins+=recovery.activations*2;
+  return recovery.activations?` · Filacteria ×${recovery.activations} · +${recovery.healing} ♥ · +${recovery.activations*2} 🪙`:'';
 }
 
 function castSpell(id,options={}){
@@ -2268,8 +2259,9 @@ function castSpell(id,options={}){
     }
   }
   if(sp.autoHabitChallenge&&!options.confirmed){
-    if(pendingDailyHabits().length<2){
-      showToast('Faltan 2 hábitos diarios','dmg');
+    const reserved=reservedHabitIdsForSpell({progress:g.powerProgress,spell:sp,today:spellDayKey});
+    if(pendingDailyHabits().filter(habit=>!reserved.includes(habit.id)).length<2){
+      showToast('Necesitas 2 hábitos diarios libres, sin asignar a otra habilidad','dmg');
       return;
     }
     openSkillConfirmation(sp);
@@ -2310,6 +2302,7 @@ function castSpell(id,options={}){
     else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
     else if(result.reason==='spell-cooldown') return;
     else if(result.reason==='habits') showToast('Faltan hábitos diarios','dmg');
+    else if(result.reason==='habit-reserved') showToast('Ese hábito ya está asignado a otra habilidad','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
     else if(result.minimumMana) showToast('Necesitas al menos '+result.requiredMana+' 💧','dmg');
@@ -3680,7 +3673,7 @@ function huntPotentialRewardsMarkup(difficulty,region){
     fiberMax?`${resourceIcon('arcane-fiber')} 0–${fiberMax}`:'',
     inkMax?`${resourceIcon('arcane-ink')} 0–${inkMax}`:'',
     difficulty.id==='hard'?`${resourceIcon('boss-blood')} 0–1`:'',
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).map(reward=>`<span class="hunt-potential-reward">${reward}</span>`).join('');
 }
 
 function openHuntResultModal(report){
@@ -3736,7 +3729,10 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
     <div><span>Coste</span><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>${difficulty.energyCost} energía</b></div>
     <div><span>Duración</span><b>${difficulty.durationMinutes} ${difficulty.durationMinutes === 1 ? 'minuto' : 'minutos'}</b></div>
-    <div class="hunt-confirm-rewards"><span>Recompensas posibles</span><b>${huntPotentialRewardsMarkup(difficulty,region)}</b></div>
+    <details class="hunt-rewards-disclosure">
+      <summary>Recompensas posibles<svg class="hunt-rewards-chevron" width="18" height="12" viewBox="0 0 18 12" fill="none" aria-hidden="true" focusable="false"><path d="M2 4L9 8L16 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      <div class="hunt-potential-rewards">${huntPotentialRewardsMarkup(difficulty,region)}</div>
+    </details>
   </div>
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
@@ -4016,7 +4012,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         })
       : null;
     scheduleSave({type:'hunt:resolve',won:result.report.won});
-    renderHunt();
+    renderAll();
     if(death) pendingPostDeathHuntReport=result.report;
     else openHuntResultModal(result.report);
   }
@@ -4261,7 +4257,8 @@ function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=cur
     }
   }
   const ultimate=rewards.ultimateChallenge;
-  if(ultimate&&ultimate.day===key&&ultimate.habitIds.includes(habit.id)&&!ultimate.completedIds.includes(habit.id)){
+  if(canCompleteUltimateHabit({challenge:ultimate,habitId:habit.id,day:key,
+    becameCompleted:result.becameCompleted,count:result.entry.count,target:habit.target})){
     ultimate.completedIds.push(habit.id);
     const ultimateReward=ultimateHabitReward({
       completedCount:ultimate.completedIds.length,
@@ -6418,6 +6415,22 @@ document.getElementById('forgeBody').addEventListener('click',event=>{
       if(!details?.open||!popover) return;
       const buttonBounds=forgeInfoButton.getBoundingClientRect();
       popover.style.setProperty('--forge-info-top',`${Math.round(buttonBounds.bottom+6)}px`);
+      const width=Math.min(330,window.innerWidth-32);
+      const forgeBounds=document.getElementById('forgeBody').getBoundingClientRect();
+      const left=Math.max(16,Math.min(forgeBounds.left+(forgeBounds.width-width)/2,window.innerWidth-width-16));
+      popover.style.setProperty('--forge-info-left',`${Math.round(left)}px`);
+      if(typeof popover.showPopover==='function'){
+        if(!popover.hasAttribute('popover')){
+          popover.setAttribute('popover','auto');
+          details.addEventListener('toggle',()=>{
+            if(!details.open&&popover.matches(':popover-open')) popover.hidePopover();
+          });
+          popover.addEventListener('toggle',()=>{
+            if(!popover.matches(':popover-open')) details.open=false;
+          });
+        }
+        popover.showPopover();
+      }
     });
   }
   const forge=event.target.closest('[data-forge-relic]');
@@ -6433,6 +6446,8 @@ document.getElementById('forgeBody').addEventListener('click',event=>{
   document.getElementById('forgeAttemptConfirmBg').classList.add('show');
 });
 document.addEventListener('click',event=>closeForgeInfoOutside(document,event.target));
+document.getElementById('forgeBody').addEventListener('scroll',()=>closeForgeInfoOutside(document,null));
+window.addEventListener('resize',()=>closeForgeInfoOutside(document,null));
 document.getElementById('forgeResultClose').addEventListener('click',()=>{
   document.getElementById('forgeResultBg').classList.remove('show');
 });
