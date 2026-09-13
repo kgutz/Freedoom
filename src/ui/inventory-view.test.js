@@ -597,7 +597,7 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(7);
     renderRelicDetail(document, state, 'relic_07');
     const html = document.elements.relicDetailBody.innerHTML;
-    expect(html).toContain('PODER +2');
+    expect(html).toContain('PODER +3');
     expect(html).toContain('El primer hábito completado del día concede XP adicional');
     expect(html).toContain('Valor actual: 3 XP');
   });

@@ -1182,6 +1182,7 @@
   .boss-medal.won .boss-medal-art{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.14),0 4px 12px rgba(0,0,0,.4)}
   .boss-medal.fighting .boss-medal-art{border-color:var(--kodak);opacity:.48;filter:grayscale(.35)}
   .boss-medal-art img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+  .boss-medal-open[data-boss-file="boss_06_gusano.webp"] .boss-medal-art img{transform:translateX(9%) scale(1.18)}
   .boss-medal-name{min-height:28px;font-size:9px;line-height:1.35;color:var(--text)}
   .boss-medal-name strong{display:block;margin-top:3px;color:var(--kodak);font-size:8px;letter-spacing:.08em}
   .boss-medal.won .boss-medal-name{min-height:0}

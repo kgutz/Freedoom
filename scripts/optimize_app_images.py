@@ -45,6 +45,9 @@ def app_images():
 
 def delivery_size(path, width, height):
     relative = path.relative_to(PUBLIC).as_posix()
+    if relative.startswith("bosses/"):
+        scale = min(1, 320 / max(width, height))
+        return round(width * scale), round(height * scale)
     if relative == "hunt/world-map.jpg":
         return min(width, 840), min(height, 840)
     if relative == "hunt/fields-of-mist/region.png" and width > 840:
@@ -62,7 +65,13 @@ def optimize(path):
         target_size = delivery_size(path, *source.size)
         image = source
         if target_size != source.size:
-            image = source.resize(target_size, Image.Resampling.LANCZOS)
+            relative = path.relative_to(PUBLIC).as_posix()
+            resampling = (
+                Image.Resampling.NEAREST
+                if relative.startswith("bosses/")
+                else Image.Resampling.LANCZOS
+            )
+            image = source.resize(target_size, resampling)
         image.save(destination, "WEBP", quality=95, method=6, exact=True)
     return destination
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relicCombatBonus, relicCombatBonuses } from '../data/loot-data.js';
+import { relicCombatBonus, relicCombatBonuses, relicRankEffect } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
   BUNKER_ENEMIES,
@@ -95,11 +95,32 @@ describe('PvE combat rules', () => {
     expect(relicCombatBonus('relic_01', 1)).toEqual({ stat: 'defense', value: 1 });
     expect(relicCombatBonus('relic_04', 1)).toEqual({ stat: 'defense', value: 2 });
     expect(relicCombatBonus('relic_03', 1)).toEqual({ stat: 'physicalAttack', value: 1 });
-    expect(relicCombatBonus('relic_05', 1)).toEqual({ stat: 'magicAttack', value: 1 });
-    expect(relicCombatBonus('relic_07', 1)).toEqual({ stat: 'magicAttack', value: 2 });
+    expect(relicCombatBonus('relic_05', 1)).toEqual({ stat: 'magicAttack', value: 2 });
+    expect(relicCombatBonus('relic_07', 1)).toEqual({ stat: 'magicAttack', value: 3 });
     expect(relicCombatBonus('relic_12', 1)).toEqual({ stat: 'physicalAttack', value: 4 });
     expect(relicCombatBonus('relic_12', 3)).toEqual({ stat: 'physicalAttack', value: 6 });
     expect(relicCombatBonus('fusion_08', 1)).toEqual({ stat: 'magicAttack', value: 3 });
+  });
+
+  it('cada tanda mantiene igual bonus y el Colmillo conserva fuerza por decisión de balance', () => {
+    for (let cycle = 0; cycle < 4; cycle++) {
+      for (const rank of [1, 2, 3]) {
+        const bonuses = [1, 2, 3].map(offset => relicCombatBonus(`relic_${String(cycle * 3 + offset).padStart(2, '0')}`, rank));
+        expect(bonuses.map(b => b.value)).toEqual([cycle + rank, cycle + rank, cycle + rank]);
+      }
+    }
+  });
+
+  it('conserva la XP original de la Gargantilla para los jugadores existentes', () => {
+    expect([1, 2, 3].map(rank => relicRankEffect('relic_11', rank))).toEqual([12, 18, 25]);
+  });
+
+  it('el Ojo aporta ataque físico sin alterar su magnitud ni su efecto de oro', () => {
+    for (const rank of [1, 2, 3]) {
+      expect(relicCombatBonus('relic_08', rank)).toEqual({ stat: 'physicalAttack', value: rank + 2 });
+      expect(relicCombatBonuses('relic_08', rank)).toEqual([{ stat: 'physicalAttack', value: rank + 2 }]);
+      expect(relicRankEffect('relic_08', rank)).toBe([2, 3, 5][rank - 1]);
+    }
   });
 
   it('una fusión hereda las estadísticas de Cacería y rangos de ambos ingredientes', () => {
@@ -108,12 +129,12 @@ describe('PvE combat rules', () => {
       relic_05: { rank: 2 },
     })).toEqual([
       { stat: 'physicalAttack', value: 1 },
-      { stat: 'magicAttack', value: 2 },
+      { stat: 'magicAttack', value: 3 },
     ]);
     expect(relicCombatBonuses('fusion_08', 1, {
       relic_05: { rank: 1 },
       relic_07: { rank: 1 },
-    })).toEqual([{ stat: 'magicAttack', value: 3 }]);
+    })).toEqual([{ stat: 'magicAttack', value: 5 }]);
   });
 
   it('aplica defensa y crítico con un mínimo de un punto de daño', () => {

@@ -418,19 +418,15 @@ export const RELIC_COMBAT_STATS_BY_EQUIPMENT_TYPE = Object.freeze({
   spirit: 'magicAttack',
   vessel: 'magicAttack',
   collar: 'magicAttack',
-  eye: 'magicAttack',
+  eye: 'physicalAttack',
   skull: 'magicAttack',
   choker: 'magicAttack',
 });
 
 export const RELIC_COMBAT_BONUS_BY_RANK = Object.freeze({ 1: 0, 2: 1, 3: 2 });
 
-// Algunos jefes comparten escalón de poder para mantener una progresión coherente
-// con el orden real en que se obtienen sus reliquias.
-export const RELIC_COMBAT_BASE_BONUS = Object.freeze({
-  relic_05: 1,
-  relic_07: 2,
-});
+// Cada tanda de tres jefes comparte bonus base: +1, +2, +3 y +4.
+export const RELIC_COMBAT_BASE_BONUS = Object.freeze({});
 
 export const FORGE_COSTS = { 2: 50, 3: 100 };
 export const FORGE_BLOOD_REQUIREMENTS = { 2: 1, 3: 2 };
