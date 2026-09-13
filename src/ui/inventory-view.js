@@ -376,8 +376,8 @@ function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey
 function bloodPreparedNotice(normalized, { bossKey = '' } = {}) {
   const potions = normalizePotionState(normalized.inventory.potions);
   const count = potions.bloodPrepared[bossKey] || 0;
-  if (!bossKey) return '';
-  return `<div class="blood-prepared-notice" role="status"><b>Pociones de sangre preparadas: ${count}/3</b><span>Para el jefe actual · Bonus: +${potionBloodChance(potions, bossKey)}%</span></div>`;
+  if (!bossKey || !count) return '';
+  return `<p class="blood-prepared-notice" role="status"><span>Sangre preparada: <b>${count}</b></span><span class="blood-prepared-bonus">Bonus <b>+${potionBloodChance(potions, bossKey)}%</b></span></p>`;
 }
 
 function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', nowTimestamp = Date.now() } = {}) {
@@ -641,8 +641,8 @@ export function renderInventoryView(document, lootState, options = {}) {
     <section class="inventory-section bag-potions-section">
       <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
       <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
-      ${bloodPreparedNotice(normalized, options)}
       <div class="relic-grid bag-potion-grid">${potionItems}</div>
+      ${bloodPreparedNotice(normalized, options)}
     </section>`;
 }
 
@@ -1180,8 +1180,8 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     <p class="shop-sale-copy">No recuperas Sangre de Jefe. La reliquia podrá volver con otra rareza, rango y efectos en una rotación futura.</p>
     ${saleContent}`;
   const potionShop = `
-    ${bloodPreparedNotice(normalized, options)}
-    ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
+    ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}
+    ${bloodPreparedNotice(normalized, options)}`;
   if (section === 'relics') {
     const description = relicMode === 'sell'
       ? 'Vende reliquias normales para recuperar oro y darles otra oportunidad en futuras rotaciones.'

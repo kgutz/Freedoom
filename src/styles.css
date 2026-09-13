@@ -1530,9 +1530,10 @@
   .inventory-sheet>.inventory-tabs::after{left:0;right:0}
   .character-sheet>.sheet-head{border-bottom-color:transparent}
   .character-sheet>.sheet-head::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--line);pointer-events:none}
-  .blood-prepared-notice{display:flex;flex-direction:column;gap:4px;margin:0 0 14px;padding:10px 12px;border:1px solid rgba(232,180,74,.35);border-radius:10px;background:var(--panel2);text-align:center}
-  .blood-prepared-notice b{font:400 12px/1.5 var(--font-display);color:var(--kodak)}
-  .blood-prepared-notice span{font:400 12px/1.4 var(--font-copy);color:var(--muted)}
+  .blood-prepared-notice{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-left:2px solid var(--kodak);border-radius:10px;background:var(--panel2);font:400 11px/1.5 var(--font-copy);color:var(--muted);text-align:center}
+  .blood-prepared-notice b{font:400 11px/1.5 var(--font-display);color:var(--kodak)}
+  .blood-prepared-bonus{padding-left:12px;border-left:1px solid var(--line);white-space:nowrap}
+  .bag-collection-section{border-top:0;margin-top:14px!important;padding-top:0}
   .inventory-tabs[hidden]{display:none!important}
   .inventory-tabs.boss-history-tabs{margin-bottom:18px}.inventory-tabs.boss-history-tabs::after{bottom:-18px}
   .inventory-tabs button{flex:1;min-width:0;border:0;border-radius:8px;padding:10px 3px;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:14px;font-weight:400;cursor:pointer}

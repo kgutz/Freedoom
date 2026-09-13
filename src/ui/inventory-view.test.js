@@ -49,14 +49,16 @@ describe('interfaz de inventario y botín', () => {
     state.inventory.potions = { owned: { blood: 0 }, bloodPrepared: { current: 3 } };
     const options = { bossKey: 'current' };
     renderInventoryView(document, state, options);
-    expect(document.elements.inventoryBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    expect(document.elements.inventoryBody.innerHTML).toContain('Sangre preparada: <b>3</b>');
+    expect(document.elements.inventoryBody.innerHTML).toContain('Bonus <b>+35%</b>');
+    expect(document.elements.inventoryBody.innerHTML.indexOf('blood-prepared-notice')).toBeGreaterThan(document.elements.inventoryBody.innerHTML.indexOf('bag-potion-grid'));
     renderShopView(document, state, 20 * 86400000, { ...options, section: 'potions' });
-    expect(document.elements.shopBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    expect(document.elements.shopBody.innerHTML).toContain('Sangre preparada: <b>3</b>');
     renderPotionDetail(document, state, 'blood', { ...options, mode: 'shop' });
-    expect(document.elements.relicDetailBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Sangre preparada: <b>3</b>');
     renderInventoryView(document, state, { bossKey: 'next' });
-    expect(document.elements.inventoryBody.innerHTML).toContain('Pociones de sangre preparadas: 0/3');
-    expect(document.elements.inventoryBody.innerHTML).not.toContain('Pociones de sangre preparadas: 3/3');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('blood-prepared-notice');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('Sangre preparada: 3');
   });
 
   it('ofrece un único Equipar y un selector con las dos reliquias actuales', () => {
