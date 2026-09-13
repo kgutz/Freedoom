@@ -88,21 +88,18 @@ export const HUNT_REGIONS = Object.freeze({
       easy: Object.freeze({
         multiplier: 1.5,
         attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85 }),
-        energyCost: 3,
         xp: 26,
         gold: Object.freeze([24, 38]),
       }),
       medium: Object.freeze({
         multiplier: 1.8,
         attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, defense: 1.3 }),
-        energyCost: 4,
         xp: 40,
         gold: Object.freeze([38, 58]),
       }),
       hard: Object.freeze({
         multiplier: 2.2,
         attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, constitution: 1.15 }),
-        energyCost: 5,
         xp: 60,
         gold: Object.freeze([60, 90]),
       }),
@@ -129,10 +126,12 @@ export function huntDifficultyForRegion(regionId, difficultyId) {
   if (!region || !difficulty) return null;
   const override = region.difficultyOverrides?.[difficultyId];
   const regionalMinLevel = safeInteger(region.difficultyMinLevels?.[difficultyId] ?? difficulty.minLevel);
-  if (!override && regionalMinLevel === difficulty.minLevel) return difficulty;
+  const energyCost = difficulty.energyCost + (region.id === 'fields-of-mist' ? 0 : 2);
+  if (!override && regionalMinLevel === difficulty.minLevel && energyCost === difficulty.energyCost) return difficulty;
   return {
     ...difficulty,
     ...override,
+    energyCost,
     minLevel: regionalMinLevel,
     attributeMultipliers: {
       ...(difficulty.attributeMultipliers || {}),

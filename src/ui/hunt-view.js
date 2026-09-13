@@ -7,6 +7,7 @@ import {
   normalizeHuntState,
 } from '../domain/pve-combat-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
+import { bossMedalNameLines } from './hero-view.js';
 
 function remainingLabel(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -32,7 +33,7 @@ function monsterCard(enemy) {
       <img src="${enemy.art}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
       <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
-    <span>${enemy.role}</span><b>${enemy.name}</b>
+    <span>${enemy.role}</span><b>${bossMedalNameLines(enemy.name).join('<br>')}</b>
   </button>`;
 }
 

@@ -261,7 +261,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.41';
+const APP_VERSION='2.28.42';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5503,8 +5503,13 @@ function handlePotionUse(potionId){
   }else if(potionId==='blood') notice=`Sangre preparada · +${potionBloodChance(state.inventory.potions,options.bossKey)}%`;
   else notice=`${potionId==='fortune'?'Fortuna':'Experiencia'} activa durante 30 minutos`;
   scheduleSave({type:'potion:use',potionId});
-  document.getElementById('sheetRelicDetail')?.classList.remove('show');
   renderInventoryView(document,state,potionViewOptions()); renderHero();
+  if(document.getElementById('sheetRelicDetail')?.classList.contains('show')){
+    const detailBody=document.getElementById('relicDetailBody');
+    const scrollTop=detailBody?.scrollTop||0;
+    renderPotionDetail(document,state,potionId,{...potionViewOptions(),nowTimestamp});
+    if(detailBody) detailBody.scrollTop=scrollTop;
+  }
   showToast(notice,'heal');
   return true;
 }

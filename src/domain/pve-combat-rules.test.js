@@ -583,7 +583,7 @@ describe('PvE combat rules', () => {
     expect(started.hunt.active.regionId).toBe('dead-hours-bunker');
   });
 
-  it('intercala el Búnker con niveles, energía y recompensas propias sin alterar la Bruma', () => {
+  it('conserva la Bruma en 1/2/3 y el Búnker en 3/4/5 sin cambiar recompensas', () => {
     expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toBe(HUNT_DIFFICULTIES.hard);
     expect(huntDifficultyForRegion('dead-hours-bunker', 'easy')).toMatchObject({
       minLevel: 13,
