@@ -2108,7 +2108,7 @@
   #bagBody .relic-card-copy>b{font-size:11px;line-height:1.4}
   #bagBody .relic-card-copy small{font-size:10px;line-height:1.4}
   #bagBody .inventory-empty{font-size:12px;line-height:1.55}
-  #bagBody .collection-hint{font-size:12px;line-height:1.55}
+  #bagBody .collection-hint{font-size:10px;line-height:1.5;font-weight:400}
   #bagBody .relic-kind-filters button{font-size:11px;line-height:1.3;min-height:32px}
   #relicDetailBody .relic-combat-bonus{font-size:11px;line-height:1.4;flex-wrap:wrap;gap:6px}
   #relicDetailBody .relic-equip-actions button,#relicDetailBody .relic-forge-shortcut{font-size:11px;line-height:1.4;padding:8px;white-space:normal}
@@ -2239,10 +2239,11 @@
   #forgeBody .forge-info-popover:popover-open{box-sizing:border-box;position:fixed;inset:auto;left:var(--forge-info-left,16px);top:var(--forge-info-top);margin:0;transform:none;max-height:calc(100dvh - var(--forge-info-top) - 16px)}
   #forgeBody .fusion-status,#forgeBody .defusion-ingredient small,
   #forgeBody .forge-cost>span,#forgeBody .forge-probability,
-  #shopBody .shop-heading small,
   .outfit-selector-modal--shop .arcane-market-demand small,
   .outfit-selector-modal--shop .arcane-market-demand p,
   .outfit-selector-modal--shop .cosmetic-rarity-label{font-size:var(--shop-type-help);line-height:1.5;white-space:normal}
+  #shopBody .shop-heading>span,#shopBody .shop-heading>small{font-family:var(--font-display);font-size:12px;line-height:1.4;letter-spacing:0;white-space:normal}
+  #shopBody .shop-heading>small{font-size:10px;line-height:1.4;text-align:right;margin-left:auto;color:var(--muted)}
   #forgeBody .forge-cost,#shopBody .shop-heading{flex-wrap:wrap;gap:8px}
   #forgeBody .forge-toolbar{display:flex;flex-direction:column;align-items:stretch;gap:0}
   #forgeBody .forge-toolbar .forge-resources{order:-1;width:100%;box-sizing:border-box}
@@ -2267,7 +2268,14 @@
   .outfit-selector-modal--shop .resource-value>b{font-size:13px;line-height:1.5}
   #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
   .outfit-selector-modal--shop .shop-outfit-heading p{text-align:center}
-  .outfit-selector-modal--shop .shop-outfit-heading{border-bottom:0}
+  .outfit-selector-modal--shop .shop-outfit-heading{border-bottom:0;margin-bottom:14px;padding-bottom:0}
+  #shopBody .shop-destination-copy,#forgeBody .shop-destination-copy{margin-bottom:14px}
+  #shopBody>.inventory-resources,#shopBody>.outfit-weave-resources,
+  .outfit-selector-modal--shop .outfit-selector-scroll-content>.outfit-weave-resources{margin-top:0;margin-bottom:14px}
+  #shopBody>.shop-relic-mode-tabs{margin-bottom:14px}
+  #shopBody>.inventory-resources+.shop-heading{margin-top:0}
+  #forgeBody .forge-toolbar .forge-resources{margin:0}
+  #forgeBody .forge-toolbar{margin:0 0 14px}
   #forgeBody .forge-focus>p,#forgeBody .forge-empty p,
   #shopBody .shop-empty p,#shopBody .shop-sale-copy,
   #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
