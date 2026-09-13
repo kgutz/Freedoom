@@ -75,7 +75,9 @@ describe('vista de hábitos', () => {
       { items: [{ id: 'call', title: 'Llamar al médico', difficulty: 'hard', active: true }] },
     );
     expect(html).toContain('data-todo-id="call"');
-    expect(html).toContain('Difícil · 10 XP + 5 oro');
+    expect(html).toContain('aria-label="10 XP"');
+    expect(html).toContain('aria-label="5 oro"');
+    expect(html).toContain('resource-icon--coin');
     expect(html).toContain('data-todo-delta="1"');
     expect(html).toContain('data-todo-drag');
     expect(html).toContain('Mantener pulsado para mover Llamar al médico');
@@ -112,7 +114,9 @@ describe('vista de hábitos', () => {
 
     expect(html).toContain('Beber agua');
     expect(html).toContain('data-open-character-sheet');
-    expect(html).toContain('<span class="habit-meta">Media · 6 XP + 3 oro</span>');
+    expect(html).toContain('aria-label="6 XP"');
+    expect(html).toContain('aria-label="3 oro"');
+    expect(html).toContain('resource-icon--coin');
     expect(html).toContain('2 / 2 · +6 XP');
     expect(html).not.toContain('🪙');
     expect(html).toContain('completed');
@@ -131,7 +135,9 @@ describe('vista de hábitos', () => {
 
     expect(html.indexOf('Diarios')).toBeLessThan(html.indexOf('Semanales'));
     expect(html.indexOf('Beber agua')).toBeLessThan(html.indexOf('Gimnasio'));
-    expect(html).toContain('Fácil · 3 XP + 2 oro');
+    expect(html).toContain('aria-label="3 XP"');
+    expect(html).toContain('aria-label="2 oro"');
+    expect(html).toContain('resource-icon--coin');
   });
 
   it('marca la foto del héroe según la intensidad de Borrachera', () => {
@@ -169,8 +175,12 @@ describe('vista de hábitos', () => {
         'gym|w:2026-07-31': { habitId: 'gym', periodKey: 'w:2026-07-31', frequency: 'weekly', count: 1, xpAwarded: 7, coinsAwarded: 2 },
       },
     });
-    expect(html).toContain('<span class="habit-meta">Media · 12 XP + 6 oro</span>');
-    expect(html).toContain('<span class="habit-meta">Media · 18 XP + 5 oro</span>');
+    expect(html).toContain('aria-label="12 XP"');
+    expect(html).toContain('aria-label="6 oro"');
+    expect(html).toContain('resource-icon--coin');
+    expect(html).toContain('aria-label="18 XP"');
+    expect(html).toContain('aria-label="5 oro"');
+    expect(html).toContain('resource-icon--coin');
     expect(html).not.toContain('Próximo avance:');
     expect(html).toContain('1 / 3 · +6 XP · +3 <span class="resource-icon resource-icon--coin"');
   });

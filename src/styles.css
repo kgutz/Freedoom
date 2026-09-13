@@ -505,6 +505,10 @@
   .habit-title{display:block;font-family:var(--font-copy);font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .habit-notes{display:none}
   .habit-meta{display:block;margin-top:2px;color:var(--muted);font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .habit-reward-icons{display:inline-flex;align-items:center;gap:7px;vertical-align:middle}
+  .habit-reward{display:inline-flex;align-items:center;gap:3px}
+  .habit-reward i{font-style:normal;color:var(--text);font-size:11px;line-height:1}
+  .habit-reward .resource-icon{width:16px;height:16px;flex:0 0 16px}
   .habit-progress{display:block;height:3px;background:#0E0B09;border-radius:99px;overflow:hidden;margin-top:4px}
   .habit-progress i{display:block;height:100%;background:var(--kodak);border-radius:99px;transition:width .2s}
   .habit-row.completed .habit-progress i{background:var(--ok)}
@@ -1054,7 +1058,7 @@
   .hero-skill-slot.spell-cooldown{border-color:#51483d;filter:grayscale(1) brightness(.58);opacity:.76;box-shadow:none;animation:none;cursor:not-allowed}
   .hero-skill-slot .hero-skill-timer{right:3px;bottom:3px;font-size:9px}
   .hero-skill-slot.spell-cooldown .hero-skill-timer{left:auto;right:3px;top:auto;bottom:3px;transform:none;min-width:26px;padding:3px 4px;border-radius:5px;background:rgba(8,7,6,.86);color:#fff;font-size:10px;text-align:center;text-shadow:0 1px 2px #000}
-  .hero-skill-used{right:2px;bottom:3px;font-size:7px}
+  .hero-skill-slot .hero-skill-used{right:3px;bottom:3px;font-size:9px;line-height:1.2}
   .hero-skill-slot.cast-confirm:not(.spell-cooldown){z-index:2;animation:heroCastConfirm .9s ease-out 1}
   .hero-skill-slot.spell-cooldown.cast-confirm{z-index:2;animation:heroCooldownConfirm .36s ease-out 1}
   .stat-bar.stat-cast-feedback .stat-track{animation:heroStatFeedback .9s ease-out 1}

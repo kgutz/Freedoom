@@ -9,6 +9,9 @@ import {
 } from '../data/outfit-data.js';
 import { heroBackgroundSource } from '../data/frame-data.js';
 import { resourceIcon } from './resource-icons.js';
+function habitRewardIcons(xp, coins) {
+  return `<span class="habit-reward-icons"><span class="habit-reward" aria-label="${xp} XP"><i aria-hidden="true">✦</i>${xp}</span><span class="habit-reward" aria-label="${coins} oro">${resourceIcon('coin')}${coins}</span></span>`;
+}
 import { normalizeTodoState, sortTodos, todoReward } from '../domain/todo-rules.js';
 import {
   HABIT_DIFFICULTIES,
@@ -111,7 +114,7 @@ function habitRow(habit, entry, skillMarked = false) {
     <button class="habit-main" type="button" data-edit-habit="${escapeHtml(habit.id)}">
       <span class="habit-title">${escapeHtml(habit.title)}</span>
       ${habit.notes ? `<span class="habit-notes">${escapeHtml(habit.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${rewardXp} XP + ${rewardCoins} oro</span>
+      <span class="habit-meta">${difficulty.label} · ${habitRewardIcons(rewardXp, rewardCoins)}</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((entry.count / habit.target) * 100))}%"></i></span>
       <span class="habit-count">${entry.count} / ${habit.target}${earnedCopy}</span>
     </button>
@@ -154,7 +157,7 @@ function todoRow(todo) {
     <button class="habit-main" type="button" data-edit-todo="${escapeHtml(todo.id)}">
       <span class="habit-title">${escapeHtml(todo.title)}</span>
       ${todo.notes ? `<span class="habit-notes">${escapeHtml(todo.notes)}</span>` : ''}
-      <span class="habit-meta">${difficulty.label} · ${reward.xp} XP + ${reward.coins} oro</span>
+      <span class="habit-meta">${difficulty.label} · ${habitRewardIcons(reward.xp, reward.coins)}</span>
       <span class="habit-progress"><i style="width:${Math.min(100, Math.round((count / target) * 100))}%"></i></span>
       <span class="habit-count">${count} / ${target}${earnedCopy}</span>
     </button>
