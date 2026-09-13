@@ -224,6 +224,7 @@ import {
   renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
+  renderRelicReplacementPicker,
   renderShopView
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
@@ -260,7 +261,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.38';
+const APP_VERSION='2.28.39';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -6280,6 +6281,44 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
 });
 document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>document.getElementById('forgeRelicPickerBg').classList.remove('show'));
+function equipRelicFromDetail(equip){
+  const relicId=equip.dataset.equipRelic;
+  const replace=equip.dataset.replaceSlot===undefined?null:Number(equip.dataset.replaceSlot);
+  const current=normalizeLootState(state).inventory.equipped;
+  if(replace===null&&current.length>=2){
+    if(renderRelicReplacementPicker(document,state,relicId)) showSheet(document,'sheetRelicReplacement');
+    return;
+  }
+  if(replace!==null&&current[replace]!==equip.dataset.replaceRelic){
+    renderRelicReplacementPicker(document,state,relicId);
+    document.getElementById('relicReplacementError').textContent='Tu equipo ha cambiado. Elige de nuevo la reliquia que quieres sustituir.';
+    return;
+  }
+  let result=equipRelic(state,relicId,replace);
+  if(result.reason==='constancy-confirmation-required'){
+    if(!confirmConstancyLoss(result,'Sustituir')) return;
+    result=equipRelic(state,relicId,replace,{confirmConstancyReset:true});
+  }
+  if(!result.ok){
+    const conflict=relicDefinition(result.conflictingRelicId);
+    const message=conflict?`Esta reliquia no es compatible con ${conflict.name}, que seguirá equipada. ${equipFailureMessage(result)}`:equipFailureMessage(result);
+    const error=document.getElementById('relicReplacementError');
+    if(replace!==null&&error) error.textContent=message;
+    else showToast(message,'dmg');
+    return;
+  }
+  applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
+  scheduleSave({type:'loot:equip',relicId});
+  document.getElementById('sheetRelicReplacement').classList.remove('show');
+  document.getElementById('sheetRelicDetail').classList.remove('show');
+  showSheet(document,'sheetInventory');
+  showInventoryPanel('collection',true); renderHero();
+  showToast('Reliquia equipada','heal');
+}
+document.getElementById('sheetRelicReplacement').addEventListener('click',event=>{
+  const equip=event.target.closest('[data-equip-relic]');
+  if(equip) equipRelicFromDetail(equip);
+});
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
   const sale=event.target.closest('[data-sell-relic]');
   if(sale){
@@ -6348,21 +6387,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   }
   const equip=event.target.closest('[data-equip-relic]');
   if(equip){
-    const replace=Number.isInteger(Number(equip.dataset.replaceSlot))
-      ? Number(equip.dataset.replaceSlot)
-      : null;
-    let result=equipRelic(state,equip.dataset.equipRelic,replace);
-    if(result.reason==='constancy-confirmation-required'){
-      if(!confirmConstancyLoss(result,'Sustituir')) return;
-      result=equipRelic(state,equip.dataset.equipRelic,replace,{confirmConstancyReset:true});
-    }
-    if(!result.ok){ showToast(equipFailureMessage(result),'dmg'); return; }
-    applyLootSlices(result); syncBossCombat(); capHeroAfterEquipmentChange(); syncPeriodicRelicMana();
-    scheduleSave({type:'loot:equip',relicId:equip.dataset.equipRelic});
-    document.getElementById('sheetRelicDetail').classList.remove('show');
-    showSheet(document,'sheetInventory');
-    showInventoryPanel('collection',true); renderHero();
-    showToast('Reliquia equipada','heal');
+    equipRelicFromDetail(equip);
     return;
   }
   const unequip=event.target.closest('[data-unequip-relic]');
@@ -6394,7 +6419,7 @@ async function handleForgeAttempt(relicId){
       console.error('No se pudo guardar el intento de Forja',commit.error);
       showToast('No se guardó la Forja','dmg');
       selectedForgeRelicId=relicId;
-      renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
+      renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state,potionViewOptions()); renderHero();
       forgeLocked=false;
       return;
     }
@@ -6402,7 +6427,7 @@ async function handleForgeAttempt(relicId){
     document.getElementById('forgeResultBody').innerHTML=forgeResultMarkup(result,relicDefinition(relicId)?.name||'Reliquia',relicId);
     document.getElementById('forgeResultBg').classList.add('show');
     selectedForgeRelicId=relicId;
-    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state); renderHero();
+    renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions()); renderInventoryView(document,state,potionViewOptions()); renderHero();
   }else showToast(result.reason==='coins'?'No tienes suficiente oro':result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'No cumples los requisitos de la Forja','dmg');
   forgeLocked=false;
 }
@@ -6550,7 +6575,7 @@ document.getElementById('fusionConfirmAccept').addEventListener('click',async()=
     clearFusionFeedback();
   }
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
-  renderInventoryView(document,state); renderHero();
+  renderInventoryView(document,state,potionViewOptions()); renderHero();
   forgeLocked=false;
 });
 document.getElementById('defusionConfirmAccept').addEventListener('click',async()=>{
@@ -6587,7 +6612,7 @@ document.getElementById('defusionConfirmAccept').addEventListener('click',async(
   capHeroAfterEquipmentChange();
   selectedForgeRelicId=null;
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
-  renderInventoryView(document,state); renderHero();
+  renderInventoryView(document,state,potionViewOptions()); renderHero();
   forgeLocked=false;
 });
 document.getElementById('pioneerRewardAccept').addEventListener('click',async()=>{
@@ -6808,7 +6833,10 @@ function showBossHistoryPanel(panel='combat'){
     section.hidden=section.dataset.bossHistoryPanel!==selected;
   });
   const body=document.getElementById('bossHistoryBody');
-  if(body) body.scrollTop=0;
+  if(body){
+    body.dataset.selectedPanel=selected;
+    body.scrollTop=0;
+  }
 }
 
 document.getElementById('sheetBossHistory').addEventListener('click',async e=>{

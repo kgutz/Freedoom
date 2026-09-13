@@ -1161,7 +1161,21 @@
   .boss-week-exchange>span:last-child b{color:var(--warn)}
   .boss-week-exchange em{color:#6fa6ca;font:400 7px var(--font-display);font-style:normal}
   .boss-log-empty{margin-top:14px;padding:14px;border:1px dashed var(--line);border-radius:10px;text-align:center;font-size:12px;color:var(--muted)}
-  .boss-medals-head{margin-bottom:12px}
+  .relic-replacement-sheet{max-width:300px}
+  #relicReplacementBody{padding:16px 20px 24px}
+  .relic-replacement-intro{text-align:center;font-size:13px;line-height:1.5;color:var(--muted);margin:0 0 18px}
+  .relic-replacement-intro b{color:var(--kodak)}
+  .relic-replacement-options.forge-picker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,94px));justify-content:center;gap:8px}
+  .relic-replacement-options .forge-picker-relic b{font-size:9px}
+  .relic-replacement-option{display:flex;align-items:center;gap:14px;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);text-align:left;cursor:pointer}
+  .relic-replacement-option:hover,.relic-replacement-option:focus-visible{border-color:var(--kodak);outline:2px solid var(--kodak);outline-offset:2px}
+  .relic-replacement-option .relic-art{width:60px;height:60px;flex:0 0 60px}
+  .relic-replacement-option span{min-width:0}
+  .relic-replacement-option b{display:block;font:14px/1.4 var(--font-display)}
+  .relic-replacement-option small{display:block;margin-top:6px;font-size:11px;color:var(--muted)}
+  .relic-replacement-error{font-size:12px;line-height:1.5;color:var(--kodak);margin:14px 0 0;text-align:center}
+  .relic-replacement-error:empty{display:none}
+  .boss-medals-head{margin-bottom:12px;text-align:center}
   .boss-medals-head h4,.boss-combat-head{font-size:15px;margin:0 0 4px}
   .boss-medals-head p{font-size:11px;color:var(--muted);line-height:1.5;margin:0}
   .boss-medals-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 9px}
@@ -1185,7 +1199,6 @@
   .boss-medal-open[data-boss-file="boss_06_gusano.webp"] .boss-medal-art img{transform:translateX(9%) scale(1.18)}
   .boss-medal-name{min-height:28px;font-size:9px;line-height:1.35;color:var(--text)}
   .boss-medal-name strong{display:block;margin-top:3px;color:var(--kodak);font-size:8px;letter-spacing:.08em}
-  .boss-medal.won .boss-medal-name{min-height:0}
   .boss-medal.locked .boss-medal-name{color:var(--muted);letter-spacing:.08em}
   .boss-medal-share{
     margin-top:3px;padding:5px 7px;border-radius:7px;border:1px solid var(--line);
@@ -1199,7 +1212,7 @@
   .boss-medal-detail.in-combat .boss-medal-detail-art{opacity:.72;filter:saturate(.78)}
   .boss-medal-detail-state{font-family:var(--font-display);font-size:10px;letter-spacing:.14em;color:var(--kodak);text-transform:uppercase}
   .boss-medal-detail h2{margin:6px 0 9px;font-size:21px;color:var(--text)}
-  .boss-medal-detail>p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;text-align:left}
+  .boss-medal-detail>p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;text-align:center}
   .boss-medal-detail-lock{margin-top:12px!important;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--kodak)!important;text-align:center!important}
   .boss-medal-detail-lock:empty{display:none}
   .boss-medal-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:18px}
@@ -1514,6 +1527,12 @@
   .inventory-sheet>.sheet-head,.inventory-sheet>.inventory-tabs{flex:0 0 auto}.inventory-sheet>.sheet-head{margin-bottom:7px;border-bottom:0}
   .inventory-sheet>#bagBody,.inventory-sheet>#forgeBody,.inventory-sheet>#shopBody{flex:0 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding-top:12px;padding-bottom:6px}
   .inventory-tabs{position:relative;display:flex;gap:6px;margin:1px 0 12px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px}.inventory-tabs::after{content:'';position:absolute;right:-18px;bottom:-12px;left:-18px;height:1px;background:var(--line);pointer-events:none}
+  .inventory-sheet>.inventory-tabs::after{left:0;right:0}
+  .character-sheet>.sheet-head{border-bottom-color:transparent}
+  .character-sheet>.sheet-head::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--line);pointer-events:none}
+  .blood-prepared-notice{display:flex;flex-direction:column;gap:4px;margin:0 0 14px;padding:10px 12px;border:1px solid rgba(232,180,74,.35);border-radius:10px;background:var(--panel2);text-align:center}
+  .blood-prepared-notice b{font:400 12px/1.5 var(--font-display);color:var(--kodak)}
+  .blood-prepared-notice span{font:400 12px/1.4 var(--font-copy);color:var(--muted)}
   .inventory-tabs[hidden]{display:none!important}
   .inventory-tabs.boss-history-tabs{margin-bottom:18px}.inventory-tabs.boss-history-tabs::after{bottom:-18px}
   .inventory-tabs button{flex:1;min-width:0;border:0;border-radius:8px;padding:10px 3px;background:transparent;color:var(--muted);font-family:var(--font-display);font-size:14px;font-weight:400;cursor:pointer}
@@ -1828,6 +1847,10 @@
   .hoy-face img[data-outfit-display],.habit-hero-sprite img[data-outfit-display],.inventory-outfit-card .outfit-portrait img[data-outfit-display]{position:relative;width:var(--outfit-face-size)!important;height:var(--outfit-face-size)!important;max-width:none;left:var(--outfit-face-x)!important;top:var(--outfit-face-y)!important}
   .character-hero-art .hero-intoxication-badge{left:8px;bottom:8px}
   .character-hero-art .hero-intoxication-badge b{font-size:9px}
+  .character-hero-art .hero-blood-badge{left:auto;right:8px;border-color:var(--kodak);background:rgba(40,29,9,.94);color:var(--kodak);box-shadow:0 0 8px rgba(232,180,74,.4)}
+  .hero-blood-badge img{background:radial-gradient(circle,rgba(255,218,126,.32) 0%,rgba(232,180,74,.14) 42%,rgba(232,180,74,.04) 65%,transparent 85%);filter:drop-shadow(0 0 3px rgba(232,180,74,.2))}
+  .hero-blood-badge::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;background:conic-gradient(from var(--relic-border-angle),rgba(185,126,35,.38) 0deg 242deg,#ffe39a 278deg,#e8b44a 305deg,rgba(185,126,35,.38) 338deg 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:relic-border-shine 4.8s linear infinite}
+  @media(prefers-reduced-motion:reduce){.hero-blood-badge::before{animation:none}}
 
   .character-bag-primary>.character-bag-art{width:88%;height:88%;font-size:0}.character-bag-art img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
 
@@ -2047,7 +2070,7 @@
   .boss-combat-report-copy small{font-size:10px;line-height:1.4;white-space:normal}
   .boss-combat-report-damage{font-size:12px}
   .boss-medals-head h4{font-size:18px;line-height:1.4}
-  .boss-medal-name{font-size:11px;line-height:1.45;overflow-wrap:break-word}
+  .boss-medal-name{min-height:2.4em;font-size:11px;line-height:1.2;overflow-wrap:break-word}
   .boss-medal-name strong{font-size:10px;line-height:1.4;letter-spacing:.03em}
   .boss-medal.locked .boss-medal-name{letter-spacing:0}
   .boss-medal-share{font-size:11px;min-height:32px}
@@ -2186,7 +2209,7 @@
   #forgeBody .shop-destination-nav h2,#shopBody .shop-destination-nav h2{font-size:var(--shop-type-title);line-height:1.35;white-space:normal;overflow-wrap:break-word}
   .inventory-shop-destination .sheet-head h3,
   .outfit-selector-modal--shop .outfit-selector-top h3{font-size:var(--shop-type-title);line-height:1.35;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word}
-  .outfit-selector-modal--shop .outfit-selector-top{grid-template-columns:72px minmax(0,1fr) 72px}
+  .outfit-selector-modal--shop .outfit-selector-top{grid-template-columns:72px minmax(0,1fr) 72px;margin:-18px 0 0;padding:18px 0;border-bottom:1px solid var(--line)}
   .outfit-selector-modal--shop .outfit-selector-top:has(#outfitSelectorBack[hidden]){grid-template-columns:32px minmax(0,1fr) 32px}
   .outfit-selector-modal--shop .outfit-selector-top #outfitSelectorBack[hidden]+h3{grid-column:2}
   /* Mantener el eje central incluso cuando aparece la barra de desplazamiento. */
@@ -2236,6 +2259,7 @@
   .outfit-selector-modal--shop .resource-value>b{font-size:13px;line-height:1.5}
   #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
   .outfit-selector-modal--shop .shop-outfit-heading p{text-align:center}
+  .outfit-selector-modal--shop .shop-outfit-heading{border-bottom:0}
   #forgeBody .forge-focus>p,#forgeBody .forge-empty p,
   #shopBody .shop-empty p,#shopBody .shop-sale-copy,
   #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,

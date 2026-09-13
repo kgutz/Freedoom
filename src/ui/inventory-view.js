@@ -373,6 +373,13 @@ function potionGridMarkup(normalized, { mode = 'inventory', dayKey = '', bossKey
   }).join('')}${mode==='shop'?potionFutureSlots():''}</div>`;
 }
 
+function bloodPreparedNotice(normalized, { bossKey = '' } = {}) {
+  const potions = normalizePotionState(normalized.inventory.potions);
+  const count = potions.bloodPrepared[bossKey] || 0;
+  if (!bossKey) return '';
+  return `<div class="blood-prepared-notice" role="status"><b>Pociones de sangre preparadas: ${count}/3</b><span>Para el jefe actual · Bonus: +${potionBloodChance(potions, bossKey)}%</span></div>`;
+}
+
 function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', nowTimestamp = Date.now() } = {}) {
   const potions=normalizePotionState(normalized.inventory.potions);
   const active=potions.active?.endsAt>nowTimestamp?potions.active:null;
@@ -415,6 +422,7 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
     : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
   const usageCopy=limit===null?'Usos diarios: SIN LÍMITE':`Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}`;
   body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
+  if (potionId === 'blood') body.innerHTML = bloodPreparedNotice(normalized, options) + body.innerHTML;
   if (shopMode) body.innerHTML = `<div class="shop-potion-detail">${body.innerHTML}</div>`;
   return true;
 }
@@ -551,7 +559,8 @@ function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
   const before = relicCombatBonuses(relicId, currentRank);
   const attributes = relicCombatBonuses(relicId, targetRank).map(bonus => {
     const previous = before.find(item => item.stat === bonus.stat)?.value || 0;
-    return `<div class="forge-attribute-preview"><b>${labels[bonus.stat] || bonus.stat} +${previous}</b><i aria-hidden="true">→</i><strong>+${bonus.value} (+${bonus.value - previous})</strong></div>`;
+    const label = labels[bonus.stat] || bonus.stat;
+    return `<div class="forge-attribute-preview"><b>${label} +${previous}</b><i aria-hidden="true">→</i><strong>${label} +${bonus.value}</strong></div>`;
   }).join('');
   return `<div class="forge-upgrade-preview">
     <span>RANGO ${currentRank} <i aria-hidden="true">→</i> RANGO ${targetRank}</span>
@@ -632,6 +641,7 @@ export function renderInventoryView(document, lootState, options = {}) {
     <section class="inventory-section bag-potions-section">
       <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
       <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
+      ${bloodPreparedNotice(normalized, options)}
       <div class="relic-grid bag-potion-grid">${potionItems}</div>
     </section>`;
 }
@@ -665,6 +675,26 @@ export function renderCollectionView(document, lootState) {
     </section>`;
 }
 
+export function renderRelicReplacementPicker(document, lootState, relicId) {
+  const normalized = normalizeLootState(lootState);
+  const target = relicDefinition(relicId);
+  const body = document.getElementById('relicReplacementBody');
+  if (!body || !target || !normalized.inventory.relics[relicId]) return false;
+  body.innerHTML = `<p class="relic-replacement-intro">Para equipar <b>${escapeHtml(target.name)}</b>, elige qué reliquia sustituir.</p>
+    <div class="forge-picker-grid relic-replacement-options">${normalized.inventory.equipped.map((id, index) => {
+      const definition = relicDefinition(id);
+      const relic = normalized.inventory.relics[id];
+      const preview = equipRelic(normalized, relicId, index, { confirmConstancyReset: true });
+      const incompatible = !preview.ok;
+      const conflict = relicDefinition(preview.conflictingRelicId);
+      const reason = incompatible ? `No compatible${conflict ? ` con ${conflict.name}, que seguirá equipada` : ''}.` : '';
+      return `<button type="button" class="forge-picker-relic ${rarityClass(relic.rarity)}${incompatible ? ' incompatible' : ''}" data-equip-relic="${relicId}" data-replace-slot="${index}" data-replace-relic="${id}"${incompatible ? ` disabled aria-disabled="true" title="${escapeHtml(reason)}"` : ''}>
+        ${relicArt(definition)}<b>${escapeHtml(definition.name)}</b><small>RANGO ${relic.rank}${incompatible ? ' · INCOMPATIBLE' : ''}</small>
+      </button>`;
+    }).join('')}</div><p id="relicReplacementError" class="relic-replacement-error" role="alert"></p>`;
+  return true;
+}
+
 export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const normalized = normalizeLootState(lootState);
   const relic = options.relicOverride || normalized.inventory.relics[relicId] ||
@@ -687,12 +717,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     ? '<div class="relic-not-owned">DESCUBIERTA · NO POSEÍDA</div>'
     : equipped
     ? `<button type="button" data-unequip-relic="${relicId}">DESEQUIPAR</button>`
-    : normalized.inventory.equipped.length < 2
-      ? `<button type="button" data-equip-relic="${relicId}">EQUIPAR</button>`
-      : normalized.inventory.equipped.map((equippedId, index) => {
-          const current = relicDefinition(equippedId);
-          return `<button type="button" data-equip-relic="${relicId}" data-replace-slot="${index}">SUSTITUIR ${escapeHtml(current?.name || `SLOT ${index + 1}`)}</button>`;
-        }).join('');
+    : `<button type="button" data-equip-relic="${relicId}">EQUIPAR</button>`;
   const affixes = relic.affixes.length
     ? relic.affixes.map((id) => {
         const affix = AFFIX_DEFINITIONS[id];
@@ -1155,6 +1180,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     <p class="shop-sale-copy">No recuperas Sangre de Jefe. La reliquia podrá volver con otra rareza, rango y efectos en una rotación futura.</p>
     ${saleContent}`;
   const potionShop = `
+    ${bloodPreparedNotice(normalized, options)}
     ${potionGridMarkup(normalized, { ...options, mode: 'shop', nowTimestamp })}`;
   if (section === 'relics') {
     const description = relicMode === 'sell'

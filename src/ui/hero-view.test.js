@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeSpellStatus,
   bossMedalCombatHistoryMarkup,
+  bossMedalNameLines,
   cooldownStatusLabel,
   createHeroModel,
   didHeroLevelUp,
@@ -16,6 +17,14 @@ import {
 import { BOSSES, BOSS_LORE } from '../data/game-data.js';
 
 describe('historial del medallón de jefe', () => {
+  it.each([
+    ['Espectro Gris', ['Espectro', 'Gris']],
+    ['Araña de Alquitrán', ['Araña', 'de Alquitrán']],
+    ['El Gólem de Humo', ['El Gólem', 'de Humo']],
+    ['Hidra de Tres Caladas', ['Hidra de', 'Tres Caladas']],
+  ])('distribuye %s en dos líneas según sus palabras', (name, lines) => {
+    expect(bossMedalNameLines(name)).toEqual(lines);
+  });
   it('muestra únicamente los intentos del jefe seleccionado', () => {
     const html = bossMedalCombatHistoryMarkup([
       { week: 0, bossIndex: 0, won: false, heroDamage: 90, bossDamage: 30, manaDamage: 20 },
@@ -781,9 +790,9 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).not.toContain('de <b>20</b>');
   });
 
-  it('oculta el total futuro y muestra una sola incógnita', () => {
+  it.each(['combat', 'medals'])('conserva el panel %s al refrescar, sin revelar futuros jefes', (panel) => {
     const heroContent = { innerHTML: '' };
-    const bossHistoryBody = { innerHTML: '' };
+    const bossHistoryBody = { innerHTML: '', dataset: { selectedPanel: panel }, scrollTop: 180 };
     const document = {
       getElementById(id) {
         if (id === 'heroContent') return heroContent;
@@ -812,6 +821,9 @@ describe('modelo de Héroe', () => {
 
     expect(bossHistoryBody.innerHTML).toContain('Medallones de victoria · 1');
     expect(bossHistoryBody.innerHTML).not.toContain('1 / 6');
+    expect(bossHistoryBody.innerHTML).toContain(`data-boss-history-panel="${panel}">`);
+    expect(bossHistoryBody.innerHTML).toContain(`data-boss-history-panel="${panel === 'medals' ? 'combat' : 'medals'}" hidden>`);
+    expect(bossHistoryBody.scrollTop).toBe(180);
     expect((bossHistoryBody.innerHTML.match(/class="boss-medal /g) || []).length).toBe(3);
     expect((bossHistoryBody.innerHTML.match(/boss_medal_locked.webp/g) || []).length).toBe(1);
   });

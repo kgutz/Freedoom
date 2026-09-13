@@ -21,6 +21,7 @@ import {
   renderPotionDetail,
   renderRelicEffectInfo,
   renderRelicDetail,
+  renderRelicReplacementPicker,
   renderShopView,
   resourceIcon,
 } from './inventory-view.js';
@@ -33,7 +34,7 @@ function lootWithBosses(count, source = 'retroactive') {
 
 function fakeDocument() {
   const elements = Object.fromEntries([
-    'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicEffectInfoTitle',
+    'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicReplacementBody', 'relicEffectInfoTitle',
     'forgeRelicPickerTitle', 'forgeRelicPickerBody', 'outfitSelectorBody', 'outfitSelectorTitle', 'outfitSelectorBack', 'outfitSelectorReturnCharacter',
     'relicEffectInfoDescription', 'lootNoticeTitle', 'lootNoticeIntro',
     'lootNoticeRewards', 'lootNoticeSummary', 'lootNoticeActions',
@@ -42,6 +43,48 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('recuerda la sangre preparada sin existencias y solo para el jefe actual', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    state.inventory.potions = { owned: { blood: 0 }, bloodPrepared: { current: 3 } };
+    const options = { bossKey: 'current' };
+    renderInventoryView(document, state, options);
+    expect(document.elements.inventoryBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    renderShopView(document, state, 20 * 86400000, { ...options, section: 'potions' });
+    expect(document.elements.shopBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    renderPotionDetail(document, state, 'blood', { ...options, mode: 'shop' });
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Pociones de sangre preparadas: 3/3');
+    renderInventoryView(document, state, { bossKey: 'next' });
+    expect(document.elements.inventoryBody.innerHTML).toContain('Pociones de sangre preparadas: 0/3');
+    expect(document.elements.inventoryBody.innerHTML).not.toContain('Pociones de sangre preparadas: 3/3');
+  });
+
+  it('ofrece un único Equipar y un selector con las dos reliquias actuales', () => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    for (const id of ['relic_01', 'relic_02', 'relic_03']) state.inventory.relics[id] = { unlocked: true, rarity: 'rare', rank: 1, affixes: [] };
+    state.inventory.equipped = ['relic_01', 'relic_02'];
+    const original = JSON.stringify(state);
+    renderRelicDetail(document, state, 'relic_03');
+    expect(document.elements.relicDetailBody.innerHTML.match(/data-equip-relic=/g)).toHaveLength(1);
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('SUSTITUIR');
+    expect(renderRelicReplacementPicker(document, state, 'relic_03')).toBe(true);
+    const html = document.elements.relicReplacementBody.innerHTML;
+    expect(html).toContain('data-replace-slot="0" data-replace-relic="relic_01"');
+    expect(html).toContain('data-replace-slot="1" data-replace-relic="relic_02"');
+    expect(html).toContain('Corazón de Hollín');
+    expect(html).toContain('Lágrima de Espectro');
+    expect(html).toContain('role="alert"');
+    expect(JSON.stringify(state)).toBe(original);
+    state.inventory.relics.relic_07 = { unlocked: true, rarity: 'legendary', rank: 1, affixes: [] };
+    state.inventory.equipped = ['relic_07', 'relic_02'];
+    renderRelicReplacementPicker(document, state, 'relic_03');
+    const picker = document.elements.relicReplacementBody.innerHTML;
+    expect(picker).toContain('forge-picker-relic rarity-legendary');
+    expect(picker).toMatch(/data-replace-relic="relic_02" disabled aria-disabled="true"/);
+    expect(picker).not.toMatch(/data-replace-relic="relic_07" disabled/);
+    expect(picker).toContain('INCOMPATIBLE');
+  });
   it('mantiene oculto el outfit beta hasta aceptar la recompensa de pionero', () => {
     const document = fakeDocument();
     const state = lootWithBosses(2);
@@ -417,11 +460,25 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('7% MANÁ MÁX.');
     expect(html).toContain('forge-attribute-preview');
     expect(html).toContain('Poder +1');
-    expect(html).toContain('+2 (+1)');
+    expect(html).toContain('<strong>Poder +2</strong>');
+    expect(html).not.toContain('(+1)');
     expect(html).not.toContain('Cómo funciona Mejorar');
     expect(html).toContain('class="forge-attempt"');
     expect(html).toContain('>FORJAR</button>');
     expect(html).toContain('class="forge-toolbar"');
+  });
+
+  it.each([
+    ['relic_01', 'Defensa'],
+    ['relic_02', 'Poder'],
+    ['relic_03', 'Ataque'],
+  ])('muestra solo los valores actual y nuevo del atributo de %s', (relicId, label) => {
+    const document = fakeDocument();
+    const state = lootWithBosses(3);
+    renderForgeView(document, state, relicId);
+    const html = document.elements.forgeBody.innerHTML;
+    expect(html).toContain(`<b>${label} +1</b><i aria-hidden="true">→</i><strong>${label} +2</strong>`);
+    expect(html).not.toContain('(+1)');
   });
 
   it('mantiene vacío el slot de Mejora hasta que se elige una reliquia', () => {

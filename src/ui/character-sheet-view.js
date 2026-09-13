@@ -1,5 +1,6 @@
 import { CLASSES } from '../data/game-data.js';
-import { RARITIES, relicDefinition } from '../data/loot-data.js';
+import { RARITIES, RELIC_DEFINITIONS, relicDefinition } from '../data/loot-data.js';
+import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
 import { equippedOutfit } from '../data/outfit-data.js';
 import { ATTRIBUTE_IDS, attributeSheet } from '../domain/attribute-rules.js';
 import { pveHeroStats } from '../domain/pve-combat-rules.js';
@@ -23,6 +24,16 @@ function equippedRelicMarkup(state, relicId, index) {
   return `<button type="button" class="character-relic-slot rarity-${rarity.id}${fusionClass}" data-character-relic-slot="${index}" aria-label="Cambiar ${definition.name}, reliquia ${index + 1}">
     ${relicArt(definition)}
   </button>`;
+}
+
+export function characterBloodBadgeMarkup(state) {
+  const bossIndex = Math.max(0, Number(state.game?.bossCombat?.bossIndex) || 0);
+  const bossKey = RELIC_DEFINITIONS[bossIndex]?.rewardId;
+  const potions = normalizePotionState(state.inventory?.potions);
+  const count = potions.bloodPrepared[bossKey] || 0;
+  if (!count) return '';
+  const label = `Pociones de sangre preparadas: ${count}. Bonus para el jefe actual: +${potionBloodChance(potions, bossKey)}%`;
+  return `<span class="hero-intoxication-badge hero-blood-badge" title="${label}" aria-label="${label}"><img src="potions/potion_blood.webp" alt="" loading="lazy" decoding="async"><b>${count}</b></span>`;
 }
 
 export function renderCharacterSheet({ document, state, stats, heroModel }) {
@@ -65,6 +76,7 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
       <div class="character-hero-art${heroModel?.intoxication?.level > 0 ? ' hero-card--intoxicated' : ''}">
         ${heroVisualMarkup({classId:game.cls,mood:heroModel?.mood||'happy',outfitId:outfit.id,frameId:game.frame,game,progress:stats.prog,level:stats.lvl,intoxication:heroModel?.intoxication,interactive:false})}
         ${heroIntoxicationBadgeMarkup(heroModel?.intoxication)}
+        ${characterBloodBadgeMarkup(state)}
         <button type="button" class="character-outfit-trigger" data-character-outfit aria-label="Cambiar outfit. Actual: ${outfit.name}"></button>
       </div>
     </section>

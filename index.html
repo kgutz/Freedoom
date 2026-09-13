@@ -157,7 +157,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.28.38</div>
+  <div class="ob-version" id="obVersion">v2.28.39</div>
 </div>
 
 <div id="loading" class="loading">
@@ -428,7 +428,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.38</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.39</span></p>
       </div>
     </div>
   </div>
@@ -714,6 +714,13 @@
   <div class="sheet relic-detail-sheet">
     <div class="sheet-head sk-head-center"><h3 id="relicDetailTitle">Reliquia</h3><button class="sheet-close" data-sheet="sheetRelicDetail">✕</button></div>
     <div id="relicDetailBody"></div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetRelicReplacement" style="z-index:32">
+  <div class="sheet relic-replacement-sheet" role="dialog" aria-modal="true" aria-labelledby="relicReplacementTitle">
+    <div class="sheet-head sk-head-center"><h3 id="relicReplacementTitle">Equipar reliquia</h3><button class="sheet-close" data-sheet="sheetRelicReplacement" aria-label="Cerrar selector de reliquias">✕</button></div>
+    <div id="relicReplacementBody"></div>
   </div>
 </div>
 

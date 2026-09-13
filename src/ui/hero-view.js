@@ -30,6 +30,13 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+export function bossMedalNameLines(name) {
+  const words = String(name).trim().split(/\s+/);
+  if (words.length < 2) return words;
+  const split = words.length === 4 ? 2 : 1;
+  return [words.slice(0, split).join(' '), words.slice(split).join(' ')];
+}
+
 export function spriteImage(classId, mood, extraClass = '', outfitId = 'original') {
   const available = {
     knight: ['happy'],
@@ -598,20 +605,22 @@ export function renderHeroView({
     }
     const bossNumber = index + 1;
     const bossName = BOSSES[index];
+    const bossNameLines = bossMedalNameLines(bossName);
+    const bossNameMarkup = bossNameLines.join('<br>');
     const bossSlug = BOSS_SLUGS[index];
     const bossFile = `boss_${String(bossNumber).padStart(2, '0')}_${bossSlug}.webp`;
     if (fighting) {
       return `<div class="boss-medal fighting">
         <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
           <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>
-          <div class="boss-medal-name">${bossName}<strong>EN COMBATE</strong></div>
+          <div class="boss-medal-name">${bossNameMarkup}<strong>EN COMBATE</strong></div>
         </button>
       </div>`;
     }
     return `<div class="boss-medal won">
       <button class="boss-medal-open" type="button" data-open-boss-medal="${index}" data-boss-file="${bossFile}" aria-label="Abrir medallón de ${bossName}">
         <div class="boss-medal-art"><img src="bosses/${bossFile}" alt="${bossName}" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>
-        <div class="boss-medal-name">${bossName}</div>
+        <div class="boss-medal-name">${bossNameMarkup}</div>
       </button>
       <button class="boss-medal-share" type="button" data-share-boss="${index}" data-share-file="${bossFile}">Compartir</button>
     </div>`;
@@ -665,15 +674,17 @@ export function renderHeroView({
   const bossDamageLogged = Math.max(0, Number(bossState.bossDamageLogged) || 0);
   const bossHistoryBody = document.getElementById('bossHistoryBody');
   if (bossHistoryBody) {
+    const selectedPanel = bossHistoryBody.dataset?.selectedPanel === 'medals' ? 'medals' : 'combat';
+    const scrollTop = bossHistoryBody.scrollTop;
     bossHistoryBody.innerHTML = `
-      <section class="boss-medals boss-history-panel" data-boss-history-panel="medals" hidden>
+      <section class="boss-medals boss-history-panel" data-boss-history-panel="medals"${selectedPanel === 'medals' ? '' : ' hidden'}>
         <div class="boss-medals-head">
           <h4>Medallones de victoria · ${defeatedBosses}</h4>
           <p>Cada jefe derrotado revela su medallón. La incógnita representa los rivales que aún permanecen ocultos.</p>
         </div>
         <div class="boss-medals-grid">${bossMedals}</div>
       </section>
-      <section class="boss-history-panel boss-history-combat" data-boss-history-panel="combat">
+      <section class="boss-history-panel boss-history-combat" data-boss-history-panel="combat"${selectedPanel === 'combat' ? '' : ' hidden'}>
       <button class="boss-combat-current" type="button" data-open-boss-medal="${currentBossIndex}" data-boss-file="${currentBossFile}" aria-label="Abrir ficha de ${bossState.name}">
         <span class="boss-combat-current-art"><img src="bosses/${currentBossFile}" alt="${bossState.name}" loading="eager" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><i style="display:none" aria-hidden="true">💀</i></span>
         <span class="boss-combat-current-copy"><small>JEFE ACTUAL</small><strong>${bossState.name}</strong><em>Ver ficha del jefe</em></span>
@@ -711,6 +722,7 @@ export function renderHeroView({
         ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></div><div class="boss-combat-report-feed">${combatLog}</div></div>`
         : '<div class="boss-log-empty">El combate aún no tiene movimientos registrados.</div>'}
       </section>`;
+    bossHistoryBody.scrollTop = scrollTop;
   }
 
   box.innerHTML = `
