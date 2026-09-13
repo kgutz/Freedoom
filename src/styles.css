@@ -1846,6 +1846,12 @@
   .character-hero-art>.sprite-box .sprite-svg[data-outfit-display]{width:var(--outfit-sheet-size)!important;height:var(--outfit-sheet-size)!important;left:var(--outfit-sheet-x)!important;top:var(--outfit-sheet-y)!important}
   .outfit-full-body img[data-outfit-display]{width:var(--outfit-card-size)!important;height:var(--outfit-card-size)!important;left:var(--outfit-card-x)!important;top:var(--outfit-card-y)!important;transform:none!important}
   .hoy-face img[data-outfit-display],.habit-hero-sprite img[data-outfit-display],.inventory-outfit-card .outfit-portrait img[data-outfit-display]{position:relative;width:var(--outfit-face-size)!important;height:var(--outfit-face-size)!important;max-width:none;left:var(--outfit-face-x)!important;top:var(--outfit-face-y)!important}
+  #characterSheetBody .character-identity{align-items:flex-end;padding-bottom:14px}
+  .character-identity>div:first-child{min-width:0;flex:1}
+  #characterSheetBody .character-identity h2{font-size:22px;line-height:1.25;color:#fff0cf;overflow-wrap:anywhere}
+  #characterSheetBody .character-identity>div:first-child>span{font-size:10px;line-height:1.3;letter-spacing:.1em}
+  .character-identity-actions{align-self:flex-end}
+  #characterSheetBody .character-identity strong{font-size:10px;line-height:1.3}
   .character-hero-art .hero-intoxication-badge{left:8px;bottom:8px}
   .character-hero-art .hero-intoxication-badge b{font-size:9px}
   .character-hero-art .hero-blood-badge{left:auto;right:8px;border-color:var(--kodak);background:rgba(40,29,9,.94);color:var(--kodak);box-shadow:0 0 8px rgba(232,180,74,.4)}
