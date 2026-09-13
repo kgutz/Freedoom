@@ -561,9 +561,9 @@ describe('PvE combat rules', () => {
   it('abre el Búnker como una región independiente a partir del nivel trece', () => {
     expect(HUNT_REGIONS['dead-hours-bunker'].enemies).toBe(BUNKER_ENEMIES);
     expect(BUNKER_ENEMIES.map((enemy) => enemy.name)).toEqual([
-      'El Consumido',
-      'El Guardián Empotrado',
-      'El Titiritero',
+      'Esclavo del Humo',
+      'Centinela de Hierro',
+      'Tejedor de Horas',
     ]);
     const blocked = startHunt({
       hunt: null,

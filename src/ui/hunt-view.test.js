@@ -133,15 +133,15 @@ describe('informe de Cacería', () => {
     });
     expect(root.innerHTML).toContain('<h2>Búnker de las Horas Muertas</h2>');
     expect(root.innerHTML).toContain('hunt/dead-hours-bunker/region.webp');
-    expect(root.innerHTML).toContain('El Consumido');
-    expect(root.innerHTML).toContain('El Guardián Empotrado');
-    expect(root.innerHTML).toContain('El Titiritero');
+    expect(root.innerHTML).toContain('Esclavo del Humo');
+    expect(root.innerHTML).toContain('Centinela de Hierro');
+    expect(root.innerHTML).toContain('Tejedor de Horas');
     expect(root.innerHTML).toContain('Fácil</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>3');
     expect(root.innerHTML).toContain('Medio</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>4');
     expect(root.innerHTML).toContain('Difícil</span><i aria-hidden="true">-</i><b><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span>5');
     expect(root.innerHTML).not.toContain('Brote Engañoso');
     expect(renderHuntMonsterDetail({ document, enemyId: 'dead-hours-puppeteer' })).toBe(true);
-    expect(detailRoot.innerHTML).toContain('<h2>El Titiritero</h2>');
+    expect(detailRoot.innerHTML).toContain('<h2>Tejedor de Horas</h2>');
     expect(detailRoot.innerHTML).toContain('dead-hours-puppeteer.webp');
   });
   it('prepara el botín final como casillas visuales con icono y cantidad', () => {
