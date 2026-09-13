@@ -625,9 +625,6 @@ export function inventoryAccessMarkup(lootState) {
 
 export function renderInventoryView(document, lootState, options = {}) {
   const normalized = normalizeLootState(lootState);
-  const potions = normalizePotionState(normalized.inventory.potions);
-  const ownedPotionCount = Object.values(potions.owned)
-    .reduce((total, quantity) => total + Math.max(0, Number(quantity) || 0), 0);
   const potionItems = inventoryPotionItemsMarkup(normalized, options);
   const body = document.getElementById('inventoryBody');
   if (!body) return;
@@ -639,7 +636,7 @@ export function renderInventoryView(document, lootState, options = {}) {
       ${resourceValue('arcane-ink', normalized.economy.arcaneInks, 'TINTAS ARCANAS')}
     </section>
     <section class="inventory-section bag-potions-section">
-      <div class="inventory-section-head"><span>POCIONES</span><small>${ownedPotionCount}</small></div>
+      <div class="inventory-section-head"><span>POCIONES</span></div>
       <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
       <div class="relic-grid bag-potion-grid">${potionItems}</div>
       ${bloodPreparedNotice(normalized, options)}
@@ -664,7 +661,7 @@ export function renderCollectionView(document, lootState) {
   if (!body) return;
   body.innerHTML = `
     <section class="inventory-section collection-section bag-collection-section">
-      <div class="inventory-section-head"><span>COLECCIÓN</span><small>${Object.keys(normalized.inventory.collection).length}/?</small></div>
+      <div class="inventory-section-head"><span>COLECCIÓN</span></div>
       <p class="collection-hint">Aquí permanecen todas las reliquias que has descubierto, incluso si ya no están en tu Inventario.</p>
       <div class="relic-kind-filters" role="group" aria-label="Filtrar colección">
         <button type="button" class="active" data-relic-filter="all" aria-pressed="true">TODAS</button>

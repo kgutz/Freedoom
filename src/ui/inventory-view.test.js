@@ -326,7 +326,7 @@ describe('interfaz de inventario y botín', () => {
     renderInventoryView(document, state);
     renderCollectionView(document, state);
     expect(document.elements.inventoryBody.innerHTML).toContain('650');
-    expect(document.elements.inventoryBody.innerHTML).toContain('<span>POCIONES</span><small>3</small>');
+    expect(document.elements.inventoryBody.innerHTML).toContain('<div class="inventory-section-head"><span>POCIONES</span></div>');
     expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="fortune"');
     expect(document.elements.inventoryBody.innerHTML).toContain('data-open-potion="life"');
     expect(document.elements.inventoryBody.innerHTML).toContain('potion-inventory-quantity">x2');
@@ -334,7 +334,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.inventoryBody.innerHTML.match(/bag-potion-empty/g)).toHaveLength(2);
     expect(document.elements.inventoryBody.innerHTML.match(/data-open-potion-shop/g)).toHaveLength(2);
     expect(document.elements.inventoryBody.innerHTML).toContain('<span aria-hidden="true">+</span>');
-    expect(document.elements.collectionBody.innerHTML).toContain('<small>6/?</small>');
+    expect(document.elements.collectionBody.innerHTML).toContain('<div class="inventory-section-head"><span>COLECCIÓN</span></div>');
     expect(document.elements.collectionBody.innerHTML).toContain('aria-label="Filtrar colección"');
     expect(document.elements.collectionBody.innerHTML).toContain('FUSIONADAS');
     expect(document.elements.collectionBody.innerHTML.match(/data-open-relic=/g)).toHaveLength(6);
@@ -356,7 +356,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('aria-label="Lágrima de Espectro, MÍTICO, rango 1, Equipada"');
     expect(html).not.toContain('data-double-tap-unequip="relic_02"');
     expect(html).not.toContain('RELIQUIAS ACTIVAS');
-    expect(html).toContain('<span>COLECCIÓN</span><small>3/?</small>');
+    expect(html).toContain('<div class="inventory-section-head"><span>COLECCIÓN</span></div>');
     const collectionHtml = html.slice(html.indexOf('<div class="relic-grid">'));
     expect(collectionHtml).not.toContain('relic-card-copy');
     expect(collectionHtml).not.toContain('relic-card-meta');
@@ -609,7 +609,7 @@ describe('interfaz de inventario y botín', () => {
     renderCollectionView(document, fused);
     const inventoryHtml = document.elements.inventoryBody.innerHTML;
     const html = document.elements.collectionBody.innerHTML;
-    expect(html).toContain('<small>3/?</small>');
+    expect(html).toContain('<div class="inventory-section-head"><span>COLECCIÓN</span></div>');
     expect(html).toContain('data-open-relic="relic_01"');
     expect(html).toContain('not-owned');
     expect(html).toContain('fusion-relic');
