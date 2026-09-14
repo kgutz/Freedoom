@@ -929,7 +929,7 @@ describe('preview puro de Fusión', () => {
   it('devuelve incompatible sin inventar un resultado ni modificar la partida', () => {
     const state = unlockedState(6);
     const before = JSON.stringify(state);
-    const preview = getForgeFusionPreview(state, 'relic_03', 'relic_06');
+    const preview = getForgeFusionPreview(state, 'relic_02', 'relic_05');
     expect(preview).toMatchObject({
       ok: false, reason: 'incompatible', status: 'incompatible', resultRelic: null,
     });

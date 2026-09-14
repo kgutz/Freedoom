@@ -538,10 +538,10 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('70% ÉXITO');
     expect(document.elements.forgeBody.innerHTML).not.toContain('???');
     expect(JSON.stringify(state)).toBe(beforePreview);
-    renderFusionView(document, state, 'relic_03', 'relic_06');
+    renderFusionView(document, state, 'relic_02', 'relic_05');
     expect(document.elements.forgeBody.innerHTML).toContain('Estas reliquias no pueden fusionarse');
     expect(document.elements.forgeBody.innerHTML).not.toContain('fusion-result-preview');
-    expect(document.elements.forgeBody.innerHTML).toContain('data-fuse-relics="relic_03|relic_06" disabled');
+    expect(document.elements.forgeBody.innerHTML).toContain('data-fuse-relics="relic_02|relic_05" disabled');
     const fused = fuseRelics({
       state, leftId: 'relic_01', rightId: 'relic_02', operationId: 'ui-fusion', randomValue: 0, nowTimestamp: 10,
     });

@@ -101,8 +101,8 @@ describe('Fusión de reliquias', () => {
       image: 'relics/fusion_08_anillo_antojo_roto.webp',
     });
     expect(fusionRecipeStatus('relic_02', 'relic_05').status).toBe('incompatible');
-    expect(fusionRecipeStatus('relic_04', 'relic_06').status).toBe('incompatible');
-    expect(fusionRecipeStatus('relic_03', 'relic_06').status).toBe('incompatible');
+    expect(fusionRecipeStatus('relic_04', 'relic_06').definition.id).toBe('fusion_05');
+    expect(fusionRecipeStatus('relic_03', 'relic_06').definition.id).toBe('fusion_17');
     expect(fusionRecipeStatus('relic_01', 'relic_03')).toMatchObject({
       status: 'available', definition: { id: 'fusion_09' },
     });
@@ -110,6 +110,8 @@ describe('Fusión de reliquias', () => {
   });
 
   it.each([
+    ['fusion_05', 'relic_04', 'relic_06'],
+    ['fusion_17', 'relic_03', 'relic_06'],
     ['fusion_09', 'relic_01', 'relic_03'],
     ['fusion_10', 'relic_01', 'relic_05'],
     ['fusion_11', 'relic_01', 'relic_06'],

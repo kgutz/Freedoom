@@ -80,7 +80,9 @@ import {
 import {
   acknowledgeLootNotice,
   activateRelicConstancy,
+  activateFusionFirstHabitHealth,
   advancePeriodicManaRecovery,
+  advancePeriodicHealthRecovery,
   attemptForge,
   awardFusionAllHabitsXp,
   availableDailyEffectSources,
@@ -261,7 +263,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.46';
+const APP_VERSION='2.28.47';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -1356,6 +1358,14 @@ function recoverMana(amount){
 
 function syncPeriodicRelicMana(now=Date.now(),notify=false){
   if(!state.game?.cls) return 0;
+  const previousHealthTimer=JSON.stringify(state.inventory?.periodicEffects?.healthRecovery||null);
+  const health=advancePeriodicHealthRecovery({state,nowTimestamp:now,maxHp:heroMaxes().maxHp,currentHp:state.game.hp||0});
+  applyLootSlices(health);
+  state.game.hp=health.hp;
+  if(previousHealthTimer!==JSON.stringify(state.inventory?.periodicEffects?.healthRecovery||null)||health.hpRecovered>0){
+    scheduleSave({type:'relic:periodic-health',recovered:health.hpRecovered,ticks:health.ticks});
+  }
+  if(notify&&health.hpRecovered>0) showToast(`Colmillo · +${health.hpRecovered} Vida`,'heal');
   const previousTimer=JSON.stringify(state.inventory?.periodicEffects?.manaRecovery||null);
   const result=advancePeriodicManaRecovery({
     state,
@@ -1426,8 +1436,9 @@ function restoreRelicActivation(activationKey){
 }
 
 function awardRelicDayXp(key){
-  const sources=availableDailyEffectSources(state,'relic_06',key);
-  let amount=sources.reduce((total,source)=>total+source.value,0);
+  // Only legacy fusion synergies still award daily XP; the fang itself heals.
+  const sources=availableDailyEffectSources(state,'relic_06',key).filter(source=>source.relicId!=='relic_06');
+  let amount=0;
   sources.forEach(source=>{
     let synergyXp=0;
     if(source.relicId==='fusion_11'&&state.inventory.dailyActivations[`fusion_11:shield-used:${key}`]){
@@ -1443,7 +1454,7 @@ function awardRelicDayXp(key){
       amount+=synergyXp;
       state.inventory.dailyActivations[`${source.relicId}:synergy-xp:${key}`]=synergyXp;
     }
-    applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],source.value));
+    applyLootSlices(markDailyEffectSources(state,'relic_06',key,[source],'health-synergy-checked'));
   });
   return amount;
 }
@@ -1769,6 +1780,9 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
     if(reward.activated){
       g.bonusXp=(g.bonusXp||0)+reward.xp;
       constancyXp+=reward.xp;
+      if(reward.healthPercent>0&&g.hp>0){
+        g.hp=capHp(g.hp+Math.max(1,Math.round(heroMaxes().maxHp*reward.healthPercent/100)));
+      }
       if(reward.manaPercent>0){
         constancyMana+=recoverMana(Math.max(1,Math.round(heroMaxes().maxMp*reward.manaPercent/100)));
       }
@@ -4938,7 +4952,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         state.inventory.dailyActivations[`fusion_14:mana-used:${dayKey}`]=true;
       }
     }
-    if(result.xpDelta>0) awardFusionDailyHabitListXp(dayKey);
+    if(result.xpDelta>0){
+      const healing=activateFusionFirstHabitHealth({state,dayKey,maxHp:heroMaxes().maxHp,currentHp:state.game.hp||0});
+      applyLootSlices(healing);
+      state.game.hp=healing.hp;
+      awardFusionDailyHabitListXp(dayKey);
+    }
     if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit,dayKey,habitDate});
     const rewardTotalsAfter={
       xp:gameStats().xp,

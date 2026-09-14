@@ -147,6 +147,12 @@ function normalizeRelicRecord(id, value) {
       ingredientSnapshots.relic_05.effectValue = migratedManaValue;
     }
   }
+  // Preserve the owned fusion and ingredients; replace only the fang's old XP.
+  if (fusion && definition.ingredientIds.includes('relic_06')) {
+    const rank = ingredientSnapshots.relic_06?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
+    inheritedEffects.relic_06 = relicRankEffect('relic_06', rank);
+    if (ingredientSnapshots.relic_06) ingredientSnapshots.relic_06.effectValue = inheritedEffects.relic_06;
+  }
   const storedRank = Math.min(3, Math.max(1, Number(relic.rank) || 1));
   const snapshotRanks = Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank);
   const normalizedRank = fusion ? Math.max(storedRank, ...snapshotRanks) : storedRank;
@@ -1719,12 +1725,22 @@ export function advancePeriodicManaRecovery({
   maxMana = 0,
   currentMana = 0,
 }) {
+  return advancePeriodicRecovery({ state, nowTimestamp, maxMana, currentMana, baseRelicId: 'relic_05', timerKey: 'manaRecovery' });
+}
+
+export function advancePeriodicHealthRecovery({ state, nowTimestamp = Date.now(), maxHp = 0, currentHp = 0 }) {
+  const result = advancePeriodicRecovery({ state, nowTimestamp, maxMana: currentHp > 0 ? maxHp : 0, currentMana: currentHp, baseRelicId: 'relic_06', timerKey: 'healthRecovery' });
+  const { mana, manaRecovered, ...rest } = result;
+  return { ...rest, hp: mana, hpRecovered: manaRecovered };
+}
+
+function advancePeriodicRecovery({ state, nowTimestamp, maxMana, currentMana, baseRelicId, timerKey }) {
   const normalized = normalizeLootState(state);
-  const sources = equippedRelicEffectSources(normalized, 'relic_05');
+  const sources = equippedRelicEffectSources(normalized, baseRelicId);
   const safeNow = Math.max(0, Number(nowTimestamp) || 0);
   const safeMaxMana = Math.max(0, Number(maxMana) || 0);
   const safeCurrentMana = Math.max(0, Math.min(safeMaxMana, Number(currentMana) || 0));
-  const previous = objectOf(normalized.inventory.periodicEffects?.manaRecovery);
+  const previous = objectOf(normalized.inventory.periodicEffects?.[timerKey]);
   const timers = { ...objectOf(previous.timers) };
   const activeIds = new Set(sources.map((source) => source.relicId));
 
@@ -1811,7 +1827,7 @@ export function advancePeriodicManaRecovery({
     };
   }
 
-  normalized.inventory.periodicEffects.manaRecovery = { timers };
+  normalized.inventory.periodicEffects[timerKey] = { timers };
   return {
     ...normalized,
     mana,
@@ -1933,9 +1949,10 @@ export function activateRelicConstancy({
 }) {
   const normalized = syncRelicConstancy(state, { cycleId, outcomes, nowTimestamp });
   const activationKey = constancyActivationKey(cycleId);
-  if (!bossWon) return { ...normalized, activated: false, xp: 0, manaPercent: 0, activationKey };
+  if (!bossWon) return { ...normalized, activated: false, xp: 0, manaPercent: 0, healthPercent: 0, activationKey };
   let xp = 0;
   let manaPercent = 0;
+  let healthPercent = 0;
   const activations = [];
   if (normalized.inventory.constancy.charge >= 6) {
     for (const source of equippedRelicEffectSources(normalized, 'relic_04')) {
@@ -1967,6 +1984,7 @@ export function activateRelicConstancy({
     };
     xp += bonus;
     manaPercent += manaBonus;
+    healthPercent += Math.max(0, Number(definition.synergy.healthValues?.[relicRank]) || 0);
     activations.push(key);
   }
   if (activations.length) {
@@ -1980,6 +1998,7 @@ export function activateRelicConstancy({
     activated: activations.length > 0,
     xp,
     manaPercent,
+    healthPercent,
     activationKey,
     activations,
   };
@@ -1987,6 +2006,18 @@ export function activateRelicConstancy({
 
 export function fusionDailyKey(fusionId, effect, dayKey) {
   return `${fusionId}:${effect}:${dayKey}`;
+}
+
+export function activateFusionFirstHabitHealth({ state, dayKey, maxHp, currentHp }) {
+  const normalized = normalizeLootState(state);
+  const id = 'fusion_17';
+  if (!canActivateFusionDaily(normalized, id, 'first-habit-health', dayKey)) {
+    return { ...normalized, hp: currentHp, hpRecovered: 0 };
+  }
+  const rank = normalized.inventory.relics[id]?.rank || 1;
+  const percent = fusionDefinition(id).synergy.healthValues[rank];
+  const hp = currentHp > 0 ? Math.min(maxHp, currentHp + Math.max(1, Math.round(maxHp * percent / 100))) : currentHp;
+  return { ...markFusionDaily(normalized, id, 'first-habit-health', dayKey), hp, hpRecovered: hp - currentHp };
 }
 
 export function canActivateFusionDaily(lootState, fusionId, effect, dayKey) {

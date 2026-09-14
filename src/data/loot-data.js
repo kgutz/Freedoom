@@ -150,9 +150,9 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 5,
     name: 'Colmillo de Nicotina',
     equipmentType: 'fang',
-    effectFamily: 'experience',
+    effectFamily: 'health',
     image: 'relics/relic_06_colmillo_nicotina.webp',
-    effectLabel: 'Cada día cumplido concede XP adicional.',
+    effectLabel: 'Recupera Vida cada 30 minutos mientras está equipado.',
     affixPool: ['discipline', 'vitality', 'fortune'],
   },
   {
@@ -230,6 +230,22 @@ export const RELIC_DEFINITIONS = [
 ];
 
 export const FUSION_RELIC_DEFINITIONS = [
+  {
+    id: 'fusion_05', recipeId: 'fusion_recipe_05',
+    ingredientIds: ['relic_04', 'relic_06'],
+    name: 'Yelmo Vencedor', equipmentType: 'helmet',
+    image: 'relics/fusion_05_yelmo_vencedor.webp',
+    effectLabel: 'Hereda la XP de Constancia y la recuperación periódica de Vida. Completar la Constancia también recupera Vida inmediatamente.',
+    synergy: { type: 'constancy-health', healthValues: { 1: 10, 2: 15, 3: 20 } },
+  },
+  {
+    id: 'fusion_17', recipeId: 'fusion_recipe_17',
+    ingredientIds: ['relic_03', 'relic_06'],
+    name: 'Filo del Pulso Voraz', equipmentType: 'dagger',
+    image: 'relics/fusion_17_filo_pulso_voraz.webp',
+    effectLabel: 'Hereda la XP del primer hábito y la recuperación periódica de Vida. El primer hábito también recupera Vida inmediatamente.',
+    synergy: { type: 'first-habit-health', healthValues: { 1: 3, 2: 5, 3: 7 } },
+  },
   {
     id: 'fusion_01',
     recipeId: 'fusion_recipe_01',
@@ -317,7 +333,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Mandíbula del Pulso Ardiente',
     equipmentType: 'fang',
     image: 'relics/fusion_11_mandibula_pulso_ardiente.webp',
-    effectLabel: 'Reduce el primer daño del día y concede XP por cada día cumplido. Completar el día tras activar la protección otorga XP adicional.',
+    effectLabel: 'Reduce el primer daño del día y recupera Vida cada 30 minutos. Completar el día tras activar la protección otorga XP adicional.',
     synergy: { type: 'shielded-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -351,7 +367,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Colmillo del Espectro',
     equipmentType: 'fang',
     image: 'relics/fusion_14_colmillo_espectro.webp',
-    effectLabel: 'El primer hábito recupera Maná y cada día cumplido concede XP. Activar ambos efectos durante el mismo día otorga XP adicional.',
+    effectLabel: 'El primer hábito recupera Maná y recupera Vida cada 30 minutos. Completar el día tras recuperar Maná con el primer hábito otorga XP adicional.',
     synergy: { type: 'mana-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -375,15 +391,13 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Colmillo del Antojo Roto',
     equipmentType: 'fang',
     image: 'relics/fusion_16_colmillo_antojo_roto.webp',
-    effectLabel: 'Recupera Maná cada 30 minutos y concede XP por cada día cumplido. Recuperar Maná y completar el día otorga XP adicional.',
+    effectLabel: 'Recupera Maná y Vida cada 30 minutos. Recuperar Maná y completar el día otorga XP adicional.',
     synergy: { type: 'periodic-mana-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
 ];
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
   ['relic_02', 'relic_05'],
-  ['relic_03', 'relic_06'],
-  ['relic_04', 'relic_06'],
 ];
 
 export const ALL_RELIC_DEFINITIONS = [
@@ -399,7 +413,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_03: { 1: 2, 2: 3, 3: 4 },
   relic_04: { 1: 20, 2: 30, 3: 45 },
   relic_05: { 1: 30, 2: 45, 3: 60 },
-  relic_06: { 1: 10, 2: 15, 3: 20 },
+  relic_06: { 1: 30, 2: 45, 3: 60 },
   relic_07: { 1: 3, 2: 5, 3: 7 },
   relic_08: { 1: 2, 2: 3, 3: 5 },
   relic_09: { 1: 20, 2: 30, 3: 40 },

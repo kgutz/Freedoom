@@ -484,6 +484,7 @@ function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
   if (relicId === 'relic_02') return `${value}% MANÁ MÁX.`;
   if (relicId === 'relic_05') return `${value}% MANÁ/DÍA`;
+  if (relicId === 'relic_06') return `${value}% VIDA/DÍA`;
   const definition = relicDefinition(relicId);
   if (definition?.valueUnit) return `${value} ${definition.valueUnit}`;
   return `${value} XP`;
@@ -522,7 +523,7 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_11') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. Cada día cumplido concede ${value('relic_06')} XP y suma ${synergy} XP si la protección se activó ese día.`;
+    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si la protección se activó ese día.`;
   }
   if (definition.id === 'fusion_12') {
     const synergy = definition.synergy?.values?.[relic.rank] || 2;
@@ -535,7 +536,7 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_14') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. Cada día cumplido concede ${value('relic_06')} XP y suma ${synergy} XP si recuperaste Maná ese día.`;
+    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
   }
   if (definition.id === 'fusion_15') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
@@ -544,10 +545,13 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_16') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Cada día cumplido concede ${value('relic_06')} XP y suma ${synergy} XP si recuperaste Maná ese día.`;
+    return `Recupera ${value('relic_05')}% del Maná máximo y ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
   }
   if (definition.id === 'fusion_05') {
-    return `La Constancia concede ${value('relic_04')} XP y cada día cumplido otorga ${value('relic_06')} XP. Alcanzar seis días cumplidos concede 25 XP adicionales.`;
+    return `La Constancia concede ${value('relic_04')} XP. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Completar la Constancia recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
+  }
+  if (definition.id === 'fusion_17') {
+    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. El primer hábito recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
   }
   return definition.effectLabel;
 }
