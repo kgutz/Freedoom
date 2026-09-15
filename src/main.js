@@ -267,7 +267,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.48';
+const APP_VERSION='2.28.49';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -297,9 +297,9 @@ const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
 const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
-)&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3','4'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
+)&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3','4','5'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
 const LOCAL_BETA_TESTER_REWARD_PREVIEW_ID=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'):'';
-const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
+const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -930,12 +930,13 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
-  if(['3','4'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID)){
+  if(['3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID)){
     const ownedFrames={...(state.game.frames?.owned||{})};
     const claimedRewards={...(state.game.betaTesterRewards?.claimed||{})};
     delete ownedFrames['welder-beta'];
     delete claimedRewards['pioneer-beta-reward-v3'];
     delete claimedRewards['pioneer-beta-reward-v4'];
+    delete claimedRewards['pioneer-beta-reward-v5'];
     state.game={
       ...state.game,
       frame:'original',
@@ -2937,11 +2938,11 @@ function showPendingBetaTesterReward(){
   const frameStatus=document.getElementById('betaTesterRewardFrameStatus');
   if(frameStatus) frameStatus.textContent=isThirdReward?'FONDO CONMEMORATIVO · TIEMPO LIMITADO':'FONDO EXCLUSIVO';
   if(heroImage) heroImage.src=`outfits/${isThirdReward?'welder-beta':'beta-tester'}/${state.game?.cls||'knight'}_happy.webp`;
-  [['betaTesterRewardCoins',reward.coins],['betaTesterRewardFibers',reward.arcaneFibers],['betaTesterRewardEnergy',reward.energy],['betaTesterRewardInks',reward.arcaneInks],['betaTesterRewardEnergyPotions',reward.energyPotions]].forEach(([id,amount])=>{
+  [['betaTesterRewardBlood',reward.bossBlood],['betaTesterRewardCoins',reward.coins],['betaTesterRewardFibers',reward.arcaneFibers],['betaTesterRewardEnergy',reward.energy],['betaTesterRewardInks',reward.arcaneInks],['betaTesterRewardEnergyPotions',reward.energyPotions]].forEach(([id,amount])=>{
     const item=document.getElementById(id);
     if(item) item.hidden=!Number(amount);
   });
-  [['betaTesterRewardCoinsAmount',reward.coins],['betaTesterRewardFibersAmount',reward.arcaneFibers],['betaTesterRewardEnergyAmount',reward.energy],['betaTesterRewardInksAmount',reward.arcaneInks],['betaTesterRewardEnergyPotionsAmount',reward.energyPotions]].forEach(([id,amount])=>{
+  [['betaTesterRewardBloodAmount',reward.bossBlood],['betaTesterRewardCoinsAmount',reward.coins],['betaTesterRewardFibersAmount',reward.arcaneFibers],['betaTesterRewardEnergyAmount',reward.energy],['betaTesterRewardInksAmount',reward.arcaneInks],['betaTesterRewardEnergyPotionsAmount',reward.energyPotions]].forEach(([id,amount])=>{
     const value=document.getElementById(id); if(value) value.textContent=`+${Number(amount)||0}`;
   });
   document.querySelector('.beta-tester-reward-items')?.classList.toggle('beta-tester-reward-items--third',!grantsFrame);
