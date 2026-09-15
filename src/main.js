@@ -81,6 +81,10 @@ import {
   acknowledgeLootNotice,
   activateRelicConstancy,
   activateFusionFirstHabitHealth,
+  chargeFirstHabitVampirism,
+  collarFirstHabitFusionBonuses,
+  equippedHuntEffects,
+  consumeHuntCharges,
   advancePeriodicManaRecovery,
   advancePeriodicHealthRecovery,
   attemptForge,
@@ -263,7 +267,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.47';
+const APP_VERSION='2.28.48';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -3782,6 +3786,7 @@ function confirmHuntStart(){
     currentMana:state.game.mp,
     maxMana:stats.maxMp,
     relicBonuses:relicBonuses(),
+    relicEffects:equippedHuntEffects(state),
     autoUsePotions,
     fortune,
     nowTimestamp
@@ -3791,6 +3796,7 @@ function confirmHuntStart(){
     return;
   }
   state.game.hunt=result.hunt;
+  applyLootSlices(consumeHuntCharges(state));
   scheduleSave({type:'hunt:start',regionId,difficultyId});
   renderHunt();
   const durationMinutes=huntDifficultyForRegion(regionId,difficultyId).durationMinutes;
@@ -4003,6 +4009,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
     state.game.hunt=result.hunt;
     state.inventory={...(state.inventory||{}),potions:result.potions};
+    if(result.report.fusion16ManaRecovered){
+      state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
+    }
     state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
     state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
     state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
@@ -4743,9 +4752,6 @@ function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
     coins+=amount;
     notices.push(`+${amount} 🪙 ${label}`);
   };
-  if(habit.difficulty==='hard'){
-    grantCoins('relic_08',availableDailyEffectSources(state,'relic_08',dayKey),'Ojo de la Duda');
-  }
   const daily=state.habits.items.filter(item=>item.active!==false&&item.frequency==='daily');
   const periodKey=`d:${dayKey}`;
   const completed=daily.filter(item=>(Number(state.habits.entries[`${item.id}|${periodKey}`]?.count)||0)>=Math.max(1,Number(item.target)||1));
@@ -4835,8 +4841,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const dayKey=habitDayKey();
     const daggerXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
-    const collarXpSources=availableDailyEffectSources(state,'relic_07',dayKey);
-    const habitXpSources=[...daggerXpSources,...collarXpSources];
+    const collarSources=availableDailyEffectSources(state,'relic_07',dayKey);
+    const habitXpSources=daggerXpSources;
     const relicHabitXpActive=habitXpSources.length>0;
     const protectionSources=availableDailyEffectSources(state,'relic_01',dayKey);
     const firstHabitManaSources=availableDailyEffectSources(state,'relic_02',dayKey);
@@ -4851,16 +4857,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         canActivateFusionDaily(state,'fusion_12','first-habit-mana-xp',dayKey)){
       firstHabitFusionBonuses.push(['fusion_12','first-habit-mana-xp',fusionSynergyXp('fusion_12')]);
     }
-    if(collarXpSources.some(source=>source.relicId==='fusion_06')&&
-        protectionSources.some(source=>source.relicId==='fusion_06')&&
-        canActivateFusionDaily(state,'fusion_06','protected-first-habit-xp',dayKey)){
-      firstHabitFusionBonuses.push(['fusion_06','protected-first-habit-xp',fusionSynergyXp('fusion_06')]);
-    }
-    if(collarXpSources.some(source=>source.relicId==='fusion_07')&&
-        firstHabitManaSources.some(source=>source.relicId==='fusion_07')&&
-        canActivateFusionDaily(state,'fusion_07','first-habit-mana-xp',dayKey)){
-      firstHabitFusionBonuses.push(['fusion_07','first-habit-mana-xp',fusionSynergyXp('fusion_07')]);
-    }
+    firstHabitFusionBonuses.push(...collarFirstHabitFusionBonuses(state,dayKey));
     const firstHabitFusionXp=firstHabitFusionBonuses.reduce((total,item)=>total+item[2],0);
     const flatRewardBonus=relicBonuses().habitXpBonus+
       (relicHabitXpActive
@@ -4926,17 +4923,16 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
     }
-    if(result.xpDelta>0&&relicHabitXpActive){
+    if(result.xpDelta>0){
       if(daggerXpSources.length){
         applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,daggerXpSources,true));
       }
-      if(collarXpSources.length){
-        applyLootSlices(markDailyEffectSources(state,'relic_07',dayKey,collarXpSources,true));
-      }
+      if(collarSources.length) applyLootSlices(markDailyEffectSources(state,'relic_07',dayKey,collarSources,true));
       firstHabitFusionBonuses.forEach(([fusionId,effect,value])=>{
         applyLootSlices(markFusionDaily(state,fusionId,effect,dayKey,value));
       });
     }
+    if(result.becameCompleted) applyLootSlices(chargeFirstHabitVampirism(state,dayKey));
     const manaSources=result.xpDelta>0
       ? availableDailyEffectSources(state,'relic_02',dayKey)
       : [];

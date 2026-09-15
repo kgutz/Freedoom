@@ -83,9 +83,9 @@ describe('interfaz de inventario y botín', () => {
     renderRelicReplacementPicker(document, state, 'relic_03');
     const picker = document.elements.relicReplacementBody.innerHTML;
     expect(picker).toContain('forge-picker-relic rarity-legendary');
-    expect(picker).toMatch(/data-replace-relic="relic_02" disabled aria-disabled="true"/);
+    expect(picker).not.toMatch(/data-replace-relic="relic_02" disabled aria-disabled="true"/);
     expect(picker).not.toMatch(/data-replace-relic="relic_07" disabled/);
-    expect(picker).toContain('INCOMPATIBLE');
+    expect(picker).not.toContain('INCOMPATIBLE');
   });
   it('mantiene oculto el outfit beta hasta aceptar la recompensa de pionero', () => {
     const document = fakeDocument();
@@ -405,10 +405,10 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(5);
     expect(renderRelicDetail(document, state, 'relic_05')).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
-    expect(html).toContain('Recupera Maná cada 30 minutos mientras está equipado.');
-    expect(html).toContain('30% MANÁ/DÍA');
+    expect(html).toContain('Recupera Maná por enemigo derrotado en Cacería mientras está equipado.');
+    expect(html).toContain('5% MANÁ/ENEMIGO');
     expect(html).not.toContain('hasta alcanzar su porcentaje diario');
-    expect(html).toContain('Valor actual: 30% MANÁ/DÍA');
+    expect(html).toContain('Valor actual: 5% MANÁ/ENEMIGO');
   });
 
   it.each([
@@ -651,14 +651,14 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('data-open-forge-relic="relic_03"');
   });
 
-  it('presenta el Collar como una mejora diaria de la Daga', () => {
+  it('presenta el Collar con Vampirismo', () => {
     const document = fakeDocument();
     const state = lootWithBosses(7);
     renderRelicDetail(document, state, 'relic_07');
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('PODER +3');
-    expect(html).toContain('El primer hábito completado del día concede XP adicional');
-    expect(html).toContain('Valor actual: 3 XP');
+    expect(html).toContain('Vampirismo: cura un porcentaje del daño real');
+    expect(html).toContain('Valor actual: 3 % vampirismo');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

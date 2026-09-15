@@ -286,6 +286,7 @@ export function normalizeHuntState(
     }))
     : [];
   return {
+    relicCarry: { vampirism: safeInteger(hunt?.relicCarry?.vampirism) % 100, health: safeInteger(hunt?.relicCarry?.health) % 100, mana: safeInteger(hunt?.relicCarry?.mana) % 100 },
     energyDay,
     dayStartTime: normalizedDayStartTime,
     baseEnergy,
@@ -550,10 +551,15 @@ export function simulatePveCombat({
   maxRounds = 30,
   autoUsePotions = false,
   potions: suppliedPotions,
+  relicEffects = {},
+  relicCarry = {},
 }) {
-  let heroHp = Math.max(0, Number.isFinite(startingHeroHp) ? startingHeroHp : hero.maxHp);
-  let heroMana = Math.max(0, Number.isFinite(startingHeroMana) ? startingHeroMana : hero.maxMana);
+  let heroHp = clamp(Number.isFinite(startingHeroHp) ? startingHeroHp : hero.maxHp, 0, hero.maxHp);
+  let heroMana = clamp(Number.isFinite(startingHeroMana) ? startingHeroMana : hero.maxMana, 0, hero.maxMana);
   let enemyHp = Math.max(1, enemy.maxHp);
+  let vampirismCarry = safeInteger(relicCarry.vampirism) % 100;
+  let petrificationPending = false;
+  let vampirismRecovered = 0;
   const potions = normalizePotionState(suppliedPotions);
   const potionUses = [];
   const roundDetails = [];
@@ -587,11 +593,25 @@ export function simulatePveCombat({
       roll,
     });
     heroMana = Math.max(0, heroMana - manaSpent);
-    enemyHp = Math.max(0, enemyHp - heroHit.damage);
+    const realDamage = Math.min(enemyHp, heroHit.damage);
+    enemyHp = Math.max(0, enemyHp - realDamage);
+    // Integer hundredths carry across encounters; overhealing cannot be banked.
+    const rawHealing = vampirismCarry + realDamage * safeInteger(relicEffects.vampirism);
+    const healing = Math.min(hero.maxHp - heroHp, Math.floor(rawHealing / 100));
+    heroHp += healing;
+    vampirismRecovered += healing;
+    vampirismCarry = heroHp >= hero.maxHp ? 0 : rawHealing % 100;
+    if (round === 1) petrificationPending = safeInteger(relicEffects.petrification) > 0;
     log.push({ round, actor: 'hero', ...heroHit, manaSpent, remainingMana: heroMana, remainingHp: enemyHp });
     let damageTaken = 0;
     if (enemyHp > 0) {
       const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
+      if (petrificationPending && !enemyHit.dodged) {
+        const originalDamage = enemyHit.damage;
+        enemyHit.damage = Math.floor(originalDamage * (100 - clamp(safeInteger(relicEffects.petrification), 0, 100)) / 100);
+        enemyHit.petrificationPrevented = originalDamage - enemyHit.damage;
+        petrificationPending = false;
+      }
       damageTaken = enemyHit.damage;
       heroHp = Math.max(0, heroHp - enemyHit.damage);
       log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
@@ -615,7 +635,7 @@ export function simulatePveCombat({
     }
     roundDetails.push({
       round,
-      damageDealt: heroHit.damage,
+      damageDealt: realDamage,
       damageTaken,
       heroHp,
       heroMana,
@@ -623,6 +643,8 @@ export function simulatePveCombat({
     });
   }
   return {
+    vampirismCarry,
+    vampirismRecovered,
     won: enemyHp <= 0 && heroHp > 0,
     heroHp,
     heroMana,
@@ -667,7 +689,7 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, relicEffects = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const region = huntRegion(regionId);
   if (!region) return { ok: false, reason: 'unknown-region', hunt: normalized };
@@ -712,6 +734,11 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       dayKey: String(fortune.dayKey),
       bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
     } : null,
+    relicEffects: {
+      ...Object.fromEntries(['vampirism', 'petrification', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus']
+        .map(key => [key, safeInteger(relicEffects[key])])),
+      manaFusion16: relicEffects.manaFusion16 === true,
+    },
     relicBonuses: {
       physicalAttack: safeInteger(relicBonuses.physicalAttack),
       magicAttack: safeInteger(relicBonuses.magicAttack),
@@ -750,6 +777,9 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     : hero.maxMana;
   let potions = normalizePotionState(suppliedPotions);
   const encounters = [];
+  const effects = active.relicEffects || {};
+  const carry = { ...normalized.relicCarry };
+  let fusion16ManaRecovered = false;
   for (const [enemyIndex, definition] of region.enemies.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
     const heroHpAtStart = currentHp;
@@ -761,9 +791,12 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       heroMana: currentMana,
       attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical',
       roll: random,
+      relicEffects: { ...effects, vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0) },
+      relicCarry: carry,
       autoUsePotions: Boolean(active.autoUsePotions),
       potions,
     });
+    carry.vampirism = result.vampirismCarry;
     potions = result.potions;
     currentHp = result.heroHp;
     currentMana = result.heroMana;
@@ -779,7 +812,22 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
         currentMana + Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaPercent),
       ));
     }
+    // Apply the new rewards after the unchanged between-encounter recovery.
+    const relicRecovery = { hp: 0, mana: 0 };
+    if (result.won) {
+      const hpRaw = carry.health + hero.maxHp * safeInteger(effects.victoryHealth);
+      const manaRaw = carry.mana + hero.maxMana * safeInteger(effects.victoryMana);
+      relicRecovery.hp = Math.min(hero.maxHp - currentHp, Math.floor(hpRaw / 100));
+      relicRecovery.mana = Math.min(hero.maxMana - currentMana, Math.floor(manaRaw / 100));
+      currentHp += relicRecovery.hp;
+      currentMana += relicRecovery.mana;
+      carry.health = currentHp >= hero.maxHp ? 0 : hpRaw % 100;
+      carry.mana = currentMana >= hero.maxMana ? 0 : manaRaw % 100;
+      if (effects.manaFusion16 && relicRecovery.mana > 0) fusion16ManaRecovered = true;
+    }
     encounters.push({
+      relicRecovery,
+      vampirismRecovered: result.vampirismRecovered,
       id: enemy.id,
       role: enemy.role,
       name: enemy.name,
@@ -881,6 +929,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     mana: Math.max(0, currentMana - heroManaBeforeRecovery),
   };
   const report = {
+    fusion16ManaRecovered,
     id: active.id,
     regionId: active.regionId,
     difficultyId: difficulty.id,
@@ -906,5 +955,5 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       remaining: Math.max(0, safeInteger(fortuneBonusRemaining) - fortuneGold),
     } : null,
   };
-  return { ok: true, reason: null, report, potions, hunt: { ...normalized, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
+  return { ok: true, reason: null, report, potions, hunt: { ...normalized, relicCarry: carry, active: null, lastReport: report, history: [...normalized.history, report].slice(-20) } };
 }

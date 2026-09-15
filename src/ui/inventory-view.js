@@ -483,8 +483,8 @@ export function nextFusionSelection({ leftId = null, rightId = null } = {}, reli
 function relicEffectValue(relicId, value) {
   if (relicId === 'relic_01') return `${value} HP`;
   if (relicId === 'relic_02') return `${value}% MANÁ MÁX.`;
-  if (relicId === 'relic_05') return `${value}% MANÁ/DÍA`;
-  if (relicId === 'relic_06') return `${value}% VIDA/DÍA`;
+  if (relicId === 'relic_05') return `${value}% MANÁ/ENEMIGO`;
+  if (relicId === 'relic_06') return `${value}% VIDA/ENEMIGO`;
   const definition = relicDefinition(relicId);
   if (definition?.valueUnit) return `${value} ${definition.valueUnit}`;
   return `${value} XP`;
@@ -499,19 +499,19 @@ function fusionEffectDescription(definition, relic) {
     return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. La Constancia concede ${value('relic_04')} XP y alcanzar seis días cumplidos otorga 20 XP adicionales.`;
   }
   if (definition.id === 'fusion_04') {
-    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
+    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
   }
   if (definition.id === 'fusion_06') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. El primer hábito concede ${value('relic_07')} XP y suma ${synergy} XP si la protección seguía disponible.`;
+    return `Reduce ${value('relic_01')} HP del primer daño. Vampirismo: ${value('relic_07')}%. El primer hábito suma ${synergy} XP si la protección seguía disponible.`;
   }
   if (definition.id === 'fusion_07') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo y concede ${value('relic_07')} XP. Activar ambos efectos suma ${synergy} XP.`;
+    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo y hereda ${value('relic_07')}% de Vampirismo. Ese primer hábito suma ${synergy} XP.`;
   }
   if (definition.id === 'fusion_08') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    return `El primer hábito concede ${value('relic_07')} XP. Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Completar todos los hábitos diarios otorga ${synergy} XP adicionales.`;
+    return `Vampirismo: ${value('relic_07')}%. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga ${synergy} XP adicionales.`;
   }
   if (definition.id === 'fusion_09') {
     const synergy = definition.synergy?.values?.[relic.rank] || 2;
@@ -519,11 +519,11 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_10') {
     const mana = definition.synergy?.values?.[relic.rank] || 3;
-    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. Activar la protección recupera ${mana}% de Maná adicional.`;
+    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Activar la protección recupera ${mana}% de Maná adicional.`;
   }
   if (definition.id === 'fusion_11') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si la protección se activó ese día.`;
+    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si la protección se activó ese día.`;
   }
   if (definition.id === 'fusion_12') {
     const synergy = definition.synergy?.values?.[relic.rank] || 2;
@@ -536,22 +536,26 @@ function fusionEffectDescription(definition, relic) {
   }
   if (definition.id === 'fusion_14') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
+    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
   }
   if (definition.id === 'fusion_15') {
     const synergy = definition.synergy?.values?.[relic.rank] || 10;
     const mana = definition.synergy?.manaValues?.[relic.rank] || 5;
-    return `Recupera ${value('relic_05')}% del Maná máximo al día, repartido cada 30 min. La Constancia concede ${value('relic_04')} XP y, al completarla, suma ${synergy} XP y recupera ${mana}% de Maná.`;
+    return `Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. La Constancia concede ${value('relic_04')} XP y, al completarla, suma ${synergy} XP y recupera ${mana}% de Maná.`;
   }
   if (definition.id === 'fusion_16') {
     const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Recupera ${value('relic_05')}% del Maná máximo y ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
+    return `Recupera ${value('relic_05')}% del Maná máximo y ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
   }
   if (definition.id === 'fusion_05') {
-    return `La Constancia concede ${value('relic_04')} XP. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. Completar la Constancia recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
+    return `La Constancia concede ${value('relic_04')} XP. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Completar la Constancia recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
   }
   if (definition.id === 'fusion_17') {
-    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_06')}% de la Vida máxima al día, repartido cada 30 min. El primer hábito recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
+    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. El primer hábito recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
+  }
+  if (['fusion_18', 'fusion_19'].includes(definition.id)) {
+    const base = definition.id === 'fusion_18' ? 'relic_03' : 'relic_04';
+    return `${base === 'relic_03' ? 'Primer hábito' : 'Constancia'}: ${value(base)} XP. Vampirismo: ${value('relic_07')}%. ${definition.effectLabel}`;
   }
   return definition.effectLabel;
 }

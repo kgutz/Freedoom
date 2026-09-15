@@ -115,11 +115,11 @@ describe('PvE combat rules', () => {
     expect([1, 2, 3].map(rank => relicRankEffect('relic_11', rank))).toEqual([12, 18, 25]);
   });
 
-  it('el Ojo aporta ataque físico sin alterar su magnitud ni su efecto de oro', () => {
+  it('el Ojo aporta ataque físico y Mirada petrificante por rango', () => {
     for (const rank of [1, 2, 3]) {
       expect(relicCombatBonus('relic_08', rank)).toEqual({ stat: 'physicalAttack', value: rank + 2 });
       expect(relicCombatBonuses('relic_08', rank)).toEqual([{ stat: 'physicalAttack', value: rank + 2 }]);
-      expect(relicRankEffect('relic_08', rank)).toBe([2, 3, 5][rank - 1]);
+      expect(relicRankEffect('relic_08', rank)).toBe([10, 15, 27][rank - 1]);
     }
   });
 
