@@ -33,7 +33,7 @@ function monsterCard(enemy) {
       <img src="${enemy.art}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
       <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
-    <span>${enemy.role}</span><b>${bossMedalNameLines(enemy.name).join('<br>')}</b>
+    <span>${enemy.role}</span><b>${(enemy.nameLines || bossMedalNameLines(enemy.name)).join('<br>')}</b>
   </button>`;
 }
 
@@ -54,7 +54,8 @@ export function renderHuntMonsterDetail({ document, enemyId }) {
   const root = document.getElementById('huntMonsterBody');
   if (!enemy || !root) return false;
   root.innerHTML = `<div class="hunt-monster-detail-art ${enemy.id}">
-      <img src="${enemy.art}" alt="${enemy.name}" loading="lazy" decoding="async">
+      <img src="${enemy.art}" alt="${enemy.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+      <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
     <span class="hunt-monster-detail-role">${enemy.role}</span>
     <h2>${enemy.name}</h2>
@@ -234,14 +235,16 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   </div>
   ${activeNotice}
   <section class="hunt-world-map" data-hunt-zoom-surface aria-label="Mapa de zonas de caza. Pellizca con dos dedos para ampliar.">
-    <img data-hunt-zoom-image src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
+    <img data-hunt-zoom-image src="hunt/world-map-nuncabasta.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="fields-of-mist">
-      Campos de la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
+      Campos de<br>la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
     <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="dead-hours-bunker">
-      Búnker de las Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
+      Búnker de las<br>Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>Próximamente</span></div>
+    <button type="button" class="hunt-map-zone hunt-map-zone--nuncabasta${activeRegionId === 'nuncabasta-peaks' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="nuncabasta-peaks">
+      Picos de<br>Nuncabasta${activeRegionId === 'nuncabasta-peaks' ? '<i aria-hidden="true">!</i>' : ''}
+    </button>
   </section>
   `;
 }

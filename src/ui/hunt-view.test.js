@@ -28,10 +28,19 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
 }
 
 describe('informe de Cacería', () => {
+  it('permite explorar Nuncabasta antes de desbloquear el combate', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'nuncabasta-peaks' }, innerHTML: '' };
+    renderHuntView({ document: { getElementById: () => root }, game: { cls: 'paladin', hunt: null }, stats: { lvl: 24 }, nowTimestamp: 1_000 });
+    expect(root.innerHTML).toContain('Picos de Nuncabasta');
+    expect(root.innerHTML).toContain('Alcanza el nivel 25 para iniciar esta cacería');
+    for (const id of ['filled-smile', 'sugar-twisted', 'never-enough-vendor']) expect(root.innerHTML).toContain(`data-hunt-monster="${id}"`);
+    expect(root.innerHTML).not.toContain('Ilustración pendiente');
+    expect(root.innerHTML).toContain('hunt/nuncabasta-peaks/filled-smile.webp');
+  });
   it.each([['easy', 'Fácil'], ['medium', 'Medio'], ['hard', 'Difícil']])('muestra la dificultad guardada del informe: %s', (id, name) => {
     expect(renderReport({}, id)).toContain(`<div class="hunt-report-difficulty">Dificultad <b>${name}</b></div>`);
   });
-  it('muestra el nuevo mapa con Bruma, Búnker y una futura zona al noroeste', () => {
+  it('muestra las tres zonas sin anunciar zonas futuras', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({
       document: { getElementById: () => root },
@@ -39,14 +48,18 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt/world-map-bunker.webp');
+    expect(root.innerHTML).toContain('hunt/world-map-nuncabasta.webp');
+    expect(root.innerHTML).toContain('Campos de<br>la Bruma');
+    expect(root.innerHTML).toContain('Búnker de las<br>Horas Muertas');
+    expect(root.innerHTML).toContain('Picos de<br>Nuncabasta');
     expect(root.innerHTML).toContain('data-open-hunt-region="fields-of-mist"');
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
     expect(root.innerHTML).toContain('data-hunt-zoom-surface');
     expect(root.innerHTML).toContain('data-hunt-zoom-image');
     expect(root.innerHTML).not.toContain('🔒');
-    expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
-    expect(root.innerHTML).toContain('<span>Próximamente</span>');
+    expect(root.innerHTML).toContain('data-open-hunt-region="nuncabasta-peaks"');
+    expect(root.innerHTML).not.toContain('hunt-map-coming-soon');
+    expect(root.innerHTML).not.toContain('<span>Próximamente</span>');
   });
 
   it('señala desde el mapa dónde hay un informe pendiente y ofrece acceso directo', () => {
@@ -85,7 +98,7 @@ describe('informe de Cacería', () => {
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
     expect(root.innerHTML).toContain('class="hunt-map-zone hunt-map-zone--bunker"');
-    expect(root.innerHTML).toContain('Búnker de las Horas Muertas');
+    expect(root.innerHTML).toContain('Búnker de las<br>Horas Muertas');
     expect(root.innerHTML).not.toContain('hunt-map-zone--detailed');
     expect(root.innerHTML).not.toContain('locked');
     expect(root.innerHTML).not.toContain('Se desbloquea en el nivel 15');

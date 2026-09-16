@@ -27,6 +27,26 @@ import {
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it.each(Object.keys(HUNT_REGIONS))('conserva región, enemigos y premios al resolver %s', (regionId) => {
+    const started = startHunt({ hunt: null, regionId, difficultyId: 'easy', level: 100, nowTimestamp: 1000, seed: 42 });
+    const result = resolveHunt({ hunt: started.hunt, classId: 'sorcerer', level: 100, allocation: { power: 150, constitution: 100, defense: 50 }, nowTimestamp: 1000 + HUNT_DIFFICULTIES.easy.durationMinutes * 60000 });
+    expect(result.report.regionId).toBe(regionId);
+    expect(result.report.won).toBe(true);
+    expect(result.report.encounters.map(e => e.name)).toEqual(HUNT_REGIONS[regionId].enemies.map(e => e.name));
+    expect(result.report.rewards.xp).toBeGreaterThan(0);
+    expect(result.report.rewards.gold).toBeGreaterThan(0);
+  });
+  it.each([['easy', 25, 3], ['medium', 29, 4], ['hard', 34, 5]])('abre Nuncabasta por nivel sin aumentar materiales: %s', (difficultyId, level, energyCost) => {
+    const args = { hunt: null, regionId: 'nuncabasta-peaks', difficultyId, nowTimestamp: 1_000 };
+    expect(startHunt({ ...args, level: level - 1 })).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: level });
+    const started = startHunt({ ...args, level });
+    expect(started.ok).toBe(true);
+    expect(started.hunt.active.regionId).toBe('nuncabasta-peaks');
+    const difficulty = huntDifficultyForRegion(args.regionId, difficultyId);
+    expect(difficulty.energyCost).toBe(energyCost);
+    expect(difficulty.xp).toBeGreaterThan(huntDifficultyForRegion('dead-hours-bunker', difficultyId).xp);
+    expect(huntDropRules(args.regionId, difficultyId)).toEqual(huntDropRules('dead-hours-bunker', difficultyId));
+  });
   it('sortea cada repetición y mantiene el límite diario de dos', () => {
     const args = { rewardKey: 'repeat|d:today', target: 3 };
     const first = syncHabitRepetitionEnergy({ ...args, previousCount: 0, count: 1, roll: () => 0.09 });

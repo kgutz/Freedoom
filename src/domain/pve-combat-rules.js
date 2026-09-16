@@ -43,6 +43,12 @@ const BUNKER_ENEMY_TEMPLATES = [
   { id: 'dead-hours-puppeteer', role: 'Minijefe', name: 'Tejedor de Horas', art: 'hunt/dead-hours-bunker/dead-hours-puppeteer.webp', lore: 'Es la voluntad que respira detrás de las paredes. Se alimenta del tiempo desperdiciado y mueve a sus víctimas mediante filamentos de humo, paciente y consciente, mientras los relojes del búnker permanecen detenidos.', attributes: { strength: 11, defense: 14, dexterity: 14, power: 13, constitution: 19 } },
 ];
 
+const NUNCABASTA_ENEMY_TEMPLATES = [
+  { id: 'filled-smile', role: 'Soldado', name: 'Sonrisa Rellena', art: 'hunt/nuncabasta-peaks/filled-smile.webp', lore: 'Su cobertura de chocolate promete un bocado reconfortante. Entre las capas de dulce de leche esconde una sonrisa que se abre cuando te acercas: aquí el hambre también tiene dientes.', attributes: { strength: 9, defense: 10, dexterity: 10, power: 7, constitution: 12 } },
+  { id: 'sugar-twisted', role: 'Líder', name: 'Retorcido del Azúcar', art: 'hunt/nuncabasta-peaks/sugar-twisted.webp', lore: 'Roscas de churro se retuercen bajo una costra de azúcar. Sus brazos rezuman chocolate y cierran el paso a quienes intentan abandonar el festín.', attributes: { strength: 12, defense: 14, dexterity: 14, power: 10, constitution: 18 } },
+  { id: 'never-enough-vendor', role: 'Minijefe', name: 'Quiosquero del Nuncabasta', nameLines: ['Quiosquero del', 'Nuncabasta'], art: 'hunt/nuncabasta-peaks/never-enough-vendor.webp', lore: 'Bajo una corona mordida, este rey hechicero gobierna un festín que nunca sacia. Su capa oculta las promesas rotas del quiosco; con su cetro y sus anillos de caramelo, convierte cada antojo en otra vuelta a su trampa.', attributes: { strength: 14, defense: 18, dexterity: 18, power: 17, constitution: 25 } },
+];
+
 function enemyStatsFromAttributes(definition, attributes = definition.attributes) {
   const attackType = attributes.power > attributes.strength ? 'magic' : 'physical';
   return {
@@ -66,6 +72,27 @@ export const HUNT_DIFFICULTIES = Object.freeze({
   hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.5, fiberAmount: [1, 1], inkChance: 0.5, inkAmount: [1, 1] }),
 });
 export const HUNT_REGIONS = Object.freeze({
+  'nuncabasta-peaks': Object.freeze({
+    id: 'nuncabasta-peaks',
+    name: 'Picos de Nuncabasta',
+    description: 'Entre montañas de glaseado, una cálida confitería promete saciar tu hambre. Cada bocado alimenta el antojo y te aleja de la salida.',
+    art: 'hunt/nuncabasta-peaks/region.webp',
+    enemies: Object.freeze(NUNCABASTA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy)))),
+    difficultyMinLevels: Object.freeze({ easy: 25, medium: 29, hard: 34 }),
+    difficultyOverrides: Object.freeze({
+      easy: Object.freeze({ multiplier: 1.75, attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85 }), xp: 36, gold: Object.freeze([34, 53]) }),
+      medium: Object.freeze({ multiplier: 1.925, attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, defense: 1.3 }), xp: 56, gold: Object.freeze([53, 81]) }),
+      hard: Object.freeze({ multiplier: 2.225, attributeMultipliers: Object.freeze({ strength: 0.85, power: 0.85, constitution: 1.15 }), xp: 84, gold: Object.freeze([84, 126]) }),
+    }),
+    rewardMultiplier: 1,
+    dropOverrides: Object.freeze({
+      easy: Object.freeze({ fiberChance: 0.35, fiberAmount: Object.freeze([1, 1]), inkChance: 0.35, inkAmount: Object.freeze([1, 1]) }),
+      medium: Object.freeze({ fiberChance: 0.45, fiberAmount: Object.freeze([1, 1]), inkChance: 0.45, inkAmount: Object.freeze([1, 1]) }),
+      hard: Object.freeze({ fiberChance: 0.6, fiberAmount: Object.freeze([1, 2]), inkChance: 0.6, inkAmount: Object.freeze([1, 2]) }),
+    }),
+    bossBloodChance: 0.15,
+    victoryMessage: 'El festín de Nuncabasta pierde su encanto',
+  }),
   'fields-of-mist': Object.freeze({
     id: 'fields-of-mist',
     name: 'Campos de la Bruma',

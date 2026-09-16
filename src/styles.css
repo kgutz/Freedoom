@@ -2214,7 +2214,7 @@
   .shop-city-zone span{font-size:11px;line-height:1.3}
   .hunt-world-map .hunt-map-zone,.hunt-world-map .hunt-map-zone--detailed strong{font-size:11px;line-height:1.3}
   .hunt-world-map .hunt-map-zone{max-width:calc(100% - 16px);white-space:nowrap}
-  .hunt-world-map .hunt-map-zone--bunker{left:50%;width:max-content;box-sizing:border-box}
+  .hunt-world-map .hunt-map-zone--bunker{left:67%;top:63%;width:max-content;box-sizing:border-box}
   .hunt-map-coming-soon span{font-size:11px;line-height:1.3;white-space:nowrap}
   .shop-return-character{font-size:11px;line-height:1.3}
   :root{--shop-type-title:22px;--shop-type-subtitle:18px;--shop-type-copy:14px;--shop-type-help:12px}
@@ -2294,6 +2294,23 @@
   .outfit-selector-modal--shop .arcane-market-demand small{font-size:9px;line-height:1.4}
   .outfit-selector-modal--shop .arcane-market-demand b{font-size:11px;line-height:1.4}
   .outfit-selector-modal--shop .arcane-market-demand p{font-size:10px;line-height:1.45}
+
+  .hunt-world-map .hunt-map-zone--nuncabasta{left:calc(29% - 10px);top:32%;bottom:auto;transform:translate(-50%,-50%);max-width:44%;box-sizing:border-box}
+  .hunt-world-map .hunt-map-zone{min-height:44px;border:0;border-radius:6px;background:transparent;color:#f0e7ce;box-shadow:none;text-shadow:-1px 0 1px #050705,1px 0 1px #050705,0 -1px 1px #050705,0 1px 1px #050705,0 2px 3px #050705,0 0 6px #050705,0 0 10px #050705}
+  .hunt-world-map .hunt-map-zone:hover,.hunt-world-map .hunt-map-zone.active{background:transparent;color:#fff3cc;box-shadow:none}
+  .hunt-world-map .hunt-map-zone.report-ready{color:var(--kodak);box-shadow:none}
+  .hunt-world-map .hunt-map-zone:focus-visible{outline:2px solid #e8b44a;outline-offset:1px}
+  .hunt-world-map .hunt-map-zone{font-size:12px;line-height:1.2;text-align:center}
+  .hunt-world-map .hunt-map-zone--mist{left:25%;bottom:auto;top:80%;transform:translate(-50%,-50%)}
+  .hunt-region--nuncabasta-peaks .hunt-region-art{border-color:#97647e;background:linear-gradient(155deg,#432b42,#263b4b)}
+  .hunt-region--nuncabasta-peaks .hunt-region-fallback{color:#e8b6d0}
+  .hunt-region--nuncabasta-peaks .hunt-region-fallback small{color:#a2cbdc}
+  .hunt-region--nuncabasta-peaks .hunt-monster-art{border-color:#795a71;background:radial-gradient(circle at 50% 80%,#42324d,#19151f 75%)}
+  .hunt-region--nuncabasta-peaks .hunt-monster-art img{width:78%;height:78%;object-fit:contain;object-position:center}
+  .hunt-region--nuncabasta-peaks .hunt-monster.filled-smile .hunt-monster-art img{width:70%;height:70%;transform:translateY(8%)}
+  .hunt-region--nuncabasta-peaks .hunt-monster.sugar-twisted .hunt-monster-art img{width:calc(78% + 5px);height:calc(78% + 5px);transform:translate(1px,-2.5px)}
+  .hunt-region--nuncabasta-peaks .hunt-monster.never-enough-vendor .hunt-monster-art img{width:calc(78% + 2px);height:calc(78% + 2px);transform:translateY(-1px)}
+  .hunt-region--nuncabasta-peaks .hunt-art-fallback{color:#c69db9;font-size:9px;padding:8px;box-sizing:border-box}
 
 
 
