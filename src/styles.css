@@ -1535,6 +1535,7 @@
   .character-sheet>.sheet-head{border-bottom-color:transparent}
   .character-sheet>.sheet-head::after{content:'';position:absolute;left:18px;right:18px;bottom:0;height:1px;background:var(--line);pointer-events:none}
   .blood-prepared-notice{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-left:2px solid var(--kodak);border-radius:10px;background:var(--panel2);font:400 11px/1.5 var(--font-copy);color:var(--muted);text-align:center}
+  .blood-prepared-notice + .potion-detail-frame{margin-top:13px}
   .blood-prepared-notice b{font:400 11px/1.5 var(--font-display);color:var(--kodak)}
   .blood-prepared-bonus{padding-left:12px;border-left:1px solid var(--line);white-space:nowrap}
   .bag-collection-section{border-top:0;margin-top:14px!important;padding-top:0}
@@ -2159,6 +2160,14 @@
   .hunt-round-action b,.hunt-round-resources b,
   .hunt-encounter-recovery b,.hunt-encounter-rewards .resource-value,
   .hunt-encounter-next b,.hunt-result-battle-summary b{font-size:12px;line-height:1.4}
+  .hunt-map-active-notice:not(.is-ready){grid-template-rows:auto auto;align-content:center}
+  .hunt-map-active-notice:not(.is-ready)>b{grid-row:1/3}
+  #relicDetailBody .relic-effect-row{display:block;margin-top:10px;font-size:11px;line-height:1.55}
+  #relicDetailBody .relic-inspect .relic-effect-row p,#relicDetailBody .relic-inspect .relic-affixes li p{display:inline;margin:0;font-size:11px;line-height:1.55}
+  #relicDetailBody .relic-inspect .relic-effect-name{display:inline;margin-right:.45em;color:var(--kodak);text-decoration:underline;text-underline-offset:3px;font:400 11px/1.55 var(--font-display);cursor:default;letter-spacing:0;text-align:left}
+  #relicDetailBody .relic-inspect .relic-affixes li{display:block;font-size:11px;line-height:1.55;text-align:left}
+  .hunt-encounter-totals>span{min-width:0;text-align:center}
+  .hunt-encounter-totals small{display:flex;align-items:center;justify-content:center;min-height:2.8em;width:100%;font-size:10px;line-height:1.4;text-align:center}
   .hunt-round-action,.hunt-round-resources{grid-template-columns:minmax(0,1fr) auto;gap:10px}
   .hunt-report-enemy>strong{white-space:normal;font-size:13px;line-height:1.4}
   .hunt-result-full-report{font-size:11px}

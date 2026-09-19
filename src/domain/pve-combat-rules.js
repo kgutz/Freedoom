@@ -67,7 +67,7 @@ function enemyStatsFromAttributes(definition, attributes = definition.attributes
 export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const BUNKER_ENEMIES = Object.freeze(BUNKER_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
-  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 3, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0, inkAmount: [0, 0] }),
+  easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 1, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0, inkAmount: [0, 0] }),
   medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.25, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
   hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.5, fiberAmount: [1, 1], inkChance: 0.5, inkAmount: [1, 1] }),
 });
@@ -99,7 +99,7 @@ export const HUNT_REGIONS = Object.freeze({
     description: 'Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.',
     art: 'hunt/fields-of-mist/region.webp',
     enemies: BRUMA_ENEMIES,
-    difficultyMinLevels: Object.freeze({ easy: 3, medium: 7, hard: 12 }),
+    difficultyMinLevels: Object.freeze({ easy: 1, medium: 7, hard: 12 }),
     rewardMultiplier: 1,
     bossBloodChance: 0.1,
     victoryMessage: 'La bruma retrocede',

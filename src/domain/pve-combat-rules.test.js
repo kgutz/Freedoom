@@ -27,6 +27,17 @@ import {
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it('abre solo Bruma fácil desde nivel uno sin cambiar su balance', () => {
+    expect(startHunt({ regionId: 'fields-of-mist', difficultyId: 'easy', level: 1, nowTimestamp: 1000 })).toMatchObject({ ok: true });
+    expect(HUNT_DIFFICULTIES.easy).toMatchObject({ minLevel: 1, multiplier: 1.25, energyCost: 1, xp: 5 });
+    for (const [regionId, levels] of [
+      ['fields-of-mist', { easy: 1, medium: 7, hard: 12 }],
+      ['dead-hours-bunker', { easy: 13, medium: 17, hard: 22 }],
+      ['nuncabasta-peaks', { easy: 25, medium: 29, hard: 34 }],
+    ]) {
+      expect(HUNT_REGIONS[regionId].difficultyMinLevels).toEqual(levels);
+    }
+  });
   it.each(Object.keys(HUNT_REGIONS))('conserva región, enemigos y premios al resolver %s', (regionId) => {
     const started = startHunt({ hunt: null, regionId, difficultyId: 'easy', level: 100, nowTimestamp: 1000, seed: 42 });
     const result = resolveHunt({ hunt: started.hunt, classId: 'sorcerer', level: 100, allocation: { power: 150, constitution: 100, defense: 50 }, nowTimestamp: 1000 + HUNT_DIFFICULTIES.easy.durationMinutes * 60000 });

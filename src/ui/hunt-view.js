@@ -220,9 +220,9 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   const compactRegionName = activeRegionId === 'dead-hours-bunker' ? 'Búnker' : activeRegion?.name || 'Zona de cacería';
   const activeNoticeLabel = `${reportReady ? 'Informe pendiente' : 'Cacería en curso'} · ${activeRegion?.name || 'Zona de cacería'} · ${activeDifficulty?.name || ''}`;
   const activeNotice = hunt.active ? `<button type="button" class="hunt-map-active-notice${reportReady ? ' is-ready' : ''}" data-open-pending-hunt="${activeRegionId}" aria-label="${activeNoticeLabel}">
-    <span>${reportReady ? 'INFORME PENDIENTE' : 'CACERÍA EN CURSO'}</span>
+    <span>${reportReady ? 'INFORME PENDIENTE' : `CACERÍA EN CURSO — ${remainingLabel(hunt.active.endsAt - nowTimestamp)}`}</span>
     <strong>${compactRegionName} · ${activeDifficulty?.name || ''}</strong>
-    <small>${reportReady ? 'Expedición terminada · recoge el resultado.' : remainingLabel(hunt.active.endsAt - nowTimestamp)}</small>
+    ${reportReady ? '<small>Expedición terminada · recoge el resultado.</small>' : ''}
     <b>${reportReady ? 'RESULTADO' : 'EXPEDICIÓN'} →</b>
   </button>` : '';
   return `<div class="hunt-map-heading">

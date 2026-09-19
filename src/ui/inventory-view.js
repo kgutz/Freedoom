@@ -560,6 +560,59 @@ function fusionEffectDescription(definition, relic) {
   return definition.effectLabel;
 }
 
+function relicEffectRows(definition, relic) {
+  const names = {
+    relic_01: 'Protección', relic_02: 'Maná del hábito', relic_03: 'Experiencia del hábito',
+    relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
+    relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Reembolso de Forja',
+    relic_10: 'Sangre adicional', relic_11: 'Tres hábitos', relic_12: 'Hábitos completos',
+  };
+  const row = (name, description) => `<div class="relic-effect-row"><span class="relic-effect-name">${escapeHtml(name)}</span><p>${escapeHtml(description)}</p></div>`;
+  const inherited = definition.recipeId ? Object.entries(relic.inheritedEffects || {}) : [[definition.id, relicRankEffect(definition.id, relic.rank)]];
+  let markup = inherited.map(([id, value]) => {
+    const base = relicDefinition(id);
+    if (!base) return '';
+    const descriptions = {
+      relic_01: `Reduce ${value} HP del primer daño del día.`,
+      relic_02: `El primer hábito del día recupera ${value}% del Maná máximo.`,
+      relic_03: `El primer hábito del día otorga ${value} XP.`,
+      relic_04: `Completa 6 días consecutivos y derrota al jefe: +${value} XP.`,
+      relic_05: `Cada enemigo derrotado en Cacería recupera ${value}% del Maná máximo.`,
+      relic_06: `Cada enemigo derrotado en Cacería recupera ${value}% de la Vida máxima.`,
+      relic_07: `Cura el ${value}% del daño real de tus ataques en Cacería.`,
+      relic_08: `Tu primer ataque a cada enemigo reduce un ${value}% su siguiente golpe que conecte.`,
+    };
+    return row(names[id] || 'Efecto', descriptions[id] || `${base.effectLabel} Valor actual: ${relicEffectValue(id, value)}`);
+  }).join('');
+  if (definition.recipeId) {
+    const synergy = definition.synergy?.values?.[relic.rank];
+    const mana = definition.synergy?.manaValues?.[relic.rank];
+    const health = definition.synergy?.healthValues?.[relic.rank];
+    const bonuses = {
+      fusion_01: 'El primer hábito recupera 3 puntos porcentuales más de Maná máximo.',
+      fusion_02: 'Alcanzar seis días cumplidos otorga 20 XP adicionales.',
+      fusion_04: 'Completar todos los hábitos diarios otorga 5 XP adicionales.',
+      fusion_05: `Completar Constancia recupera además ${health}% de Vida máxima.`,
+      fusion_06: `El primer hábito suma ${synergy || 5} XP si la protección seguía disponible.`,
+      fusion_07: `El primer hábito suma ${synergy || 5} XP adicionales.`,
+      fusion_08: `Completar todos los hábitos diarios otorga ${synergy || 10} XP adicionales.`,
+      fusion_09: `El primer hábito suma ${synergy || 2} XP si la protección seguía disponible.`,
+      fusion_10: `Activar la protección recupera ${synergy || 3}% de Maná adicional.`,
+      fusion_11: `Cada día cumplido suma ${synergy || 5} XP si la protección se activó ese día.`,
+      fusion_12: `Activar ambos efectos con el primer hábito suma ${synergy || 2} XP.`,
+      fusion_13: `Completar Constancia suma ${synergy || 10} XP y recupera ${mana || 5}% de Maná.`,
+      fusion_14: `Cada día cumplido suma ${synergy || 5} XP si recuperaste Maná ese día.`,
+      fusion_15: `Completar Constancia suma ${synergy || 10} XP y recupera ${mana || 5}% de Maná.`,
+      fusion_16: `Cada día cumplido suma ${synergy || 5} XP si recuperaste Maná ese día.`,
+      fusion_17: `El primer hábito recupera además ${health}% de Vida máxima.`,
+      fusion_18: 'El primer hábito carga +1 punto porcentual de Vampirismo para el próximo enemigo de Cacería. Una vez al día, sin acumular.',
+      fusion_19: 'Completar Constancia carga +1 punto porcentual de Vampirismo para la próxima Cacería completa. Sin acumular.',
+    };
+    markup += row('Bonus de fusión', bonuses[definition.id] || fusionEffectDescription(definition, relic));
+  }
+  return markup;
+}
+
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
   const current = relicEffectValue(relicId, relicRankEffect(relicId, currentRank));
   const target = relicEffectValue(relicId, relicRankEffect(relicId, targetRank));
@@ -726,7 +779,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const affixes = relic.affixes.length
     ? relic.affixes.map((id) => {
         const affix = AFFIX_DEFINITIONS[id];
-        return `<li>${affixInfoLink(id)}<p>${escapeHtml(affix.description)}</p></li>`;
+        return `<li><span class="relic-effect-name">${escapeHtml(affix.name)}</span><p>${escapeHtml(affix.description)}</p></li>`;
       }).join('')
     : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
   const fusion = Boolean(definition.recipeId);
@@ -735,8 +788,6 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const combatMarkup = combatBonuses.length
     ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('')}</div></div>`
     : '';
-  const effect = fusion ? 0 : relicRankEffect(relicId, relic.rank);
-  const effectDescription = `${escapeHtml(definition.effectLabel)} <b>Valor actual: ${relicEffectValue(relicId, effect)}</b>`;
   const constancy = relicId === 'relic_04' || relic.inheritedEffects?.relic_04
     ? `<div class="relic-constancy" aria-label="Carga de Constancia"><span>CONSTANCIA</span><b>Carga actual: ${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b></div>`
     : '';
@@ -750,7 +801,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     </div>
     ${combatMarkup}
     ${constancy}
-    <div class="relic-effect"><span>EFECTO PRINCIPAL</span><p>${fusion ? escapeHtml(fusionEffectDescription(definition, relic)) : effectDescription}</p></div>
+    <div class="relic-effect"><span>EFECTO PRINCIPAL</span>${relicEffectRows(definition, relic)}</div>
     <div class="relic-affixes"><span>EFECTOS EXTRAS</span><ul>${affixes}</ul></div>
     <div class="relic-equip-actions">
       ${equipmentActions}

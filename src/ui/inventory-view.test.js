@@ -396,7 +396,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Yelmo de la Última Brasa');
     expect(html).toContain('CONSTANCIA');
     expect(html).toContain('Carga actual: 4/6');
-    expect(html).toContain('Valor actual: 30 XP');
+    expect(html).toContain('Completa 6 días consecutivos y derrota al jefe: +30 XP.');
     expect(html).toContain('+3 puntos porcentuales en la Forja.');
   });
 
@@ -405,10 +405,10 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(5);
     expect(renderRelicDetail(document, state, 'relic_05')).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
-    expect(html).toContain('Recupera Maná por enemigo derrotado en Cacería mientras está equipado.');
-    expect(html).toContain('5% MANÁ/ENEMIGO');
+    expect(html).toContain('Cada enemigo derrotado en Cacería recupera 5% del Maná máximo.');
+    expect(html).toContain('relic-effect-name">Maná de victoria');
     expect(html).not.toContain('hasta alcanzar su porcentaje diario');
-    expect(html).toContain('Valor actual: 5% MANÁ/ENEMIGO');
+    expect(html).not.toContain('data-relic-effect=');
   });
 
   it.each([
@@ -620,7 +620,11 @@ describe('interfaz de inventario y botín', () => {
     expect(inventoryHtml).toContain('<span>POCIONES</span>');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     const detail = document.elements.relicDetailBody.innerHTML;
-    expect(detail).toContain('Reduce 5 HP de la primera fuente de daño del día. El primer hábito recupera 8% del Maná máximo.');
+    expect(detail).toContain('Reduce 5 HP del primer daño del día.');
+    expect(detail).toContain('El primer hábito del día recupera 5% del Maná máximo.');
+    expect(detail).toContain('El primer hábito recupera 3 puntos porcentuales más de Maná máximo.');
+    expect(detail.match(/class="relic-effect-row"/g)).toHaveLength(3);
+    expect(detail).not.toContain('data-relic-effect=');
     expect(detail).not.toContain('Corazón de Hollín:');
     expect(detail).not.toContain('Lágrima de Espectro:');
   });
@@ -657,8 +661,8 @@ describe('interfaz de inventario y botín', () => {
     renderRelicDetail(document, state, 'relic_07');
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('PODER +3');
-    expect(html).toContain('Vampirismo: cura un porcentaje del daño real');
-    expect(html).toContain('Valor actual: 3 % vampirismo');
+    expect(html).toContain('relic-effect-name">Vampirismo</span>');
+    expect(html).toContain('Cura el 3% del daño real de tus ataques en Cacería.');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

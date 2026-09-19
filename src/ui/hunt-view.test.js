@@ -128,7 +128,7 @@ describe('informe de Cacería', () => {
       stats: { lvl: 14 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 3');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 1');
     expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 7');
     expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 12');
     expect(root.innerHTML).toContain('<span class="hunt-difficulty-main"><span>Fácil</span><i aria-hidden="true">-</i><b>');

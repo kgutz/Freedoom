@@ -267,7 +267,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.50';
+const APP_VERSION='2.28.51';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -879,7 +879,7 @@ function renderGraf(){
     records:state.days
   });
   document.getElementById('chartHint').textContent=isControlledMode(state.config)
-    ? 'Cada barra muestra el consumo de ese día. Rojo indica que esa semana superó el máximo compartido.'
+    ? 'Verde: días confirmados sin fumar o días permitidos cerrados sin consumo. Dorado: consumo en días permitidos dentro del máximo semanal. Rojo: fumaste en un día no permitido o superaste el máximo semanal compartido. Los puntos indican días pendientes o en curso.'
     : isSmokeFreeMode(state.config)
       ? 'Verde: días confirmados sin fumar. Rojo: días en los que fumaste. Los puntos permanecen pendientes.'
       : 'La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.';
