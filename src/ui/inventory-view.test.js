@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fuseRelics, grantBossRewards, shopOffers } from '../domain/loot-rules.js';
-import { RARITIES } from '../data/loot-data.js';
+import { RARITIES, fusionDefinition, relicRankEffect } from '../data/loot-data.js';
 import {
   defusionResultMarkup,
   fusionResultMarkup,
@@ -24,6 +24,7 @@ import {
   renderRelicReplacementPicker,
   renderShopView,
   resourceIcon,
+  relicArt,
 } from './inventory-view.js';
 
 function lootWithBosses(count, source = 'retroactive') {
@@ -43,6 +44,72 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it.each(['fusion_26','fusion_27','fusion_28','fusion_29','fusion_30','fusion_31'])('%s presenta arte, límites y herencias R1/2/3', id => {
+    const recipe=fusionDefinition(id);
+    for (const rank of [1,2,3]) {
+      const document=fakeDocument(), state=lootWithBosses(9);
+      state.economy.coins=10000; state.economy.bossBlood=100;
+      for(const base of recipe.ingredientIds) state.inventory.relics[base].rank=rank;
+      const fused=fuseRelics({state,leftId:recipe.ingredientIds[0],rightId:'relic_09',operationId:'ui-malla',randomValue:0});
+      expect(fused.ok).toBe(true);
+      renderRelicDetail(document,fused,id);
+      const html=document.elements.relicDetailBody.innerHTML;
+      expect(html).toContain(recipe.name);
+      expect(html).toContain(recipe.image);
+      expect(html).toContain('Escamas protectoras');
+      expect(html).toContain(`${relicRankEffect('relic_09',rank)}%`);
+      if (['fusion_28', 'fusion_31'].includes(id)) {
+        const baseId = id === 'fusion_28' ? 'relic_09' : 'relic_07';
+        const before = fused.inventory.relics[id].inheritedEffects[baseId];
+        expect(html).toContain(`del ${before}% al ${before + recipe.synergy.values[rank]}%`);
+      } else expect(html).toContain(`${recipe.synergy.values[rank]}`);
+      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(3);
+      expect(html).not.toContain('data-relic-effect-info');
+      if(['fusion_26','fusion_28'].includes(id)) expect(html).toContain('Sin carga preparada');
+      expect(fusionResultMarkup(fused)).toContain(recipe.image);
+    }
+  });
+  it.each(['fusion_20','fusion_21','fusion_22','fusion_23','fusion_24','fusion_25'])('%s muestra arte, herencias y bonus para los tres rangos', id => {
+    const recipe = fusionDefinition(id);
+    for (const rank of [1,2,3]) {
+      const document = fakeDocument();
+      const state = lootWithBosses(9);
+      state.economy.coins = 10000; state.economy.bossBlood = 100;
+      for (const base of recipe.ingredientIds) state.inventory.relics[base].rank = rank;
+      const fused = fuseRelics({ state, leftId: recipe.ingredientIds[0], rightId:'relic_08', operationId:'ui-eye', randomValue:0 });
+      expect(fused.ok).toBe(true);
+      renderRelicDetail(document, fused, id);
+      const html = document.elements.relicDetailBody.innerHTML;
+      expect(html).toContain(recipe.name);
+      expect(html).toContain(recipe.image);
+      expect(html).toContain('Mirada petrificante');
+      expect(html).toContain(`${relicRankEffect('relic_08',rank)}%`);
+      expect(html).toContain('Bonus de fusión');
+      if (['fusion_20', 'fusion_22', 'fusion_25'].includes(id)) {
+        const baseId = id === 'fusion_25' ? 'relic_07' : 'relic_08';
+        const before = fused.inventory.relics[id].inheritedEffects[baseId];
+        expect(html).toContain(`del ${before}% al ${before + recipe.synergy.values[rank]}%`);
+      } else expect(html).toContain(`${recipe.synergy.values[rank]}`);
+      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(3);
+      if (['fusion_20','fusion_22'].includes(id)) expect(html).toContain('Sin carga preparada');
+    }
+  });
+  it.each(['fusion_18', 'fusion_19'])('conserva selector localizado de imagen y marco independiente en %s', id => {
+    const html = relicArt({ id, name: 'Fusión', image: `relics/${id}.png`, ingredientIds: ['relic_03', 'relic_07'] });
+    expect(html).toContain(`class="relic-art relic-art--fusion relic-art--${id}"`);
+    expect(html).toContain(`<img src="relics/${id}.png"`);
+    expect(html).not.toContain('transform:');
+  });
+  it.each([[1, 5], [2, 8], [3, 12]])('Malla muestra reducción de Cacería de rango %i, no reembolso', (rank, percent) => {
+    const document = fakeDocument();
+    const state = lootWithBosses(9);
+    state.inventory.relics.relic_09.rank = rank;
+    renderRelicDetail(document, state, 'relic_09');
+    const html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('Escamas protectoras');
+    expect(html).toContain(`Reduce un ${percent}% el daño recibido en Cacería. No reduce a cero un golpe con daño.`);
+    expect(html).not.toMatch(/Reembolso|recupera una parte del oro/);
+  });
   it('recuerda la sangre preparada sin existencias y solo para el jefe actual', () => {
     const document = fakeDocument();
     const state = lootWithBosses(3);
@@ -396,7 +463,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Yelmo de la Última Brasa');
     expect(html).toContain('CONSTANCIA');
     expect(html).toContain('Carga actual: 4/6');
-    expect(html).toContain('Completa 6 días consecutivos y derrota al jefe: +30 XP.');
+    expect(html).toContain('Gana 30 XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; el progreso se pierde al desequipar.');
     expect(html).toContain('+3 puntos porcentuales en la Forja.');
   });
 
@@ -405,10 +472,10 @@ describe('interfaz de inventario y botín', () => {
     const state = lootWithBosses(5);
     expect(renderRelicDetail(document, state, 'relic_05')).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
-    expect(html).toContain('Cada enemigo derrotado en Cacería recupera 5% del Maná máximo.');
-    expect(html).toContain('relic-effect-name">Maná de victoria');
+    expect(html).toContain('Recupera 5% del Maná máximo por enemigo derrotado en Cacería.');
+    expect(html).toContain('>Maná de victoria</button>');
     expect(html).not.toContain('hasta alcanzar su porcentaje diario');
-    expect(html).not.toContain('data-relic-effect=');
+    expect(html).toContain('aria-haspopup="dialog"');
   });
 
   it.each([
@@ -529,9 +596,11 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
-    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 HP de la primera fuente de daño del día. El primer hábito recupera 10% del Maná máximo.');
-    expect(document.elements.forgeBody.innerHTML).toContain('POTENCIA HEREDADA');
-    expect(document.elements.forgeBody.innerHTML).toContain('7 HP · 7% MANÁ MÁX.');
+    expect(document.elements.forgeBody.innerHTML).toContain('Reduce 7 de daño de la primera fuente del día.');
+    expect(document.elements.forgeBody.innerHTML).toContain('Recupera 7% del Maná máximo con el primer hábito con XP del día.');
+    expect(document.elements.forgeBody.innerHTML).toContain('Con el primer hábito que te dé XP del día, recuperas un 3% extra del Maná máximo.');
+    expect(document.elements.forgeBody.innerHTML).not.toContain('POTENCIA HEREDADA');
+    expect(document.elements.forgeBody.innerHTML.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(3);
     expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
@@ -620,11 +689,11 @@ describe('interfaz de inventario y botín', () => {
     expect(inventoryHtml).toContain('<span>POCIONES</span>');
     expect(renderRelicDetail(document, fused, 'fusion_01')).toBe(true);
     const detail = document.elements.relicDetailBody.innerHTML;
-    expect(detail).toContain('Reduce 5 HP del primer daño del día.');
-    expect(detail).toContain('El primer hábito del día recupera 5% del Maná máximo.');
-    expect(detail).toContain('El primer hábito recupera 3 puntos porcentuales más de Maná máximo.');
-    expect(detail.match(/class="relic-effect-row"/g)).toHaveLength(3);
-    expect(detail).not.toContain('data-relic-effect=');
+    expect(detail).toContain('Reduce 5 de daño de la primera fuente del día.');
+    expect(detail).toContain('Recupera 5% del Maná máximo con el primer hábito con XP del día.');
+    expect(detail).toContain('Con el primer hábito que te dé XP del día, recuperas un 3% extra del Maná máximo.');
+    expect(detail.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(3);
+    expect(detail).toContain('aria-haspopup="dialog"');
     expect(detail).not.toContain('Corazón de Hollín:');
     expect(detail).not.toContain('Lágrima de Espectro:');
   });
@@ -661,8 +730,8 @@ describe('interfaz de inventario y botín', () => {
     renderRelicDetail(document, state, 'relic_07');
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('PODER +3');
-    expect(html).toContain('relic-effect-name">Vampirismo</span>');
-    expect(html).toContain('Cura el 3% del daño real de tus ataques en Cacería.');
+    expect(html).toContain('>Vampirismo</button>');
+    expect(html).toContain('Recupera Vida igual al 3% del daño real de tus ataques en Cacería.');
   });
 
   it('hace obligatoria la entrada al inventario en la migración retroactiva', () => {

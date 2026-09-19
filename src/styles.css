@@ -1200,7 +1200,7 @@
   .boss-medal.won .boss-medal-art{border-color:var(--kodak);box-shadow:0 0 0 2px rgba(232,180,74,.14),0 4px 12px rgba(0,0,0,.4)}
   .boss-medal.fighting .boss-medal-art{border-color:var(--kodak);opacity:.48;filter:grayscale(.35)}
   .boss-medal-art img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
-  .boss-medal-open[data-boss-file="boss_06_gusano.webp"] .boss-medal-art img{transform:translateX(9%) scale(1.18)}
+  .boss-medal-open[data-boss-file="boss_06_gusano.webp"] .boss-medal-art img{transform:translateX(20%) scale(1.4)}
   .boss-medal-name{min-height:28px;font-size:9px;line-height:1.35;color:var(--text)}
   .boss-medal-name strong{display:block;margin-top:3px;color:var(--kodak);font-size:8px;letter-spacing:.08em}
   .boss-medal.locked .boss-medal-name{color:var(--muted);letter-spacing:.08em}
@@ -1485,16 +1485,31 @@
   .relic-art>.relic-charge-indicator .relic-charge-dot{width:5px;height:5px;opacity:.5}
   .relic-art img{filter:brightness(1.08) contrast(1.06) drop-shadow(0 1px 1px rgba(0,0,0,.34))}
   .relic-art--relic_01 img{width:calc(100% + 9px);height:calc(100% + 9px);max-width:none;transform:translate(-1px,-5px)}
-  .relic-art--relic_03 img,.relic-art--fusion_04 img{width:calc(100% - 7px);height:calc(100% - 7px)}
-  .relic-art--relic_04 img{width:calc(100% - 2px);height:calc(100% - 2px);transform:translateY(-3px)}
-  .relic-art--fusion_02 img{transform:translateY(-2px)}
-  .relic-art--relic_05 img{width:calc(100% + 3px);height:calc(100% + 3px);max-width:none;transform:translate(-3px,-1px)}
-  .relic-art--relic_06 img{width:calc(100% - 5px);height:calc(100% - 5px);transform:translateX(2px)}
+  .relic-art--relic_03>img{width:100%;height:100%}
+  .relic-art--fusion_04 img{width:calc(100% - 7px);height:calc(100% - 7px)}
+  .relic-art--relic_04 img{width:104%;height:104%;max-width:none;transform:translateY(-3px)}
+  .relic-art--fusion_02 img{width:104%;height:104%;max-width:none;transform:translateY(-2px)}
+  .relic-art--relic_05 img{width:calc(104% + 3px);height:calc(104% + 3px);max-width:none;transform:translate(-3px,-1px)}
+  .relic-art--relic_06 img{width:100%;height:100%;transform:translateX(2px)}
   .relic-art--relic_08 img{width:calc(100% - 5px);height:calc(100% - 5px)}
   .relic-art--relic_10 img{width:calc(100% - 2px);height:calc(100% - 2px)}
   .relic-art--relic_12 img{width:calc(100% - 3px);height:calc(100% - 3px);transform:translateY(-1px)}
   .relic-art--relic_10 img{transform:translateY(-2px)}
   .relic-art--fusion_01 img{transform:translateY(-4px)}
+  /* Catalog optical corrections affect only drawings; frames/backgrounds stay fixed. */
+  .relic-art--fusion_18>img{width:78%;height:78%;object-fit:contain;object-position:center}
+  .relic-art--fusion_19>img{width:86%;height:86%;object-fit:contain;object-position:center}
+  .relic-art--fusion_10>img{width:105%;height:105%;max-width:none;object-fit:contain;object-position:center}
+  .relic-art--fusion_12>img,.relic-art--fusion_14>img,.relic-art--fusion_27>img{width:96%;height:96%;object-fit:contain;object-position:center}
+  .relic-art--fusion_26>img,.relic-art--fusion_28>img{width:92%;height:92%;object-fit:contain;object-position:center}
+  .relic-art--fusion_28>img{transform:translateX(-2px)}
+  .relic-art--fusion_29>img{width:90%;height:90%;object-fit:contain;object-position:center}
+  .relic-art--fusion_30>img{width:86%;height:86%;object-fit:contain;object-position:center}
+  .relic-art--fusion_25>img,.relic-art--fusion_31>img{width:80%;height:80%;object-fit:contain;object-position:center}
+  .relic-art--fusion_21>img,.relic-art--fusion_23>img{width:82%;height:82%;object-fit:contain;object-position:center}
+  .relic-art--fusion_24>img{width:84%;height:84%;object-fit:contain;object-position:center}
+  .relic-art--fusion_20>img,.relic-art--fusion_22>img{width:88%;height:88%;object-fit:contain;object-position:center}
+  .relic-art--fusion_17>img{width:94%;height:94%;object-fit:contain;object-position:center}
   .relic-art--fusion{position:relative;isolation:isolate;background:#17242a;box-shadow:inset 0 0 0 1px rgba(158,225,232,.44),inset 0 0 18px rgba(95,205,217,.38)}
   .relic-art--fusion:before{content:'';position:absolute;z-index:0;inset:-48%;background:conic-gradient(from 0deg,#2ee6da 0 12%,#265b72 20%,#9b4fc5 37%,#3a2059 51%,#f0b84a 68%,#9a4c22 82%,#2ee6da 100%);animation:fused-relic-spin 4.2s linear infinite}
   .relic-art--fusion:after{content:'';position:absolute;z-index:1;inset:5px;border-radius:inherit;background:radial-gradient(circle at 50% 45%,rgba(56,83,91,.12) 15%,rgba(12,18,21,.58) 100%);box-shadow:inset 0 0 12px rgba(94,225,228,.35);pointer-events:none}
@@ -2163,8 +2178,27 @@
   .hunt-map-active-notice:not(.is-ready){grid-template-rows:auto auto;align-content:center}
   .hunt-map-active-notice:not(.is-ready)>b{grid-row:1/3}
   #relicDetailBody .relic-effect-row{display:block;margin-top:10px;font-size:11px;line-height:1.55}
+  #forgeBody .relic-effect-row{display:block;margin-top:10px;font:400 11px/1.55 var(--font-copy);text-align:left}
+  #forgeBody .relic-effect-row p{display:inline;margin:0;font:inherit;color:var(--muted)}
+  #forgeBody .relic-effect-row .relic-effect-name{display:inline;margin-right:.45em;color:var(--kodak);text-decoration:underline;text-underline-offset:3px;font:inherit;letter-spacing:0}
+  .relic-effect-row abbr{text-decoration:none;cursor:inherit;white-space:nowrap}
+  .relic-effect-controls{display:flex;flex-wrap:wrap;align-items:center;gap:0 5px;margin-top:7px;min-width:0}
+  .relic-effect-item{display:inline-flex;align-items:baseline;gap:0;max-width:100%;min-width:0}
+  .relic-effect-comma,.relic-effect-conjunction{color:var(--kodak);font:400 12px/1.5 var(--font-copy)}
+  .relic-effect-conjunction{padding-right:5px}
+  .relic-effect-item:has(.relic-effect-comma) .relic-effect-link{padding-right:0}
+  .relic-effect-controls .relic-effect-link{display:inline-block;min-height:32px;max-width:100%;padding:5px 2px;font:400 12px/1.5 var(--font-copy);white-space:normal;overflow-wrap:anywhere;text-align:left;border-radius:4px;text-decoration:underline;text-underline-offset:3px;color:var(--kodak);background:transparent}
+  .relic-effect-controls .relic-effect-link:hover{background:rgba(232,180,74,.1)}
+  .relic-effect-controls .relic-effect-link:focus-visible{outline:2px solid var(--kodak);outline-offset:1px;background:rgba(232,180,74,.1)}
+  .relic-effect-dialog{box-sizing:border-box;margin:auto;width:calc(100% - 32px);max-width:370px;max-height:calc(100dvh - 40px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--line);border-radius:18px;padding:22px;background:var(--panel);color:var(--text);box-shadow:0 18px 60px #0009;text-align:center}
+  .relic-effect-dialog::backdrop{background:rgba(0,0,0,.65)}
+  .relic-effect-dialog h3{margin:10px 0;color:var(--kodak);font:400 18px/1.5 var(--font-display);overflow-wrap:anywhere}
+  .relic-effect-dialog p{font:400 14px/1.6 var(--font-copy);margin:0 0 20px;overflow-wrap:anywhere}
+  .relic-effect-dialog button{width:100%;min-height:44px;border:0;border-radius:10px;background:var(--kodak);color:#1a1408;font:400 12px/1.4 var(--font-display);cursor:pointer}
+  .relic-effect-dialog button:focus-visible{outline:2px solid var(--kodak);outline-offset:3px}
+  .fusion-preview-main-effects,.fusion-preview-extra{grid-column:1/-1;min-width:0}
   #relicDetailBody .relic-inspect .relic-effect-row p,#relicDetailBody .relic-inspect .relic-affixes li p{display:inline;margin:0;font-size:11px;line-height:1.55}
-  #relicDetailBody .relic-inspect .relic-effect-name{display:inline;margin-right:.45em;color:var(--kodak);text-decoration:underline;text-underline-offset:3px;font:400 11px/1.55 var(--font-display);cursor:default;letter-spacing:0;text-align:left}
+  #relicDetailBody .relic-inspect .relic-effect-name{display:inline;margin-right:.45em;color:var(--kodak);text-decoration:underline;text-underline-offset:3px;font:400 11px/1.55 var(--font-copy);cursor:default;letter-spacing:0;text-align:left}
   #relicDetailBody .relic-inspect .relic-affixes li{display:block;font-size:11px;line-height:1.55;text-align:left}
   .hunt-encounter-totals>span{min-width:0;text-align:center}
   .hunt-encounter-totals small{display:flex;align-items:center;justify-content:center;min-height:2.8em;width:100%;font-size:10px;line-height:1.4;text-align:center}

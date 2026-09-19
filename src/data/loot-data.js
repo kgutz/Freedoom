@@ -185,11 +185,11 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 8,
     name: 'Malla de Escamas de Brea',
     equipmentType: 'armor',
-    effectFamily: 'forge',
+    effectFamily: 'hunt-damage-reduction',
     image: 'relics/relic_09_malla_escamas_brea.webp',
-    effectLabel: 'Cuando falla una mejora en la Forja, recupera una parte del oro invertido.',
+    effectLabel: 'Escamas protectoras: reduce todo el daño recibido durante Cacería mientras está equipada.',
     affixPool: ['fortune', 'regeneration', 'vitality'],
-    valueUnit: '%',
+    valueUnit: '% reducción en Cacería',
   },
   {
     id: 'relic_10',
@@ -230,6 +230,78 @@ export const RELIC_DEFINITIONS = [
 ];
 
 export const FUSION_RELIC_DEFINITIONS = [
+  {
+    id: 'fusion_26', recipeId: 'fusion_recipe_26', ingredientIds: ['relic_02', 'relic_09'],
+    name: 'Manto de la Lluvia Olvidada', equipmentType: 'armor', image: 'relics/fusion_26_manto_lluvia_olvidada.webp',
+    effectLabel: 'Hereda Maná del primer hábito y Escamas protectoras. El primer hábito prepara una reserva que evita un punto adicional por golpe en la próxima Cacería, sin bajar de uno.',
+    synergy: { type: 'first-habit-armor-reserve', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_27', recipeId: 'fusion_recipe_27', ingredientIds: ['relic_03', 'relic_09'],
+    name: 'Hoja del Nido Enlutado', equipmentType: 'dagger', image: 'relics/fusion_27_hoja_nido_enlutado.webp',
+    effectLabel: 'Hereda XP del primer hábito y Escamas protectoras. Vencer a un enemigo tras evitar al menos 5 de daño con Escamas concede XP adicional.',
+    synergy: { type: 'armor-survival-xp', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_28', recipeId: 'fusion_recipe_28', ingredientIds: ['relic_04', 'relic_09'],
+    name: 'Yelmo del Cielo Carbonizado', equipmentType: 'helmet', image: 'relics/fusion_28_yelmo_cielo_carbonizado.webp',
+    effectLabel: 'Hereda Constancia y Escamas protectoras. Completar Constancia refuerza Escamas durante la próxima Cacería. Una carga, sin acumular; se pierde al desequipar.',
+    synergy: { type: 'constancy-armor', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_29', recipeId: 'fusion_recipe_29', ingredientIds: ['relic_05', 'relic_09'],
+    name: 'Redoma de la Lluvia Cautiva', equipmentType: 'vessel', image: 'relics/fusion_29_redoma_lluvia_cautiva.webp',
+    effectLabel: 'Hereda Maná de victoria y Escamas protectoras. Convierte el 20% del daño evitado por Escamas en Maná, con un límite por enemigo.',
+    synergy: { type: 'armor-mana', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_30', recipeId: 'fusion_recipe_30', ingredientIds: ['relic_06', 'relic_09'],
+    name: 'Colmillo de la Raíz Acorazada', equipmentType: 'fang', image: 'relics/fusion_30_colmillo_raiz_acorazada.webp',
+    effectLabel: 'Hereda Vida de victoria y Escamas protectoras. Convierte el 15% del daño evitado por Escamas en Vida, con un límite por enemigo y sin resucitar.',
+    synergy: { type: 'armor-health', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_31', recipeId: 'fusion_recipe_31', ingredientIds: ['relic_07', 'relic_09'],
+    name: 'Collar del Rastreador de Brea', equipmentType: 'collar', image: 'relics/fusion_31_collar_rastreador_brea.webp',
+    effectLabel: 'Hereda Vampirismo y Escamas protectoras. Tras evitar 5 de daño con Escamas, aumenta Vampirismo durante el resto del combate contra ese enemigo.',
+    synergy: { type: 'armor-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_20', recipeId: 'fusion_recipe_20', ingredientIds: ['relic_02', 'relic_08'],
+    name: 'Ojo del Recuerdo Velado', equipmentType: 'eye', image: 'relics/fusion_20_ojo_recuerdo_velado.webp',
+    effectLabel: 'Hereda Maná del primer hábito y Mirada petrificante. El primer hábito del día carga una mejora para la primera Mirada de la próxima Cacería. Una carga, no acumulable; se pierde al desequipar.',
+    synergy: { type: 'first-habit-petrification', values: { 1: 2, 2: 3, 3: 5 } },
+  },
+  {
+    id: 'fusion_21', recipeId: 'fusion_recipe_21', ingredientIds: ['relic_03', 'relic_08'],
+    name: 'Aguijón de la Duda Atrapada', equipmentType: 'dagger', image: 'relics/fusion_21_aguijon_duda_atrapada.webp',
+    effectLabel: 'Hereda XP del primer hábito y Mirada petrificante. La primera Mirada que reduce un golpe otorga XP adicional, una vez por Cacería.',
+    synergy: { type: 'petrification-xp', values: { 1: 2, 2: 3, 3: 5 } },
+  },
+  {
+    id: 'fusion_22', recipeId: 'fusion_recipe_22', ingredientIds: ['relic_04', 'relic_08'],
+    name: 'Yelmo del Centinela Inmóvil', equipmentType: 'helmet', image: 'relics/fusion_22_yelmo_centinela_inmovil.webp',
+    effectLabel: 'Hereda Constancia y Mirada petrificante. Completar Constancia carga una mejora de Mirada contra cada enemigo de la próxima Cacería. Una carga, no acumulable; se pierde al desequipar.',
+    synergy: { type: 'constancy-petrification', values: { 1: 5, 2: 7, 3: 10 } },
+  },
+  {
+    id: 'fusion_23', recipeId: 'fusion_recipe_23', ingredientIds: ['relic_05', 'relic_08'],
+    name: 'Ampolla de la Tentación Vigilada', equipmentType: 'vessel', image: 'relics/fusion_23_ampolla_tentacion_vigilada.webp',
+    effectLabel: 'Hereda Maná de victoria y Mirada petrificante. Cuando Mirada reduce un golpe, recupera Maná inmediatamente, una vez por enemigo.',
+    synergy: { type: 'petrification-mana', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_24', recipeId: 'fusion_recipe_24', ingredientIds: ['relic_06', 'relic_08'],
+    name: 'Colmillo de la Duda Ponzoñosa', equipmentType: 'fang', image: 'relics/fusion_24_colmillo_duda_ponzonosa.webp',
+    effectLabel: 'Hereda Vida de victoria y Mirada petrificante. Cuando Mirada reduce un golpe, recupera Vida inmediatamente, una vez por enemigo y sin resucitar.',
+    synergy: { type: 'petrification-health', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_25', recipeId: 'fusion_recipe_25', ingredientIds: ['relic_07', 'relic_08'],
+    name: 'Collar del Acecho Silencioso', equipmentType: 'collar', image: 'relics/fusion_25_collar_acecho_silencioso.webp',
+    effectLabel: 'Hereda Vampirismo y Mirada petrificante. Tras reducir un golpe con Mirada, el siguiente ataque que cause daño real al mismo enemigo obtiene Vampirismo adicional. Una vez por enemigo, sin acumular.',
+    synergy: { type: 'petrification-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
   {
     id: 'fusion_18', recipeId: 'fusion_recipe_18',
     ingredientIds: ['relic_03', 'relic_07'],
@@ -415,6 +487,9 @@ export const FUSION_RELIC_DEFINITIONS = [
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
   ['relic_02', 'relic_05'],
+  ['relic_01', 'relic_08'],
+  ['relic_01', 'relic_09'],
+  ['relic_08', 'relic_09'],
 ];
 
 export const ALL_RELIC_DEFINITIONS = [
@@ -433,7 +508,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_06: { 1: 5, 2: 8, 3: 13 },
   relic_07: { 1: 3, 2: 5, 3: 8 },
   relic_08: { 1: 10, 2: 15, 3: 27 },
-  relic_09: { 1: 20, 2: 30, 3: 40 },
+  relic_09: { 1: 5, 2: 8, 3: 12 },
   relic_10: { 1: 10, 2: 15, 3: 20 },
   relic_11: { 1: 12, 2: 18, 3: 25 },
   relic_12: { 1: 5, 2: 8, 3: 12 },

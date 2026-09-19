@@ -788,7 +788,7 @@ describe('equipamiento y bonus derivados', () => {
     });
   });
 
-  it('la Malla devuelve oro únicamente cuando falla una mejora', () => {
+  it('la Malla ya no devuelve oro cuando falla una mejora', () => {
     const raw = emptyLootState();
     raw.economy.coins = 100;
     raw.economy.bossBlood = 5;
@@ -804,8 +804,9 @@ describe('equipamiento y bonus derivados', () => {
     });
     expect(failed.success).toBe(false);
     expect(failed.spentCoins).toBe(50);
-    expect(failed.coinsRefunded).toBe(10);
-    expect(failed.economy.coins).toBe(60);
+    expect(failed.coinsRefunded).toBe(0);
+    expect(failed.economy.coins).toBe(50);
+    expect(failed.economy.transactions.some(t => t.type === 'forge_relic_refund')).toBe(false);
   });
 
   it('la Calavera puede conceder una Sangre adicional en la recompensa semanal', () => {

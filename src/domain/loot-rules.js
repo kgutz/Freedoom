@@ -138,7 +138,9 @@ function normalizeRelicRecord(id, value) {
       }),
   );
   // Recompute changed main effects from ingredient ranks; historical XP is untouched.
-  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08']) {
+  // Discard obsolete/injected armor snapshots on recipes without this ingredient.
+  if (!fusion || !definition.ingredientIds.includes('relic_09')) delete inheritedEffects.relic_09;
+  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09']) {
     if (!fusion || !definition.ingredientIds.includes(baseId)) continue;
     const rank = ingredientSnapshots[baseId]?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
     inheritedEffects[baseId] = relicRankEffect(baseId, rank);
@@ -317,6 +319,10 @@ export function normalizeLootState(state = {}) {
       huntCharges: {
         fusion_18: Boolean(relics.fusion_18) && inventory.huntCharges?.fusion_18 === true,
         fusion_19: Boolean(relics.fusion_19) && inventory.huntCharges?.fusion_19 === true,
+        fusion_20: equipped.includes('fusion_20') && inventory.huntCharges?.fusion_20 === true,
+        fusion_22: equipped.includes('fusion_22') && inventory.huntCharges?.fusion_22 === true,
+        fusion_26: equipped.includes('fusion_26') && inventory.huntCharges?.fusion_26 === true,
+        fusion_28: equipped.includes('fusion_28') && inventory.huntCharges?.fusion_28 === true,
       },
       potions: normalizePotionState(inventory.potions),
       constancy: {
@@ -1460,6 +1466,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
   if (!preview.ok) return { ...normalized, ok: false, ...preview };
   const wasEquipped = normalized.inventory.equipped.includes(relicId);
   const losesConstancy = wasEquipped && relicProvidesConstancy(normalized, relicId);
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   const restoredRelics = {};
   preview.ingredientIds.forEach((ingredientId) => {
     const snapshot = preview.relic.ingredientSnapshots[ingredientId];
@@ -1625,6 +1632,7 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const hasConstancySource = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(replacedRelicId)) normalized.inventory.huntCharges[replacedRelicId] = false;
   if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1655,6 +1663,7 @@ export function unequipRelic(lootState, relicId, options = {}) {
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => id !== relicId,
   );
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   if (removesConstancySource) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1725,9 +1734,12 @@ export function chargeFirstHabitVampirism(state, dayKey) {
   const firstHabitKey = `hunt-charge:first-habit:${dayKey}`;
   if (normalized.inventory.dailyActivations[firstHabitKey]) return normalized;
   normalized.inventory.dailyActivations[firstHabitKey] = true;
-  if (!canActivateFusionDaily(normalized, 'fusion_18', 'first-habit-vampirism', dayKey)) return normalized;
-  normalized.inventory.huntCharges.fusion_18 = true;
-  return markFusionDaily(normalized, 'fusion_18', 'first-habit-vampirism', dayKey, true);
+  for (const [id, effect] of [['fusion_18', 'first-habit-vampirism'], ['fusion_20', 'first-habit-petrification'], ['fusion_26', 'first-habit-armor-reserve']]) {
+    if (!canActivateFusionDaily(normalized, id, effect, dayKey)) continue;
+    normalized.inventory.huntCharges[id] = true;
+    normalized.forge.fusion.dailyActivations[fusionDailyKey(id, effect, dayKey)] = true;
+  }
+  return normalized;
 }
 
 export function collarFirstHabitFusionBonuses(state, dayKey) {
@@ -1744,8 +1756,23 @@ export function equippedHuntEffects(state) {
   const normalized = normalizeLootState(state);
   const sum = id => equippedRelicEffectSources(normalized, id).reduce((total, source) => total + source.value, 0);
   const charged = id => normalized.inventory.equipped.includes(id) && normalized.inventory.huntCharges[id];
+  const synergy = id => normalized.inventory.equipped.includes(id)
+    ? fusionDefinition(id).synergy.values[normalized.inventory.relics[id].rank] : 0;
   return {
+    petrificationFirstBonus: charged('fusion_20') ? synergy('fusion_20') : 0,
+    armorReserve: charged('fusion_26') ? synergy('fusion_26') : 0,
+    armorHuntBonus: charged('fusion_28') ? synergy('fusion_28') : 0,
+    armorXp: synergy('fusion_27'),
+    armorManaCap: synergy('fusion_29'),
+    armorHealthCap: synergy('fusion_30'),
+    armorVampirism: synergy('fusion_31'),
+    petrificationHuntBonus: charged('fusion_22') ? synergy('fusion_22') : 0,
+    petrificationXp: synergy('fusion_21'),
+    petrificationMana: synergy('fusion_23'),
+    petrificationHealth: synergy('fusion_24'),
+    petrificationVampirism: synergy('fusion_25'),
     vampirism: sum('relic_07'), petrification: sum('relic_08'),
+    damageReduction: sum('relic_09'),
     victoryHealth: sum('relic_06'), victoryMana: sum('relic_05'),
     encounterBonus: charged('fusion_18') ? 1 : 0,
     huntBonus: charged('fusion_19') ? 1 : 0,
@@ -1755,7 +1782,7 @@ export function equippedHuntEffects(state) {
 
 export function consumeHuntCharges(state) {
   const normalized = normalizeLootState(state);
-  for (const id of ['fusion_18', 'fusion_19']) {
+  for (const id of ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28']) {
     if (normalized.inventory.equipped.includes(id)) normalized.inventory.huntCharges[id] = false;
   }
   return normalized;
@@ -1888,6 +1915,8 @@ export function activateRelicConstancy({
         type: 'constancy', cycleId, relicId: source.relicId, xp: source.value, at: nowTimestamp,
       };
       if (source.relicId === 'fusion_19') normalized.inventory.huntCharges.fusion_19 = true;
+      if (source.relicId === 'fusion_22') normalized.inventory.huntCharges.fusion_22 = true;
+      if (source.relicId === 'fusion_28') normalized.inventory.huntCharges.fusion_28 = true;
       xp += source.value;
       activations.push(key);
     }
@@ -2068,11 +2097,9 @@ export function attemptForge({
   const success = Math.max(0, Math.min(0.999999999, resolvedRandomValue)) <
     preview.finalProbability / 100;
   const bossBloodSpent = success ? preview.bloodRequired : 0;
-  const refundRate = success ? 0 : Math.min(100, equippedRelicEffectSources(
-    normalized,
-    'relic_09',
-  ).reduce((total, source) => total + source.value, 0));
-  const coinsRefunded = success ? 0 : Math.floor(preview.cost * refundRate / 100);
+  // Kept as zero for consumers of historical forge result shapes. No new refund.
+  const refundRate = 0;
+  const coinsRefunded = 0;
   if (success) {
     normalized.economy.bossBlood = Math.max(
       0,
@@ -2085,7 +2112,6 @@ export function attemptForge({
     delete normalized.forge.attempts[preview.attemptKey];
   } else {
     normalized.forge.attempts[preview.attemptKey] = preview.failures + 1;
-    normalized.economy.coins += coinsRefunded;
   }
   const nextPreview = success ? null : forgePreview(normalized, relicId);
   const historyEntry = {
@@ -2124,17 +2150,6 @@ export function attemptForge({
     success,
     at: nowTimestamp,
   });
-  if (coinsRefunded > 0) {
-    normalized.economy.transactions.push({
-      id: `forge:${operationId}:relic-refund`,
-      type: 'forge_relic_refund',
-      relicId,
-      sourceRelicId: 'relic_09',
-      coins: coinsRefunded,
-      refundRate,
-      at: nowTimestamp,
-    });
-  }
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   return {
     ...normalized,

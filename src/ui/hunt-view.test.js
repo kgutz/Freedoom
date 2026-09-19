@@ -28,6 +28,15 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
 }
 
 describe('informe de Cacería', () => {
+  it('explica los bonus de Escamas sin repetirlos como recompensas adicionales', () => {
+    const html=renderReport({xp:12,gold:10},'easy', {
+      encounters:[{name:'Enemigo',role:'Soldado',won:true,rounds:3,damageDealt:40,damageTaken:20,heroHp:30,heroMana:10,rewards:{xp:12,gold:10},armorReserveUsed:2,armorManaRecovered:3,armorHealthRecovered:1,armorXp:2,armorVampirismUsed:3}],
+    });
+    expect(html).toContain('BONUS DE ESCAMAS');
+    expect(html).toContain('2 daño extra evitado · +3 maná · +1 vida · +2 XP · Vampirismo reforzado');
+    expect(html).toContain('12 XP');
+    expect(renderReport({})).not.toContain('BONUS DE ESCAMAS');
+  });
   it('permite explorar Nuncabasta antes de desbloquear el combate', () => {
     const root = { dataset: { huntScreen: 'region', huntRegion: 'nuncabasta-peaks' }, innerHTML: '' };
     renderHuntView({ document: { getElementById: () => root }, game: { cls: 'paladin', hunt: null }, stats: { lvl: 24 }, nowTimestamp: 1_000 });
@@ -129,8 +138,8 @@ describe('informe de Cacería', () => {
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
     expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 1');
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 7');
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 12');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 5');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 11');
     expect(root.innerHTML).toContain('<span class="hunt-difficulty-main"><span>Fácil</span><i aria-hidden="true">-</i><b>');
   });
 

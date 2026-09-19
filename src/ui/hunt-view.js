@@ -144,13 +144,25 @@ function reportMarkup(report) {
     const movesToNextEnemy = encounter.won && encounterIndex < report.encounters.length - 1;
     const nextHpPercent = resourcePercent(nextHeroHp, heroMaxHp);
     const nextManaPercent = resourcePercent(nextHeroMana, heroMaxMana);
-    const rewardsMarkup = encounter.won
+    const rewardsMarkup = encounter.won || Number(encounter.petrificationXp) > 0
       ? `<div class="hunt-encounter-rewards"><span>BOTÍN</span><b>✦ ${encounter.rewards?.xp || 0} XP</b>${resourceValue('coin', encounter.rewards?.gold || 0)}${encounter.rewards?.arcaneFibers ? resourceValue('arcane-fiber', encounter.rewards.arcaneFibers) : ''}${encounter.rewards?.arcaneInks ? resourceValue('arcane-ink', encounter.rewards.arcaneInks) : ''}${encounter.rewards?.bossBlood ? resourceValue('boss-blood', encounter.rewards.bossBlood) : ''}</div>`
       : '';
     const recoveryMarkup = recoveryAfterHp > 0 || recoveryAfterMana > 0
       ? `<div class="hunt-encounter-recovery"><span>RECUPERACIÓN</span><b>+${recoveryAfterHp} vida · +${recoveryAfterMana} maná</b></div>`
       : '';
     const roleClass = enemyRoleClass(encounter.role);
+    const miradaRecovery = [
+      Number(encounter.petrificationManaRecovered) > 0 ? `+${encounter.petrificationManaRecovered} maná` : '',
+      Number(encounter.petrificationHealthRecovered) > 0 ? `+${encounter.petrificationHealthRecovered} vida` : '',
+      Number(encounter.petrificationXp) > 0 ? `+${encounter.petrificationXp} XP` : '',
+    ].filter(Boolean).join(' · ');
+    const armorBonus = [
+      Number(encounter.armorReserveUsed) > 0 ? `${encounter.armorReserveUsed} daño extra evitado` : '',
+      Number(encounter.armorManaRecovered) > 0 ? `+${encounter.armorManaRecovered} maná` : '',
+      Number(encounter.armorHealthRecovered) > 0 ? `+${encounter.armorHealthRecovered} vida` : '',
+      Number(encounter.armorXp) > 0 ? `+${encounter.armorXp} XP` : '',
+      Number(encounter.armorVampirismUsed) > 0 ? 'Vampirismo reforzado' : '',
+    ].filter(Boolean).join(' · ');
     return `<details class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
       <summary>
         <span class="hunt-report-enemy"><strong>${encounter.name}</strong><small class="hunt-report-role ${roleClass}">${encounter.role}</small></span>
@@ -164,6 +176,8 @@ function reportMarkup(report) {
           <span><small>DAÑO RECIBIDO</small><b>${Math.max(0, Number(encounter.damageTaken) || 0)}</b></span>
         </div>
         ${recoveryMarkup}
+        ${miradaRecovery ? `<div class="hunt-encounter-recovery"><span>BONUS DE MIRADA</span><b>${miradaRecovery}</b></div>` : ''}
+        ${armorBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE ESCAMAS</span><b>${armorBonus}</b></div>` : ''}
         ${rewardsMarkup}
         <div class="hunt-encounter-next"><span>${movesToNextEnemy ? 'SIGUIENTE COMBATE' : 'FIN DE LOS COMBATES'}</span><b>${nextHpPercent}% vida · ${nextManaPercent}% maná</b></div>
       </div>

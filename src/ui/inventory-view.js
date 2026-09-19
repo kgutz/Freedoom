@@ -46,6 +46,8 @@ import {
 import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
 import { arcaneResourceDailyDemand } from '../domain/outfit-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
+import { relicEffectCopy, HUNT_CHARGE_RELIC_IDS, huntChargeCopy } from './relic-effect-copy.js';
+import { effectControlList } from './relic-effect-dialog.js';
 
 export { resourceIcon, resourceValue } from './resource-icons.js';
 
@@ -427,12 +429,6 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   return true;
 }
 
-function affixInfoLink(id, extraClass = '') {
-  const affix = AFFIX_DEFINITIONS[id];
-  if (!affix) return '';
-  return `<button type="button" class="relic-effect-link${extraClass ? ` ${extraClass}` : ''}" data-relic-effect="${escapeHtml(id)}">${escapeHtml(affix.name)}</button>`;
-}
-
 export function rarityClass(rarity) {
   return `rarity-${RARITIES[rarity] ? rarity : 'rare'}`;
 }
@@ -490,127 +486,8 @@ function relicEffectValue(relicId, value) {
   return `${value} XP`;
 }
 
-function fusionEffectDescription(definition, relic) {
-  const value = (baseId) => Math.max(0, Number(relic.inheritedEffects?.[baseId]) || 0);
-  if (definition.id === 'fusion_01') {
-    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. El primer hábito recupera ${value('relic_02') + 3}% del Maná máximo.`;
-  }
-  if (definition.id === 'fusion_02') {
-    return `Reduce ${value('relic_01')} HP de la primera fuente de daño del día. La Constancia concede ${value('relic_04')} XP y alcanzar seis días cumplidos otorga 20 XP adicionales.`;
-  }
-  if (definition.id === 'fusion_04') {
-    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga 5 XP adicionales.`;
-  }
-  if (definition.id === 'fusion_06') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. Vampirismo: ${value('relic_07')}%. El primer hábito suma ${synergy} XP si la protección seguía disponible.`;
-  }
-  if (definition.id === 'fusion_07') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo y hereda ${value('relic_07')}% de Vampirismo. Ese primer hábito suma ${synergy} XP.`;
-  }
-  if (definition.id === 'fusion_08') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    return `Vampirismo: ${value('relic_07')}%. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga ${synergy} XP adicionales.`;
-  }
-  if (definition.id === 'fusion_09') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 2;
-    return `Reduce ${value('relic_01')} HP del primer daño. El primer hábito concede ${value('relic_03')} XP y suma ${synergy} XP si la protección seguía disponible.`;
-  }
-  if (definition.id === 'fusion_10') {
-    const mana = definition.synergy?.values?.[relic.rank] || 3;
-    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. Activar la protección recupera ${mana}% de Maná adicional.`;
-  }
-  if (definition.id === 'fusion_11') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Reduce ${value('relic_01')} HP del primer daño. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si la protección se activó ese día.`;
-  }
-  if (definition.id === 'fusion_12') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 2;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo y concede ${value('relic_03')} XP. Activar ambos efectos suma ${synergy} XP.`;
-  }
-  if (definition.id === 'fusion_13') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    const mana = definition.synergy?.manaValues?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. La Constancia concede ${value('relic_04')} XP y, al completarla, suma ${synergy} XP y recupera ${mana}% de Maná.`;
-  }
-  if (definition.id === 'fusion_14') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `El primer hábito recupera ${value('relic_02')}% del Maná máximo. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
-  }
-  if (definition.id === 'fusion_15') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 10;
-    const mana = definition.synergy?.manaValues?.[relic.rank] || 5;
-    return `Recupera ${value('relic_05')}% del Maná máximo por enemigo derrotado en Cacería. La Constancia concede ${value('relic_04')} XP y, al completarla, suma ${synergy} XP y recupera ${mana}% de Maná.`;
-  }
-  if (definition.id === 'fusion_16') {
-    const synergy = definition.synergy?.values?.[relic.rank] || 5;
-    return `Recupera ${value('relic_05')}% del Maná máximo y ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Cada día cumplido suma ${synergy} XP si recuperaste Maná ese día.`;
-  }
-  if (definition.id === 'fusion_05') {
-    return `La Constancia concede ${value('relic_04')} XP. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. Completar la Constancia recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
-  }
-  if (definition.id === 'fusion_17') {
-    return `El primer hábito concede ${value('relic_03')} XP. Recupera ${value('relic_06')}% de la Vida máxima por enemigo derrotado en Cacería. El primer hábito recupera además ${definition.synergy.healthValues[relic.rank]}% de Vida máxima.`;
-  }
-  if (['fusion_18', 'fusion_19'].includes(definition.id)) {
-    const base = definition.id === 'fusion_18' ? 'relic_03' : 'relic_04';
-    return `${base === 'relic_03' ? 'Primer hábito' : 'Constancia'}: ${value(base)} XP. Vampirismo: ${value('relic_07')}%. ${definition.effectLabel}`;
-  }
-  return definition.effectLabel;
-}
-
 function relicEffectRows(definition, relic) {
-  const names = {
-    relic_01: 'Protección', relic_02: 'Maná del hábito', relic_03: 'Experiencia del hábito',
-    relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
-    relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Reembolso de Forja',
-    relic_10: 'Sangre adicional', relic_11: 'Tres hábitos', relic_12: 'Hábitos completos',
-  };
-  const row = (name, description) => `<div class="relic-effect-row"><span class="relic-effect-name">${escapeHtml(name)}</span><p>${escapeHtml(description)}</p></div>`;
-  const inherited = definition.recipeId ? Object.entries(relic.inheritedEffects || {}) : [[definition.id, relicRankEffect(definition.id, relic.rank)]];
-  let markup = inherited.map(([id, value]) => {
-    const base = relicDefinition(id);
-    if (!base) return '';
-    const descriptions = {
-      relic_01: `Reduce ${value} HP del primer daño del día.`,
-      relic_02: `El primer hábito del día recupera ${value}% del Maná máximo.`,
-      relic_03: `El primer hábito del día otorga ${value} XP.`,
-      relic_04: `Completa 6 días consecutivos y derrota al jefe: +${value} XP.`,
-      relic_05: `Cada enemigo derrotado en Cacería recupera ${value}% del Maná máximo.`,
-      relic_06: `Cada enemigo derrotado en Cacería recupera ${value}% de la Vida máxima.`,
-      relic_07: `Cura el ${value}% del daño real de tus ataques en Cacería.`,
-      relic_08: `Tu primer ataque a cada enemigo reduce un ${value}% su siguiente golpe que conecte.`,
-    };
-    return row(names[id] || 'Efecto', descriptions[id] || `${base.effectLabel} Valor actual: ${relicEffectValue(id, value)}`);
-  }).join('');
-  if (definition.recipeId) {
-    const synergy = definition.synergy?.values?.[relic.rank];
-    const mana = definition.synergy?.manaValues?.[relic.rank];
-    const health = definition.synergy?.healthValues?.[relic.rank];
-    const bonuses = {
-      fusion_01: 'El primer hábito recupera 3 puntos porcentuales más de Maná máximo.',
-      fusion_02: 'Alcanzar seis días cumplidos otorga 20 XP adicionales.',
-      fusion_04: 'Completar todos los hábitos diarios otorga 5 XP adicionales.',
-      fusion_05: `Completar Constancia recupera además ${health}% de Vida máxima.`,
-      fusion_06: `El primer hábito suma ${synergy || 5} XP si la protección seguía disponible.`,
-      fusion_07: `El primer hábito suma ${synergy || 5} XP adicionales.`,
-      fusion_08: `Completar todos los hábitos diarios otorga ${synergy || 10} XP adicionales.`,
-      fusion_09: `El primer hábito suma ${synergy || 2} XP si la protección seguía disponible.`,
-      fusion_10: `Activar la protección recupera ${synergy || 3}% de Maná adicional.`,
-      fusion_11: `Cada día cumplido suma ${synergy || 5} XP si la protección se activó ese día.`,
-      fusion_12: `Activar ambos efectos con el primer hábito suma ${synergy || 2} XP.`,
-      fusion_13: `Completar Constancia suma ${synergy || 10} XP y recupera ${mana || 5}% de Maná.`,
-      fusion_14: `Cada día cumplido suma ${synergy || 5} XP si recuperaste Maná ese día.`,
-      fusion_15: `Completar Constancia suma ${synergy || 10} XP y recupera ${mana || 5}% de Maná.`,
-      fusion_16: `Cada día cumplido suma ${synergy || 5} XP si recuperaste Maná ese día.`,
-      fusion_17: `El primer hábito recupera además ${health}% de Vida máxima.`,
-      fusion_18: 'El primer hábito carga +1 punto porcentual de Vampirismo para el próximo enemigo de Cacería. Una vez al día, sin acumular.',
-      fusion_19: 'Completar Constancia carga +1 punto porcentual de Vampirismo para la próxima Cacería completa. Sin acumular.',
-    };
-    markup += row('Bonus de fusión', bonuses[definition.id] || fusionEffectDescription(definition, relic));
-  }
-  return markup;
+  return effectControlList(relicEffectCopy(definition, relic));
 }
 
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
@@ -777,11 +654,8 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     ? `<button type="button" data-unequip-relic="${relicId}">DESEQUIPAR</button>`
     : `<button type="button" data-equip-relic="${relicId}">EQUIPAR</button>`;
   const affixes = relic.affixes.length
-    ? relic.affixes.map((id) => {
-        const affix = AFFIX_DEFINITIONS[id];
-        return `<li><span class="relic-effect-name">${escapeHtml(affix.name)}</span><p>${escapeHtml(affix.description)}</p></li>`;
-      }).join('')
-    : '<li class="no-affixes">Esta rareza no posee efectos extras.</li>';
+    ? effectControlList(relic.affixes.map(id => ({ id, ...AFFIX_DEFINITIONS[id] })), 'EFECTO EXTRA')
+    : '<p class="no-affixes">Esta rareza no posee efectos extras.</p>';
   const fusion = Boolean(definition.recipeId);
   const combatBonuses = relicCombatBonuses(relicId, relic.rank, relic.ingredientSnapshots);
   const combatStatLabels = { physicalAttack: 'ATAQUE', magicAttack: 'PODER', defense: 'DEFENSA' };
@@ -801,8 +675,9 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     </div>
     ${combatMarkup}
     ${constancy}
+    ${HUNT_CHARGE_RELIC_IDS.includes(relicId) ? `<div class="relic-constancy"><span>CARGA DE CACERÍA</span><b>${huntChargeCopy(normalized.inventory.huntCharges[relicId])}</b></div>` : ''}
     <div class="relic-effect"><span>EFECTO PRINCIPAL</span>${relicEffectRows(definition, relic)}</div>
-    <div class="relic-affixes"><span>EFECTOS EXTRAS</span><ul>${affixes}</ul></div>
+    <div class="relic-affixes"><span>EFECTOS EXTRAS</span>${affixes}</div>
     <div class="relic-equip-actions">
       ${equipmentActions}
       ${owned && !fusion && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
@@ -900,7 +775,7 @@ export function renderForgeView(document, lootState, selectedRelicId = null, opt
       <button type="button" class="forge-focus-art forge-focus-picker forge-animated-slot forge-animated-slot--upgrade" data-open-forge-picker="upgrade" aria-label="Cambiar ${escapeHtml(selectedDefinition.name)}">${relicArt(selectedDefinition)}</button>
       <h3>${escapeHtml(selectedDefinition.name)}</h3>
       <div class="forge-rank-line"><span>${forgeRankStars(relic.rank)}</span><b>${rarity.label} · RANGO ${relic.rank}</b></div>
-      <p class="forge-current-effect">${escapeHtml(selectedDefinition.effectLabel)} <strong>${relicEffectValue(relicId, relicRankEffect(relicId, relic.rank))}</strong></p>
+      <div class="relic-effect forge-current-effect">${relicEffectRows(selectedDefinition, relic)}</div>
       <div class="forge-panel">${forgeControls}</div>
     </section>`;
   return relicId;
@@ -1023,14 +898,6 @@ export function renderForgeRelicPicker(document, lootState, {
   );
 }
 
-function fusionInheritedPowerMarkup(preview) {
-  const inherited = Object.entries(preview.inheritedEffects || {})
-    .map(([relicId, value]) => relicEffectValue(relicId, value));
-  return inherited.length
-    ? `<p class="fusion-preview-inherited"><span>POTENCIA HEREDADA</span><b>${inherited.map(escapeHtml).join(' · ')}</b></p>`
-    : '';
-}
-
 function fusionResultPreviewMarkup(preview) {
   const definition = preview.definition;
   const relic = preview.resultRelic;
@@ -1042,15 +909,16 @@ function fusionResultPreviewMarkup(preview) {
   const rarityCopy = preview.qualityDeterministic ? rarity.label : '???';
   const extrasCopy = preview.qualityDeterministic ? extras : '???';
   const extrasMarkup = preview.qualityDeterministic && relic.affixes.length
-    ? relic.affixes.map((id) => affixInfoLink(id, 'fusion-preview-effect-link')).filter(Boolean).join('<span aria-hidden="true"> · </span>')
+    ? effectControlList(relic.affixes.map(id => ({ id, ...AFFIX_DEFINITIONS[id] })), 'EFECTO EXTRA')
     : escapeHtml(extrasCopy);
   return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
     <div class="fusion-preview-art">${relicArt(definition)}</div>
     <div class="fusion-preview-copy">
       <h3>${escapeHtml(definition.name)}</h3>
       <b class="fusion-preview-quality">${escapeHtml(rarityCopy)} · RANGO ${relic.rank}</b>
-      <p>${escapeHtml(fusionEffectDescription(definition, relic))}</p>
-      ${fusionInheritedPowerMarkup(preview)}
+    </div>
+    <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic)}</div>
+    <div class="fusion-preview-copy fusion-preview-extra">
       <small class="fusion-preview-affixes"><span>EFECTOS EXTRAS · </span>${extrasMarkup}</small>
     </div>
   </article>`;
@@ -1334,11 +1202,7 @@ export function forgeResultMarkup(result, relicName, relicId) {
       : `Se han consumido ${result.spentBossBlood} Sangres de Jefe.`;
     return `<div class="forge-result success"><span>FORJA COMPLETADA</span>${artMarkup}<h3>${escapeHtml(relicName)} ha alcanzado el Rango ${result.preview.targetRank}</h3><div class="forge-result-upgrade"><b>${previousValue}</b><i aria-hidden="true">→</i><strong>${newValue}</strong></div><p>Su efecto principal se ha fortalecido.</p><p>${bloodCopy}</p></div>`;
   }
-  const refundCopy = result.coinsRefunded > 0
-    ? `<p>La Malla de Escamas de Brea recupera ${result.coinsRefunded} de oro.</p>`
-    : '';
-  const netCoinsLost = Math.max(0, result.spentCoins - (result.coinsRefunded || 0));
-  return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${netCoinsLost} de oro.</p>${refundCopy}<p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
+  return `<div class="forge-result failure"><span>FORJA FALLIDA</span>${artMarkup}<h3>El poder de la reliquia se resiste.</h3><p>Has perdido ${result.spentCoins} de oro.</p><p>La Sangre de Jefe no se ha consumido.</p><b>Próxima probabilidad: ${result.nextProbability}%</b></div>`;
 }
 
 export function fusionResultMarkup(result) {

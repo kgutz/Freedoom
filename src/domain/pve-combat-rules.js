@@ -68,8 +68,8 @@ export const BRUMA_ENEMIES = Object.freeze(BRUMA_ENEMY_TEMPLATES.map((enemy) => 
 export const BUNKER_ENEMIES = Object.freeze(BUNKER_ENEMY_TEMPLATES.map((enemy) => Object.freeze(enemyStatsFromAttributes(enemy))));
 export const HUNT_DIFFICULTIES = Object.freeze({
   easy: Object.freeze({ id: 'easy', name: 'Fácil', multiplier: 1.25, minLevel: 1, energyCost: 1, durationMinutes: 1, xp: 5, gold: [5, 9], fiberChance: 0, fiberAmount: [0, 0], inkChance: 0, inkAmount: [0, 0] }),
-  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 7, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.25, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
-  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 12, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.5, fiberAmount: [1, 1], inkChance: 0.5, inkAmount: [1, 1] }),
+  medium: Object.freeze({ id: 'medium', name: 'Medio', multiplier: 1.75, minLevel: 5, energyCost: 2, durationMinutes: 3, xp: 12, gold: [11, 18], fiberChance: 0.25, fiberAmount: [1, 1], inkChance: 0.25, inkAmount: [1, 1] }),
+  hard: Object.freeze({ id: 'hard', name: 'Difícil', multiplier: 2.4, minLevel: 11, energyCost: 3, durationMinutes: 5, xp: 22, gold: [20, 32], fiberChance: 0.5, fiberAmount: [1, 1], inkChance: 0.5, inkAmount: [1, 1] }),
 });
 export const HUNT_REGIONS = Object.freeze({
   'nuncabasta-peaks': Object.freeze({
@@ -99,7 +99,14 @@ export const HUNT_REGIONS = Object.freeze({
     description: 'Cultivos corrompidos alimentan una niebla que doblega la voluntad. Envía a tu héroe a purificarlos.',
     art: 'hunt/fields-of-mist/region.webp',
     enemies: BRUMA_ENEMIES,
-    difficultyMinLevels: Object.freeze({ easy: 1, medium: 7, hard: 12 }),
+    difficultyMinLevels: Object.freeze({ easy: 1, medium: 5, hard: 11 }),
+    difficultyOverrides: Object.freeze({
+      medium: Object.freeze({
+        enemyEffectiveAttributeMultipliers: Object.freeze({
+          'mist-mother': Object.freeze({ defense: 0.95, constitution: 0.95 }),
+        }),
+      }),
+    }),
     rewardMultiplier: 1,
     bossBloodChance: 0.1,
     victoryMessage: 'La bruma retrocede',
@@ -586,7 +593,21 @@ export function simulatePveCombat({
   let enemyHp = Math.max(1, enemy.maxHp);
   let vampirismCarry = safeInteger(relicCarry.vampirism) % 100;
   let petrificationPending = false;
+  let petrificationTriggered = false;
+  let petrificationReduced = false;
+  let nextVampirismBonus = 0;
+  let petrificationManaRecovered = 0;
+  let petrificationHealthRecovered = 0;
+  let petrificationVampirismUsed = 0;
   let vampirismRecovered = 0;
+  let armorPrevented = 0;
+  let armorReserveRemaining = safeInteger(relicEffects.damageReduction) > 0 ? safeInteger(relicEffects.armorReserve) : 0;
+  let armorReserveUsed = 0;
+  let armorManaGenerated = 0;
+  let armorHealthGenerated = 0;
+  let armorManaRecovered = 0;
+  let armorHealthRecovered = 0;
+  let armorVampirismUsed = 0;
   const potions = normalizePotionState(suppliedPotions);
   const potionUses = [];
   const roundDetails = [];
@@ -623,7 +644,16 @@ export function simulatePveCombat({
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
     // Integer hundredths carry across encounters; overhealing cannot be banked.
-    const rawHealing = vampirismCarry + realDamage * safeInteger(relicEffects.vampirism);
+    const hitVampirismBonus = realDamage > 0 ? nextVampirismBonus : 0;
+    if (realDamage > 0) {
+      petrificationVampirismUsed += hitVampirismBonus;
+      nextVampirismBonus = 0;
+    }
+    // Sustained bonus begins on the NEXT attack after accumulating five points
+    // of actual armor mitigation. It cannot carry into another enemy.
+    const armorVampirismBonus = armorPrevented >= 5 ? safeInteger(relicEffects.armorVampirism) : 0;
+    if (realDamage > 0) armorVampirismUsed += armorVampirismBonus;
+    const rawHealing = vampirismCarry + realDamage * (safeInteger(relicEffects.vampirism) + hitVampirismBonus + armorVampirismBonus);
     const healing = Math.min(hero.maxHp - heroHp, Math.floor(rawHealing / 100));
     heroHp += healing;
     vampirismRecovered += healing;
@@ -635,12 +665,55 @@ export function simulatePveCombat({
       const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
       if (petrificationPending && !enemyHit.dodged) {
         const originalDamage = enemyHit.damage;
-        enemyHit.damage = Math.floor(originalDamage * (100 - clamp(safeInteger(relicEffects.petrification), 0, 100)) / 100);
+        const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus);
+        enemyHit.damage = Math.floor(originalDamage * (100 - clamp(reduction, 0, 100)) / 100);
         enemyHit.petrificationPrevented = originalDamage - enemyHit.damage;
+        petrificationTriggered = true;
+        petrificationReduced = enemyHit.petrificationPrevented > 0;
         petrificationPending = false;
+      }
+      // Apply after defense, criticals and Ojo: multiplicative, floor once here,
+      // minimum 1 for positive hits. Existing dodges/Ojo zeroes stay zero.
+      if (enemyHit.damage > 0) {
+        const beforeArmor = enemyHit.damage;
+        const armorReduction = safeInteger(relicEffects.damageReduction) > 0
+          ? safeInteger(relicEffects.damageReduction) + safeInteger(relicEffects.armorHuntBonus) : 0;
+        enemyHit.damage = Math.max(1, Math.floor(beforeArmor * (100 - clamp(armorReduction, 0, 100)) / 100));
+        enemyHit.armorPrevented = beforeArmor - enemyHit.damage;
+        armorPrevented += enemyHit.armorPrevented;
+        if (armorReserveRemaining > 0 && enemyHit.damage > 1) {
+          enemyHit.damage -= 1;
+          armorReserveRemaining -= 1;
+          armorReserveUsed += 1;
+          enemyHit.armorReservePrevented = 1;
+        }
       }
       damageTaken = enemyHit.damage;
       heroHp = Math.max(0, heroHp - enemyHit.damage);
+      if (heroHp > 0 && enemyHit.armorPrevented > 0) {
+        // Spend generated points even at full resources; no overheal banking.
+        const manaTotal = Math.min(safeInteger(relicEffects.armorManaCap), Math.floor(armorPrevented * 20 / 100));
+        const healthTotal = Math.min(safeInteger(relicEffects.armorHealthCap), Math.floor(armorPrevented * 15 / 100));
+        const mana = Math.min(hero.maxMana - heroMana, manaTotal - armorManaGenerated);
+        const hp = Math.min(hero.maxHp - heroHp, healthTotal - armorHealthGenerated);
+        armorManaGenerated = manaTotal;
+        armorHealthGenerated = healthTotal;
+        heroMana += mana;
+        heroHp += hp;
+        armorManaRecovered += mana;
+        armorHealthRecovered += hp;
+      }
+      // On-hit synergies run once, after damage. They never revive or chain;
+      // Collar's token is local to this enemy and survives dodged hero attacks.
+      if (enemyHit.petrificationPrevented > 0 && heroHp > 0) {
+        const mana = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.petrificationMana));
+        const hp = Math.min(hero.maxHp - heroHp, safeInteger(relicEffects.petrificationHealth));
+        heroMana += mana;
+        heroHp += hp;
+        petrificationManaRecovered += mana;
+        petrificationHealthRecovered += hp;
+        nextVampirismBonus = safeInteger(relicEffects.petrificationVampirism);
+      }
       log.push({ round, actor: 'enemy', ...enemyHit, remainingHp: heroHp });
       if (
         autoUsePotions
@@ -670,6 +743,17 @@ export function simulatePveCombat({
     });
   }
   return {
+    petrificationTriggered,
+    armorPrevented,
+    armorReserveRemaining,
+    armorReserveUsed,
+    armorManaRecovered,
+    armorHealthRecovered,
+    armorVampirismUsed,
+    petrificationReduced,
+    petrificationManaRecovered,
+    petrificationHealthRecovered,
+    petrificationVampirismUsed,
     vampirismCarry,
     vampirismRecovered,
     won: enemyHp <= 0 && heroHp > 0,
@@ -693,12 +777,20 @@ function seededRoll(seed) {
   };
 }
 
-function scaledEnemy(enemy, difficulty) {
+export function scaledEnemy(enemy, difficulty) {
   const scale = difficulty.multiplier;
   const attributes = Object.fromEntries(Object.entries(enemy.attributes)
     .map(([id, value]) => [id, Math.max(1, Math.round(
       value * scale * (Number(difficulty.attributeMultipliers?.[id]) || 1),
     ))]));
+  // Apply targeted tuning after the existing integer scaling, without rounding
+  // again: small reductions must not disappear at low attribute values.
+  const effectiveMultipliers = difficulty.enemyEffectiveAttributeMultipliers?.[enemy.id] || {};
+  for (const [id, multiplier] of Object.entries(effectiveMultipliers)) {
+    if (Object.hasOwn(attributes, id) && Number.isFinite(multiplier) && multiplier > 0) {
+      attributes[id] *= multiplier;
+    }
+  }
   return enemyStatsFromAttributes(enemy, attributes);
 }
 
@@ -762,7 +854,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
     } : null,
     relicEffects: {
-      ...Object.fromEntries(['vampirism', 'petrification', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus']
+      ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
     },
@@ -807,6 +899,9 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const effects = active.relicEffects || {};
   const carry = { ...normalized.relicCarry };
   let fusion16ManaRecovered = false;
+  let firstPetrificationUsed = false;
+  let petrificationXpAwarded = false;
+  let armorReserveRemaining = safeInteger(effects.armorReserve);
   for (const [enemyIndex, definition] of region.enemies.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
     const heroHpAtStart = currentHp;
@@ -818,12 +913,22 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       heroMana: currentMana,
       attackType: ['sorcerer', 'druid'].includes(classId) ? 'magic' : 'physical',
       roll: random,
-      relicEffects: { ...effects, vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0) },
+      relicEffects: {
+        ...effects,
+        armorReserve: armorReserveRemaining,
+        petrificationFirstBonus: firstPetrificationUsed ? 0 : safeInteger(effects.petrificationFirstBonus),
+        vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0),
+      },
       relicCarry: carry,
       autoUsePotions: Boolean(active.autoUsePotions),
       potions,
     });
     carry.vampirism = result.vampirismCarry;
+    armorReserveRemaining = result.armorReserveRemaining;
+    const armorXp = result.won && result.armorPrevented >= 5 ? safeInteger(effects.armorXp) : 0;
+    firstPetrificationUsed ||= result.petrificationTriggered;
+    const petrificationXp = !petrificationXpAwarded && result.petrificationReduced ? safeInteger(effects.petrificationXp) : 0;
+    petrificationXpAwarded ||= petrificationXp > 0;
     potions = result.potions;
     currentHp = result.heroHp;
     currentMana = result.heroMana;
@@ -853,6 +958,17 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       if (effects.manaFusion16 && relicRecovery.mana > 0) fusion16ManaRecovered = true;
     }
     encounters.push({
+      petrificationXp,
+      armorXp,
+      armorPrevented: result.armorPrevented,
+      armorReserveUsed: result.armorReserveUsed,
+      armorManaRecovered: result.armorManaRecovered,
+      armorHealthRecovered: result.armorHealthRecovered,
+      armorVampirismUsed: result.armorVampirismUsed,
+      petrificationTriggered: result.petrificationTriggered,
+      petrificationManaRecovered: result.petrificationManaRecovered,
+      petrificationHealthRecovered: result.petrificationHealthRecovered,
+      petrificationVampirismUsed: result.petrificationVampirismUsed,
       relicRecovery,
       vampirismRecovered: result.vampirismRecovered,
       id: enemy.id,
@@ -886,7 +1002,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const xpByEnemy = splitEncounterReward(Math.round(difficulty.xp * rewardMultiplier));
   encounters.forEach((encounter, index) => {
     encounter.rewards = {
-      xp: encounter.won ? xpByEnemy[index] : 0,
+      xp: (encounter.won ? xpByEnemy[index] : 0) + encounter.petrificationXp + encounter.armorXp,
       gold: encounter.won ? goldByEnemy[index] : 0,
       arcaneFibers: 0,
       arcaneInks: 0,

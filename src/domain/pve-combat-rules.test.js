@@ -22,16 +22,43 @@ import {
   resolvePveAttack,
   revokeHabitHuntEnergy,
   simulatePveCombat,
+  scaledEnemy,
   startHunt,
   syncHabitSetHuntEnergy,
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it('reduce exactamente un 5% solo defensa y constitución de Madre en Medio', () => {
+    for (const region of Object.values(HUNT_REGIONS)) {
+      for (const difficultyId of ['easy', 'medium', 'hard']) {
+        const difficulty = huntDifficultyForRegion(region.id, difficultyId);
+        for (const enemy of region.enemies) {
+          const previous = scaledEnemy(enemy, { ...difficulty, enemyEffectiveAttributeMultipliers: {} });
+          const current = scaledEnemy(enemy, difficulty);
+          if (region.id === 'fields-of-mist' && difficultyId === 'medium' && enemy.id === 'mist-mother') {
+            expect(current.defense).toBeCloseTo(previous.defense * 0.95);
+            expect(current.attributes.constitution).toBeCloseTo(previous.attributes.constitution * 0.95);
+            expect(current.maxHp).toBeCloseTo(20 + previous.attributes.constitution * 0.95 * 6);
+            expect(current.physicalAttack).toBe(previous.physicalAttack);
+            expect(current.magicAttack).toBe(previous.magicAttack);
+            expect(current.criticalChance).toBe(previous.criticalChance);
+            expect(current.dodgeChance).toBe(previous.dodgeChance);
+          } else {
+            expect(current).toEqual(previous);
+          }
+        }
+      }
+    }
+  });
+  it.each([['medium', 5], ['hard', 11]])('respeta el nuevo acceso de Bruma %s', (difficultyId, level) => {
+    expect(startHunt({ difficultyId, level: level - 1, nowTimestamp: 1000 })).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: level });
+    expect(startHunt({ difficultyId, level, nowTimestamp: 1000 })).toMatchObject({ ok: true });
+  });
   it('abre solo Bruma fácil desde nivel uno sin cambiar su balance', () => {
     expect(startHunt({ regionId: 'fields-of-mist', difficultyId: 'easy', level: 1, nowTimestamp: 1000 })).toMatchObject({ ok: true });
     expect(HUNT_DIFFICULTIES.easy).toMatchObject({ minLevel: 1, multiplier: 1.25, energyCost: 1, xp: 5 });
     for (const [regionId, levels] of [
-      ['fields-of-mist', { easy: 1, medium: 7, hard: 12 }],
+      ['fields-of-mist', { easy: 1, medium: 5, hard: 11 }],
       ['dead-hours-bunker', { easy: 13, medium: 17, hard: 22 }],
       ['nuncabasta-peaks', { easy: 25, medium: 29, hard: 34 }],
     ]) {
@@ -585,8 +612,8 @@ describe('PvE combat rules', () => {
   });
 
   it('bloquea cada dificultad hasta alcanzar su nivel mínimo', () => {
-    const blocked = startHunt({ hunt: null, difficultyId: 'hard', level: 11, nowTimestamp: 1_000 });
-    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 12 });
+    const blocked = startHunt({ hunt: null, difficultyId: 'hard', level: 10, nowTimestamp: 1_000 });
+    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 11 });
   });
 
   it('abre el Búnker como una región independiente a partir del nivel trece', () => {

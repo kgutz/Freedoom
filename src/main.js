@@ -228,12 +228,12 @@ import {
   renderLootNotice,
   renderOutfitSelector,
   renderPotionDetail,
-  renderRelicEffectInfo,
   renderRelicDetail,
   renderRelicReplacementPicker,
   renderShopView
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
+import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { createRecoveryModeController } from './ui/recovery-mode-controller.js';
 import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
@@ -267,7 +267,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.51';
+const APP_VERSION='2.28.52';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5847,13 +5847,6 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     document.getElementById('forgeRelicPickerBg').classList.add('show');
     return;
   }
-  const effectInfo=event.target.closest('[data-relic-effect]');
-  if(effectInfo){
-    if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
-      document.getElementById('relicEffectInfoBg').classList.add('show');
-    }
-    return;
-  }
   const shopRelic=event.target.closest('[data-open-shop-relic]');
   if(shopRelic){
     openShopRelicDetail(shopRelic.dataset.openShopRelic);
@@ -6399,13 +6392,6 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     showInventoryPanel('forge');
     return;
   }
-  const effectInfo=event.target.closest('[data-relic-effect]');
-  if(effectInfo){
-    if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
-      document.getElementById('relicEffectInfoBg').classList.add('show');
-    }
-    return;
-  }
   const equip=event.target.closest('[data-equip-relic]');
   if(equip){
     equipRelicFromDetail(equip);
@@ -6417,12 +6403,7 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     return;
   }
 });
-document.getElementById('relicEffectInfoClose').addEventListener('click',()=>{
-  document.getElementById('relicEffectInfoBg').classList.remove('show');
-});
-document.getElementById('relicEffectInfoBg').addEventListener('click',event=>{
-  if(event.target.id==='relicEffectInfoBg') event.currentTarget.classList.remove('show');
-});
+installRelicEffectDialog(document);
 async function handleForgeAttempt(relicId){
   if(!relicId||forgeLocked) return;
   forgeLocked=true;
