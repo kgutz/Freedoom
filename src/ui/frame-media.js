@@ -11,7 +11,7 @@ export function frameVideoForPoster(source = '') {
 
 // Enhance background images only. Keep their posters and the existing hero layers intact.
 export function installFrameMedia(document, window) {
-  const selector = 'img.sprite-bg,img.hoy-hero-bg,img.habit-hero-bg,img.frame-preview-bg,img.outfit-selector-bg';
+  const selector = 'img.sprite-bg,img.hoy-hero-bg,img.habit-hero-bg,img.frame-preview-bg,img.outfit-selector-bg,img.temple-gift-preview';
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const entries = new Map();
   const visible = new Set();

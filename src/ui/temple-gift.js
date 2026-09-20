@@ -17,7 +17,7 @@ export function showTempleGift(document, game) {
     </section>
     <section class="pioneer-reward-step pioneer-reward-reveal" data-temple-gift-result hidden>
       <span class="pioneer-reward-kicker">FONDO DESBLOQUEADO</span><h3>Refugio de Azariel</h3>
-      <div class="pioneer-reward-item"><img class="temple-gift-preview" src="hero_background/azariel_temple.webp" alt="Santuario dorado de Azariel con cristalera celestial"><strong>Un lugar al que volver</strong></div>
+      <div class="pioneer-reward-item"><div class="temple-gift-media"><img class="temple-gift-preview" src="hero_background/azariel_temple.webp" alt="Santuario dorado de Azariel con cristalera celestial"></div><strong>Un lugar al que volver</strong></div>
       <p>Ya es tuyo. Lo encontrarás entre tus fondos, en formato cuadrado y panorámico según la pantalla.</p>
       <button type="button" class="pioneer-reward-action" data-temple-gift-view>VER FONDO</button>
       <button type="button" class="temple-gift-later" data-temple-gift-close>Más tarde</button>

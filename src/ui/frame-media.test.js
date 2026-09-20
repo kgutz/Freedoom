@@ -15,7 +15,7 @@ function fixture(){
   const video={dataset:{},paused:true,pause:vi.fn(),play:vi.fn(()=>Promise.resolve()),getAttribute:()=>video.src,setAttribute:vi.fn(),addEventListener:vi.fn(),removeAttribute:vi.fn(),load:vi.fn(),remove:vi.fn()};
   const events={};
   const motion={matches:false,addEventListener:(key,fn)=>events.motion=fn,removeEventListener:vi.fn()};
-  const document={body:{},hidden:false,querySelectorAll:()=>image.isConnected?[image]:[],createElement:()=>video,addEventListener:(key,fn)=>events[key]=fn,removeEventListener:vi.fn()};
+  const document={body:{},hidden:false,querySelectorAll:vi.fn(()=>image.isConnected?[image]:[]),createElement:()=>video,addEventListener:(key,fn)=>events[key]=fn,removeEventListener:vi.fn()};
   const frames=[];
   const window={matchMedia:()=>motion,requestAnimationFrame:fn=>{frames.push(fn);return 1;},cancelAnimationFrame:vi.fn(),addEventListener:vi.fn(),removeEventListener:vi.fn(),
     IntersectionObserver:class{constructor(fn){events.intersection=fn}observe(){}unobserve(){}disconnect(){}},
@@ -42,5 +42,20 @@ it('respects reduced motion without downloading a video',()=>{
   f.events.intersection([{target:f.image,isIntersecting:true}]);
   expect(f.video.src).toBeUndefined();expect(f.video.play).not.toHaveBeenCalled();
   expect(f.video.dataset.ready).toBe('false');
+  dispose();
+});
+it('animates the gift preview when the reward is revealed',()=>{
+  const f=fixture();
+  f.image.className='temple-gift-preview';
+  let hidden=true;
+  f.image.closest=()=>hidden?{}:null;
+  const dispose=installFrameMedia(f.document,f.window);
+  expect(f.document.querySelectorAll.mock.calls[0][0]).toContain('img.temple-gift-preview');
+  expect(f.video.className).toBe('temple-gift-preview frame-video');
+  f.events.intersection([{target:f.image,isIntersecting:true}]);
+  expect(f.video.play).not.toHaveBeenCalled();
+  hidden=false;f.events.mutation();f.flush();
+  expect(f.video.src).toBe('hero_background/azariel_temple.mp4');
+  expect(f.video.play).toHaveBeenCalledOnce();
   dispose();
 });

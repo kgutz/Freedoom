@@ -5,7 +5,9 @@
 @media(prefers-reduced-motion:reduce){.frame-video{display:none!important}}
 #templeGiftBg{z-index:120}
 #templeGiftBg .pioneer-reward-item{height:auto;padding:10px}
-#templeGiftBg .temple-gift-preview{display:block;width:210px;max-width:100%;height:auto;aspect-ratio:1;object-fit:contain;margin:0 auto 8px;border-radius:10px;image-rendering:pixelated}
+#templeGiftBg .temple-gift-media{position:relative;width:210px;max-width:100%;aspect-ratio:1;margin:0 auto 8px;overflow:hidden;border-radius:10px}
+#templeGiftBg .temple-gift-preview{display:block;width:100%;max-width:100%;height:100%;aspect-ratio:1;object-fit:contain;margin:0;border-radius:10px;image-rendering:pixelated}
+#templeGiftBg video.temple-gift-preview{position:absolute;inset:0}
 .temple-gift-later{margin-top:12px;padding:8px;background:transparent;border:0;color:var(--muted);font:12px var(--font-display);cursor:pointer}
 #templeBody{min-height:0;overflow-y:auto;padding:0 14px 14px}
 .temple-scene{position:relative;width:100%;height:100%;margin:0;overflow:hidden;border-radius:19px}
