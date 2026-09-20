@@ -5,6 +5,8 @@ import {
   STORAGE_KEY,
   checksumOf,
   createBrowserStore,
+  createStateEnvelope,
+  parseStateEnvelope,
   exportBackup,
   applyImportCommands,
   importBackup,
@@ -16,6 +18,39 @@ import {
 } from './state-storage.js';
 
 describe('Puntos de retorno temporales', () => {
+  it('conserva copias grandes y fechas al compactar almacenamiento cercano a 5 MiB', async () => {
+    const storage=memoryLocalStorage({fail:(key,value)=>{
+      const next=new Map(storage.values);next.set(key,value);
+      if([...next].reduce((sum,[k,v])=>sum+2*(k.length+v.length),0)>5*1024*1024) {
+        throw new DOMException('Cuota agotada','QuotaExceededError');
+      }
+      return false;
+    }});
+    const state={onboarded:true,game:{cls:'knight'},days:{},history:'historial de partida '.repeat(14000)};
+    const yesterday=new Date(2026,8,19,23,55).getTime();
+    const old=createStateEnvelope({...state,marker:'ayer'},1,yesterday);
+    for(const suffix of [':daily',':weekly',':last-info',':recovery:0',':recovery:1',':recovery:2']) {
+      storage.setItem(STORAGE_KEY+suffix,JSON.stringify(old));
+    }
+    const clock=vi.spyOn(Date,'now');
+    try {
+      const store=createBrowserStore({localStorage:storage});await store.get(STORAGE_KEY);
+      for(let i=0;i<7;i++) {
+        clock.mockReturnValue(new Date(2026,8,20,10,i*21).getTime());
+        const result=store.set(STORAGE_KEY,JSON.stringify({...state,marker:i}));
+        expect(result).toMatchObject({verified:true,recoverySaved:true,degraded:false});
+        expect(result.errors).toEqual([]);
+      }
+      const restarted=createBrowserStore({localStorage:storage});
+      expect(JSON.parse((await restarted.get(STORAGE_KEY)).value).marker).toBe(6);
+      const points=selectTemporalRecoveries(await restarted.listRecoveries(),Date.now());
+      expect(points.daily.savedAt).toBe(yesterday);
+      expect(points.daily.state).toEqual({...state,marker:'ayer'});
+      expect(points.hourly.savedAt).toBeLessThanOrEqual(Date.now()-3600000);
+      expect(parseStateEnvelope(storage.getItem(STORAGE_KEY+':previous-day')).state.history).toBe(state.history);
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)).marker).toBe(6);
+    } finally {clock.mockRestore();}
+  });
   it('mantiene el último estado de ayer y uno anterior a una hora tras muchos guardados y reinicio', async () => {
     const storage=memoryLocalStorage();
     let store=createBrowserStore({localStorage:storage});

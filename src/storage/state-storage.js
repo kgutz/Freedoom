@@ -1,4 +1,5 @@
 import { grantRewardHuntEnergy } from '../domain/pve-combat-rules.js';
+import LZString from 'lz-string';
 
 export const STORAGE_KEY = 'registro-dejar-fumar';
 export const STORAGE_SCHEMA_VERSION = 2;
@@ -413,8 +414,20 @@ export function createStateEnvelope(
   return envelope;
 }
 
+const COMPRESSED_ENVELOPE_PREFIX = 'freedoom-lz1:';
+
+function serializeEnvelope(envelope) {
+  const plain = JSON.stringify(envelope);
+  if (plain.length < 16384) return plain;
+  const compressed = COMPRESSED_ENVELOPE_PREFIX + LZString.compressToUTF16(plain);
+  return compressed.length < plain.length ? compressed : plain;
+}
+
 export function parseStateEnvelope(serialized) {
-  const envelope = JSON.parse(serialized);
+  const plain = typeof serialized === 'string' && serialized.startsWith(COMPRESSED_ENVELOPE_PREFIX)
+    ? LZString.decompressFromUTF16(serialized.slice(COMPRESSED_ENVELOPE_PREFIX.length))
+    : serialized;
+  const envelope = JSON.parse(plain);
   if (
     !isObject(envelope) ||
     envelope.format !== 'freedoom-state' ||
@@ -629,7 +642,7 @@ function updateProtectedSnapshot({
         periodKey,
       },
     );
-    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    localStorage.setItem(storageKey, serializeEnvelope(protectedEnvelope));
     const verified = parseStateEnvelope(localStorage.getItem(storageKey));
     return {
       available: verified.checksum === protectedEnvelope.checksum,
@@ -664,7 +677,7 @@ function updateLastInformativeSnapshot({ localStorage, key, envelope }) {
         periodKey: localDateKey(envelope.savedAt),
       },
     );
-    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    localStorage.setItem(storageKey, serializeEnvelope(protectedEnvelope));
     const verified = parseStateEnvelope(localStorage.getItem(storageKey));
     return {
       available: verified.checksum === protectedEnvelope.checksum,
@@ -673,6 +686,27 @@ function updateLastInformativeSnapshot({ localStorage, key, envelope }) {
     };
   } catch (error) {
     return { available: Boolean(existing), updated: false, error };
+  }
+}
+
+// Compact only valid recovery copies, in place, without deleting any history.
+// localStorage replacement is atomic: a failed write leaves the old copy intact.
+function compactRecoveryCopies(localStorage, key) {
+  const suffixes = [DAILY_SUFFIX, WEEKLY_SUFFIX, LAST_INFO_SUFFIX, ':previous-day', ':hour-ago',
+    ...Array.from({length:RECOVERY_SLOT_COUNT}, (_, i) => `${SLOT_SUFFIX}${i}`),
+    ...Array.from({length:TEMPORAL_SLOT_COUNT}, (_, i) => `:timeline:${i}`)];
+  for (const suffix of suffixes) {
+    try {
+      const stored = localStorage.getItem(`${key}${suffix}`);
+      if (!stored || stored.startsWith(COMPRESSED_ENVELOPE_PREFIX)) continue;
+      const packed = serializeEnvelope(parseStateEnvelope(stored));
+      if (packed.length < stored.length) {
+        parseStateEnvelope(packed); // Validate the lossless round trip before replacing.
+        localStorage.setItem(`${key}${suffix}`, packed);
+      }
+    } catch {
+      // Preserve unreadable or unwritable copies; normal save reports write failures.
+    }
   }
 }
 
@@ -755,6 +789,7 @@ export function createBrowserStore(browserWindow) {
       if (usesExternalStorage) return externalStorage.set(key, value);
       if (!localStorage) throw new Error('Almacenamiento local no disponible');
       const parsedState = parseState(value);
+      compactRecoveryCopies(localStorage, key);
       const existingCandidates = localCandidates(localStorage, key).filter(
         (candidate) => (candidate.generation || 0) === currentGeneration,
       );
@@ -790,14 +825,14 @@ export function createBrowserStore(browserWindow) {
       const envelope = createStateEnvelope(parsedState, revision, savedAt, {
         generation: currentGeneration,
       });
-      const envelopeText = JSON.stringify(envelope);
+      const envelopeText = serializeEnvelope(envelope);
       // Freeze historical candidates before the rolling/current slots are overwritten.
       // Legacy daily/weekly snapshots remain readable and are never relabelled as yesterday.
       const historical = selectTemporalRecoveries(localCandidates(localStorage, key), savedAt);
       let temporalError = null;
       try {
         for (const [name, snapshot] of [['previous-day', historical.daily], ['hour-ago', historical.hourly]]) {
-          if (snapshot) localStorage.setItem(`${key}:${name}`, JSON.stringify(snapshot));
+          if (snapshot) localStorage.setItem(`${key}:${name}`, serializeEnvelope(snapshot));
         }
         if (stateInformationProfile(parsedState).meaningful) {
           const bucket = Math.floor(savedAt / TEMPORAL_INTERVAL);
