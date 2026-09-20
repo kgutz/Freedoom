@@ -11,6 +11,20 @@ const ACTION_SUFFIX = ':actions';
 const DAILY_SUFFIX = ':daily';
 const WEEKLY_SUFFIX = ':weekly';
 const LAST_INFO_SUFFIX = ':last-info';
+const TEMPORAL_SLOT_COUNT = 5;
+const TEMPORAL_INTERVAL = 20 * 60 * 1000;
+
+export function selectTemporalRecoveries(candidates, now = Date.now()) {
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const previousDay = localDateKey(yesterday.getTime());
+  const valid = candidates.filter(item => item.savedAt > 0 && item.savedAt <= now);
+  const newest = items => [...items].sort((a, b) => b.savedAt - a.savedAt)[0] || null;
+  return {
+    daily: newest(valid.filter(item => localDateKey(item.savedAt) === previousDay)),
+    hourly: newest(valid.filter(item => localDateKey(item.savedAt) === localDateKey(now) && item.savedAt <= now - 3600000)),
+  };
+}
 const DATABASE_NAME = 'freedoom-recovery';
 const DATABASE_STORE = 'snapshots';
 
@@ -495,6 +509,10 @@ async function writeIndexedEnvelope(indexedDB, envelope) {
 
 function localCandidates(localStorage, key) {
   const candidates = [];
+  for (const suffix of [':previous-day', ':hour-ago', ...Array.from({length:TEMPORAL_SLOT_COUNT}, (_, i) => `:timeline:${i}`)]) {
+    const candidate = safeEnvelope(localStorage.getItem(`${key}${suffix}`), suffix.slice(1));
+    if (candidate) candidates.push(candidate);
+  }
   const mainValue = localStorage.getItem(key);
   if (mainValue !== null) {
     try {
@@ -773,6 +791,26 @@ export function createBrowserStore(browserWindow) {
         generation: currentGeneration,
       });
       const envelopeText = JSON.stringify(envelope);
+      // Freeze historical candidates before the rolling/current slots are overwritten.
+      // Legacy daily/weekly snapshots remain readable and are never relabelled as yesterday.
+      const historical = selectTemporalRecoveries(localCandidates(localStorage, key), savedAt);
+      let temporalError = null;
+      try {
+        for (const [name, snapshot] of [['previous-day', historical.daily], ['hour-ago', historical.hourly]]) {
+          if (snapshot) localStorage.setItem(`${key}:${name}`, JSON.stringify(snapshot));
+        }
+        if (stateInformationProfile(parsedState).meaningful) {
+          const bucket = Math.floor(savedAt / TEMPORAL_INTERVAL);
+          const temporalKey = `${key}:timeline:${bucket % TEMPORAL_SLOT_COUNT}`;
+          const existing = safeEnvelope(localStorage.getItem(temporalKey), 'timeline');
+          // Keep the first save in each bucket, rather than replacing it on every action.
+          if (!existing || Math.floor(existing.savedAt / TEMPORAL_INTERVAL) !== bucket) {
+            localStorage.setItem(temporalKey, envelopeText);
+          }
+        }
+      } catch (error) {
+        temporalError = error;
+      }
       const slotKey = `${key}${SLOT_SUFFIX}${revision % RECOVERY_SLOT_COUNT}`;
       let recoverySaved = false;
       let mainSaved = false;
@@ -852,6 +890,7 @@ export function createBrowserStore(browserWindow) {
         weeklySnapshot,
         lastInformativeSnapshot,
         degraded:
+          Boolean(temporalError) ||
           !mainSaved ||
           !recoverySaved ||
           (requiresProtectedSnapshots &&
@@ -859,6 +898,7 @@ export function createBrowserStore(browserWindow) {
               !weeklySnapshot.available ||
               !lastInformativeSnapshot.available)),
         errors: [
+          temporalError,
           mainError,
           recoveryError,
           dailySnapshot.error,

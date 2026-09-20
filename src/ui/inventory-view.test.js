@@ -63,7 +63,8 @@ describe('interfaz de inventario y botín', () => {
         const before = fused.inventory.relics[id].inheritedEffects[baseId];
         expect(html).toContain(`del ${before}% al ${before + recipe.synergy.values[rank]}%`);
       } else expect(html).toContain(`${recipe.synergy.values[rank]}`);
-      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(3);
+      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(2);
+      expect(html).toContain('relic-fusion-bonus');
       expect(html).not.toContain('data-relic-effect-info');
       if(['fusion_26','fusion_28'].includes(id)) expect(html).toContain('Sin carga preparada');
       expect(fusionResultMarkup(fused)).toContain(recipe.image);
@@ -90,8 +91,11 @@ describe('interfaz de inventario y botín', () => {
         const before = fused.inventory.relics[id].inheritedEffects[baseId];
         expect(html).toContain(`del ${before}% al ${before + recipe.synergy.values[rank]}%`);
       } else expect(html).toContain(`${recipe.synergy.values[rank]}`);
-      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(3);
+      expect((html.match(/data-effect-kind="EFECTO PRINCIPAL"/g)||[])).toHaveLength(2);
+      expect(html).toContain('relic-fusion-bonus');
+      if(id === 'fusion_22') expect(html).toContain('class="relic-stat-separator" aria-hidden="true">·</span>');
       if (['fusion_20','fusion_22'].includes(id)) expect(html).toContain('Sin carga preparada');
+      if (id === 'fusion_22') expect(html).toContain('class="relic-charge-status relic-charge-status--paired"');
     }
   });
   it.each(['fusion_18', 'fusion_19'])('conserva selector localizado de imagen y marco independiente en %s', id => {
@@ -449,7 +453,9 @@ describe('interfaz de inventario y botín', () => {
     expect(renderRelicDetail(document, state, 'relic_01')).toBe(true);
     const html = document.elements.relicDetailBody.innerHTML;
     expect(html).toContain('EFECTO PRINCIPAL');
-    expect(html).toContain('EFECTOS EXTRAS');
+    expect(html).not.toContain('EFECTOS EXTRAS');
+    expect(html).not.toContain('relic-fusion-bonus');
+    expect(html).not.toContain('relic-stat-separator');
     expect(html).not.toContain('data-forge-relic');
   });
 
@@ -463,6 +469,8 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Yelmo de la Última Brasa');
     expect(html).toContain('CONSTANCIA');
     expect(html).toContain('Carga actual: 4/6');
+    expect(html).toContain('class="relic-charge-status"');
+    expect(html).not.toContain('relic-charge-status--paired');
     expect(html).toContain('Gana 30 XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; el progreso se pierde al desequipar.');
     expect(html).toContain('+3 puntos porcentuales en la Forja.');
   });
@@ -692,7 +700,8 @@ describe('interfaz de inventario y botín', () => {
     expect(detail).toContain('Reduce 5 de daño de la primera fuente del día.');
     expect(detail).toContain('Recupera 5% del Maná máximo con el primer hábito con XP del día.');
     expect(detail).toContain('Con el primer hábito que te dé XP del día, recuperas un 3% extra del Maná máximo.');
-    expect(detail.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(3);
+    expect(detail.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(2);
+    expect(detail).toContain('relic-fusion-bonus');
     expect(detail).toContain('aria-haspopup="dialog"');
     expect(detail).not.toContain('Corazón de Hollín:');
     expect(detail).not.toContain('Lágrima de Espectro:');
@@ -841,7 +850,8 @@ describe('interfaz de inventario y botín', () => {
     const document = fakeDocument();
     renderShopView(document, lootWithBosses(2), 20 * 86400000, { section: 'map' });
     const html = document.elements.shopBody.innerHTML;
-    expect(html).toContain('shop/callejon-oficios.webp');
+    expect(html).toContain('scenes/shops-v2.webp');
+    expect(html).toContain('scenes/shops-v2.mp4');
     expect(html).toContain('Forja del Crisol');
     expect(html).toContain('Botica de Pociones');
     expect(html).toContain('Telar Arcano');

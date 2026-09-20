@@ -189,6 +189,7 @@ import {
 } from './domain/outfit-rules.js';
 import {
   STORAGE_KEY,
+  selectTemporalRecoveries,
   createBrowserStore,
   mergeState,
   parseState,
@@ -212,7 +213,7 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
-import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
 import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
@@ -234,6 +235,12 @@ import {
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
+import { installSceneMedia } from './ui/scene-media.js';
+import { installFrameMedia } from './ui/frame-media.js';
+import { templeMarkup, templeShopMarkup, renderBlessingDetail } from './ui/temple-view.js';
+import { startTempleDialogue } from './ui/temple-dialogue.js';
+import { showTempleGift } from './ui/temple-gift.js';
+import { BLESSINGS, blessingPrice, purchaseBlessing, blessedDeathPenalty, blessedDailyEnergy } from './domain/blessing-rules.js';
 import { createRecoveryModeController } from './ui/recovery-mode-controller.js';
 import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
@@ -267,7 +274,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.52';
+const APP_VERSION='2.28.53';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -766,7 +773,13 @@ function previousDayExceededConsumptionLimit(now=new Date()){
   return Math.max(0,record.c||0)>limitOfDate(previousDate);
 }
 function huntBaseEnergyForToday(now=new Date()){
-  return previousDayExceededConsumptionLimit(now)?2:10;
+  const result=blessedDailyEnergy({blessings:state.game?.blessings,dayKey:todayKey(now),previousEnergyDay:state.game?.hunt?.energyDay,failed:previousDayExceededConsumptionLimit(now),now:now.getTime()});
+  if(result.consumed){
+    state.game.blessings=result.blessings;
+    // Save after the caller commits the matching daily refill, never half a rollover.
+    queueMicrotask(()=>scheduleSave({type:'blessing:consume',blessing:'energy'}));
+  }
+  return result.baseEnergy;
 }
 function preloadStartupViews(){
   const imagePreloader=createImagePreloader({window,concurrency:2});
@@ -1231,6 +1244,10 @@ function prepareLocalBossDemo(){
     const demoMaxes=heroMaxes();
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
+    if(LOCAL_DEMO_HOST && LOCAL_DEMO_PARAMS.get('demoFrame')==='azariel-temple'){
+      state.game.frame='azariel-temple';
+      state.game.frames={...state.game.frames,owned:{...state.game.frames?.owned,'azariel-temple':{acquiredAt:Date.now(),source:'demo'}}};
+    }
     state.economy={
       ...state.economy,
       coins:9999,
@@ -1523,7 +1540,9 @@ function renderDeathModal(notice=state.game?.deathNotice){
   const levelChanged=notice.levelAfter<notice.levelBefore;
   document.getElementById('deathCause').textContent=notice.cause||'Las fuerzas de tu héroe se agotaron.';
   document.getElementById('deathXpLoss').textContent=protectedXp?'XP PROTEGIDA':`−${notice.xpLost} XP`;
-  document.getElementById('deathXpCopy').textContent=protectedXp
+  document.getElementById('deathXpCopy').textContent=notice.blessingProtected
+    ? 'Tu bendición ha protegido toda tu experiencia. La protección se ha consumido.'
+    : protectedXp
     ? 'Los niveles 1–4 están protegidos frente a la pérdida de experiencia.'
     : `Has perdido el ${notice.lossPercent||10}% de la experiencia necesaria para completar este nivel.`;
   const levelRow=document.getElementById('deathLevelChange');
@@ -1547,7 +1566,9 @@ function triggerHeroDeath({cause,source='unknown',open=true}={}){
   const g=state.game;
   if(!g?.cls||Number(g.hp)>0) return null;
   const before=gameStats();
-  const penalty=deathExperiencePenalty({xp:before.xp,level:before.lvl});
+  const protection=blessedDeathPenalty({xp:before.xp,level:before.lvl,source,blessings:g.blessings});
+  const penalty=protection.penalty;
+  g.blessings=protection.blessings;
   g.xpDeathPenalty=Math.max(0,Number(g.xpDeathPenalty)||0)+penalty.xpLost;
   const after=gameStats();
   g.hp=after.maxHp;
@@ -1561,6 +1582,7 @@ function triggerHeroDeath({cause,source='unknown',open=true}={}){
     xpLost:penalty.xpLost,
     lossPercent:penalty.lossPercent,
     protected:penalty.protected,
+    blessingProtected:Boolean(penalty.blessingProtected),
     levelBefore:penalty.levelBefore,
     levelAfter:after.lvl,
     maxHp:after.maxHp,
@@ -2496,6 +2518,11 @@ function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
   const sheet=overlay?.querySelector('.inventory-sheet');
+  if(sheet?.classList.contains('inventory-temple-active')){
+    overlay.style.setProperty('--inventory-panel-offset','0px');
+    overlay.style.setProperty('--inventory-nav-clearance','0px');
+    return;
+  }
   const bagBody=document.getElementById('bagBody');
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
@@ -2553,6 +2580,12 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const bagSelected=panel==='bag';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
+  const templeSelected=panel==='temple';
+  const templeBody=document.getElementById('templeBody');
+  const templeTab=document.getElementById('templeTab');
+  templeBody.hidden=!templeSelected;
+  templeTab.classList.toggle('active',templeSelected);
+  templeTab.setAttribute('aria-selected',String(templeSelected));
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
   const bagBody=document.getElementById('bagBody');
@@ -2579,12 +2612,18 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   if(inventoryTitle) inventoryTitle.textContent=shopExperience&&!shopMapExpanded?'Tienda':'Inventario';
   inventoryOverlay?.classList.remove('inventory-shop-expanded');
   inventorySheet?.classList.remove('inventory-shop-active');
+  inventorySheet?.classList.toggle('inventory-temple-active',templeSelected);
   inventorySheet?.classList.toggle('inventory-shop-map-overlay',shopMapExpanded);
   inventorySheet?.classList.toggle('inventory-shop-destination',shopExperience&&!shopMapExpanded);
   inventorySheet?.classList.toggle('inventory-shop-relics',shopSelected&&shopViewSection==='relics');
   if(bagSelected){
     renderInventoryView(document,state,potionViewOptions());
     renderCollectionView(document,state);
+  }else if(templeSelected){
+    templeBody.innerHTML=templeMarkup(state.game,state.economy,gameStats().lvl);
+    startTempleDialogue(templeBody,state.game,window);
+    showTempleGift(document,state.game);
+    templeBody.scrollTop=0;
   }else if(forgeSelected){
     selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   }else{
@@ -3755,6 +3794,7 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
     </details>
   </div>
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
+  ${huntRecoveryNoteMarkup({regionId:region.id,difficultyId:difficulty.id})}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
     <input type="checkbox" id="huntAutoPotions" ${hasCombatPotions?'checked':'disabled'}>
     <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
@@ -4157,8 +4197,7 @@ async function openRecoveryModal(){
       return;
     }
     const lastInformation=recoveries.find(recovery=>recovery.source==='last-info');
-    const daily=recoveries.find(recovery=>recovery.source==='daily');
-    const weekly=recoveries.find(recovery=>recovery.source==='weekly');
+    const {daily,hourly}=selectTemporalRecoveries(recoveries);
     appendRecoverySection(list,{
       title:'Recomendada',
       description:'La referencia más segura si tu partida desapareció.',
@@ -4171,12 +4210,18 @@ async function openRecoveryModal(){
     });
     appendRecoverySection(list,{
       title:'Copias protegidas',
-      description:'Puntos de retorno separados por tiempo.',
+      description:'Último guardado de ayer y un punto de hoy de hace al menos una hora. Comprueba la fecha y hora antes de restaurar.',
       items:[
-        daily&&{recovery:daily,label:'Copia diaria',detail:'Mejor estado guardado ese día'},
-        weekly&&{recovery:weekly,label:'Copia semanal',detail:'Estado protegido de la semana'}
+        daily&&{recovery:daily,label:'Día anterior',detail:'Último guardado disponible de ayer'},
+        hourly&&{recovery:hourly,label:'Hace aproximadamente una hora',detail:'Guardado anterior disponible más cercano; puede ser más antiguo'}
       ].filter(Boolean)
     });
+    if(!daily||!hourly){
+      const missing=document.createElement('p');
+      missing.className='recovery-empty';
+      missing.textContent=[!daily?'No hay un guardado disponible del día anterior.':'',!hourly?'Todavía no hay una copia de hoy con una hora de antigüedad.':''].filter(Boolean).join(' ');
+      list.append(missing);
+    }
   }catch(error){
     list.textContent='No se pudieron leer las copias: '+(error.message||'error desconocido');
   }
@@ -5765,6 +5810,34 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     clearFusionFeedback();
   }
   if(event.target.closest('#bagTab')){ forgeFromCity=false; showInventoryPanel('bag'); return; }
+  if(event.target.closest('#templeTab')){ forgeFromCity=false; showInventoryPanel('temple'); return; }
+  if(event.target.closest('[data-close-temple]')){
+    returnToCharacterSheetFromShop();
+    return;
+  }
+  if(event.target.closest('[data-temple-blessings]')){
+    document.getElementById('inventoryReturnCharacter').hidden=false;
+    document.querySelector('.temple-scene').setAttribute('aria-hidden','true');
+    const preview=document.getElementById('templeBlessings');
+    preview.innerHTML=templeShopMarkup(state.game,state.economy,gameStats().lvl);
+    preview.hidden=false;
+    preview.focus();
+    return;
+  }
+  const blessingOpen=event.target.closest('[data-open-blessing]');
+  if(blessingOpen){
+    if(blessingOpen.disabled || state.game.blessings?.[blessingOpen.dataset.openBlessing]?.active) return;
+    if(renderBlessingDetail(document,state.game,state.economy,gameStats().lvl,blessingOpen.dataset.openBlessing)) showSheet(document,'sheetRelicDetail');
+    return;
+  }
+  if(event.target.closest('[data-temple-back]')){
+    document.getElementById('inventoryReturnCharacter').hidden=true;
+    document.getElementById('templeBlessings').hidden=true;
+    document.querySelector('.temple-scene').removeAttribute('aria-hidden');
+    startTempleDialogue(document.getElementById('templeBody'),state.game,window);
+    document.querySelector('[data-temple-blessings]').focus();
+    return;
+  }
   if(event.target.closest('#shopTab')){
     dismissFeatureDiscovery('inventory-market');
     forgeFromCity=false;
@@ -6334,6 +6407,14 @@ document.getElementById('sheetRelicReplacement').addEventListener('click',event=
   if(equip) equipRelicFromDetail(equip);
 });
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const blessingBuy=event.target.closest('[data-buy-blessing]');
+  if(blessingBuy){
+    if(blessingBuy.disabled) return;
+    const id=blessingBuy.dataset.buyBlessing;
+    if(!BLESSINGS[id]) return;
+    openShopPurchaseConfirmation({type:'blessing',blessingId:id,name:BLESSINGS[id].name,coinCost:blessingPrice(id,gameStats().lvl),operationId:crypto.randomUUID()});
+    return;
+  }
   const sale=event.target.closest('[data-sell-relic]');
   if(sale){
     if(sale.disabled||shopLocked) return;
@@ -6404,6 +6485,8 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   }
 });
 installRelicEffectDialog(document);
+installSceneMedia(document,window);
+installFrameMedia(document,window);
 async function handleForgeAttempt(relicId){
   if(!relicId||forgeLocked) return;
   forgeLocked=true;
@@ -6529,6 +6612,22 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
   else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId,purchase.quantity);
   else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  else if(purchase.type==='blessing'){
+    const result=purchaseBlessing({game:state.game,economy:state.economy,id:purchase.blessingId,level:gameStats().lvl,dayKey:todayKey(),operationId:purchase.operationId,expectedPrice:purchase.coinCost});
+    if(result.ok){
+      state.game=result.game;
+      state.economy=result.economy;
+      scheduleSave({type:'blessing:purchase',blessing:purchase.blessingId});
+      document.getElementById('sheetRelicDetail').classList.remove('show');
+      document.getElementById('templeBlessings').innerHTML=templeShopMarkup(state.game,state.economy,gameStats().lvl);
+      renderHero();
+      showToast('Bendición activada','heal');
+      showTempleGift(document,state.game);
+    }else{
+      showToast(result.reason==='coins'?'No tienes suficiente oro':result.reason==='active'?'Esta bendición ya está activa':'La compra ha cambiado. Revisa la ficha.','dmg');
+      renderBlessingDetail(document,state.game,state.economy,gameStats().lvl,purchase.blessingId);
+    }
+  }
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else if(purchase.type==='frame') handleFramePaint(purchase.frameId);
   else await handleRelicPurchase(purchase.relicId);
@@ -6691,6 +6790,22 @@ document.getElementById('betaTesterRewardAccept').addEventListener('click',async
     showToast('No se guardó la recompensa · reintenta','dmg');
   }
 });
+document.addEventListener('click',async event=>{
+  const giftAction=event.target.closest('[data-temple-gift-view],[data-temple-gift-close]');
+  if(!giftAction || giftAction.disabled) return;
+  giftAction.disabled=true;
+  state.game.templeGift={...state.game.templeGift,seenAt:Date.now()};
+  scheduleSave({type:'reward:temple-gift-seen'});
+  document.getElementById('templeGiftBg').classList.remove('show');
+  if(giftAction.hasAttribute('data-temple-gift-view')){
+    returnToCharacterSheetFromShop();
+    outfitSelectorContext='collection';
+    outfitSelectorSection='frames';
+    selectedOutfitDraft=renderOutfitSelector(document,state,'azariel-temple',{section:'frames',context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    document.getElementById('outfitSelectorBg').classList.add('show');
+  }else document.querySelector('[data-temple-back]')?.focus();
+});
+
 document.getElementById('betaTesterRewardContinue').addEventListener('click',()=>{
   const inkRewardVisible=!document.getElementById('betaTesterRewardInks')?.hidden;
   const energyPotionsVisible=!document.getElementById('betaTesterRewardEnergyPotions')?.hidden;

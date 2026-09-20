@@ -42,7 +42,8 @@ describe('Malla: Escamas protectoras', () => {
     const run = effects => {
       const started = startHunt({ hunt: {}, difficultyId: 'easy', level: 20, seed: 15, nowTimestamp: 1000, relicEffects: effects });
       expect(started.ok).toBe(true);
-      return resolveHunt({ hunt: JSON.parse(JSON.stringify(started.hunt)), classId: 'knight', level: 20, allocation: { constitution: 60 }, nowTimestamp: 61000 }).report;
+      // Low base defense keeps hits above the minimum-1 rounding floor.
+      return resolveHunt({ hunt: JSON.parse(JSON.stringify(started.hunt)), classId: 'sorcerer', level: 20, allocation: { constitution: 60 }, nowTimestamp: 61000 }).report;
     };
     const base = run({});
     const reduced = run(equippedHuntEffects(stateFor(rank)));

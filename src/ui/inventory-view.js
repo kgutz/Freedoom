@@ -1,3 +1,4 @@
+import { sceneMediaMarkup } from './scene-media.js';
 import {
   AFFIX_DEFINITIONS,
   ALL_RELIC_DEFINITIONS,
@@ -658,12 +659,21 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     : '<p class="no-affixes">Esta rareza no posee efectos extras.</p>';
   const fusion = Boolean(definition.recipeId);
   const combatBonuses = relicCombatBonuses(relicId, relic.rank, relic.ingredientSnapshots);
+  const detailEffects = relicEffectCopy(definition, relic);
+  const fusionEffect = fusion ? detailEffects.find(effect => effect.id === definition.id) : null;
+  const mainEffects = fusionEffect ? detailEffects.filter(effect => effect !== fusionEffect) : detailEffects;
   const combatStatLabels = { physicalAttack: 'ATAQUE', magicAttack: 'PODER', defense: 'DEFENSA' };
   const combatMarkup = combatBonuses.length
-    ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('')}</div></div>`
+    ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('<span class="relic-stat-separator" aria-hidden="true">·</span>')}</div></div>`
     : '';
   const constancy = relicId === 'relic_04' || relic.inheritedEffects?.relic_04
     ? `<div class="relic-constancy" aria-label="Carga de Constancia"><span>CONSTANCIA</span><b>Carga actual: ${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b></div>`
+    : '';
+  const huntCharge = HUNT_CHARGE_RELIC_IDS.includes(relicId)
+    ? `<div class="relic-constancy" aria-label="Carga de Cacería"><span>CARGA DE CACERÍA</span><b>${huntChargeCopy(normalized.inventory.huntCharges[relicId])}</b></div>`
+    : '';
+  const chargeStatus = constancy || huntCharge
+    ? `<div class="relic-charge-status${constancy && huntCharge ? ' relic-charge-status--paired' : ''}">${constancy}${huntCharge}</div>`
     : '';
   body.innerHTML = `<div class="relic-inspect ${rarityClass(relic.rarity)}"><div class="relic-detail-frame ${rarityClass(relic.rarity)}">
       <div class="relic-detail-art">${relicArt(definition)}</div>
@@ -674,10 +684,10 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
       </div>
     </div>
     ${combatMarkup}
-    ${constancy}
-    ${HUNT_CHARGE_RELIC_IDS.includes(relicId) ? `<div class="relic-constancy"><span>CARGA DE CACERÍA</span><b>${huntChargeCopy(normalized.inventory.huntCharges[relicId])}</b></div>` : ''}
-    <div class="relic-effect"><span>EFECTO PRINCIPAL</span>${relicEffectRows(definition, relic)}</div>
-    <div class="relic-affixes"><span>EFECTOS EXTRAS</span>${affixes}</div>
+    ${chargeStatus}
+    <div class="relic-effect"><span>EFECTO PRINCIPAL</span>${effectControlList(mainEffects)}</div>
+    ${fusionEffect ? `<div class="relic-effect relic-fusion-bonus"><span>Bonus de fusión</span><p>${escapeHtml(fusionEffect.description)}</p></div>` : ''}
+    ${relic.affixes.length ? `<div class="relic-affixes"><span>EFECTOS EXTRAS</span>${affixes}</div>` : ''}
     <div class="relic-equip-actions">
       ${equipmentActions}
       ${owned && !fusion && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
@@ -990,7 +1000,7 @@ function shopCityMapMarkup() {
       <p>Elige un comercio para preparar a tu héroe.</p>
     </div>
     <div class="shop-city-map">
-      <img src="shop/callejon-oficios.webp" alt="Callejón medieval con cinco comercios" loading="eager" decoding="async">
+      ${sceneMediaMarkup('shops', 'Callejón medieval con cinco comercios')}
       <button type="button" class="shop-city-close" data-close-shop-map aria-label="Cerrar mapa de tiendas">✕</button>
       <button type="button" class="shop-city-zone shop-city-zone--forge" data-shop-destination="forge" aria-label="Entrar en Forja del Crisol"><span>Forja del Crisol</span></button>
       <button type="button" class="shop-city-zone shop-city-zone--potions" data-shop-destination="potions" aria-label="Entrar en Botica de Pociones"><span>Botica de Pociones</span></button>

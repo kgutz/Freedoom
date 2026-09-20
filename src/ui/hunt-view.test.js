@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
+import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
+
+it('explains gradual recovery and keeps relic recovery separate', () => {
+  const html = huntRecoveryNoteMarkup();
+  expect(html).toContain('15%');
+  expect(html).toContain('hasta el 70%');
+  expect(html).toContain('Las reliquias suman su recuperación aparte');
+});
+
+it('explains Desgarro only when entering Hard, with current HP and mitigation', () => {
+  const html=huntRecoveryNoteMarkup({regionId:'fields-of-mist',difficultyId:'hard'});
+  expect(html).toContain('Desgarro');expect(html).toContain('30%');
+  expect(html).toContain('Vida actual');expect(html).toContain('reducido por tus reliquias');
+  for(const difficultyId of ['easy','medium'])for(const regionId of ['fields-of-mist','dead-hours-bunker','nuncabasta-peaks'])
+    expect(huntRecoveryNoteMarkup({regionId,difficultyId})).not.toContain('Desgarro');
+});
+
+it('explains Tenacidad only for the Hard Bunker miniboss', () => {
+  expect(huntRecoveryNoteMarkup({regionId:'dead-hours-bunker',difficultyId:'hard'})).toContain('49%');
+  for(const regionId of ['fields-of-mist','nuncabasta-peaks'])
+    expect(huntRecoveryNoteMarkup({regionId,difficultyId:'hard'})).not.toContain('Tenacidad');
+  for(const difficultyId of ['easy','medium'])
+    expect(huntRecoveryNoteMarkup({regionId:'dead-hours-bunker',difficultyId})).not.toContain('Tenacidad');
+});
 
 function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };

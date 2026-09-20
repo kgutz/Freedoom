@@ -1,4 +1,5 @@
-  :root{
+@import './scene-styles.css';
+:root{
     --bg:#171310;          /* emulsión oscura */
     --panel:#211C17;
     --panel2:#2A241D;
@@ -461,6 +462,7 @@
   .habit-hero-card::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(14,11,9,.9) 0%,rgba(14,11,9,.72) 48%,rgba(14,11,9,.5) 100%);pointer-events:none}
   .habit-hero-bg{position:absolute;inset:0;z-index:0;width:100%;height:100%;object-fit:cover;object-position:center calc(52% - 20px);image-rendering:pixelated;pointer-events:none}
   .habit-hero-bg[src$="beta_tester_bg_final.webp"]{object-position:center -39px}
+  .habit-hero-bg[src$="azariel_temple_wide.webp"],.habit-hero-bg[src$="azariel_temple_wide.mp4"]{object-position:center calc(52% - 5px)}
   .habit-hero-bg[src$="welder_beta_forge.webp"]{object-position:center calc(15% - 20px)}
   .habit-hero-card.hunt-region-hero-card .habit-hero-bg{object-position:center calc(18% - 20px)}
   .habit-hero-card.hunt-region-hero-card::after{background:linear-gradient(90deg,rgba(14,11,9,.88) 0%,rgba(14,11,9,.68) 48%,rgba(14,11,9,.48) 100%)}
@@ -1530,7 +1532,7 @@
   .inventory-sheet.inventory-shop-active>.sheet-head{padding-top:max(16px,env(safe-area-inset-top))!important}
   .inventory-sheet.inventory-shop-active>#forgeBody,.inventory-sheet.inventory-shop-active>#shopBody{flex:1 1 auto}
   .inventory-sheet.inventory-shop-active .shop-city-heading{display:none}
-  .inventory-sheet.inventory-shop-map-overlay>#shopBody{position:fixed;z-index:60;top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));left:50%;width:min(calc(100% - 16px),412px);max-height:none;overflow:hidden!important;scrollbar-gutter:auto;transform:translateX(-50%);padding:0!important;border:1px solid var(--line);border-radius:20px;background:var(--bg);box-shadow:0 20px 60px rgba(0,0,0,.66)}
+  .inventory-sheet.inventory-shop-map-overlay>#shopBody,.inventory-sheet.inventory-temple-active>#templeBody{position:fixed;z-index:60;top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));left:50%;width:min(calc(100% - 16px),412px);max-height:none;overflow:hidden!important;scrollbar-gutter:auto;transform:translateX(-50%);padding:0!important;border:1px solid var(--line);border-radius:20px;background:var(--bg);box-shadow:0 20px 60px rgba(0,0,0,.66)}
   .inventory-sheet.inventory-shop-map-overlay .shop-city,.inventory-sheet.inventory-shop-map-overlay .shop-city-map{width:100%;height:100%}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-heading{display:none}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-map{aspect-ratio:auto;border-color:var(--line);border-radius:19px}
@@ -2216,6 +2218,7 @@
   .hunt-potential-reward .resource-icon{width:22px;height:22px;flex-shrink:0}
   .hunt-potion-toggle-copy b{font-size:13px;line-height:1.4}
   .hunt-potion-toggle-copy small{font-size:11px;line-height:1.5}
+  .hunt-recovery-note{margin:12px 0;color:var(--muted);font:400 12px/1.55 var(--font-body);overflow-wrap:break-word}
   .hunt-heading p,.hunt-launch>small,.hunt-active p{font-size:12px;line-height:1.55}
   .hunt-difficulty-level{font-size:10px;line-height:1.4}
   .hunt-section-title{flex-wrap:wrap}.hunt-section-title b{font-size:10px;line-height:1.4}
@@ -2242,8 +2245,25 @@
   /* Los diálogos largos pueden desplazarse sin perder sus acciones. */
   .modal-bg.center>.modal:not(.outfit-selector-modal){max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
   /* La expansión de recompensas no recentra verticalmente la confirmación. */
-  #huntConfirmBg{--hunt-modal-top:clamp(24px,10dvh,80px);align-items:flex-start;padding:var(--hunt-modal-top) 24px 16px;box-sizing:border-box}
-  #huntConfirmBg>.hunt-confirm-modal{max-height:calc(100dvh - var(--hunt-modal-top) - 16px);overflow-y:auto;overflow-anchor:none}
+  #huntConfirmBg{align-items:center;padding:24px;box-sizing:border-box}
+  #huntConfirmBg>.hunt-confirm-modal{max-height:calc(100dvh - 48px);overflow-y:auto;overflow-anchor:none}
+  .boss-combat-report>summary{cursor:pointer;list-style:none}
+  .boss-combat-report>summary::-webkit-details-marker{display:none}
+  .boss-combat-report>summary::after{content:'⌄';color:var(--kodak);font-size:18px}
+  .boss-combat-report[open]>summary::after{content:'⌃'}
+  .boss-combat-report>summary:focus-visible{outline:2px solid var(--kodak);outline-offset:-3px}
+  #relicDetailBody .relic-inspect .relic-effect,#relicDetailBody .relic-inspect .relic-affixes{padding:12px 15px}
+  #relicDetailBody .relic-effect-controls{display:block;margin-top:4px;line-height:1.4}
+  #relicDetailBody .relic-effect-item{display:inline}
+  #relicDetailBody .relic-effect-controls .relic-effect-link{display:inline;min-height:0;padding:3px 0;line-height:1.4}
+  #relicDetailBody .relic-charge-status{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:13px}
+  #relicDetailBody .relic-charge-status--paired{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #relicDetailBody .relic-combat-values .relic-stat-separator{color:var(--kodak);font-size:16px;line-height:1}
+  #relicDetailBody .relic-inspect .relic-fusion-bonus{border-left:3px solid var(--kodak)}
+  #relicDetailBody .relic-inspect .relic-fusion-bonus>span{color:var(--kodak)}
+  #relicDetailBody .relic-charge-status .relic-constancy{min-width:0;margin:0;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);text-align:left}
+  #relicDetailBody .relic-charge-status .relic-constancy span{color:var(--kodak);font:400 10px/1.4 var(--font-display);letter-spacing:0;overflow-wrap:break-word}
+  #relicDetailBody .relic-charge-status .relic-constancy b{margin-top:5px;color:var(--text);font:400 12px/1.4 var(--font-copy);overflow-wrap:break-word}
   @media(max-width:360px){
     .character-attribute-grid{grid-template-columns:minmax(0,1fr)}
     .character-attribute-grid .character-attribute{grid-template-columns:minmax(0,1fr) 28px 30px;min-height:48px}

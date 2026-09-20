@@ -157,7 +157,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.28.52</div>
+  <div class="ob-version" id="obVersion">v2.28.53</div>
 </div>
 
 <div id="loading" class="loading">
@@ -428,7 +428,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.52</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.53</span></p>
       </div>
     </div>
   </div>
@@ -581,7 +581,7 @@
           </details>
           <details class="faq-item" data-faq-item="qué pasa combate cacería atributos reliquias vida maná pociones automático informe">
             <summary><span>¿Qué ocurre durante una expedición?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Tu héroe combate hasta tres enemigos usando clase, nivel, Atributos y reliquias. Entra con su Vida y Maná actuales y conserva el estado de salida.</p><p>Puedes permitir el uso automático de Pociones de Vida y Maná. Al terminar, el informe muestra rondas, daño, recuperación, pociones y botín de cada encuentro.</p></div>
+            <div class="faq-answer"><p>Tu héroe combate hasta tres enemigos usando clase, nivel, Atributos y reliquias. Entra con su Vida y Maná actuales y conserva el estado de salida.</p><p>Tras vencer, si queda otro enemigo, recupera un 15% de su Vida máxima, hasta el 70%. Si ya supera ese límite no pierde Vida. La recuperación de las reliquias se añade después y puede superar ese límite, sin exceder la Vida máxima. La recuperación al salir se calcula por separado.</p><p>Solo en Difícil, Desgarro añade a cada golpe enemigo un porcentaje de tu Vida actual, indicado antes de entrar. Puede ser crítico o esquivado; Ojo y Malla reducen el golpe completo. Un enemigo derrotado no responde.</p><p>En Búnker Difícil, el minijefe tiene Tenacidad: cada golpe puede quitarle como máximo un 49% de su Vida máxima. La curación por Vampirismo usa el daño real causado.</p><p>Puedes permitir el uso automático de Pociones de Vida y Maná. Al terminar, el informe muestra rondas, daño, recuperación, pociones y botín de cada encuentro.</p></div>
           </details>
           <details class="faq-item" data-faq-item="informe pendiente resultado dónde zona mapa no puedo iniciar otra cacería recoger botín">
             <summary><span>¿Por qué no puedo iniciar otra Cacería?</span><span class="faq-icon" aria-hidden="true"></span></summary>
@@ -697,9 +697,10 @@
   <button type="button" class="shop-return-character" id="inventoryReturnCharacter" data-return-character-sheet hidden>‹ Volver a Ficha</button>
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Bolso y Mercado">
+    <div class="inventory-tabs" role="tablist" aria-label="Bolso, Mercado y Templo">
       <button type="button" class="active" id="bagTab" role="tab" aria-selected="true">Bolso</button>
       <button type="button" id="shopTab" role="tab" aria-selected="false">Mercado</button>
+      <button type="button" id="templeTab" role="tab" aria-selected="false">Templo</button>
     </div>
     <div id="bagBody">
       <div id="inventoryBody"></div>
@@ -707,6 +708,7 @@
     </div>
     <div id="forgeBody" hidden></div>
     <div id="shopBody" hidden></div>
+    <div id="templeBody" hidden></div>
   </div>
 </div>
 

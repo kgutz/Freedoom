@@ -40,11 +40,17 @@ describe('Microcopy de efectos: catálogo completo', () => {
     const detail = document.elements.relicDetailBody.innerHTML;
     if (definition.recipeId) renderFusionView(document, base, ...definition.ingredientIds);
     else renderForgeView(document, base, definition.id);
-    expect(effectRows(document.elements.forgeBody.innerHTML)).toEqual(effectRows(detail));
-    expect(effectRows(detail)).toHaveLength(rows.length);
+    const forgeRows = effectRows(document.elements.forgeBody.innerHTML);
+    expect(definition.recipeId ? forgeRows.slice(0, -1) : forgeRows).toEqual(effectRows(detail));
+    expect(effectRows(detail)).toHaveLength(definition.recipeId ? rows.length - 1 : rows.length);
     expect(detail).toContain('aria-haspopup="dialog"');
     expect(detail).not.toContain('<p>' + rows[0].description);
-    for (const row of rows) expect(detail).toContain(`data-effect-description="${row.description}"`);
+    for (const row of rows) {
+      if (definition.recipeId && row.id === definition.id) {
+        expect(detail).toContain('relic-fusion-bonus');
+        expect(detail).toContain(`<p>${row.description}</p>`);
+      } else expect(detail).toContain(`data-effect-description="${row.description}"`);
+    }
     // Collection history uses this same detail renderer and saved values.
     const history = structuredClone(state);
     history.inventory.collection[definition.id] = { discovered: true, lastOwnedRecord: relic };

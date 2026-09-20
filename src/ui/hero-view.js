@@ -719,7 +719,7 @@ export function renderHeroView({
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${combatLog
-        ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></div><div class="boss-combat-report-feed">${combatLog}</div></div>`
+        ? `<details class="boss-combat-report"><summary class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></summary><div class="boss-combat-report-feed">${combatLog}</div></details>`
         : '<div class="boss-log-empty">El combate aún no tiene movimientos registrados.</div>'}
       </section>`;
     bossHistoryBody.scrollTop = scrollTop;

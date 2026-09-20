@@ -763,6 +763,8 @@ describe('modelo de Héroe', () => {
     expect(heroContent.innerHTML).toContain('Disparos perfectos hoy:');
     expect(heroContent.innerHTML).not.toContain('Últimos golpes');
     expect(bossHistoryBody.innerHTML).toContain('REGISTRO DE COMBATE');
+    expect(bossHistoryBody.innerHTML).toContain('<details class="boss-combat-report"><summary');
+    expect(bossHistoryBody.innerHTML).not.toContain('<details class="boss-combat-report" open');
     expect(bossHistoryBody.innerHTML).toContain('−27 HP');
     expect(bossHistoryBody.innerHTML).toContain('TU HÉROE → JEFE');
     expect(bossHistoryBody.innerHTML).toContain('JEFE → TU HÉROE');

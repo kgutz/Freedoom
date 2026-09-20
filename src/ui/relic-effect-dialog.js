@@ -5,7 +5,7 @@ export function effectControl({ id, name, description }, kind = 'EFECTO PRINCIPA
 }
 
 export function effectControlList(effects, kind = 'EFECTO PRINCIPAL') {
-  return `<div class="relic-effect-controls">${effects.map((effect, index) => `<span class="relic-effect-item">${index > 0 && index === effects.length - 1 ? '<span class="relic-effect-conjunction">y </span>' : ''}${effectControl(effect, kind)}${index < effects.length - 2 ? '<span class="relic-effect-comma">,</span>' : ''}</span>`).join(' ')}</div>`;
+  return `<div class="relic-effect-controls">${effects.map((effect, index) => `<span class="relic-effect-item">${effectControl(effect, kind)}${index < effects.length - 1 ? '<span class="relic-effect-comma">,</span>' : ''}</span>`).join(' ')}</div>`;
 }
 
 // Native dialog provides top-layer isolation, inert background and keyboard focus containment.

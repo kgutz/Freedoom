@@ -15,6 +15,7 @@ import {
   HUNT_FORTUNE_BONUS_PERCENT,
   HUNT_REGIONS,
   huntRecoveryRates,
+  recoverHuntEncounterHealth,
   localHuntDayKey,
   normalizeHuntState,
   pveHeroStats,
@@ -31,7 +32,7 @@ describe('PvE combat rules', () => {
   it('reduce exactamente un 5% solo defensa y constitución de Madre en Medio', () => {
     for (const region of Object.values(HUNT_REGIONS)) {
       for (const difficultyId of ['easy', 'medium', 'hard']) {
-        const difficulty = huntDifficultyForRegion(region.id, difficultyId);
+        const difficulty = { ...huntDifficultyForRegion(region.id, difficultyId), enemyStatMultipliers: undefined };
         for (const enemy of region.enemies) {
           const previous = scaledEnemy(enemy, { ...difficulty, enemyEffectiveAttributeMultipliers: {} });
           const current = scaledEnemy(enemy, difficulty);
@@ -274,7 +275,8 @@ describe('PvE combat rules', () => {
     expect(result.report.heroHpBeforeRecovery).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.8));
     expect(result.report.encounters[0].recoveryAfter.hp).toBeGreaterThan(0);
     expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
+    expect(result.report.encounters[0].recoveryAfter.hp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.15));
     expect(result.report.encounters[0].nextHeroMana).toBeGreaterThanOrEqual(result.report.encounters[0].heroMana);
     expect(result.report.heroHp).toBeGreaterThan(result.report.heroHpBeforeRecovery);
     expect(result.report.heroMana).toBeGreaterThan(result.report.heroManaBeforeRecovery);
@@ -300,7 +302,7 @@ describe('PvE combat rules', () => {
     expect(result.report.recovery).toEqual({ hp: 0, mana: 0 });
     expect(result.report.heroHp).toBe(0);
     expect(result.report.heroMana).toBe(result.report.heroManaBeforeRecovery);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
     expect(result.report.encounters[1].heroHpAtStart).toBe(result.report.encounters[0].nextHeroHp);
   });
 
@@ -311,13 +313,13 @@ describe('PvE combat rules', () => {
       hunt: started.hunt,
       classId: 'sorcerer',
       level: 12,
-      allocation: { power: 2 },
+      allocation: { power: 2, constitution: 4 },
       nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
     });
     expect(result.report).toMatchObject({ won: false, heroDied: true, defeatedEnemies: 2 });
     expect(result.report.recovery.hp).toBe(0);
     expect(result.report.heroHp).toBe(0);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
     expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
     expect(result.report.encounters[2].heroHpAtStart).toBe(result.report.encounters[1].nextHeroHp);
   });
@@ -642,7 +644,7 @@ describe('PvE combat rules', () => {
   });
 
   it('conserva la Bruma en 1/2/3 y el Búnker en 3/4/5 sin cambiar recompensas', () => {
-    expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toBe(HUNT_DIFFICULTIES.hard);
+    expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toMatchObject(HUNT_DIFFICULTIES.hard);
     expect(huntDifficultyForRegion('dead-hours-bunker', 'easy')).toMatchObject({
       minLevel: 13,
       energyCost: 3,

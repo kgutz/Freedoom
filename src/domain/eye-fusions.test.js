@@ -15,10 +15,10 @@ function create(id, rank=1) {
 const hero={maxHp:1000,maxMana:100,physicalAttack:100,magicAttack:100,defense:0};
 const enemy={maxHp:1000,physicalAttack:100,defense:0};
 const fight=(effects,extra={})=>simulatePveCombat({hero,enemy,heroHp:500,heroMana:10,maxRounds:3,roll:()=>0.99,relicEffects:effects,...extra});
-function expedition(effects={}) {
+function expedition(effects={},classId='knight') {
   const begun=startHunt({hunt:{},difficultyId:'easy',level:20,seed:15,nowTimestamp:1000,relicEffects:effects});
   expect(begun.ok).toBe(true);
-  return resolveHunt({hunt:JSON.parse(JSON.stringify(begun.hunt)),classId:'knight',level:20,allocation:{constitution:60},nowTimestamp:61000});
+  return resolveHunt({hunt:JSON.parse(JSON.stringify(begun.hunt)),classId,level:20,allocation:{constitution:60},nowTimestamp:61000});
 }
 
 describe.each(ids)('%s herencia y persistencia',id=>{
@@ -102,10 +102,10 @@ describe('Cargas de Ojo',()=>{
     expect(equippedHuntEffects(equipRelic(changed,'fusion_20',0)).petrificationFirstBonus).toBe(0);
   });
   it('primer bono solo primera Mirada; Constancia contra los tres enemigos',()=>{
-    const base=expedition({petrification:10}).report;
+    const base=expedition({petrification:10},'sorcerer').report;
     // Synthetic bonus separates rounding buckets to isolate encounter scope.
-    const first=expedition({petrification:10,petrificationFirstBonus:50}).report;
-    const all=expedition({petrification:10,petrificationHuntBonus:50}).report;
+    const first=expedition({petrification:10,petrificationFirstBonus:50},'sorcerer').report;
+    const all=expedition({petrification:10,petrificationHuntBonus:50},'sorcerer').report;
     expect(first.encounters[0].roundDetails[0].damageTaken).toBeLessThan(base.encounters[0].roundDetails[0].damageTaken);
     for(let i=1;i<3;i++){
       expect(first.encounters[i].damageTaken).toBe(base.encounters[i].damageTaken);

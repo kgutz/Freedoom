@@ -4,6 +4,7 @@ import {
   logicalDayKey,
 } from './day-boundary-rules.js';
 import { normalizePotionState } from './potion-rules.js';
+import { HUNT_BALANCE_TUNING } from '../data/hunt-balance-data.js';
 
 export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
@@ -18,7 +19,8 @@ export const HUNT_VICTORY_RECOVERY = Object.freeze({
   manaCapPercent: 0.6,
 });
 export const HUNT_ENCOUNTER_RECOVERY = Object.freeze({
-  hpTargetPercent: 0.7,
+  hpPercent: 0.15,
+  hpCapPercent: 0.7,
   manaPercent: 0.15,
   manaCapPercent: 0.6,
 });
@@ -161,15 +163,17 @@ export function huntDifficultyForRegion(regionId, difficultyId) {
   const override = region.difficultyOverrides?.[difficultyId];
   const regionalMinLevel = safeInteger(region.difficultyMinLevels?.[difficultyId] ?? difficulty.minLevel);
   const energyCost = difficulty.energyCost + (region.id === 'fields-of-mist' ? 0 : 2);
-  if (!override && regionalMinLevel === difficulty.minLevel && energyCost === difficulty.energyCost) return difficulty;
+  const enemyStatMultipliers = HUNT_BALANCE_TUNING[regionId]?.[difficultyId];
+  if (!override && !enemyStatMultipliers && regionalMinLevel === difficulty.minLevel && energyCost === difficulty.energyCost) return difficulty;
   return {
     ...difficulty,
     ...override,
+    enemyStatMultipliers,
     energyCost,
     minLevel: regionalMinLevel,
     attributeMultipliers: {
       ...(difficulty.attributeMultipliers || {}),
-      ...(override.attributeMultipliers || {}),
+      ...(override?.attributeMultipliers || {}),
     },
   };
 }
@@ -553,6 +557,13 @@ export function huntRecoveryRates(defeatedEnemies = 0, totalEnemies = BRUMA_ENEM
   };
 }
 
+export function recoverHuntEncounterHealth(currentHp, maxHp) {
+  if (currentHp <= 0) return 0;
+  const gain = Math.round(maxHp * HUNT_ENCOUNTER_RECOVERY.hpPercent);
+  const cap = Math.round(maxHp * HUNT_ENCOUNTER_RECOVERY.hpCapPercent);
+  return Math.max(currentHp, Math.min(cap, currentHp + gain));
+}
+
 export function pveHeroStats({ classId, level, allocation, relicBonuses = {} }) {
   const a = attributeSheet({ classId, level, allocation }).attributes;
   return {
@@ -640,6 +651,14 @@ export function simulatePveCombat({
       attackMultiplier: manaSpent > 0 ? 1 : 0.72,
       roll,
     });
+    // Fixed encounter rule, independent of class or equipment. Apply before
+    // actual damage and lifesteal so the log and healing use the same hit.
+    const guardPercent = clamp(Number(enemy.huntGuardPercent) || 0, 0, 100);
+    if (guardPercent > 0) {
+      const limit = Math.max(1, Math.floor(enemy.maxHp * guardPercent / 100));
+      heroHit.guardPrevented = Math.max(0, heroHit.damage - limit);
+      heroHit.damage = Math.min(heroHit.damage, limit);
+    }
     heroMana = Math.max(0, heroMana - manaSpent);
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
@@ -663,6 +682,14 @@ export function simulatePveCombat({
     let damageTaken = 0;
     if (enemyHp > 0) {
       const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
+      // Hard-hunt pressure is based on current HP, not maximum HP or equipment.
+      // It belongs to the same hit: dodge cancels it; crits and relic mitigation
+      // apply normally. It never triggers after the enemy has been defeated.
+      const rendPercent = clamp(Number(enemy.huntRendPercent) || 0, 0, 100);
+      if (rendPercent > 0 && !enemyHit.dodged) {
+        enemyHit.rendDamageBeforeMitigation = Math.round(heroHp * rendPercent / 100 * (enemyHit.critical ? 1.6 : 1));
+        enemyHit.damage += enemyHit.rendDamageBeforeMitigation;
+      }
       if (petrificationPending && !enemyHit.dodged) {
         const originalDamage = enemyHit.damage;
         const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus);
@@ -744,6 +771,8 @@ export function simulatePveCombat({
   }
   return {
     petrificationTriggered,
+    rendDamageBeforeMitigation: log.reduce((sum, entry) => sum + (entry.rendDamageBeforeMitigation || 0), 0),
+    guardDamagePrevented: log.reduce((sum, entry) => sum + (entry.guardPrevented || 0), 0),
     armorPrevented,
     armorReserveRemaining,
     armorReserveUsed,
@@ -791,7 +820,19 @@ export function scaledEnemy(enemy, difficulty) {
       attributes[id] *= multiplier;
     }
   }
-  return enemyStatsFromAttributes(enemy, attributes);
+  const stats = enemyStatsFromAttributes(enemy, attributes);
+  const tuning = difficulty.enemyStatMultipliers?.[enemy.id] || difficulty.enemyStatMultipliers?.all || {};
+  return {
+    ...stats,
+    maxHp: tuning.hp == null ? stats.maxHp : Math.max(1, Math.round(stats.maxHp * tuning.hp)),
+    physicalAttack: tuning.attack == null ? stats.physicalAttack : Math.max(1, Math.round(stats.physicalAttack * tuning.attack)),
+    magicAttack: tuning.attack == null ? stats.magicAttack : Math.max(1, Math.round(stats.magicAttack * tuning.attack)),
+    defense: stats.defense * (tuning.defense ?? 1),
+    huntRendPercent: difficulty.id === 'hard'
+      ? clamp(Number(difficulty.enemyStatMultipliers?.rendPercent) || 0, 0, 100) : 0,
+    huntGuardPercent: difficulty.id === 'hard'
+      ? clamp(Number(tuning.guardPercent) || 0, 0, 100) : 0,
+  };
 }
 
 function splitEncounterReward(total) {
@@ -936,9 +977,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     const heroManaAfterFight = currentMana;
     const hasNextEncounter = result.won && enemyIndex < region.enemies.length - 1;
     if (hasNextEncounter) {
-      const hpRecoveryTarget = Math.round(hero.maxHp * HUNT_ENCOUNTER_RECOVERY.hpTargetPercent);
       const manaRecoveryLimit = Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaCapPercent);
-      currentHp = Math.max(currentHp, hpRecoveryTarget);
+      currentHp = recoverHuntEncounterHealth(currentHp, hero.maxHp);
       currentMana = Math.max(currentMana, Math.min(
         manaRecoveryLimit,
         currentMana + Math.round(hero.maxMana * HUNT_ENCOUNTER_RECOVERY.manaPercent),
@@ -958,6 +998,10 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       if (effects.manaFusion16 && relicRecovery.mana > 0) fusion16ManaRecovered = true;
     }
     encounters.push({
+      rendPercent: enemy.huntRendPercent || 0,
+      rendDamageBeforeMitigation: result.rendDamageBeforeMitigation,
+      guardPercent: enemy.huntGuardPercent || 0,
+      guardDamagePrevented: result.guardDamagePrevented,
       petrificationXp,
       armorXp,
       armorPrevented: result.armorPrevented,

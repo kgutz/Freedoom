@@ -1,5 +1,6 @@
 import {
   HUNT_ENEMIES,
+  HUNT_ENCOUNTER_RECOVERY,
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
   huntDifficultyForRegion,
@@ -8,6 +9,17 @@ import {
 } from '../domain/pve-combat-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 import { bossMedalNameLines } from './hero-view.js';
+
+export function huntRecoveryNoteMarkup({ regionId, difficultyId } = {}) {
+  const gain = Math.round(HUNT_ENCOUNTER_RECOVERY.hpPercent * 100);
+  const cap = Math.round(HUNT_ENCOUNTER_RECOVERY.hpCapPercent * 100);
+  const rend = difficultyId === 'hard' ? Number(huntDifficultyForRegion(regionId, difficultyId)?.enemyStatMultipliers?.rendPercent) || 0 : 0;
+  const pressure = rend > 0 ? `<p class="hunt-recovery-note"><b>Desgarro · Difícil:</b> cada golpe enemigo suma un ${rend}% de tu Vida actual. Puede ser crítico, esquivado o reducido por tus reliquias.</p>` : '';
+  const tuning = difficultyId === 'hard' ? huntDifficultyForRegion(regionId, difficultyId)?.enemyStatMultipliers : null;
+  const guard = Math.max(0, ...Object.values(tuning || {}).map(value => Number(value?.guardPercent) || 0));
+  const tenacity = guard > 0 ? `<p class="hunt-recovery-note"><b>Tenacidad del minijefe:</b> cada golpe puede quitarle como máximo un ${guard}% de su Vida máxima.</p>` : '';
+  return `<p class="hunt-recovery-note">Entre enemigos, cada victoria recupera un ${gain}% de tu Vida máxima, hasta el ${cap}%. Las reliquias suman su recuperación aparte.</p>${pressure}${tenacity}`;
+}
 
 function remainingLabel(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));

@@ -35,10 +35,10 @@ describe('Detalle accesible compartido de efectos', () => {
     const html = effectControlList(['A', 'B', 'C'].map(id => ({ id, name: id, description: `Detalle ${id}` })), 'EFECTO EXTRA');
     expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(3);
     expect(html.match(/data-effect-kind="EFECTO EXTRA"/g)).toHaveLength(3);
-    expect(html).toContain('<span class="relic-effect-conjunction">y </span>');
+    expect(html).not.toContain('relic-effect-conjunction');
     expect(html).toContain('>A</button><span class="relic-effect-comma">,</span></span>');
     expect(html).not.toContain('aria-hidden="true"');
-    expect(html.replace(/<[^>]+>/g, '')).toBe('A, B y C');
+    expect(html.replace(/<[^>]+>/g, '')).toBe('A, B, C');
   });
   it('abre una sola instancia, muestra copy exacto y coloca el foco en cerrar', () => {
     const f = fixture();

@@ -12,7 +12,36 @@ import {
   mergeState,
   parseState,
   stateInformationProfile,
+  selectTemporalRecoveries,
 } from './state-storage.js';
+
+describe('Puntos de retorno temporales', () => {
+  it('mantiene el último estado de ayer y uno anterior a una hora tras muchos guardados y reinicio', async () => {
+    const storage=memoryLocalStorage();
+    let store=createBrowserStore({localStorage:storage});
+    const clock=vi.spyOn(Date,'now');
+    const state={onboarded:true,game:{cls:'knight'},days:{}};
+    try {
+      clock.mockReturnValue(new Date(2026,8,19,23,55).getTime());
+      store.set(STORAGE_KEY,JSON.stringify({...state,marker:'last-night'}));
+      for(let minute=0;minute<=150;minute++) {
+        clock.mockReturnValue(new Date(2026,8,20,9,minute).getTime());
+        store.set(STORAGE_KEY,JSON.stringify({...state,marker:minute}));
+      }
+      store=createBrowserStore({localStorage:storage});
+      await store.get(STORAGE_KEY);
+      const choices=selectTemporalRecoveries(await store.listRecoveries(),Date.now());
+      expect(choices.daily.state.marker).toBe('last-night');
+      expect(choices.hourly.savedAt).toBeLessThanOrEqual(Date.now()-3600000);
+      expect(choices.hourly.savedAt).toBeGreaterThanOrEqual(Date.now()-80*60000);
+      expect(choices.hourly.state.marker).not.toBe(150);
+    } finally { clock.mockRestore(); }
+  });
+  it('no presenta copias actuales o semanales como ayer ni como una hora atrás', () => {
+    const now=new Date(2026,8,20,12).getTime();
+    expect(selectTemporalRecoveries([{savedAt:now},{savedAt:now-7*86400000}],now)).toEqual({daily:null,hourly:null});
+  });
+});
 
 function memoryLocalStorage({ fail } = {}) {
   const values = new Map();
