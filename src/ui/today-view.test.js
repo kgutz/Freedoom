@@ -77,6 +77,16 @@ describe('barra de ritmo', () => {
 });
 
 describe('modelo de Hoy', () => {
+  it.each(['controlled', 'smoke_free', 'reduction'])('mantiene la semana y muestra máximo salvo en sin fumar: %s', (journeyMode) => {
+    const model = createTodayModel({
+      now: new Date(2026, 7, 17, 12),
+      config: { ...config, journeyMode, startDate: '2026-08-01' },
+      days: {}, game: null, stats: null, intoxication: null,
+    });
+    expect(model.weekNumber).toBe(3);
+    expect(model.showHeaderLimit).toBe(journeyMode !== 'smoke_free');
+  });
+
   it('expone el registro explícito del camino sin fumar', () => {
     const model = createTodayModel({
       now: new Date(2026, 7, 3, 21),

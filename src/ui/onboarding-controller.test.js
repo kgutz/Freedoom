@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { createOnboardingResult } from './onboarding-controller.js';
 
 describe('resultado del onboarding', () => {
+  it.each(['0', '', undefined, '-1'])('no inventa consumo inicial para %s', (startLimit) => {
+    const result = createOnboardingResult({
+      startDate: '2026-09-21', startLimit, heroName: '', journeyMode: 'reduction',
+    });
+    expect(result.config.startLimit).toBe(0);
+  });
   it('construye configuración y héroe con los valores introducidos', () => {
     expect(
       createOnboardingResult({
@@ -87,7 +93,7 @@ describe('resultado del onboarding', () => {
     });
 
     expect(result.config).toMatchObject({
-      startLimit: 20,
+      startLimit: 0,
       wakeTime: '09:00',
       sleepTime: '23:00',
       dayStartTime: '04:00',

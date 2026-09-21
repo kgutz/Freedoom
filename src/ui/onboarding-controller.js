@@ -38,7 +38,7 @@ export function createOnboardingResult({
       startLimit:
         selectedMode !== JOURNEY_MODE_REDUCTION
           ? 21
-          : Number.parseInt(startLimit, 10) || 20,
+          : Math.max(0, Number.parseInt(startLimit, 10) || 0),
       ...(selectedMode === JOURNEY_MODE_CONTROLLED
         ? {
             controlledDays:
