@@ -14,6 +14,17 @@ function fixture() {
 }
 
 describe('animated inventory scenes', () => {
+  it('reuses a warmed scene and retries playback on a user gesture', () => {
+    const f=fixture();
+    f.video.querySelector=()=>({getAttribute:()=> 'scenes/shops-v2.mp4'});
+    const preloader={forPlayback:vi.fn(()=> 'blob:cached-market')};
+    installSceneMedia(f.document,f.window,preloader);
+    expect(f.video.src).toBe('blob:cached-market');
+    expect(preloader.forPlayback).toHaveBeenCalledOnce();
+    f.handlers.pointerup();
+    expect(f.video.play).toHaveBeenCalledTimes(2);
+    expect(preloader.forPlayback).toHaveBeenCalledOnce();
+  });
   it('disables only active blessing cards and unlocks them after consumption',()=>{
     for(const id of ['experience','energy']){
       const active=templeShopMarkup({blessings:{[id]:{active:true}}},{coins:1000},19);

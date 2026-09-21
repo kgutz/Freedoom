@@ -9,9 +9,9 @@ export function frameVideoForPoster(source = '') {
   return null;
 }
 
-// Enhance background images only. Keep their posters and the existing hero layers intact.
+// Animate only the character sheet. Every other surface keeps its static WebP.
 export function installFrameMedia(document, window) {
-  const selector = 'img.sprite-bg,img.hoy-hero-bg,img.habit-hero-bg,img.frame-preview-bg,img.outfit-selector-bg,img.temple-gift-preview';
+  const selector = '#characterSheetBody img.sprite-bg';
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const entries = new Map();
   const visible = new Set();
@@ -38,7 +38,7 @@ export function installFrameMedia(document, window) {
   const sync = () => {
     frame = 0;
     for (const [image, entry] of entries) {
-      if (!image.isConnected || frameVideoForPoster(image.getAttribute('src')) !== entry.source) {
+      if (!image.isConnected || !image.matches(selector) || frameVideoForPoster(image.getAttribute('src')) !== entry.source) {
         entry.video.pause();
         entry.video.removeAttribute('src');
         entry.video.load();

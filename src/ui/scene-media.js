@@ -4,7 +4,7 @@ export function sceneMediaMarkup(name, alt) {
 }
 
 // Only visible scenes play. The still underneath also covers loading/autoplay failures.
-export function installSceneMedia(document, window) {
+export function installSceneMedia(document, window, preloader = null) {
   const root = document.getElementById('sheetInventory');
   if (!root) return;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -23,7 +23,14 @@ export function installSceneMedia(document, window) {
       const visible = root.classList.contains('show') && !video.closest('[hidden]') && video.getClientRects().length > 0;
       if (reduced.matches) video.dataset.ready = 'false';
       if (!visible || document.hidden || reduced.matches) video.pause();
-      else if (video.paused) video.play()?.catch(() => { video.dataset.ready = 'false'; });
+      else if (video.paused) {
+        if (!video.dataset.sourcePrepared && preloader) {
+          const source = video.querySelector('source')?.getAttribute('src');
+          if (source) video.src = preloader.forPlayback(source);
+          video.dataset.sourcePrepared = 'true';
+        }
+        video.play()?.catch(() => { video.dataset.ready = 'false'; });
+      }
     }
   };
   let frame = 0;
@@ -33,6 +40,8 @@ export function installSceneMedia(document, window) {
   };
   new window.MutationObserver(schedule).observe(root, {childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
   document.addEventListener('visibilitychange', sync);
+  // A fresh user gesture can retry autoplay rejected by a mobile browser.
+  root.addEventListener('pointerup', sync);
   reduced.addEventListener('change', sync);
   window.addEventListener('pagehide', () => known.forEach(video => video.pause()));
   window.addEventListener('pageshow', sync);

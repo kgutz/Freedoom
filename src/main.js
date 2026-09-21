@@ -236,6 +236,7 @@ import {
 import { bindBackupControls } from './ui/backup-controller.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
+import { createScenePreloader } from './ui/scene-preloader.js';
 import { installFrameMedia } from './ui/frame-media.js';
 import { templeMarkup, templeShopMarkup, renderBlessingDetail } from './ui/temple-view.js';
 import { startTempleDialogue } from './ui/temple-dialogue.js';
@@ -274,7 +275,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.57';
+const APP_VERSION='2.28.58';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -781,8 +782,10 @@ function huntBaseEnergyForToday(now=new Date()){
   }
   return result.baseEnergy;
 }
+let startupImagePreloader=null;
 function preloadStartupViews(){
   const imagePreloader=createImagePreloader({window,concurrency:2});
+  startupImagePreloader=imagePreloader;
   scheduleImagePreloadPhases({
     window,
     phases:startupImagePhases(state.game),
@@ -6485,7 +6488,12 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   }
 });
 installRelicEffectDialog(document);
-installSceneMedia(document,window);
+const scenePreloader=createScenePreloader({window,document,isReady:()=>{
+  const images=startupImagePreloader?.snapshot();
+  const foregroundVideo=Array.from(document.querySelectorAll('video')).some(video=>!video.paused&&video.getClientRects().length>0);
+  return Boolean(state.onboarded&&state.game?.cls&&!returnSplashPlaying&&!foregroundVideo&&(!images||(!images.active&&!images.pending)));
+}});
+installSceneMedia(document,window,scenePreloader);
 installFrameMedia(document,window);
 async function handleForgeAttempt(relicId){
   if(!relicId||forgeLocked) return;

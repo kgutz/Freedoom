@@ -11,11 +11,11 @@ it('maps the two temple formats and leaves other backgrounds static',()=>{
 
 function fixture(){
   let source='hero_background/azariel_temple.webp';
-  const image={className:'sprite-bg',isConnected:true,getAttribute:()=>source,after:vi.fn(),closest:()=>null,getClientRects:()=>[1]};
+  const image={className:'sprite-bg',inSheet:true,isConnected:true,matches:selector=>selector==='#characterSheetBody img.sprite-bg'&&image.inSheet&&image.className==='sprite-bg',getAttribute:()=>source,after:vi.fn(),closest:()=>null,getClientRects:()=>[1]};
   const video={dataset:{},paused:true,pause:vi.fn(),play:vi.fn(()=>Promise.resolve()),getAttribute:()=>video.src,setAttribute:vi.fn(),addEventListener:vi.fn(),removeAttribute:vi.fn(),load:vi.fn(),remove:vi.fn()};
   const events={};
   const motion={matches:false,addEventListener:(key,fn)=>events.motion=fn,removeEventListener:vi.fn()};
-  const document={body:{},hidden:false,querySelectorAll:vi.fn(()=>image.isConnected?[image]:[]),createElement:()=>video,addEventListener:(key,fn)=>events[key]=fn,removeEventListener:vi.fn()};
+  const document={body:{},hidden:false,querySelectorAll:vi.fn(selector=>image.isConnected&&image.matches(selector)?[image]:[]),createElement:vi.fn(()=>video),addEventListener:(key,fn)=>events[key]=fn,removeEventListener:vi.fn()};
   const frames=[];
   const window={matchMedia:()=>motion,requestAnimationFrame:fn=>{frames.push(fn);return 1;},cancelAnimationFrame:vi.fn(),addEventListener:vi.fn(),removeEventListener:vi.fn(),
     IntersectionObserver:class{constructor(fn){events.intersection=fn}observe(){}unobserve(){}disconnect(){}},
@@ -44,18 +44,23 @@ it('respects reduced motion without downloading a video',()=>{
   expect(f.video.dataset.ready).toBe('false');
   dispose();
 });
-it('animates the gift preview when the reward is revealed',()=>{
+it.each(['sprite-bg','hoy-hero-bg','habit-hero-bg','frame-preview-bg','outfit-selector-bg','temple-gift-preview'])('does not create or load videos outside the character sheet: %s',className=>{
   const f=fixture();
-  f.image.className='temple-gift-preview';
-  let hidden=true;
-  f.image.closest=()=>hidden?{}:null;
+  f.image.className=className;
+  f.image.inSheet=false;
   const dispose=installFrameMedia(f.document,f.window);
-  expect(f.document.querySelectorAll.mock.calls[0][0]).toContain('img.temple-gift-preview');
-  expect(f.video.className).toBe('temple-gift-preview frame-video');
-  f.events.intersection([{target:f.image,isIntersecting:true}]);
+  expect(f.document.createElement).not.toHaveBeenCalled();
+  expect(f.video.src).toBeUndefined();
   expect(f.video.play).not.toHaveBeenCalled();
-  hidden=false;f.events.mutation();f.flush();
-  expect(f.video.src).toBe('hero_background/azariel_temple.mp4');
-  expect(f.video.play).toHaveBeenCalledOnce();
+  dispose();
+});
+it('releases the video when its image leaves the character sheet',()=>{
+  const f=fixture();
+  const dispose=installFrameMedia(f.document,f.window);
+  f.events.intersection([{target:f.image,isIntersecting:true}]);
+  f.image.inSheet=false;f.events.mutation();f.flush();
+  expect(f.video.removeAttribute).toHaveBeenCalledWith('src');
+  expect(f.video.load).toHaveBeenCalled();
+  expect(f.video.remove).toHaveBeenCalled();
   dispose();
 });
