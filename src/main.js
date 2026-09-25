@@ -240,7 +240,7 @@ import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
-import { applyFeedbackReward, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
+import { applyFeedbackReward, isFeedbackRewardApplied, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
 import { createScenePreloader } from './ui/scene-preloader.js';
@@ -281,7 +281,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.3';
+const APP_VERSION='2.29.4';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -7091,6 +7091,37 @@ document.getElementById('feedbackRewardOpen').addEventListener('click',()=>{
   document.getElementById('feedbackRewardThanks').hidden=true;
   document.getElementById('feedbackRewardReveal').hidden=false;
 });
+const FEEDBACK_REWARD_STEP_TIMEOUT_MS=12000;
+async function runFeedbackRewardStep(task,{attempts=3}={}){
+  let lastError;
+  for(let attempt=0;attempt<attempts;attempt+=1){
+    try{
+      return await Promise.race([
+        task(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error('La nube tardó demasiado en responder')),FEEDBACK_REWARD_STEP_TIMEOUT_MS)),
+      ]);
+    }catch(error){
+      lastError=error;
+      if(attempt<attempts-1) await new Promise(resolve=>setTimeout(resolve,450*(attempt+1)));
+    }
+  }
+  throw lastError;
+}
+async function syncClaimedFeedbackReward(event){
+  try{
+    const reserved=await runFeedbackRewardStep(()=>activeCloudService.claimFeedbackReward(event.event_id));
+    if(!reserved) throw new Error('La recompensa ya no está disponible');
+    await runFeedbackRewardStep(()=>persistFeedbackRewardToCloud(),{attempts:2});
+    if(!await runFeedbackRewardStep(()=>activeCloudService.markFeedbackRewardDelivered(reserved.event_id))){
+      throw new Error('No se pudo confirmar la entrega');
+    }
+    return true;
+  }catch(error){
+    console.error('No se pudo sincronizar la recompensa del reporte',error);
+    scheduleSave({type:'feedback-reward:sync-pending',eventId:event.event_id});
+    return false;
+  }
+}
 document.getElementById('feedbackRewardClaim').addEventListener('click',async()=>{
   const button=document.getElementById('feedbackRewardClaim');
   if(button.disabled) return;
@@ -7103,32 +7134,14 @@ document.getElementById('feedbackRewardClaim').addEventListener('click',async()=
     document.getElementById('feedbackRewardClaimed').hidden=false;
     return;
   }
-  const previousState=state;
-  let cloudSaved=false;
-  try{
-    const reserved=await activeCloudService.claimFeedbackReward(displayed.event_id);
-    if(!reserved) throw new Error('La recompensa ya no está disponible');
-    const result=applyFeedbackReward(state,reserved,Date.now());
-    state=result.state;
-    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
-    await persistFeedbackRewardToCloud();
-    cloudSaved=true;
-    if(!await activeCloudService.markFeedbackRewardDelivered(reserved.event_id)){
-      throw new Error('No se pudo confirmar la entrega');
-    }
-    pendingFeedbackReward=null;
-    document.getElementById('feedbackRewardReveal').hidden=true;
-    document.getElementById('feedbackRewardClaimed').hidden=false;
-  }catch(error){
-    if(!cloudSaved){
-      state=previousState;
-      try{ await store.set(ACTIVE_STORAGE_KEY,serializeState(state)); }catch{}
-    }
-    button.disabled=false;
-    button.textContent=cloudSaved?'CONFIRMAR ENTREGA':'RECLAMAR REGALO';
-    console.error('No se pudo entregar la recompensa del reporte',error);
-    showToast('No se completó la entrega · reintenta','dmg');
-  }
+  const result=applyFeedbackReward(state,displayed,Date.now());
+  state=result.state;
+  pendingFeedbackReward=null;
+  document.getElementById('feedbackRewardReveal').hidden=true;
+  document.getElementById('feedbackRewardClaimed').hidden=false;
+  button.textContent='RECLAMADO';
+  try{ handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state))); }catch{}
+  await syncClaimedFeedbackReward(displayed);
 });
 document.getElementById('feedbackRewardContinue').addEventListener('click',()=>{
   document.getElementById('feedbackRewardBg').classList.remove('show');
@@ -7660,6 +7673,11 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     if(session&&cloudSave&&!callback){
       try{ pendingFeedbackReward=await cloudService.pendingFeedbackReward(); }
       catch(error){ console.warn('No se pudo consultar la recompensa de reportes',error); }
+      if(pendingFeedbackReward&&isFeedbackRewardApplied(state,pendingFeedbackReward.event_id)){
+        const rewardToSync=pendingFeedbackReward;
+        pendingFeedbackReward=null;
+        void syncClaimedFeedbackReward(rewardToSync);
+      }
     }
     if(!cloudSave||!session||callback) return;
   }
