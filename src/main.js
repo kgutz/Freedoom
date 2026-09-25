@@ -280,7 +280,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29';
+const APP_VERSION='2.29.1';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -770,7 +770,6 @@ function scheduleCloudSave(){
       });
     }catch(error){
       console.warn('No se pudo sincronizar la partida con Freedom Nube',error);
-      showToast('Guardado local ✓ · sincronización pendiente','dmg');
     }
   },900);
 }
