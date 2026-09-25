@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalStringify, createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave } from './cloud-migration.js';
+import { canonicalStringify, createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud-migration.js';
 
 const state = {
   config: { mode: 'gradual' },
@@ -74,6 +74,21 @@ describe('cloud migration', () => {
       state_schema_version: plan.schemaVersion,
       checksum: plan.checksum,
     })).toBe(false);
+  });
+
+  it('verifica un guardado normal aunque el servidor conserve el linaje original', () => {
+    const localCrypto = {
+      values: ['12121212-1212-4212-8212-121212121212', '34343434-3434-4434-8434-343434343434'],
+      randomUUID() { return this.values.shift(); },
+    };
+    const migrationPlan = createMigrationPlan(state, { cryptoImpl: localCrypto });
+    const updatePlan = { ...migrationPlan, migrationId: null };
+    expect(verifyUpdatedCloudSave({
+      state: structuredClone(updatePlan.state),
+      state_schema_version: updatePlan.schemaVersion,
+      checksum: updatePlan.checksum,
+      migration_id: migrationPlan.migrationId,
+    }, updatePlan)).toBe(true);
   });
 
   it('calcula la huella sobre el mismo JSON que llega a la nube', () => {

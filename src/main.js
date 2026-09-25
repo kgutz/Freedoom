@@ -239,7 +239,7 @@ import { escapeHtml } from './ui/escape-html.js';
 import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
-import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave } from './cloud/cloud-migration.js';
+import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
 import { applyFeedbackReward, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
@@ -281,7 +281,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.2';
+const APP_VERSION='2.29.3';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -765,7 +765,9 @@ function scheduleCloudSave(){
       const plan={...migrationPlan,migrationId:null};
       await activeCloudService.saveGameState(plan,previous.revision||0);
       const saved=await activeCloudService.loadGameSave();
-      if(!verifyCloudSave(saved,plan)) throw new Error('La verificación del guardado remoto no coincide');
+      if(!verifyUpdatedCloudSave(saved,plan)){
+        throw new Error('La verificación del guardado remoto no coincide');
+      }
       setStorageHealth({
         state:'saved',
         revision:saved.revision||storageHealth.revision,
@@ -3172,10 +3174,13 @@ async function persistFeedbackRewardToCloud(){
   if(!activeCloudService) throw new Error('La cuenta de Freedom no está conectada');
   const previous=await activeCloudService.loadGameSave();
   if(!previous) throw new Error('No existe una partida en la nube para guardar el regalo');
-  const plan=createMigrationPlan(state);
+  const migrationPlan=createMigrationPlan(state);
+  const plan={...migrationPlan,migrationId:null};
   await activeCloudService.saveGameState(plan,previous.revision||0);
   const saved=await activeCloudService.loadGameSave();
-  if(!verifyCloudSave(saved,plan)) throw new Error('La recompensa no quedó verificada en la nube');
+  if(!verifyUpdatedCloudSave(saved,plan)){
+    throw new Error('La recompensa no quedó verificada en la nube');
+  }
   return saved;
 }
 async function showPendingFiberCatchup(){

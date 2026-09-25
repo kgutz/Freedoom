@@ -71,3 +71,9 @@ export function verifyStoredCloudSave(row) {
   if (!row || !row.state || row.state_schema_version !== CLOUD_STATE_SCHEMA_VERSION) return false;
   return checksumOf(canonicalStringify(row.state)) === row.checksum;
 }
+
+export function verifyUpdatedCloudSave(row, plan) {
+  if (!row || !plan || row.state_schema_version !== plan.schemaVersion) return false;
+  if (row.checksum !== plan.checksum) return false;
+  return verifyStoredCloudSave(row);
+}
