@@ -175,5 +175,27 @@ export function createCloudService({ client, config, fetchImpl = globalThis.fetc
       if (error) throw error;
       return data || [];
     },
+
+    async pendingFeedbackReward() {
+      const { data, error } = await client.rpc('pending_feedback_reward');
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+
+    async claimFeedbackReward(eventId) {
+      const { data, error } = await client.rpc('claim_feedback_reward', {
+        p_event_id: eventId,
+      });
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+
+    async markFeedbackRewardDelivered(eventId) {
+      const { data, error } = await client.rpc('mark_feedback_reward_delivered', {
+        p_event_id: eventId,
+      });
+      if (error) throw error;
+      return data === true;
+    },
   };
 }

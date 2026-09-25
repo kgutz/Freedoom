@@ -54,6 +54,24 @@ describe('cloud service', () => {
     });
   });
 
+  it('reserva y confirma una recompensa de reporte mediante RPC autenticada', async () => {
+    const rpc = vi.fn(async (name) => ({
+      data: name === 'mark_feedback_reward_delivered'
+        ? true
+        : [{ event_id: 'feedback-report-0001', reward: { coins: 100 } }],
+      error: null,
+    }));
+    const service = createCloudService({
+      client: { auth: {}, rpc },
+      config: { enabled: true, url: 'https://example.supabase.co', publishableKey: 'sb_publishable_example' },
+    });
+    await expect(service.pendingFeedbackReward()).resolves.toMatchObject({ event_id: 'feedback-report-0001' });
+    await expect(service.claimFeedbackReward('feedback-report-0001')).resolves.toMatchObject({ reward: { coins: 100 } });
+    await expect(service.markFeedbackRewardDelivered('feedback-report-0001')).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith('claim_feedback_reward', { p_event_id: 'feedback-report-0001' });
+    expect(rpc).toHaveBeenCalledWith('mark_feedback_reward_delivered', { p_event_id: 'feedback-report-0001' });
+  });
+
   it('no repite una recuperación para el mismo correo durante el bloqueo local', async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,

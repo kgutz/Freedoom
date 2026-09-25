@@ -157,7 +157,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.29.1</div>
+  <div class="ob-version" id="obVersion">v2.29.2</div>
 </div>
 
 <div id="loading" class="loading">
@@ -545,7 +545,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.1</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.2</span></p>
       </div>
     </div>
   </div>
@@ -1049,6 +1049,38 @@
         </div>
       </div>
       <button type="button" class="pioneer-reward-action" id="fiberCatchupContinue">CONTINUAR</button>
+    </section>
+  </div>
+</div>
+
+<div class="modal-bg center pioneer-reward-bg" id="feedbackRewardBg" style="z-index:50">
+  <div class="modal pioneer-reward-modal beta-tester-reward-modal feedback-reward-modal" role="dialog" aria-modal="true" aria-labelledby="feedbackRewardTitle">
+    <section id="feedbackRewardMessage" class="pioneer-reward-step feedback-reward-message">
+      <span class="pioneer-reward-kicker">UN LOGRO DE TODA LA BETA</span><h3 id="feedbackRewardTitle">El primer reporte</h3>
+      <div class="feedback-reward-emblem" aria-hidden="true"><img src="./rewards/first-report-scroll.png" alt=""></div>
+      <p class="feedback-reward-intro-copy"><span>El primer reporte ya está aquí.</span><span>Gracias por ayudarnos a mejorar Freedom.</span></p>
+      <p class="feedback-reward-team-copy"><span>Cuando alguien mejora Freedom,</span><span>todo el equipo lo celebra.</span></p>
+      <button type="button" class="pioneer-reward-action feedback-reward-read" id="feedbackRewardMessageContinue" disabled>LEE EL MENSAJE · 4</button>
+    </section>
+    <section id="feedbackRewardThanks" class="pioneer-reward-step" hidden>
+      <span class="pioneer-reward-kicker">BETA TESTER · PRIMER REPORTE</span><h3 id="feedbackRewardThanksTitle">¡Gracias!</h3>
+      <div class="pioneer-chest-scene" aria-hidden="true"><span class="pioneer-chest-aura"></span><span class="pioneer-chest-rays"></span><span class="pioneer-chest-sparks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><img src="rewards/pioneer-chest.webp" alt="" loading="lazy" decoding="async"></div>
+      <p id="feedbackRewardThanksCopy">Tu ayuda mejora la aventura para todos. Queremos agradecértelo con un regalo especial.</p>
+      <button type="button" class="pioneer-reward-action" id="feedbackRewardOpen">ABRIR REGALO</button>
+    </section>
+    <section id="feedbackRewardReveal" class="pioneer-reward-step pioneer-reward-reveal" hidden>
+      <span class="pioneer-reward-kicker">PRIMER REPORTE</span><h3>Un regalo para tu aventura</h3>
+      <div class="beta-tester-reward-items feedback-reward-items">
+        <div class="pioneer-reward-item beta-tester-resource-reward"><span class="resource-icon resource-icon--coin" role="img" aria-label="Oro"></span><strong id="feedbackRewardCoins">+100</strong><small>ORO</small></div>
+        <div class="pioneer-reward-item beta-tester-resource-reward"><img class="beta-tester-potion-art" src="potions/potion_blood.webp" alt="" loading="lazy" decoding="async"><strong id="feedbackRewardBlood">+3</strong><small>POCIONES DE SANGRE</small></div>
+        <div class="pioneer-reward-item beta-tester-resource-reward"><img class="beta-tester-potion-art" src="potions/potion_energy.webp" alt="" loading="lazy" decoding="async"><strong id="feedbackRewardVigor">+3</strong><small>POCIONES DE VIGOR</small></div>
+      </div>
+      <p class="feedback-reward-once">RECLAMACIÓN ÚNICA · Este regalo solo puede recibirse una vez.</p>
+      <button type="button" class="pioneer-reward-action" id="feedbackRewardClaim">RECLAMAR REGALO</button>
+    </section>
+    <section id="feedbackRewardClaimed" class="pioneer-reward-step pioneer-reward-reveal" hidden>
+      <span class="pioneer-reward-kicker">REGALO RECLAMADO</span><h3>Gracias por ayudarnos</h3><p>Tu recompensa ya está guardada en tu cuenta. Sigue compartiendo todo lo que pueda hacer mejor a Freedom.</p>
+      <button type="button" class="pioneer-reward-action" id="feedbackRewardContinue">CONTINUAR</button>
     </section>
   </div>
 </div>

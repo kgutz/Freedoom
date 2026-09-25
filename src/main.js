@@ -240,6 +240,7 @@ import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave } from './cloud/cloud-migration.js';
+import { applyFeedbackReward, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
 import { createScenePreloader } from './ui/scene-preloader.js';
@@ -280,7 +281,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.1';
+const APP_VERSION='2.29.2';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -316,6 +317,7 @@ const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
 )&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3','4','5'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
 const LOCAL_BETA_TESTER_REWARD_PREVIEW_ID=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'):'';
 const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
+const LOCAL_FEEDBACK_REWARD_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewFeedbackReward')==='martin';
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -396,6 +398,10 @@ let pioneerRewardTimer=null;
 let pioneerRewardOpening=false;
 let betaTesterRewardTimer=null;
 let betaTesterRewardOpening=false;
+let feedbackRewardTimer=null;
+let feedbackRewardCountdownTimer=null;
+let feedbackRewardOpening=false;
+let pendingFeedbackReward=null;
 let fiberCatchupTimer=null;
 let fiberCatchupOpening=false;
 let progressionUpdateTimer=null;
@@ -3085,6 +3091,92 @@ function queueBetaTesterReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+220){
   clearTimeout(betaTesterRewardTimer);
   if(!pendingDisplayBetaTesterReward()) return;
   betaTesterRewardTimer=window.setTimeout(showPendingBetaTesterReward,delay);
+}
+function resetFeedbackRewardModal(){
+  clearInterval(feedbackRewardCountdownTimer);
+  ['feedbackRewardMessage','feedbackRewardThanks','feedbackRewardReveal','feedbackRewardClaimed'].forEach((id,index)=>{
+    const section=document.getElementById(id);
+    if(section) section.hidden=index!==0;
+  });
+  const continueButton=document.getElementById('feedbackRewardMessageContinue');
+  const claimButton=document.getElementById('feedbackRewardClaim');
+  if(continueButton){ continueButton.disabled=true; continueButton.textContent='LEE EL MENSAJE · 4'; }
+  if(claimButton){ claimButton.disabled=false; claimButton.textContent='RECLAMAR REGALO'; }
+}
+function feedbackRewardForDisplay(){
+  if(pendingFeedbackReward) return pendingFeedbackReward;
+  if(!LOCAL_FEEDBACK_REWARD_PREVIEW||!state.onboarded||!state.game?.cls) return null;
+  return {
+    event_id:FIRST_REPORT_REWARD_ID,
+    title:'El primer reporte',
+    reward:{coins:100,bloodPotions:3,vigorPotions:3},
+    is_reporter:true,
+    reserved:false,
+  };
+}
+function renderFeedbackReward(event){
+  const reward=event?.reward||{};
+  const setAmount=(id,value)=>{ const el=document.getElementById(id); if(el) el.textContent=`+${Number(value)||0}`; };
+  setAmount('feedbackRewardCoins',reward.coins);
+  setAmount('feedbackRewardBlood',reward.bloodPotions??reward.blood_potions);
+  setAmount('feedbackRewardVigor',reward.vigorPotions??reward.vigor_potions);
+  const title=document.getElementById('feedbackRewardTitle');
+  if(title) title.textContent=event?.title||'El primer reporte';
+  const thanksTitle=document.getElementById('feedbackRewardThanksTitle');
+  const thanksCopy=document.getElementById('feedbackRewardThanksCopy');
+  if(event?.is_reporter){
+    if(thanksTitle) thanksTitle.textContent='¡Gracias, Martín!';
+    if(thanksCopy) thanksCopy.textContent='Tu reporte abrió este logro para toda la beta. Gracias por ayudarnos a mejorar Freedom.';
+  }else{
+    if(thanksTitle) thanksTitle.textContent='¡Gracias, equipo!';
+    if(thanksCopy) thanksCopy.textContent='Un beta tester ayudó a mejorar Freedom. Este regalo celebra el trabajo de toda la comunidad.';
+  }
+}
+function startFeedbackRewardCountdown(){
+  const button=document.getElementById('feedbackRewardMessageContinue');
+  if(!button) return;
+  let remaining=4;
+  button.disabled=true;
+  button.textContent=`LEE EL MENSAJE · ${remaining}`;
+  clearInterval(feedbackRewardCountdownTimer);
+  feedbackRewardCountdownTimer=window.setInterval(()=>{
+    remaining-=1;
+    if(remaining>0){ button.textContent=`LEE EL MENSAJE · ${remaining}`; return; }
+    clearInterval(feedbackRewardCountdownTimer);
+    feedbackRewardCountdownTimer=null;
+    button.disabled=false;
+    button.textContent='CONTINUAR';
+  },1000);
+}
+function showPendingFeedbackReward(){
+  feedbackRewardTimer=null;
+  const reward=feedbackRewardForDisplay();
+  if(feedbackRewardOpening||!reward) return;
+  if(returnSplashPlaying||document.querySelector('.modal-bg.show:not(#feedbackRewardBg)')){
+    feedbackRewardTimer=window.setTimeout(showPendingFeedbackReward,500);
+    return;
+  }
+  feedbackRewardOpening=true;
+  resetFeedbackRewardModal();
+  renderFeedbackReward(reward);
+  document.getElementById('feedbackRewardBg')?.classList.add('show');
+  startFeedbackRewardCountdown();
+  feedbackRewardOpening=false;
+}
+function queueFeedbackReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+320){
+  clearTimeout(feedbackRewardTimer);
+  if(!feedbackRewardForDisplay()) return;
+  feedbackRewardTimer=window.setTimeout(showPendingFeedbackReward,delay);
+}
+async function persistFeedbackRewardToCloud(){
+  if(!activeCloudService) throw new Error('La cuenta de Freedom no está conectada');
+  const previous=await activeCloudService.loadGameSave();
+  if(!previous) throw new Error('No existe una partida en la nube para guardar el regalo');
+  const plan=createMigrationPlan(state);
+  await activeCloudService.saveGameState(plan,previous.revision||0);
+  const saved=await activeCloudService.loadGameSave();
+  if(!verifyCloudSave(saved,plan)) throw new Error('La recompensa no quedó verificada en la nube');
+  return saved;
 }
 async function showPendingFiberCatchup(){
   fiberCatchupTimer=null;
@@ -6984,6 +7076,60 @@ document.getElementById('betaTesterRewardContinue').addEventListener('click',()=
   }
   showToast(inkRewardVisible?'+20 Tintas · +192 oro':energyPotionsVisible?'+80 oro · +2 Pociones de Vigor':'Fondo · +140 oro · +10 Fibras · +2 Energía','heal');
 });
+document.getElementById('feedbackRewardMessageContinue').addEventListener('click',()=>{
+  const button=document.getElementById('feedbackRewardMessageContinue');
+  if(button.disabled) return;
+  document.getElementById('feedbackRewardMessage').hidden=true;
+  document.getElementById('feedbackRewardThanks').hidden=false;
+});
+document.getElementById('feedbackRewardOpen').addEventListener('click',()=>{
+  document.getElementById('feedbackRewardThanks').hidden=true;
+  document.getElementById('feedbackRewardReveal').hidden=false;
+});
+document.getElementById('feedbackRewardClaim').addEventListener('click',async()=>{
+  const button=document.getElementById('feedbackRewardClaim');
+  if(button.disabled) return;
+  const displayed=feedbackRewardForDisplay();
+  if(!displayed) return;
+  button.disabled=true;
+  button.textContent='GUARDANDO…';
+  if(LOCAL_FEEDBACK_REWARD_PREVIEW){
+    document.getElementById('feedbackRewardReveal').hidden=true;
+    document.getElementById('feedbackRewardClaimed').hidden=false;
+    return;
+  }
+  const previousState=state;
+  let cloudSaved=false;
+  try{
+    const reserved=await activeCloudService.claimFeedbackReward(displayed.event_id);
+    if(!reserved) throw new Error('La recompensa ya no está disponible');
+    const result=applyFeedbackReward(state,reserved,Date.now());
+    state=result.state;
+    handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+    await persistFeedbackRewardToCloud();
+    cloudSaved=true;
+    if(!await activeCloudService.markFeedbackRewardDelivered(reserved.event_id)){
+      throw new Error('No se pudo confirmar la entrega');
+    }
+    pendingFeedbackReward=null;
+    document.getElementById('feedbackRewardReveal').hidden=true;
+    document.getElementById('feedbackRewardClaimed').hidden=false;
+  }catch(error){
+    if(!cloudSaved){
+      state=previousState;
+      try{ await store.set(ACTIVE_STORAGE_KEY,serializeState(state)); }catch{}
+    }
+    button.disabled=false;
+    button.textContent=cloudSaved?'CONFIRMAR ENTREGA':'RECLAMAR REGALO';
+    console.error('No se pudo entregar la recompensa del reporte',error);
+    showToast('No se completó la entrega · reintenta','dmg');
+  }
+});
+document.getElementById('feedbackRewardContinue').addEventListener('click',()=>{
+  document.getElementById('feedbackRewardBg').classList.remove('show');
+  renderAll();
+  showToast('+100 oro · +3 Sangre · +3 Vigor','heal');
+});
 document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   const notice=pendingFiberCatchupNotice(state);
   if(!notice) return;
@@ -7506,6 +7652,10 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     }
     else if(stateInformationProfile(state).meaningful) authController.show('migration');
     else startOnboarding();
+    if(session&&cloudSave&&!callback){
+      try{ pendingFeedbackReward=await cloudService.pendingFeedbackReward(); }
+      catch(error){ console.warn('No se pudo consultar la recompensa de reportes',error); }
+    }
     if(!cloudSave||!session||callback) return;
   }
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
@@ -7561,10 +7711,13 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     if(!LOCAL_PROGRESSION_UPDATE_PREVIEW){
       queuePioneerReward();
       queueBetaTesterReward();
+      queueFeedbackReward();
       queueFiberCatchup();
     }
     queueProgressionUpdate();
   }else if(LOCAL_BETA_TESTER_REWARD_PREVIEW){
     queueBetaTesterReward(220);
+  }else if(LOCAL_FEEDBACK_REWARD_PREVIEW){
+    queueFeedbackReward(220);
   }
 })();
