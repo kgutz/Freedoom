@@ -1,0 +1,7 @@
+project_id = "freedom"
+
+[functions.request-beta-invite]
+verify_jwt = false
+
+[functions.request-password-recovery]
+verify_jwt = false

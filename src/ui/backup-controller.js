@@ -1,4 +1,9 @@
-import { exportBackup, importBackup, isImportCommand } from '../storage/state-storage.js';
+import {
+  MAX_BACKUP_CHARACTERS,
+  exportBackup,
+  importBackup,
+  isImportCommand,
+} from '../storage/state-storage.js';
 
 function localDateLabel(date = new Date()) {
   const year = date.getFullYear();
@@ -59,7 +64,7 @@ export function bindBackupControls({
     background.classList.add('show');
   };
 
-  document.getElementById('btnExport').addEventListener('click', async () => {
+  document.getElementById('btnExport')?.addEventListener('click', async () => {
     const data = exportBackup(getState());
     const file = createFile(data, backupFileName(now()));
     try {
@@ -95,7 +100,7 @@ export function bindBackupControls({
     }
   });
 
-  document.getElementById('btnImport').addEventListener('click', () => {
+  document.getElementById('btnImport')?.addEventListener('click', () => {
     if (fileInput?.click) fileInput.click();
     else openManualImport();
   });
@@ -106,6 +111,9 @@ export function bindBackupControls({
     const file = fileInput.files?.[0];
     if (!file) return;
     try {
+      if (Number.isFinite(file.size) && file.size > MAX_BACKUP_CHARACTERS) {
+        throw new Error('La copia supera el tamaño máximo permitido');
+      }
       const data = await file.text();
       importBackup(getState(), data);
       mode = 'file-import';
@@ -121,14 +129,22 @@ export function bindBackupControls({
     }
   });
 
-  document.getElementById('backupAction').addEventListener('click', () => {
+  document.getElementById('backupAction').addEventListener('click', async () => {
     if (mode === 'import' || mode === 'file-import') {
       try {
         const command = isImportCommand(textArea.value);
-        onImported(importBackup(getState(), textArea.value));
+        const actionButton = document.getElementById('backupAction');
+        actionButton.disabled = true;
+        try {
+          await onImported(importBackup(getState(), textArea.value));
+        } finally {
+          actionButton.disabled = false;
+        }
         showToast(command ? 'Comando aplicado ✓' : 'Datos importados ✓', 'heal');
-      } catch {
-        showToast(isImportCommand(textArea.value) ? 'Comando no válido' : 'No se pudo leer la copia', 'dmg');
+      } catch (error) {
+        showToast(isImportCommand(textArea.value)
+          ? 'Comando no válido'
+          : error?.message || 'No se pudo leer la copia', 'dmg');
         return;
       }
     }

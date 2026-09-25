@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
+import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
+
+it('explains gradual recovery and keeps relic recovery separate', () => {
+  const html = huntRecoveryNoteMarkup();
+  expect(html).toContain('15%');
+  expect(html).toContain('hasta el 70%');
+  expect(html).toContain('Las reliquias suman su recuperación aparte');
+});
+
+it('explains Desgarro only when entering Hard, with current HP and mitigation', () => {
+  const html=huntRecoveryNoteMarkup({regionId:'fields-of-mist',difficultyId:'hard'});
+  expect(html).toContain('Desgarro');expect(html).toContain('30%');
+  expect(html).toContain('Vida actual');expect(html).toContain('reducido por tus reliquias');
+  for(const difficultyId of ['easy','medium'])for(const regionId of ['fields-of-mist','dead-hours-bunker','nuncabasta-peaks'])
+    expect(huntRecoveryNoteMarkup({regionId,difficultyId})).not.toContain('Desgarro');
+});
+
+it('explains Tenacidad only for the Hard Bunker miniboss', () => {
+  expect(huntRecoveryNoteMarkup({regionId:'dead-hours-bunker',difficultyId:'hard'})).toContain('49%');
+  for(const regionId of ['fields-of-mist','nuncabasta-peaks'])
+    expect(huntRecoveryNoteMarkup({regionId,difficultyId:'hard'})).not.toContain('Tenacidad');
+  for(const difficultyId of ['easy','medium'])
+    expect(huntRecoveryNoteMarkup({regionId:'dead-hours-bunker',difficultyId})).not.toContain('Tenacidad');
+});
 
 function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
   const root = { dataset: { huntScreen: 'region' }, innerHTML: '' };
@@ -28,10 +51,28 @@ function renderReport(rewards, difficultyId = 'easy', reportOverrides = {}) {
 }
 
 describe('informe de Cacería', () => {
+  it('explica los bonus de Escamas sin repetirlos como recompensas adicionales', () => {
+    const html=renderReport({xp:12,gold:10},'easy', {
+      encounters:[{name:'Enemigo',role:'Soldado',won:true,rounds:3,damageDealt:40,damageTaken:20,heroHp:30,heroMana:10,rewards:{xp:12,gold:10},armorReserveUsed:2,armorManaRecovered:3,armorHealthRecovered:1,armorXp:2,armorVampirismUsed:3}],
+    });
+    expect(html).toContain('BONUS DE ESCAMAS');
+    expect(html).toContain('2 daño extra evitado · +3 maná · +1 vida · +2 XP · Vampirismo reforzado');
+    expect(html).toContain('12 XP');
+    expect(renderReport({})).not.toContain('BONUS DE ESCAMAS');
+  });
+  it('permite explorar Nuncabasta antes de desbloquear el combate', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'nuncabasta-peaks' }, innerHTML: '' };
+    renderHuntView({ document: { getElementById: () => root }, game: { cls: 'paladin', hunt: null }, stats: { lvl: 24 }, nowTimestamp: 1_000 });
+    expect(root.innerHTML).toContain('Picos de Nuncabasta');
+    expect(root.innerHTML).toContain('Alcanza el nivel 25 para iniciar esta cacería');
+    for (const id of ['filled-smile', 'sugar-twisted', 'never-enough-vendor']) expect(root.innerHTML).toContain(`data-hunt-monster="${id}"`);
+    expect(root.innerHTML).not.toContain('Ilustración pendiente');
+    expect(root.innerHTML).toContain('hunt/nuncabasta-peaks/filled-smile.webp');
+  });
   it.each([['easy', 'Fácil'], ['medium', 'Medio'], ['hard', 'Difícil']])('muestra la dificultad guardada del informe: %s', (id, name) => {
     expect(renderReport({}, id)).toContain(`<div class="hunt-report-difficulty">Dificultad <b>${name}</b></div>`);
   });
-  it('muestra el nuevo mapa con Bruma, Búnker y una futura zona al noroeste', () => {
+  it('muestra las tres zonas sin anunciar zonas futuras', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({
       document: { getElementById: () => root },
@@ -39,14 +80,18 @@ describe('informe de Cacería', () => {
       stats: { lvl: 20 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt/world-map-bunker.webp');
+    expect(root.innerHTML).toContain('hunt/world-map-nuncabasta.webp');
+    expect(root.innerHTML).toContain('Campos de<br>la Bruma');
+    expect(root.innerHTML).toContain('Búnker de las<br>Horas Muertas');
+    expect(root.innerHTML).toContain('Picos de<br>Nuncabasta');
     expect(root.innerHTML).toContain('data-open-hunt-region="fields-of-mist"');
     expect(root.innerHTML).toContain('data-open-hunt-region="dead-hours-bunker"');
     expect(root.innerHTML).toContain('data-hunt-zoom-surface');
     expect(root.innerHTML).toContain('data-hunt-zoom-image');
     expect(root.innerHTML).not.toContain('🔒');
-    expect(root.innerHTML).toContain('hunt-map-coming-soon--northwest');
-    expect(root.innerHTML).toContain('<span>Próximamente</span>');
+    expect(root.innerHTML).toContain('data-open-hunt-region="nuncabasta-peaks"');
+    expect(root.innerHTML).not.toContain('hunt-map-coming-soon');
+    expect(root.innerHTML).not.toContain('<span>Próximamente</span>');
   });
 
   it('señala desde el mapa dónde hay un informe pendiente y ofrece acceso directo', () => {
@@ -85,7 +130,7 @@ describe('informe de Cacería', () => {
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
     expect(root.innerHTML).toContain('class="hunt-map-zone hunt-map-zone--bunker"');
-    expect(root.innerHTML).toContain('Búnker de las Horas Muertas');
+    expect(root.innerHTML).toContain('Búnker de las<br>Horas Muertas');
     expect(root.innerHTML).not.toContain('hunt-map-zone--detailed');
     expect(root.innerHTML).not.toContain('locked');
     expect(root.innerHTML).not.toContain('Se desbloquea en el nivel 15');
@@ -115,9 +160,9 @@ describe('informe de Cacería', () => {
       stats: { lvl: 14 },
       nowTimestamp: new Date(2026, 7, 26, 12).getTime(),
     });
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 3');
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 7');
-    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 12');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 1');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 5');
+    expect(root.innerHTML).toContain('hunt-difficulty-level">Nivel 11');
     expect(root.innerHTML).toContain('<span class="hunt-difficulty-main"><span>Fácil</span><i aria-hidden="true">-</i><b>');
   });
 

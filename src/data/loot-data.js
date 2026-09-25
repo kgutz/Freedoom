@@ -1,4 +1,4 @@
-export const LOOT_SCHEMA_VERSION = 5;
+export const LOOT_SCHEMA_VERSION = 6;
 export const MAX_INITIAL_RELICS = 12;
 export const MAX_EQUIPPED_RELICS = 2;
 
@@ -141,7 +141,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'vessel',
     effectFamily: 'mana',
     image: 'relics/relic_05_frasco_antojo_roto.webp',
-    effectLabel: 'Recupera Maná cada 30 minutos mientras está equipado.',
+    effectLabel: 'Recupera Maná por enemigo derrotado en Cacería mientras está equipado.',
     affixPool: ['arcane', 'channeling', 'fortune'],
   },
   {
@@ -152,7 +152,7 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'fang',
     effectFamily: 'health',
     image: 'relics/relic_06_colmillo_nicotina.webp',
-    effectLabel: 'Recupera Vida cada 30 minutos mientras está equipado.',
+    effectLabel: 'Recupera Vida por enemigo derrotado en Cacería mientras está equipado.',
     affixPool: ['discipline', 'vitality', 'fortune'],
   },
   {
@@ -161,11 +161,11 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 6,
     name: 'Collar de la Ansiedad Rota',
     equipmentType: 'collar',
-    effectFamily: 'experience',
+    effectFamily: 'vampirism',
     image: 'relics/relic_07_collar_ansiedad_rota.webp',
-    effectLabel: 'El primer hábito completado del día concede XP adicional.',
+    effectLabel: 'Vampirismo: cura un porcentaje del daño real causado por ataques físicos o mágicos en Cacería.',
     affixPool: ['discipline', 'vitality', 'fortune'],
-    valueUnit: 'XP',
+    valueUnit: '% vampirismo',
   },
   {
     id: 'relic_08',
@@ -173,11 +173,11 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 7,
     name: 'Ojo de la Duda Petrificada',
     equipmentType: 'eye',
-    effectFamily: 'coins',
+    effectFamily: 'petrification',
     image: 'relics/relic_08_ojo_duda_petrificada.webp',
-    effectLabel: 'El primer hábito difícil completado cada día concede oro adicional. Una activación diaria.',
+    effectLabel: 'Mirada petrificante: el primer ataque contra cada enemigo reduce el daño de su siguiente golpe que conecte.',
     affixPool: ['fortune', 'discipline', 'vitality'],
-    valueUnit: 'oro',
+    valueUnit: '% reducción',
   },
   {
     id: 'relic_09',
@@ -185,11 +185,11 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 8,
     name: 'Malla de Escamas de Brea',
     equipmentType: 'armor',
-    effectFamily: 'forge',
+    effectFamily: 'hunt-damage-reduction',
     image: 'relics/relic_09_malla_escamas_brea.webp',
-    effectLabel: 'Cuando falla una mejora en la Forja, recupera una parte del oro invertido.',
+    effectLabel: 'Escamas protectoras: reduce todo el daño recibido durante Cacería mientras está equipada.',
     affixPool: ['fortune', 'regeneration', 'vitality'],
-    valueUnit: '%',
+    valueUnit: '% reducción en Cacería',
   },
   {
     id: 'relic_10',
@@ -231,11 +231,100 @@ export const RELIC_DEFINITIONS = [
 
 export const FUSION_RELIC_DEFINITIONS = [
   {
+    id: 'fusion_26', recipeId: 'fusion_recipe_26', ingredientIds: ['relic_02', 'relic_09'],
+    name: 'Manto de la Lluvia Olvidada', equipmentType: 'armor', image: 'relics/fusion_26_manto_lluvia_olvidada.webp',
+    effectLabel: 'Hereda Maná del primer hábito y Escamas protectoras. El primer hábito prepara una reserva que evita un punto adicional por golpe en la próxima Cacería, sin bajar de uno.',
+    synergy: { type: 'first-habit-armor-reserve', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_27', recipeId: 'fusion_recipe_27', ingredientIds: ['relic_03', 'relic_09'],
+    name: 'Hoja del Nido Enlutado', equipmentType: 'dagger', image: 'relics/fusion_27_hoja_nido_enlutado.webp',
+    effectLabel: 'Hereda XP del primer hábito y Escamas protectoras. Vencer a un enemigo tras evitar al menos 5 de daño con Escamas concede XP adicional.',
+    synergy: { type: 'armor-survival-xp', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_28', recipeId: 'fusion_recipe_28', ingredientIds: ['relic_04', 'relic_09'],
+    name: 'Yelmo del Cielo Carbonizado', equipmentType: 'helmet', image: 'relics/fusion_28_yelmo_cielo_carbonizado.webp',
+    effectLabel: 'Hereda Constancia y Escamas protectoras. Completar Constancia refuerza Escamas durante la próxima Cacería. Una carga, sin acumular; se pierde al desequipar.',
+    synergy: { type: 'constancy-armor', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_29', recipeId: 'fusion_recipe_29', ingredientIds: ['relic_05', 'relic_09'],
+    name: 'Redoma de la Lluvia Cautiva', equipmentType: 'vessel', image: 'relics/fusion_29_redoma_lluvia_cautiva.webp',
+    effectLabel: 'Hereda Maná de victoria y Escamas protectoras. Convierte el 20% del daño evitado por Escamas en Maná, con un límite por enemigo.',
+    synergy: { type: 'armor-mana', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_30', recipeId: 'fusion_recipe_30', ingredientIds: ['relic_06', 'relic_09'],
+    name: 'Colmillo de la Raíz Acorazada', equipmentType: 'fang', image: 'relics/fusion_30_colmillo_raiz_acorazada.webp',
+    effectLabel: 'Hereda Vida de victoria y Escamas protectoras. Convierte el 15% del daño evitado por Escamas en Vida, con un límite por enemigo y sin resucitar.',
+    synergy: { type: 'armor-health', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_31', recipeId: 'fusion_recipe_31', ingredientIds: ['relic_07', 'relic_09'],
+    name: 'Collar del Rastreador de Brea', equipmentType: 'collar', image: 'relics/fusion_31_collar_rastreador_brea.webp',
+    effectLabel: 'Hereda Vampirismo y Escamas protectoras. Tras evitar 5 de daño con Escamas, aumenta Vampirismo durante el resto del combate contra ese enemigo.',
+    synergy: { type: 'armor-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_20', recipeId: 'fusion_recipe_20', ingredientIds: ['relic_02', 'relic_08'],
+    name: 'Ojo del Recuerdo Velado', equipmentType: 'eye', image: 'relics/fusion_20_ojo_recuerdo_velado.webp',
+    effectLabel: 'Hereda Maná del primer hábito y Mirada petrificante. El primer hábito del día carga una mejora para la primera Mirada de la próxima Cacería. Una carga, no acumulable; se pierde al desequipar.',
+    synergy: { type: 'first-habit-petrification', values: { 1: 2, 2: 3, 3: 5 } },
+  },
+  {
+    id: 'fusion_21', recipeId: 'fusion_recipe_21', ingredientIds: ['relic_03', 'relic_08'],
+    name: 'Aguijón de la Duda Atrapada', equipmentType: 'dagger', image: 'relics/fusion_21_aguijon_duda_atrapada.webp',
+    effectLabel: 'Hereda XP del primer hábito y Mirada petrificante. La primera Mirada que reduce un golpe otorga XP adicional, una vez por Cacería.',
+    synergy: { type: 'petrification-xp', values: { 1: 2, 2: 3, 3: 5 } },
+  },
+  {
+    id: 'fusion_22', recipeId: 'fusion_recipe_22', ingredientIds: ['relic_04', 'relic_08'],
+    name: 'Yelmo del Centinela Inmóvil', equipmentType: 'helmet', image: 'relics/fusion_22_yelmo_centinela_inmovil.webp',
+    effectLabel: 'Hereda Constancia y Mirada petrificante. Completar Constancia carga una mejora de Mirada contra cada enemigo de la próxima Cacería. Una carga, no acumulable; se pierde al desequipar.',
+    synergy: { type: 'constancy-petrification', values: { 1: 5, 2: 7, 3: 10 } },
+  },
+  {
+    id: 'fusion_23', recipeId: 'fusion_recipe_23', ingredientIds: ['relic_05', 'relic_08'],
+    name: 'Ampolla de la Tentación Vigilada', equipmentType: 'vessel', image: 'relics/fusion_23_ampolla_tentacion_vigilada.webp',
+    effectLabel: 'Hereda Maná de victoria y Mirada petrificante. Cuando Mirada reduce un golpe, recupera Maná inmediatamente, una vez por enemigo.',
+    synergy: { type: 'petrification-mana', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_24', recipeId: 'fusion_recipe_24', ingredientIds: ['relic_06', 'relic_08'],
+    name: 'Colmillo de la Duda Ponzoñosa', equipmentType: 'fang', image: 'relics/fusion_24_colmillo_duda_ponzonosa.webp',
+    effectLabel: 'Hereda Vida de victoria y Mirada petrificante. Cuando Mirada reduce un golpe, recupera Vida inmediatamente, una vez por enemigo y sin resucitar.',
+    synergy: { type: 'petrification-health', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_25', recipeId: 'fusion_recipe_25', ingredientIds: ['relic_07', 'relic_08'],
+    name: 'Collar del Acecho Silencioso', equipmentType: 'collar', image: 'relics/fusion_25_collar_acecho_silencioso.webp',
+    effectLabel: 'Hereda Vampirismo y Mirada petrificante. Tras reducir un golpe con Mirada, el siguiente ataque que cause daño real al mismo enemigo obtiene Vampirismo adicional. Una vez por enemigo, sin acumular.',
+    synergy: { type: 'petrification-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_18', recipeId: 'fusion_recipe_18',
+    ingredientIds: ['relic_03', 'relic_07'],
+    name: 'Garra del Hambre Negra', equipmentType: 'dagger',
+    image: 'relics/fusion_18_garra_hambre_negra.png',
+    effectLabel: 'Hereda los atributos y efectos de ambos ingredientes. El primer hábito del día carga +1 punto porcentual de Vampirismo para el próximo enemigo de Cacería, una vez al día y sin acumular.',
+    synergy: { type: 'first-habit-vampirism', value: 1 },
+  },
+  {
+    id: 'fusion_19', recipeId: 'fusion_recipe_19',
+    ingredientIds: ['relic_04', 'relic_07'],
+    name: 'Yelmo de las Fauces Ardientes', equipmentType: 'helmet',
+    image: 'relics/fusion_19_yelmo_fauces_ardientes.png',
+    effectLabel: 'Hereda los atributos y efectos de ambos ingredientes. Completar Constancia carga +1 punto porcentual de Vampirismo para la próxima Cacería completa, sin acumular.',
+    synergy: { type: 'constancy-vampirism', value: 1 },
+  },
+
+  {
     id: 'fusion_05', recipeId: 'fusion_recipe_05',
     ingredientIds: ['relic_04', 'relic_06'],
     name: 'Yelmo Vencedor', equipmentType: 'helmet',
     image: 'relics/fusion_05_yelmo_vencedor.webp',
-    effectLabel: 'Hereda la XP de Constancia y la recuperación periódica de Vida. Completar la Constancia también recupera Vida inmediatamente.',
+    effectLabel: 'Hereda la XP de Constancia y la recuperación de Vida por enemigo derrotado en Cacería. Completar la Constancia también recupera Vida inmediatamente.',
     synergy: { type: 'constancy-health', healthValues: { 1: 10, 2: 15, 3: 20 } },
   },
   {
@@ -243,7 +332,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     ingredientIds: ['relic_03', 'relic_06'],
     name: 'Filo del Pulso Voraz', equipmentType: 'dagger',
     image: 'relics/fusion_17_filo_pulso_voraz.webp',
-    effectLabel: 'Hereda la XP del primer hábito y la recuperación periódica de Vida. El primer hábito también recupera Vida inmediatamente.',
+    effectLabel: 'Hereda la XP del primer hábito y la recuperación de Vida por enemigo derrotado en Cacería. El primer hábito también recupera Vida inmediatamente.',
     synergy: { type: 'first-habit-health', healthValues: { 1: 3, 2: 5, 3: 7 } },
   },
   {
@@ -273,7 +362,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Daga del Antojo',
     equipmentType: 'dagger',
     image: 'relics/fusion_04_daga_antojo.webp',
-    effectLabel: 'El primer hábito concede XP y recupera Maná cada 30 minutos. Completar todos los hábitos diarios otorga 5 XP adicionales.',
+    effectLabel: 'El primer hábito concede XP y recupera Maná por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga 5 XP adicionales.',
     synergy: { type: 'all-daily-habits-xp', value: 5 },
   },
   {
@@ -283,7 +372,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Nudo del Pulso Libre',
     equipmentType: 'collar',
     image: 'relics/fusion_06_nudo_pulso_libre.webp',
-    effectLabel: 'Reduce el primer daño del día y concede XP con el primer hábito. Completarlo antes de consumir la protección otorga XP adicional.',
+    effectLabel: 'Reduce el primer daño del día y hereda Vampirismo. El primer hábito antes de consumir la protección otorga XP adicional.',
     synergy: { type: 'protected-first-habit-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -293,7 +382,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Brújula del Regreso',
     equipmentType: 'collar',
     image: 'relics/fusion_07_brujula_regreso.webp',
-    effectLabel: 'El primer hábito recupera Maná y concede XP. Al activar ambos efectos simultáneamente otorga XP adicional.',
+    effectLabel: 'Hereda Vampirismo. El primer hábito recupera Maná y otorga el bonus propio de XP.',
     synergy: { type: 'first-habit-mana-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -303,7 +392,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Anillo del Antojo Roto',
     equipmentType: 'collar',
     image: 'relics/fusion_08_anillo_antojo_roto.webp',
-    effectLabel: 'El primer hábito concede XP y recupera Maná cada 30 minutos. Completar todos los hábitos diarios otorga XP adicional.',
+    effectLabel: 'Hereda Vampirismo y recupera Maná por enemigo derrotado en Cacería. Completar todos los hábitos diarios otorga XP adicional.',
     synergy: { type: 'all-daily-habits-xp', values: { 1: 10, 2: 14, 3: 18 } },
   },
   {
@@ -323,7 +412,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Vasija del Pulso Carmesí',
     equipmentType: 'vessel',
     image: 'relics/fusion_10_vasija_pulso_carmesi.webp',
-    effectLabel: 'Reduce el primer daño del día y recupera Maná cada 30 minutos. Al activar la protección recupera Maná adicional.',
+    effectLabel: 'Reduce el primer daño del día y recupera Maná por enemigo derrotado en Cacería. Al activar la protección recupera Maná adicional.',
     synergy: { type: 'shield-mana', values: { 1: 3, 2: 5, 3: 7 } },
   },
   {
@@ -333,7 +422,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Mandíbula del Pulso Ardiente',
     equipmentType: 'fang',
     image: 'relics/fusion_11_mandibula_pulso_ardiente.webp',
-    effectLabel: 'Reduce el primer daño del día y recupera Vida cada 30 minutos. Completar el día tras activar la protección otorga XP adicional.',
+    effectLabel: 'Reduce el primer daño del día y recupera Vida por enemigo derrotado en Cacería. Completar el día tras activar la protección otorga XP adicional.',
     synergy: { type: 'shielded-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -367,7 +456,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Colmillo del Espectro',
     equipmentType: 'fang',
     image: 'relics/fusion_14_colmillo_espectro.webp',
-    effectLabel: 'El primer hábito recupera Maná y recupera Vida cada 30 minutos. Completar el día tras recuperar Maná con el primer hábito otorga XP adicional.',
+    effectLabel: 'El primer hábito recupera Maná y recupera Vida por enemigo derrotado en Cacería. Completar el día tras recuperar Maná con el primer hábito otorga XP adicional.',
     synergy: { type: 'mana-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
   {
@@ -377,7 +466,7 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Yelmo del Antojo Roto',
     equipmentType: 'helmet',
     image: 'relics/fusion_15_yelmo_antojo_roto.webp',
-    effectLabel: 'Recupera Maná cada 30 minutos y la Constancia concede XP. Completar la Constancia otorga XP y recupera Maná adicionales.',
+    effectLabel: 'Recupera Maná por enemigo derrotado en Cacería y la Constancia concede XP. Completar la Constancia otorga XP y recupera Maná adicionales.',
     synergy: {
       type: 'constancy-periodic-mana-xp',
       values: { 1: 10, 2: 15, 3: 20 },
@@ -391,13 +480,16 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Colmillo del Antojo Roto',
     equipmentType: 'fang',
     image: 'relics/fusion_16_colmillo_antojo_roto.webp',
-    effectLabel: 'Recupera Maná y Vida cada 30 minutos. Recuperar Maná y completar el día otorga XP adicional.',
+    effectLabel: 'Recupera Maná y Vida por enemigo derrotado en Cacería. Recuperar Maná y completar el día otorga XP adicional.',
     synergy: { type: 'periodic-mana-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
 ];
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
   ['relic_02', 'relic_05'],
+  ['relic_01', 'relic_08'],
+  ['relic_01', 'relic_09'],
+  ['relic_08', 'relic_09'],
 ];
 
 export const ALL_RELIC_DEFINITIONS = [
@@ -412,11 +504,11 @@ export const RELIC_RANK_EFFECTS = {
   relic_02: { 1: 5, 2: 7, 3: 10 },
   relic_03: { 1: 2, 2: 3, 3: 4 },
   relic_04: { 1: 20, 2: 30, 3: 45 },
-  relic_05: { 1: 30, 2: 45, 3: 60 },
-  relic_06: { 1: 30, 2: 45, 3: 60 },
-  relic_07: { 1: 3, 2: 5, 3: 7 },
-  relic_08: { 1: 2, 2: 3, 3: 5 },
-  relic_09: { 1: 20, 2: 30, 3: 40 },
+  relic_05: { 1: 5, 2: 8, 3: 13 },
+  relic_06: { 1: 5, 2: 8, 3: 13 },
+  relic_07: { 1: 3, 2: 5, 3: 8 },
+  relic_08: { 1: 10, 2: 15, 3: 27 },
+  relic_09: { 1: 5, 2: 8, 3: 12 },
   relic_10: { 1: 10, 2: 15, 3: 20 },
   relic_11: { 1: 12, 2: 18, 3: 25 },
   relic_12: { 1: 5, 2: 8, 3: 12 },

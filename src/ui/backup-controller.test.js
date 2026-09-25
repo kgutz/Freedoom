@@ -47,7 +47,7 @@ describe('herramientas de recuperación manual', () => {
     elements.btnExport.click();
     await Promise.resolve();
     expect(createFile).toHaveBeenCalledWith(
-      '{"config":{},"days":{"today":{"c":1}}}',
+      '{"format":"freedoom-backup","schemaVersion":1,"state":{"config":{},"days":{"today":{"c":1}}}}',
       'Freedom-partida-2026-09-04.txt',
     );
     expect(share).toHaveBeenCalledWith(expect.objectContaining({ files: [file] }));
@@ -111,7 +111,9 @@ describe('herramientas de recuperación manual', () => {
     });
     elements.btnExport.click();
     await Promise.resolve();
-    expect(writeText).toHaveBeenCalledWith('{"config":{},"days":{"today":{"c":1}}}');
+    expect(writeText).toHaveBeenCalledWith(
+      '{"format":"freedoom-backup","schemaVersion":1,"state":{"config":{},"days":{"today":{"c":1}}}}',
+    );
   });
 
   it('genera un nombre corto con la fecha local', () => {
@@ -135,7 +137,7 @@ describe('herramientas de recuperación manual', () => {
     expect(onImported.mock.calls[0][0].config.startLimit).toBe(8);
   });
 
-  it('aplica un comando aditivo desde el mismo recuadro', () => {
+  it('rechaza los antiguos comandos aditivos desde el mismo recuadro', () => {
     const { document, elements } = fixture();
     const onImported = vi.fn();
     const showToast = vi.fn();
@@ -149,8 +151,8 @@ describe('herramientas de recuperación manual', () => {
     elements.btnImportText.click();
     elements.backupText.value = '!+sangre 1';
     elements.backupAction.click();
-    expect(onImported.mock.calls[0][0].economy.bossBlood).toBe(3);
-    expect(showToast).toHaveBeenCalledWith('Comando aplicado ✓', 'heal');
+    expect(onImported).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('Comando no válido', 'dmg');
   });
 
   it('elige un archivo, lo valida y pide confirmación antes de restaurarlo', async () => {
@@ -174,5 +176,23 @@ describe('herramientas de recuperación manual', () => {
     expect(onImported).not.toHaveBeenCalled();
     elements.backupAction.click();
     expect(onImported.mock.calls[0][0].config.startLimit).toBe(9);
+  });
+
+  it('rechaza un archivo demasiado grande antes de leerlo', async () => {
+    const { document, elements } = fixture();
+    const showToast = vi.fn();
+    const text = vi.fn();
+    elements.backupFile.files = [{ size: 4 * 1024 * 1024 + 1, text }];
+    bindBackupControls({
+      document,
+      navigator: {},
+      getState: () => ({ config: {}, days: {} }),
+      onImported: vi.fn(),
+      showToast,
+    });
+    elements.backupFile.dispatch('change');
+    await Promise.resolve();
+    expect(text).not.toHaveBeenCalled();
+    expect(showToast).toHaveBeenCalledWith('No se pudo leer la copia', 'dmg');
   });
 });

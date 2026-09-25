@@ -81,6 +81,10 @@ import {
   acknowledgeLootNotice,
   activateRelicConstancy,
   activateFusionFirstHabitHealth,
+  chargeFirstHabitVampirism,
+  collarFirstHabitFusionBonuses,
+  equippedHuntEffects,
+  consumeHuntCharges,
   advancePeriodicManaRecovery,
   advancePeriodicHealthRecovery,
   attemptForge,
@@ -185,10 +189,12 @@ import {
 } from './domain/outfit-rules.js';
 import {
   STORAGE_KEY,
+  selectTemporalRecoveries,
   createBrowserStore,
   mergeState,
   parseState,
-  serializeState
+  serializeState,
+  stateInformationProfile
 } from './storage/state-storage.js';
 import {
   createDayEditorModel,
@@ -208,7 +214,7 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
-import { huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
 import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
@@ -224,13 +230,24 @@ import {
   renderLootNotice,
   renderOutfitSelector,
   renderPotionDetail,
-  renderRelicEffectInfo,
   renderRelicDetail,
   renderRelicReplacementPicker,
   renderShopView
 } from './ui/inventory-view.js';
 import { bindBackupControls } from './ui/backup-controller.js';
-import { createRecoveryModeController } from './ui/recovery-mode-controller.js';
+import { escapeHtml } from './ui/escape-html.js';
+import { createAuthPreviewController } from './ui/auth-preview-controller.js';
+import { readCloudConfig } from './cloud/cloud-config.js';
+import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
+import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave } from './cloud/cloud-migration.js';
+import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
+import { installSceneMedia } from './ui/scene-media.js';
+import { createScenePreloader } from './ui/scene-preloader.js';
+import { installFrameMedia } from './ui/frame-media.js';
+import { templeMarkup, templeShopMarkup, renderBlessingDetail } from './ui/temple-view.js';
+import { startTempleDialogue } from './ui/temple-dialogue.js';
+import { showTempleGift } from './ui/temple-gift.js';
+import { BLESSINGS, blessingPrice, purchaseBlessing, blessedDeathPenalty, blessedDailyEnergy } from './domain/blessing-rules.js';
 import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
 import { bindNavigation, showSheet } from './ui/navigation-controller.js';
@@ -263,7 +280,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.28.47';
+const APP_VERSION='2.29';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -275,6 +292,9 @@ const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-ba
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
+const INITIAL_LOCATION_HREF=location.href;
+const LOCAL_CLEAN_AUTH_TEST=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('cleanAuthTest')==='1';
+const LOCAL_MIGRATION_TEST=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('migrationTest')==='farenheil2';
 const LOCAL_OUTFIT_AUDIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoOutfitAudit')==='1';
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')==='1';
@@ -293,9 +313,9 @@ const LOCAL_DEMO_LEVEL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoLevel')
 const LOCAL_DEMO_FIBER_OUTFIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='fiber-outfit';
 const LOCAL_PIONEER_REWARD_PREVIEW=LOCAL_DEMO_HOST&&(
   LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_PARAMS.get('previewPioneerReward')==='1'
-)&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3','4'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
+)&&!LOCAL_DEMO_ALL_OUTFITS&&!['2','3','4','5'].includes(LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'));
 const LOCAL_BETA_TESTER_REWARD_PREVIEW_ID=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('previewBetaTesterReward'):'';
-const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
+const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID);
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
 const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
@@ -334,7 +354,9 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_MIGRATION
     ? `${STORAGE_KEY}:demo-loot-migration-${LOCAL_DEMO_MIGRATION}${LOCAL_LOOT_NOTICE_PREVIEW?'-preview':''}-v2`
     : `${STORAGE_KEY}:demo-bosses-${LOCAL_DEMO_BOSSES}-rarities-v4`
-  : STORAGE_KEY;
+  : LOCAL_CLEAN_AUTH_TEST
+    ? `${STORAGE_KEY}:clean-auth-test-v1`
+    : STORAGE_KEY;
 
 /* Datos iniciales que Kike apuntó a mano antes de tener la app */
 const SEED={};
@@ -351,9 +373,11 @@ let state={
   onboarded:false,
   ...emptyLootState()
 };
+let activeCloudService=null;
 let calCursor=currentDayDate();
 let editingKey=null;
 let saveTimer=null;
+let cloudSaveTimer=null;
 let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
@@ -380,11 +404,7 @@ const PROGRESSION_UPDATE_NOTICE_ID='attributes-hunt-v1';
 
 document.getElementById('obVersion').textContent=`v${APP_VERSION}`;
 document.getElementById('settingsVersion').textContent=`v${APP_VERSION}`;
-const recoveryModeController=createRecoveryModeController({
-  logo:document.querySelector('.settings-footer .set-logo'),
-  emergencySection:document.getElementById('emergencyRecoverySection'),
-  showToast
-});
+const recoveryModeController=Object.freeze({isActive:()=>false});
 
 async function revealReturnSplash({replay=false}={}){
   const loading=document.getElementById('loading');
@@ -523,6 +543,29 @@ function setDay(k,c,p,t,b,s,action){
 /* ---------- almacenamiento ---------- */
 /* Adaptador: dentro de Claude usa window.storage; en GitHub Pages / PWA usa localStorage del navegador */
 const store=createBrowserStore(window);
+const SAVE_LINEAGE_STORAGE_KEY=`${ACTIVE_STORAGE_KEY}:cloud-lineage`;
+
+function readStoredSaveLineage(){
+  try{
+    const prefix=`${encodeURIComponent(SAVE_LINEAGE_STORAGE_KEY)}=`;
+    const entry=document.cookie.split('; ').find(item=>item.startsWith(prefix));
+    return entry?decodeURIComponent(entry.slice(prefix.length)):'';
+  }
+  catch{return '';}
+}
+
+function rememberSaveLineage(lineageId){
+  if(!lineageId) return;
+  try{
+    document.cookie=`${encodeURIComponent(SAVE_LINEAGE_STORAGE_KEY)}=${encodeURIComponent(lineageId)}; Max-Age=31536000; Path=/; SameSite=Lax`;
+  }
+  catch(error){console.warn('No se pudo conservar el identificador protegido de la partida',error);}
+}
+
+function forgetStoredSaveLineage(){
+  try{document.cookie=`${encodeURIComponent(SAVE_LINEAGE_STORAGE_KEY)}=; Max-Age=0; Path=/; SameSite=Lax`;}
+  catch(error){console.warn('No se pudo retirar el identificador local de la partida',error);}
+}
 let storageHealth={state:'idle',revision:0,savedAt:0,title:'Comprobando guardado…',detail:'',warning:''};
 
 function savedAtLabel(timestamp){
@@ -569,6 +612,20 @@ function handleSaveResult(result){
     return;
   }
   const degraded=Boolean(result.degraded);
+  if(degraded&&activeCloudService){
+    setStorageHealth({
+      state:'saving',
+      revision:result.revision,
+      savedAt:result.savedAt,
+      title:'Guardando en la nube…',
+      detail:'La partida principal está protegida',
+      warning:''
+    });
+    Promise.resolve(result.mirrorPromise).catch(error=>{
+      console.warn('No se pudo actualizar la copia IndexedDB',error);
+    });
+    return;
+  }
   setStorageHealth({
     state:degraded?'error':'saved',
     revision:result.revision,
@@ -576,7 +633,7 @@ function handleSaveResult(result){
     title:degraded?'Guardado con protección reducida':'Guardado ✓',
     detail:`Último guardado · ${savedAtLabel(result.savedAt)}`,
     warning:degraded
-      ? 'Tus datos se han guardado, pero una de las copias de seguridad falló. Exporta una copia desde Ajustes.'
+      ? 'Tus datos principales se han guardado, pero una protección local falló. Abre Soporte y recuperación si el aviso continúa.'
       : ''
   });
   Promise.resolve(result.mirrorPromise).catch(error=>{
@@ -663,7 +720,7 @@ async function load(){
     console.error('Error cargando la partida',e);
     setStorageHealth({
       state:'error',title:'No se pudo cargar la partida',detail:e.message||'Error desconocido',
-      warning:'Freedom no pudo leer el guardado. No reinicies la app: revisa Copias de seguridad en el menú.'
+      warning:'Freedom no pudo leer el guardado. No reinicies la app: abre Soporte y recuperación desde el menú.'
     });
   }
   /* Cargar los días apuntados a mano; con versión, para que nuevos días
@@ -680,6 +737,43 @@ async function load(){
   if(LOCAL_LOOT_NOTICE_PREVIEW) initializeLocalDemo=true;
   if(initializeLocalDemo) prepareLocalBossDemo();
 }
+async function prepareLocalMigrationTest(){
+  if(!LOCAL_MIGRATION_TEST) return;
+  const response=await fetch('/__migration-test.json',{cache:'no-store'});
+  if(!response.ok) throw new Error('No se pudo preparar la partida aislada de prueba');
+  const fixture=await response.json();
+  fixture.game={...(fixture.game||{}),name:'Farenheil 2'};
+  state=mergeState(state,fixture);
+  state={...state,...initializeForgeSeed(state)};
+  await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
+  history.replaceState({},'',location.pathname);
+}
+function scheduleCloudSave(){
+  if(!activeCloudService) return;
+  clearTimeout(cloudSaveTimer);
+  cloudSaveTimer=setTimeout(async()=>{
+    try{
+      const previous=await activeCloudService.loadGameSave();
+      if(!previous) return;
+      const migrationPlan=createMigrationPlan(state);
+      const plan={...migrationPlan,migrationId:null};
+      await activeCloudService.saveGameState(plan,previous.revision||0);
+      const saved=await activeCloudService.loadGameSave();
+      if(!verifyCloudSave(saved,plan)) throw new Error('La verificación del guardado remoto no coincide');
+      setStorageHealth({
+        state:'saved',
+        revision:saved.revision||storageHealth.revision,
+        savedAt:saved.updated_at?new Date(saved.updated_at).getTime():Date.now(),
+        title:'Guardado en la nube ✓',
+        detail:'Partida verificada en tu cuenta de Freedom',
+        warning:''
+      });
+    }catch(error){
+      console.warn('No se pudo sincronizar la partida con Freedom Nube',error);
+      showToast('Guardado local ✓ · sincronización pendiente','dmg');
+    }
+  },900);
+}
 function scheduleSave(action){
   if(action){
     try{ store.recordAction(action,ACTIVE_STORAGE_KEY); }
@@ -691,23 +785,27 @@ function scheduleSave(action){
     try{
       const result=store.set(ACTIVE_STORAGE_KEY,serializeState(state));
       handleSaveResult(result);
+      scheduleCloudSave();
     }catch(e){
       console.error('Error guardando',e);
       setStorageHealth({
         state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
-        warning:'El último cambio NO se ha guardado. No cierres la app; libera espacio en el dispositivo y revisa Copias de seguridad.'
+        warning:'El último cambio NO se ha guardado. No cierres la app; libera espacio y abre Soporte y recuperación.'
       });
     }
     return;
   }
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
-    try{ handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state))); }
+    try{
+      handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));
+      scheduleCloudSave();
+    }
     catch(e){
       console.error('Error guardando',e);
       setStorageHealth({
         state:'error',title:'No se ha podido guardar',detail:e.message||'Error desconocido',
-        warning:'El último cambio NO se ha guardado. No cierres la app y revisa Copias de seguridad.'
+        warning:'El último cambio NO se ha guardado. No cierres la app y abre Soporte y recuperación.'
       });
     }
   },400);
@@ -762,10 +860,18 @@ function previousDayExceededConsumptionLimit(now=new Date()){
   return Math.max(0,record.c||0)>limitOfDate(previousDate);
 }
 function huntBaseEnergyForToday(now=new Date()){
-  return previousDayExceededConsumptionLimit(now)?2:10;
+  const result=blessedDailyEnergy({blessings:state.game?.blessings,dayKey:todayKey(now),previousEnergyDay:state.game?.hunt?.energyDay,failed:previousDayExceededConsumptionLimit(now),now:now.getTime()});
+  if(result.consumed){
+    state.game.blessings=result.blessings;
+    // Save after the caller commits the matching daily refill, never half a rollover.
+    queueMicrotask(()=>scheduleSave({type:'blessing:consume',blessing:'energy'}));
+  }
+  return result.baseEnergy;
 }
+let startupImagePreloader=null;
 function preloadStartupViews(){
   const imagePreloader=createImagePreloader({window,concurrency:2});
+  startupImagePreloader=imagePreloader;
   scheduleImagePreloadPhases({
     window,
     phases:startupImagePhases(state.game),
@@ -875,7 +981,7 @@ function renderGraf(){
     records:state.days
   });
   document.getElementById('chartHint').textContent=isControlledMode(state.config)
-    ? 'Cada barra muestra el consumo de ese día. Rojo indica que esa semana superó el máximo compartido.'
+    ? 'Verde: días confirmados sin fumar o días permitidos cerrados sin consumo. Dorado: consumo en días permitidos dentro del máximo semanal. Rojo: fumaste en un día no permitido o superaste el máximo semanal compartido. Los puntos indican días pendientes o en curso.'
     : isSmokeFreeMode(state.config)
       ? 'Verde: días confirmados sin fumar. Rojo: días en los que fumaste. Los puntos permanecen pendientes.'
       : 'La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.';
@@ -926,12 +1032,13 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
-  if(['3','4'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID)){
+  if(['3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID)){
     const ownedFrames={...(state.game.frames?.owned||{})};
     const claimedRewards={...(state.game.betaTesterRewards?.claimed||{})};
     delete ownedFrames['welder-beta'];
     delete claimedRewards['pioneer-beta-reward-v3'];
     delete claimedRewards['pioneer-beta-reward-v4'];
+    delete claimedRewards['pioneer-beta-reward-v5'];
     state.game={
       ...state.game,
       frame:'original',
@@ -1226,6 +1333,10 @@ function prepareLocalBossDemo(){
     const demoMaxes=heroMaxes();
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
+    if(LOCAL_DEMO_HOST && LOCAL_DEMO_PARAMS.get('demoFrame')==='azariel-temple'){
+      state.game.frame='azariel-temple';
+      state.game.frames={...state.game.frames,owned:{...state.game.frames?.owned,'azariel-temple':{acquiredAt:Date.now(),source:'demo'}}};
+    }
     state.economy={
       ...state.economy,
       coins:9999,
@@ -1518,7 +1629,9 @@ function renderDeathModal(notice=state.game?.deathNotice){
   const levelChanged=notice.levelAfter<notice.levelBefore;
   document.getElementById('deathCause').textContent=notice.cause||'Las fuerzas de tu héroe se agotaron.';
   document.getElementById('deathXpLoss').textContent=protectedXp?'XP PROTEGIDA':`−${notice.xpLost} XP`;
-  document.getElementById('deathXpCopy').textContent=protectedXp
+  document.getElementById('deathXpCopy').textContent=notice.blessingProtected
+    ? 'Tu bendición ha protegido toda tu experiencia. La protección se ha consumido.'
+    : protectedXp
     ? 'Los niveles 1–4 están protegidos frente a la pérdida de experiencia.'
     : `Has perdido el ${notice.lossPercent||10}% de la experiencia necesaria para completar este nivel.`;
   const levelRow=document.getElementById('deathLevelChange');
@@ -1542,7 +1655,9 @@ function triggerHeroDeath({cause,source='unknown',open=true}={}){
   const g=state.game;
   if(!g?.cls||Number(g.hp)>0) return null;
   const before=gameStats();
-  const penalty=deathExperiencePenalty({xp:before.xp,level:before.lvl});
+  const protection=blessedDeathPenalty({xp:before.xp,level:before.lvl,source,blessings:g.blessings});
+  const penalty=protection.penalty;
+  g.blessings=protection.blessings;
   g.xpDeathPenalty=Math.max(0,Number(g.xpDeathPenalty)||0)+penalty.xpLost;
   const after=gameStats();
   g.hp=after.maxHp;
@@ -1556,6 +1671,7 @@ function triggerHeroDeath({cause,source='unknown',open=true}={}){
     xpLost:penalty.xpLost,
     lossPercent:penalty.lossPercent,
     protected:penalty.protected,
+    blessingProtected:Boolean(penalty.blessingProtected),
     levelBefore:penalty.levelBefore,
     levelAfter:after.lvl,
     maxHp:after.maxHp,
@@ -2174,9 +2290,9 @@ function renderSkillHabitPicker(){
   document.getElementById('skillHabitPickerList').innerHTML=available.map(habit=>{
     const isSelected=selected.includes(habit.id);
     const difficulty=habit.difficulty==='hard'?'Difícil':habit.difficulty==='medium'?'Media':'Fácil';
-    return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${habit.id}" aria-pressed="${isSelected}">
+    return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${escapeHtml(habit.id)}" aria-pressed="${isSelected}">
       <span class="skill-habit-option-mark">${isSelected?'✓':'·'}</span>
-      <span class="skill-habit-option-copy"><b>${habit.title}</b><small>${difficulty} · hábito diario</small></span>
+      <span class="skill-habit-option-copy"><b>${escapeHtml(habit.title)}</b><small>${difficulty} · hábito diario</small></span>
       <span class="skill-habit-option-xp">+5 XP</span>
     </button>`;
   }).join('');
@@ -2466,6 +2582,7 @@ const EQUIPMENT_TYPE_NAMES={
 };
 const EFFECT_FAMILY_NAMES={experience:'de Experiencia',coins:'de Oro',forge:'de Forja',bosses:'de Jefes'};
 function equipFailureMessage(result){
+  if(result?.reason==='enchantment-equipped-conflict') return 'Ya tienes equipado este encantamiento.';
   if(result?.reason==='fusion-equipped-conflict'){
     return 'Solo puedes equipar una reliquia fusionada a la vez.';
   }
@@ -2491,6 +2608,11 @@ function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
   const sheet=overlay?.querySelector('.inventory-sheet');
+  if(sheet?.classList.contains('inventory-temple-active')){
+    overlay.style.setProperty('--inventory-panel-offset','0px');
+    overlay.style.setProperty('--inventory-nav-clearance','0px');
+    return;
+  }
   const bagBody=document.getElementById('bagBody');
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
@@ -2548,6 +2670,12 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   const bagSelected=panel==='bag';
   const forgeSelected=panel==='forge';
   const shopSelected=panel==='shop';
+  const templeSelected=panel==='temple';
+  const templeBody=document.getElementById('templeBody');
+  const templeTab=document.getElementById('templeTab');
+  templeBody.hidden=!templeSelected;
+  templeTab.classList.toggle('active',templeSelected);
+  templeTab.setAttribute('aria-selected',String(templeSelected));
   const inventoryBody=document.getElementById('inventoryBody');
   const collectionBody=document.getElementById('collectionBody');
   const bagBody=document.getElementById('bagBody');
@@ -2574,12 +2702,18 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
   if(inventoryTitle) inventoryTitle.textContent=shopExperience&&!shopMapExpanded?'Tienda':'Inventario';
   inventoryOverlay?.classList.remove('inventory-shop-expanded');
   inventorySheet?.classList.remove('inventory-shop-active');
+  inventorySheet?.classList.toggle('inventory-temple-active',templeSelected);
   inventorySheet?.classList.toggle('inventory-shop-map-overlay',shopMapExpanded);
   inventorySheet?.classList.toggle('inventory-shop-destination',shopExperience&&!shopMapExpanded);
   inventorySheet?.classList.toggle('inventory-shop-relics',shopSelected&&shopViewSection==='relics');
   if(bagSelected){
     renderInventoryView(document,state,potionViewOptions());
     renderCollectionView(document,state);
+  }else if(templeSelected){
+    templeBody.innerHTML=templeMarkup(state.game,state.economy,gameStats().lvl);
+    startTempleDialogue(templeBody,state.game,window);
+    showTempleGift(document,state.game);
+    templeBody.scrollTop=0;
   }else if(forgeSelected){
     selectedForgeRelicId=renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
   }else{
@@ -2933,11 +3067,11 @@ function showPendingBetaTesterReward(){
   const frameStatus=document.getElementById('betaTesterRewardFrameStatus');
   if(frameStatus) frameStatus.textContent=isThirdReward?'FONDO CONMEMORATIVO · TIEMPO LIMITADO':'FONDO EXCLUSIVO';
   if(heroImage) heroImage.src=`outfits/${isThirdReward?'welder-beta':'beta-tester'}/${state.game?.cls||'knight'}_happy.webp`;
-  [['betaTesterRewardCoins',reward.coins],['betaTesterRewardFibers',reward.arcaneFibers],['betaTesterRewardEnergy',reward.energy],['betaTesterRewardInks',reward.arcaneInks],['betaTesterRewardEnergyPotions',reward.energyPotions]].forEach(([id,amount])=>{
+  [['betaTesterRewardBlood',reward.bossBlood],['betaTesterRewardCoins',reward.coins],['betaTesterRewardFibers',reward.arcaneFibers],['betaTesterRewardEnergy',reward.energy],['betaTesterRewardInks',reward.arcaneInks],['betaTesterRewardEnergyPotions',reward.energyPotions]].forEach(([id,amount])=>{
     const item=document.getElementById(id);
     if(item) item.hidden=!Number(amount);
   });
-  [['betaTesterRewardCoinsAmount',reward.coins],['betaTesterRewardFibersAmount',reward.arcaneFibers],['betaTesterRewardEnergyAmount',reward.energy],['betaTesterRewardInksAmount',reward.arcaneInks],['betaTesterRewardEnergyPotionsAmount',reward.energyPotions]].forEach(([id,amount])=>{
+  [['betaTesterRewardBloodAmount',reward.bossBlood],['betaTesterRewardCoinsAmount',reward.coins],['betaTesterRewardFibersAmount',reward.arcaneFibers],['betaTesterRewardEnergyAmount',reward.energy],['betaTesterRewardInksAmount',reward.arcaneInks],['betaTesterRewardEnergyPotionsAmount',reward.energyPotions]].forEach(([id,amount])=>{
     const value=document.getElementById(id); if(value) value.textContent=`+${Number(amount)||0}`;
   });
   document.querySelector('.beta-tester-reward-items')?.classList.toggle('beta-tester-reward-items--third',!grantsFrame);
@@ -3634,10 +3768,31 @@ document.getElementById('beerNo').addEventListener('click',()=>{
   state.config.tracksBeer=false;scheduleSave();renderSettings();renderHoy();
 });
 
+async function renderAccountSettings(){
+  const account=document.getElementById('settingsAccount');
+  if(!account||!activeCloudService){
+    if(account) account.hidden=true;
+    return;
+  }
+  try{
+    const session=await activeCloudService.session();
+    const email=session?.user?.email||'';
+    account.hidden=!email;
+    document.getElementById('settingsAccountEmail').textContent=email;
+  }catch{
+    account.hidden=true;
+  }
+}
 function openAjustes(){
   renderSettings();
+  void renderAccountSettings();
   showSheet(document,'sheetSet');
 }
+document.getElementById('settingsSignOut')?.addEventListener('click',async()=>{
+  if(!activeCloudService||!confirm('¿Cerrar la sesión de Google en Freedom?')) return;
+  await activeCloudService.signOut();
+  location.reload();
+});
 const navigation=bindNavigation({
   document,
   window,
@@ -3750,6 +3905,7 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
     </details>
   </div>
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
+  ${huntRecoveryNoteMarkup({regionId:region.id,difficultyId:difficulty.id})}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
     <input type="checkbox" id="huntAutoPotions" ${hasCombatPotions?'checked':'disabled'}>
     <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
@@ -3782,6 +3938,7 @@ function confirmHuntStart(){
     currentMana:state.game.mp,
     maxMana:stats.maxMp,
     relicBonuses:relicBonuses(),
+    relicEffects:equippedHuntEffects(state),
     autoUsePotions,
     fortune,
     nowTimestamp
@@ -3791,6 +3948,7 @@ function confirmHuntStart(){
     return;
   }
   state.game.hunt=result.hunt;
+  applyLootSlices(consumeHuntCharges(state));
   scheduleSave({type:'hunt:start',regionId,difficultyId});
   renderHunt();
   const durationMinutes=huntDifficultyForRegion(regionId,difficultyId).durationMinutes;
@@ -4003,6 +4161,9 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
     state.game.hunt=result.hunt;
     state.inventory={...(state.inventory||{}),potions:result.potions};
+    if(result.report.fusion16ManaRecovered){
+      state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
+    }
     state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
     state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
     state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
@@ -4147,8 +4308,7 @@ async function openRecoveryModal(){
       return;
     }
     const lastInformation=recoveries.find(recovery=>recovery.source==='last-info');
-    const daily=recoveries.find(recovery=>recovery.source==='daily');
-    const weekly=recoveries.find(recovery=>recovery.source==='weekly');
+    const {daily,hourly}=selectTemporalRecoveries(recoveries);
     appendRecoverySection(list,{
       title:'Recomendada',
       description:'La referencia más segura si tu partida desapareció.',
@@ -4161,25 +4321,76 @@ async function openRecoveryModal(){
     });
     appendRecoverySection(list,{
       title:'Copias protegidas',
-      description:'Puntos de retorno separados por tiempo.',
+      description:'Último guardado de ayer y un punto de hoy de hace al menos una hora. Comprueba la fecha y hora antes de restaurar.',
       items:[
-        daily&&{recovery:daily,label:'Copia diaria',detail:'Mejor estado guardado ese día'},
-        weekly&&{recovery:weekly,label:'Copia semanal',detail:'Estado protegido de la semana'}
+        daily&&{recovery:daily,label:'Día anterior',detail:'Último guardado disponible de ayer'},
+        hourly&&{recovery:hourly,label:'Hace aproximadamente una hora',detail:'Guardado anterior disponible más cercano; puede ser más antiguo'}
       ].filter(Boolean)
     });
+    if(!daily||!hourly){
+      const missing=document.createElement('p');
+      missing.className='recovery-empty';
+      missing.textContent=[!daily?'No hay un guardado disponible del día anterior.':'',!hourly?'Todavía no hay una copia de hoy con una hora de antigüedad.':''].filter(Boolean).join(' ');
+      list.append(missing);
+    }
   }catch(error){
     list.textContent='No se pudieron leer las copias: '+(error.message||'error desconocido');
+  }
+}
+async function submitSupportTicket(){
+  const button=document.getElementById('supportTicketSubmit');
+  const result=document.getElementById('supportTicketResult');
+  const description=document.getElementById('supportTicketDescription').value.trim();
+  const category=document.getElementById('supportTicketCategory').value;
+  const consent=document.getElementById('supportTicketConsent').checked;
+  result.hidden=true;
+  result.classList.remove('is-error');
+  if(description.length<10){
+    result.textContent='Cuéntanos un poco más para poder investigar el problema.';
+    result.classList.add('is-error');
+    result.hidden=false;
+    return;
+  }
+  if(!consent){
+    result.textContent='Necesitamos tu autorización para vincular el ticket con la revisión de tu partida.';
+    result.classList.add('is-error');
+    result.hidden=false;
+    return;
+  }
+  if(!activeCloudService){
+    result.textContent='El soporte en la nube no está disponible en este momento.';
+    result.classList.add('is-error');
+    result.hidden=false;
+    return;
+  }
+  button.disabled=true;
+  button.textContent='Creando ticket…';
+  try{
+    const ticket=await activeCloudService.createSupportTicket({category,description,consent});
+    if(!ticket?.ticket_code) throw new Error('No se recibió el número de ticket');
+    result.textContent=`Ticket ${ticket.ticket_code} creado. Guarda este número para consultar el caso.`;
+    result.hidden=false;
+    document.getElementById('supportTicketDescription').value='';
+    document.getElementById('supportTicketConsent').checked=false;
+  }catch(error){
+    result.textContent='No se pudo crear el ticket. Tu partida no se ha modificado; inténtalo de nuevo.';
+    result.classList.add('is-error');
+    result.hidden=false;
+  }finally{
+    button.disabled=false;
+    button.textContent='Abrir ticket';
   }
 }
 function closeRecoveryModal(){
   document.getElementById('recoveryBg').classList.remove('show');
 }
-document.getElementById('btnExport').addEventListener('click',closeRecoveryModal);
-document.getElementById('btnImport').addEventListener('click',closeRecoveryModal);
+document.getElementById('btnExport')?.addEventListener('click',closeRecoveryModal);
+document.getElementById('btnImport')?.addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryClose').addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryBg').addEventListener('click',event=>{
   if(event.target.id==='recoveryBg') closeRecoveryModal();
 });
+document.getElementById('supportTicketSubmit').addEventListener('click',submitSupportTicket);
 document.getElementById('recoveryList').addEventListener('click',async event=>{
   const button=event.target.closest('[data-recovery-revision]');
   if(!button) return;
@@ -4743,9 +4954,6 @@ function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
     coins+=amount;
     notices.push(`+${amount} 🪙 ${label}`);
   };
-  if(habit.difficulty==='hard'){
-    grantCoins('relic_08',availableDailyEffectSources(state,'relic_08',dayKey),'Ojo de la Duda');
-  }
   const daily=state.habits.items.filter(item=>item.active!==false&&item.frequency==='daily');
   const periodKey=`d:${dayKey}`;
   const completed=daily.filter(item=>(Number(state.habits.entries[`${item.id}|${periodKey}`]?.count)||0)>=Math.max(1,Number(item.target)||1));
@@ -4835,8 +5043,8 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     const focusActive=smokeFreeMode&&state.game.cls==='paladin'&&(buffs.habitFocusCharges||0)>0;
     const dayKey=habitDayKey();
     const daggerXpSources=availableDailyEffectSources(state,'relic_03',dayKey);
-    const collarXpSources=availableDailyEffectSources(state,'relic_07',dayKey);
-    const habitXpSources=[...daggerXpSources,...collarXpSources];
+    const collarSources=availableDailyEffectSources(state,'relic_07',dayKey);
+    const habitXpSources=daggerXpSources;
     const relicHabitXpActive=habitXpSources.length>0;
     const protectionSources=availableDailyEffectSources(state,'relic_01',dayKey);
     const firstHabitManaSources=availableDailyEffectSources(state,'relic_02',dayKey);
@@ -4851,16 +5059,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
         canActivateFusionDaily(state,'fusion_12','first-habit-mana-xp',dayKey)){
       firstHabitFusionBonuses.push(['fusion_12','first-habit-mana-xp',fusionSynergyXp('fusion_12')]);
     }
-    if(collarXpSources.some(source=>source.relicId==='fusion_06')&&
-        protectionSources.some(source=>source.relicId==='fusion_06')&&
-        canActivateFusionDaily(state,'fusion_06','protected-first-habit-xp',dayKey)){
-      firstHabitFusionBonuses.push(['fusion_06','protected-first-habit-xp',fusionSynergyXp('fusion_06')]);
-    }
-    if(collarXpSources.some(source=>source.relicId==='fusion_07')&&
-        firstHabitManaSources.some(source=>source.relicId==='fusion_07')&&
-        canActivateFusionDaily(state,'fusion_07','first-habit-mana-xp',dayKey)){
-      firstHabitFusionBonuses.push(['fusion_07','first-habit-mana-xp',fusionSynergyXp('fusion_07')]);
-    }
+    firstHabitFusionBonuses.push(...collarFirstHabitFusionBonuses(state,dayKey));
     const firstHabitFusionXp=firstHabitFusionBonuses.reduce((total,item)=>total+item[2],0);
     const flatRewardBonus=relicBonuses().habitXpBonus+
       (relicHabitXpActive
@@ -4926,17 +5125,16 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     if(result.xpDelta>0&&focusActive){
       buffs.habitFocusCharges=Math.max(0,buffs.habitFocusCharges-1);
     }
-    if(result.xpDelta>0&&relicHabitXpActive){
+    if(result.xpDelta>0){
       if(daggerXpSources.length){
         applyLootSlices(markDailyEffectSources(state,'relic_03',dayKey,daggerXpSources,true));
       }
-      if(collarXpSources.length){
-        applyLootSlices(markDailyEffectSources(state,'relic_07',dayKey,collarXpSources,true));
-      }
+      if(collarSources.length) applyLootSlices(markDailyEffectSources(state,'relic_07',dayKey,collarSources,true));
       firstHabitFusionBonuses.forEach(([fusionId,effect,value])=>{
         applyLootSlices(markFusionDaily(state,fusionId,effect,dayKey,value));
       });
     }
+    if(result.becameCompleted) applyLootSlices(chargeFirstHabitVampirism(state,dayKey));
     const manaSources=result.xpDelta>0
       ? availableDailyEffectSources(state,'relic_02',dayKey)
       : [];
@@ -5477,14 +5675,14 @@ function handlePotionUse(potionId){
   let normalizedHunt=null;
   if(potionId==='energy'){
     normalizedHunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
-    const restore=POTION_BY_ID.energy.energyRestore;
-    if(normalizedHunt.energy>MAX_HUNT_ENERGY-restore){ showToast('Necesitas tener 15 de energía o menos','dmg'); return false; }
   }
   const options=potionViewOptions();
   const result=usePotion({
-    inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp
+    inventory:state.inventory,potionId,dayKey:options.dayKey,bossKey:options.bossKey,nowTimestamp,
+    huntEnergy:normalizedHunt?.energy||0,huntEnergyCapacity:MAX_HUNT_ENERGY
   });
   if(!result.ok){
+    if(result.reason==='energy_capacity'){ showToast(`Necesitas tener ${MAX_HUNT_ENERGY-result.energyRestore} de energía o menos`,'dmg'); return false; }
     const remainingAvailability=()=>{
       if(result.reason==='active'){
         const endsAt=Number(state.inventory?.potions?.active?.endsAt)||Date.now();
@@ -5516,7 +5714,7 @@ function handlePotionUse(potionId){
     const before=state.game.mp||0; state.game.mp=capMp(before+25); notice=`+${state.game.mp-before} Maná`;
     flashHeroStatFeedback('mp');
   }else if(potionId==='energy'){
-    const reward=grantRewardHuntEnergy({hunt:normalizedHunt,amount:POTION_BY_ID.energy.energyRestore,nowTimestamp});
+    const reward=grantRewardHuntEnergy({hunt:normalizedHunt,amount:result.energyRestore,nowTimestamp});
     state.game.hunt=reward.hunt;
     notice=`+${reward.granted} Energía de Cacería`;
   }else if(potionId==='blood') notice=`Sangre preparada · +${potionBloodChance(state.inventory.potions,options.bossKey)}%`;
@@ -5768,6 +5966,34 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     clearFusionFeedback();
   }
   if(event.target.closest('#bagTab')){ forgeFromCity=false; showInventoryPanel('bag'); return; }
+  if(event.target.closest('#templeTab')){ forgeFromCity=false; showInventoryPanel('temple'); return; }
+  if(event.target.closest('[data-close-temple]')){
+    returnToCharacterSheetFromShop();
+    return;
+  }
+  if(event.target.closest('[data-temple-blessings]')){
+    document.getElementById('inventoryReturnCharacter').hidden=false;
+    document.querySelector('.temple-scene').setAttribute('aria-hidden','true');
+    const preview=document.getElementById('templeBlessings');
+    preview.innerHTML=templeShopMarkup(state.game,state.economy,gameStats().lvl);
+    preview.hidden=false;
+    preview.focus();
+    return;
+  }
+  const blessingOpen=event.target.closest('[data-open-blessing]');
+  if(blessingOpen){
+    if(blessingOpen.disabled || state.game.blessings?.[blessingOpen.dataset.openBlessing]?.active) return;
+    if(renderBlessingDetail(document,state.game,state.economy,gameStats().lvl,blessingOpen.dataset.openBlessing)) showSheet(document,'sheetRelicDetail');
+    return;
+  }
+  if(event.target.closest('[data-temple-back]')){
+    document.getElementById('inventoryReturnCharacter').hidden=true;
+    document.getElementById('templeBlessings').hidden=true;
+    document.querySelector('.temple-scene').removeAttribute('aria-hidden');
+    startTempleDialogue(document.getElementById('templeBody'),state.game,window);
+    document.querySelector('[data-temple-blessings]').focus();
+    return;
+  }
   if(event.target.closest('#shopTab')){
     dismissFeatureDiscovery('inventory-market');
     forgeFromCity=false;
@@ -5848,13 +6074,6 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     forgePickerTarget={mode:'equip',slot:Number(equipPicker.dataset.openEquipPicker)||0};
     renderForgeRelicPicker(document,state,forgePickerTarget);
     document.getElementById('forgeRelicPickerBg').classList.add('show');
-    return;
-  }
-  const effectInfo=event.target.closest('[data-relic-effect]');
-  if(effectInfo){
-    if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
-      document.getElementById('relicEffectInfoBg').classList.add('show');
-    }
     return;
   }
   const shopRelic=event.target.closest('[data-open-shop-relic]');
@@ -6344,6 +6563,14 @@ document.getElementById('sheetRelicReplacement').addEventListener('click',event=
   if(equip) equipRelicFromDetail(equip);
 });
 document.getElementById('sheetRelicDetail').addEventListener('click',async event=>{
+  const blessingBuy=event.target.closest('[data-buy-blessing]');
+  if(blessingBuy){
+    if(blessingBuy.disabled) return;
+    const id=blessingBuy.dataset.buyBlessing;
+    if(!BLESSINGS[id]) return;
+    openShopPurchaseConfirmation({type:'blessing',blessingId:id,name:BLESSINGS[id].name,coinCost:blessingPrice(id,gameStats().lvl),operationId:crypto.randomUUID()});
+    return;
+  }
   const sale=event.target.closest('[data-sell-relic]');
   if(sale){
     if(sale.disabled||shopLocked) return;
@@ -6402,13 +6629,6 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     showInventoryPanel('forge');
     return;
   }
-  const effectInfo=event.target.closest('[data-relic-effect]');
-  if(effectInfo){
-    if(renderRelicEffectInfo(document,effectInfo.dataset.relicEffect)){
-      document.getElementById('relicEffectInfoBg').classList.add('show');
-    }
-    return;
-  }
   const equip=event.target.closest('[data-equip-relic]');
   if(equip){
     equipRelicFromDetail(equip);
@@ -6420,12 +6640,14 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     return;
   }
 });
-document.getElementById('relicEffectInfoClose').addEventListener('click',()=>{
-  document.getElementById('relicEffectInfoBg').classList.remove('show');
-});
-document.getElementById('relicEffectInfoBg').addEventListener('click',event=>{
-  if(event.target.id==='relicEffectInfoBg') event.currentTarget.classList.remove('show');
-});
+installRelicEffectDialog(document);
+const scenePreloader=createScenePreloader({window,document,isReady:()=>{
+  const images=startupImagePreloader?.snapshot();
+  const foregroundVideo=Array.from(document.querySelectorAll('video')).some(video=>!video.paused&&video.getClientRects().length>0);
+  return Boolean(state.onboarded&&state.game?.cls&&!returnSplashPlaying&&!foregroundVideo&&(!images||(!images.active&&!images.pending)));
+}});
+installSceneMedia(document,window,scenePreloader);
+installFrameMedia(document,window);
 async function handleForgeAttempt(relicId){
   if(!relicId||forgeLocked) return;
   forgeLocked=true;
@@ -6551,6 +6773,22 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
   else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId,purchase.quantity);
   else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  else if(purchase.type==='blessing'){
+    const result=purchaseBlessing({game:state.game,economy:state.economy,id:purchase.blessingId,level:gameStats().lvl,dayKey:todayKey(),operationId:purchase.operationId,expectedPrice:purchase.coinCost});
+    if(result.ok){
+      state.game=result.game;
+      state.economy=result.economy;
+      scheduleSave({type:'blessing:purchase',blessing:purchase.blessingId});
+      document.getElementById('sheetRelicDetail').classList.remove('show');
+      document.getElementById('templeBlessings').innerHTML=templeShopMarkup(state.game,state.economy,gameStats().lvl);
+      renderHero();
+      showToast('Bendición activada','heal');
+      showTempleGift(document,state.game);
+    }else{
+      showToast(result.reason==='coins'?'No tienes suficiente oro':result.reason==='active'?'Esta bendición ya está activa':'La compra ha cambiado. Revisa la ficha.','dmg');
+      renderBlessingDetail(document,state.game,state.economy,gameStats().lvl,purchase.blessingId);
+    }
+  }
   else if(purchase.type==='outfit') handleOutfitWeave(purchase.outfitId);
   else if(purchase.type==='frame') handleFramePaint(purchase.frameId);
   else await handleRelicPurchase(purchase.relicId);
@@ -6713,6 +6951,22 @@ document.getElementById('betaTesterRewardAccept').addEventListener('click',async
     showToast('No se guardó la recompensa · reintenta','dmg');
   }
 });
+document.addEventListener('click',async event=>{
+  const giftAction=event.target.closest('[data-temple-gift-view],[data-temple-gift-close]');
+  if(!giftAction || giftAction.disabled) return;
+  giftAction.disabled=true;
+  state.game.templeGift={...state.game.templeGift,seenAt:Date.now()};
+  scheduleSave({type:'reward:temple-gift-seen'});
+  document.getElementById('templeGiftBg').classList.remove('show');
+  if(giftAction.hasAttribute('data-temple-gift-view')){
+    returnToCharacterSheetFromShop();
+    outfitSelectorContext='collection';
+    outfitSelectorSection='frames';
+    selectedOutfitDraft=renderOutfitSelector(document,state,'azariel-temple',{section:'frames',context:'collection',previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    document.getElementById('outfitSelectorBg').classList.add('show');
+  }else document.querySelector('[data-temple-back]')?.focus();
+});
+
 document.getElementById('betaTesterRewardContinue').addEventListener('click',()=>{
   const inkRewardVisible=!document.getElementById('betaTesterRewardInks')?.hidden;
   const energyPotionsVisible=!document.getElementById('betaTesterRewardEnergyPotions')?.hidden;
@@ -6930,10 +7184,20 @@ bindBackupControls({
   document,
   navigator,
   getState:()=>state,
-  onImported:(importedState)=>{
-    store.authorizeDestructiveSave('import');
+  onImported:async(importedState)=>{
     const imported={...importedState,...initializeForgeSeed(importedState)};
-    state=migratePioneerRewardEligibility(imported,{existingProfile:true}).state;
+    const candidate=ensureCloudIdentity(migratePioneerRewardEligibility(imported,{existingProfile:true}).state);
+    if(activeCloudService){
+      const plan=createMigrationPlan(candidate);
+      const previous=await activeCloudService.loadGameSave();
+      await activeCloudService.saveGameState(plan,previous?.revision||0);
+      const saved=await activeCloudService.loadGameSave();
+      if(!verifyCloudSave(saved,plan)){
+        throw new Error('La copia no coincide. La partida local sigue intacta.');
+      }
+    }
+    store.authorizeDestructiveSave('import');
+    state=candidate;
     ensureHero();
     reconcileStoredLevelEightHabitChallenge();
     registerDailyWakeEstimate();
@@ -7024,6 +7288,11 @@ const onboarding=createOnboardingController({
   }
 });
 function startOnboarding(){
+  const authGate=document.getElementById('authGate');
+  if(authGate) authGate.hidden=true;
+  if(new URLSearchParams(location.search).has('authCallback')){
+    history.replaceState({},'',`${location.pathname}${location.hash}`);
+  }
   onboarding.start();
 }
 
@@ -7042,8 +7311,15 @@ function openResetGuard(){
   resetGuardBg.classList.add('show');
   window.setTimeout(()=>resetGuardInput.focus(),50);
 }
-function resetApp(){
-  store.authorizeDestructiveSave('reset');
+async function resetApp(){
+  try{
+    await store.purge(ACTIVE_STORAGE_KEY);
+    forgetStoredSaveLineage();
+  }catch(error){
+    console.warn('No se pudieron borrar todas las copias locales',error);
+    showToast('No se pudieron borrar todas las copias locales','dmg');
+    return;
+  }
   state={
     config:{journeyMode:JOURNEY_MODE_REDUCTION, startDate:todayKey(), startLimit:20, wakeTime:'09:00', sleepTime:'23:00', dayStartTime:DEFAULT_DAY_START_TIME, pillsGoal:3, takesPills:true, tracksBeer:true},
     days:{}, habits:{items:[],entries:{}}, todos:{items:[]}, seeded:true, seededV:SEED_V, game:{cls:null}, onboarded:false,
@@ -7068,15 +7344,171 @@ resetGuardBg.addEventListener('click',event=>{
 resetGuardContinue.addEventListener('click',()=>{
   if(!matchesResetConfirmation(resetGuardInput.value)) return;
   closeResetGuard();
-  if(!confirm(`¿Reiniciar definitivamente? Se borrarán todos tus datos y volverás a la pantalla de bienvenida. Haz una copia de seguridad antes si quieres conservarlos. Frase verificada: ${RESET_CONFIRMATION_PHRASE}.`)) return;
-  resetApp();
+  if(!confirm(`¿Reiniciar definitivamente? Se borrarán los datos locales y volverás a la pantalla de bienvenida. Si tienes una cuenta, la partida protegida en la nube no se elimina. Frase verificada: ${RESET_CONFIRMATION_PHRASE}.`)) return;
+  void resetApp();
 });
 
 if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
 
 (async function(){
+  const authReturnStatus=document.getElementById('authReturnStatus');
+  if(authReturnStatus) authReturnStatus.hidden=new URLSearchParams(location.search).get('authCallback')!=='google';
   await load();
+  await prepareLocalMigrationTest();
   void requestPersistentStorage();
+  const authPreview=new URLSearchParams(location.search).get('authPreview');
+  if(authPreview){
+    await finishInitialReturnSplash();
+    const previewCloudConfig=readCloudConfig(window);
+    const previewCloudService=previewCloudConfig.enabled?createCloudService({
+      client:createFreedomClient(previewCloudConfig),
+      config:previewCloudConfig,
+    }):null;
+    createAuthPreviewController({
+      document,
+      state,
+      service:previewCloudService,
+      googleRedirectTo:`${location.origin}${location.pathname}?authCallback=google`,
+      onAuthenticated:()=>location.assign(location.pathname),
+      onContinue:()=>startOnboarding(),
+    }).show(authPreview);
+    return;
+  }
+  const cloudConfig=readCloudConfig(window);
+  if(cloudConfig.enabled){
+    const initialAuthCallback=new URLSearchParams(location.search).get('authCallback');
+    if(initialAuthCallback!=='google') await finishInitialReturnSplash();
+    const authReturnUrl=location.href;
+    const googleCallbackUrl=LOCAL_CLEAN_AUTH_TEST
+      ? `${location.origin}${location.pathname}?cleanAuthTest=1&authCallback=google`
+      : `${location.origin}${location.pathname}?authCallback=google`;
+    const authenticatedEntryUrl=LOCAL_CLEAN_AUTH_TEST
+      ? `${location.pathname}?cleanAuthTest=1`
+      : location.pathname;
+    const cloudService=createCloudService({
+      client:createFreedomClient(cloudConfig,LOCAL_CLEAN_AUTH_TEST?{
+        auth:{
+          persistSession:true,
+          autoRefreshToken:true,
+          detectSessionInUrl:false,
+          storageKey:'freedom-auth-clean-test',
+          storage:window.sessionStorage,
+        },
+      }:{}),
+      config:cloudConfig,
+    });
+    activeCloudService=cloudService;
+    const enterExistingGame=()=>location.reload();
+    let authController;
+    const routeAuthenticatedUser=async()=>{
+      if(new URLSearchParams(location.search).has('authCallback')){
+        history.replaceState({},'',authenticatedEntryUrl);
+      }
+      if(!await cloudService.hasBetaAccess()){
+        await finishInitialReturnSplash();
+        return authController.show('invite-request');
+      }
+      const cloudSave=await cloudService.loadGameSave();
+      if(cloudSave) return enterExistingGame();
+      await finishInitialReturnSplash();
+      if(stateInformationProfile(state).meaningful) return authController.show('migration');
+      startOnboarding();
+    };
+    authController=createAuthPreviewController({
+      document,
+      state,
+      service:cloudService,
+      recoveryRedirectTo:`${location.origin}${location.pathname}?authCallback=recovery`,
+      googleRedirectTo:googleCallbackUrl,
+      onContinue:()=>startOnboarding(),
+      onAuthenticated:routeAuthenticatedUser,
+      onLinkSave:async()=>{
+        // Another tab may have refreshed this local save from its owning cloud
+        // account after this screen was opened. Re-read the shared browser save
+        // at the last possible moment so a stale tab cannot mint a second
+        // lineage id and duplicate the same game into another account.
+        const latestStored=await store.get(ACTIVE_STORAGE_KEY);
+        const latestState=latestStored?.value?parseState(latestStored.value):null;
+        const latestLineageId=readStoredSaveLineage()||latestState?.cloudIdentity?.lineageId;
+        state=ensureCloudIdentity(latestLineageId
+          ? {
+              ...state,
+              cloudIdentity:{
+                ...(state.cloudIdentity||{}),
+                lineageId:latestLineageId,
+              },
+            }
+          : state);
+        await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
+        const plan=createMigrationPlan(state);
+        const previous=await cloudService.loadGameSave();
+        await cloudService.saveGameState(plan,previous?.revision||0);
+        const saved=await cloudService.loadGameSave();
+        if(!verifyCloudSave(saved,plan)) throw new Error('La copia no coincide. Tu partida local sigue intacta.');
+        enterExistingGame();
+      },
+      onSkipSave:()=>startOnboarding(),
+    });
+    const callback=new URLSearchParams(location.search).get('authCallback');
+    let session=callback==='google'&&LOCAL_CLEAN_AUTH_TEST
+      ? await cloudService.restoreSessionFromUrl(INITIAL_LOCATION_HREF)
+      : await cloudService.session();
+    if(callback==='google'&&!session) session=await cloudService.restoreSessionFromUrl(authReturnUrl);
+    const cloudSave=session?await cloudService.loadGameSave():null;
+    if(callback==='google'){
+      const betaCode=sessionStorage.getItem('freedom-beta-code')||'';
+      if(betaCode){
+        try{
+          if(await cloudService.hasBetaAccess()){
+            sessionStorage.removeItem('freedom-beta-code');
+            await finishInitialReturnSplash();
+            authController.showExistingAccount();
+            return;
+          }
+          await cloudService.claimBetaAccess(betaCode);
+          sessionStorage.removeItem('freedom-beta-code');
+        }catch(error){
+          await finishInitialReturnSplash();
+          authController.show('invite-request');
+          document.getElementById('authInviteError').textContent=error.message;
+          document.getElementById('authInviteError').hidden=false;
+          return;
+        }
+      }
+      if(!await cloudService.hasBetaAccess()) authController.show('invite-request');
+      else await routeAuthenticatedUser();
+    }
+    else if(callback==='invite'||callback==='recovery') authController.show('set-password');
+    else if(!session) authController.show('invite-request');
+    else if(cloudSave){
+      if(!verifyStoredCloudSave(cloudSave)){
+        throw new Error('La partida guardada en la nube no superó la verificación. La copia local sigue intacta.');
+      }
+      state=mergeState(state,cloudSave.state);
+      state=ensureCloudIdentity({
+        ...state,
+        cloudIdentity:{
+          ...(state.cloudIdentity||{}),
+          lineageId:cloudSave.migration_id||state.cloudIdentity?.lineageId,
+        },
+      });
+      rememberSaveLineage(cloudSave.migration_id);
+      state={...state,...initializeForgeSeed(state)};
+      await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
+      setStorageHealth({
+        state:'saved',
+        revision:cloudSave.revision||0,
+        savedAt:cloudSave.updated_at?new Date(cloudSave.updated_at).getTime():Date.now(),
+        title:'Partida sincronizada ✓',
+        detail:'Recuperada desde tu cuenta de Freedom',
+        warning:''
+      });
+      history.replaceState({},'',authenticatedEntryUrl);
+    }
+    else if(stateInformationProfile(state).meaningful) authController.show('migration');
+    else startOnboarding();
+    if(!cloudSave||!session||callback) return;
+  }
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
     startOnboarding();

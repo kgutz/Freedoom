@@ -50,7 +50,7 @@ function unlockedState(count = 3) {
 }
 
 describe('loot de bosses', () => {
-  it('reparte el 30% diario en ciclos de media hora sin conceder Maná al equipar', () => {
+  it('no concede Maná al equipar ni por tiempo transcurrido', () => {
     const start = 1_000;
     const state = emptyLootState();
     state.inventory.relics.relic_05 = {
@@ -67,55 +67,17 @@ describe('loot de bosses', () => {
     const recovered = advancePeriodicManaRecovery({
       state: equipped, nowTimestamp: start + 24 * 60 * 60 * 1000, maxMana: 200, currentMana: 20,
     });
-    expect(recovered.mana).toBe(80);
-    expect(recovered.manaRecovered).toBe(60);
-    expect(recovered.ticks).toBe(48);
+    expect(recovered.mana).toBe(20);
+    expect(recovered.manaRecovered).toBe(0);
+    expect(recovered.ticks).toBe(0);
   });
 
-  it('acumula intervalos cerrada, respeta el máximo y reinicia el ciclo al cambiar la fuente', () => {
-    const start = 2_000;
+  it('elimina temporizadores antiguos sin conceder recuperación offline', () => {
     const state = emptyLootState();
-    state.inventory.relics.fusion_04 = {
-      id: 'fusion_04', unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 1,
-      inheritedEffects: { relic_03: 2, relic_05: 7 },
-      ingredientSnapshots: {
-        relic_03: { rank: 1, rarity: 'rare', affixes: [], effectValue: 2 },
-        relic_05: { rank: 2, rarity: 'rare', affixes: [], effectValue: 7 },
-      },
-    };
-    state.inventory.equipped = ['fusion_04'];
-    const equipped = advancePeriodicManaRecovery({
-      state, nowTimestamp: start, maxMana: 100, currentMana: 80,
-    });
-    const recovered = advancePeriodicManaRecovery({
-      state: equipped, nowTimestamp: start + 60 * 60 * 1000, maxMana: 100, currentMana: 80,
-    });
-    expect(recovered.inventory.relics.fusion_04.inheritedEffects.relic_05).toBe(45);
-    expect(recovered.mana).toBe(81);
-    expect(recovered.ticks).toBe(2);
-    recovered.inventory.equipped = [];
-    const unequipped = advancePeriodicManaRecovery({
-      state: recovered, nowTimestamp: start + 70 * 60 * 1000, maxMana: 100, currentMana: 81,
-    });
-    expect(unequipped.inventory.periodicEffects.manaRecovery.timers.fusion_04).toMatchObject({
-      paused: true,
-      remainingMs: 20 * 60 * 1000,
-    });
-    unequipped.inventory.equipped = ['fusion_04'];
-    const reequipped = advancePeriodicManaRecovery({
-      state: unequipped, nowTimestamp: start + 5 * 60 * 60 * 1000, maxMana: 100, currentMana: 81,
-    });
-    const beforeDue = advancePeriodicManaRecovery({
-      state: reequipped, nowTimestamp: start + 5 * 60 * 60 * 1000 + 19 * 60 * 1000,
-      maxMana: 100, currentMana: 81,
-    });
-    expect(beforeDue.manaRecovered).toBe(0);
-    const resumed = advancePeriodicManaRecovery({
-      state: beforeDue, nowTimestamp: start + 5 * 60 * 60 * 1000 + 20 * 60 * 1000,
-      maxMana: 100, currentMana: 81,
-    });
-    expect(resumed.ticks).toBe(1);
-    expect(resumed.mana).toBe(82);
+    state.inventory.periodicEffects = { manaRecovery: { timers: { fusion_04: { nextAt: 1, carry: 0.9 } } } };
+    const result = advancePeriodicManaRecovery({ state, nowTimestamp: 99999999, maxMana: 100, currentMana: 80 });
+    expect(result.mana).toBe(80);
+    expect(result.inventory.periodicEffects.manaRecovery).toBeUndefined();
   });
 
   it('premia la lista completa como XP extraordinaria fuera del tope de hábitos', () => {
@@ -776,7 +738,7 @@ describe('equipamiento y bonus derivados', () => {
     expect(state.inventory.equipped).toEqual(['relic_03']);
   });
 
-  it('impide equipar dos reliquias nuevas de la misma familia de efecto', () => {
+  it('permite Collar con XP y Ojo con oro tras sustituir sus familias', () => {
     const raw = emptyLootState();
     for (const relicId of ['relic_07', 'relic_08', 'relic_11', 'relic_12']) {
       raw.inventory.relics[relicId] = {
@@ -785,14 +747,12 @@ describe('equipamiento y bonus derivados', () => {
     }
     let state = equipRelic(raw, 'relic_07');
     const experienceConflict = equipRelic(state, 'relic_11');
-    expect(experienceConflict.reason).toBe('effect-family-conflict');
-    expect(experienceConflict.effectFamily).toBe('experience');
+    expect(experienceConflict.ok).toBe(true);
 
     state = equipRelic(state, 'relic_12');
     expect(state.ok).toBe(true);
     const coinsConflict = equipRelic(state, 'relic_08', 0);
-    expect(coinsConflict.reason).toBe('effect-family-conflict');
-    expect(coinsConflict.effectFamily).toBe('coins');
+    expect(coinsConflict.ok).toBe(true);
   });
 
   it('calcula Vitalidad, Arcano, Regeneración, Canalización, Disciplina y Fortuna', () => {
@@ -828,7 +788,7 @@ describe('equipamiento y bonus derivados', () => {
     });
   });
 
-  it('la Malla devuelve oro únicamente cuando falla una mejora', () => {
+  it('la Malla ya no devuelve oro cuando falla una mejora', () => {
     const raw = emptyLootState();
     raw.economy.coins = 100;
     raw.economy.bossBlood = 5;
@@ -844,8 +804,9 @@ describe('equipamiento y bonus derivados', () => {
     });
     expect(failed.success).toBe(false);
     expect(failed.spentCoins).toBe(50);
-    expect(failed.coinsRefunded).toBe(10);
-    expect(failed.economy.coins).toBe(60);
+    expect(failed.coinsRefunded).toBe(0);
+    expect(failed.economy.coins).toBe(50);
+    expect(failed.economy.transactions.some(t => t.type === 'forge_relic_refund')).toBe(false);
   });
 
   it('la Calavera puede conceder una Sangre adicional en la recompensa semanal', () => {

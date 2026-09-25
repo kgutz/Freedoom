@@ -5,20 +5,87 @@ import {
   STORAGE_KEY,
   checksumOf,
   createBrowserStore,
+  createStateEnvelope,
+  parseStateEnvelope,
   exportBackup,
-  applyImportCommands,
   importBackup,
   isCatastrophicStateRegression,
   mergeState,
   parseState,
+  serializeState,
   stateInformationProfile,
+  selectTemporalRecoveries,
 } from './state-storage.js';
+
+describe('Puntos de retorno temporales', () => {
+  it('conserva copias grandes y fechas al compactar almacenamiento cercano a 5 MiB', async () => {
+    const storage=memoryLocalStorage({fail:(key,value)=>{
+      const next=new Map(storage.values);next.set(key,value);
+      if([...next].reduce((sum,[k,v])=>sum+2*(k.length+v.length),0)>5*1024*1024) {
+        throw new DOMException('Cuota agotada','QuotaExceededError');
+      }
+      return false;
+    }});
+    const state={onboarded:true,game:{cls:'knight'},days:{},history:'historial de partida '.repeat(14000)};
+    const yesterday=new Date(2026,8,19,23,55).getTime();
+    const old=createStateEnvelope({...state,marker:'ayer'},1,yesterday);
+    for(const suffix of [':daily',':weekly',':last-info',':recovery:0',':recovery:1',':recovery:2']) {
+      storage.setItem(STORAGE_KEY+suffix,JSON.stringify(old));
+    }
+    const clock=vi.spyOn(Date,'now');
+    try {
+      const store=createBrowserStore({localStorage:storage});await store.get(STORAGE_KEY);
+      for(let i=0;i<7;i++) {
+        clock.mockReturnValue(new Date(2026,8,20,10,i*21).getTime());
+        const result=store.set(STORAGE_KEY,JSON.stringify({...state,marker:i}));
+        expect(result).toMatchObject({verified:true,recoverySaved:true,degraded:false});
+        expect(result.errors).toEqual([]);
+      }
+      const restarted=createBrowserStore({localStorage:storage});
+      expect(JSON.parse((await restarted.get(STORAGE_KEY)).value).marker).toBe(6);
+      const points=selectTemporalRecoveries(await restarted.listRecoveries(),Date.now());
+      expect(points.daily.savedAt).toBe(yesterday);
+      expect(points.daily.state).toEqual({...state,marker:'ayer'});
+      expect(points.hourly.savedAt).toBeLessThanOrEqual(Date.now()-3600000);
+      expect(parseStateEnvelope(storage.getItem(STORAGE_KEY+':previous-day')).state.history).toBe(state.history);
+      expect(JSON.parse(storage.getItem(STORAGE_KEY)).marker).toBe(6);
+    } finally {clock.mockRestore();}
+  });
+  it('mantiene el último estado de ayer y uno anterior a una hora tras muchos guardados y reinicio', async () => {
+    const storage=memoryLocalStorage();
+    let store=createBrowserStore({localStorage:storage});
+    const clock=vi.spyOn(Date,'now');
+    const state={onboarded:true,game:{cls:'knight'},days:{}};
+    try {
+      clock.mockReturnValue(new Date(2026,8,19,23,55).getTime());
+      store.set(STORAGE_KEY,JSON.stringify({...state,marker:'last-night'}));
+      for(let minute=0;minute<=150;minute++) {
+        clock.mockReturnValue(new Date(2026,8,20,9,minute).getTime());
+        store.set(STORAGE_KEY,JSON.stringify({...state,marker:minute}));
+      }
+      store=createBrowserStore({localStorage:storage});
+      await store.get(STORAGE_KEY);
+      const choices=selectTemporalRecoveries(await store.listRecoveries(),Date.now());
+      expect(choices.daily.state.marker).toBe('last-night');
+      expect(choices.hourly.savedAt).toBeLessThanOrEqual(Date.now()-3600000);
+      expect(choices.hourly.savedAt).toBeGreaterThanOrEqual(Date.now()-80*60000);
+      expect(choices.hourly.state.marker).not.toBe(150);
+    } finally { clock.mockRestore(); }
+  });
+  it('no presenta copias actuales o semanales como ayer ni como una hora atrás', () => {
+    const now=new Date(2026,8,20,12).getTime();
+    expect(selectTemporalRecoveries([{savedAt:now},{savedAt:now-7*86400000}],now)).toEqual({daily:null,hourly:null});
+  });
+});
 
 function memoryLocalStorage({ fail } = {}) {
   const values = new Map();
   return {
     values,
     getItem: vi.fn((key) => values.get(key) ?? null),
+    removeItem: vi.fn((key) => values.delete(key)),
+    key: vi.fn((index) => [...values.keys()][index] ?? null),
+    get length() { return values.size; },
     setItem: vi.fn((key, value) => {
       if (fail?.(key, value)) throw new Error('fallo simulado');
       values.set(key, value);
@@ -73,51 +140,12 @@ const v34State = {
 };
 
 describe('compatibilidad del estado', () => {
-  it('suma recursos mediante comandos de importación sin alterar el resto de la partida', () => {
-    const current = {
-      ...defaultState(),
-      economy: { coins: 25, bossBlood: 2, arcaneFibers: 3, transactions: [{ id: 'old' }] },
-      inventory: { relics: { relic_01: { id: 'relic_01' } } },
-    };
-    const result = importBackup(current, '!+sangre 1\n!+oro 10\n!+fibra 2');
-    expect(result.economy).toEqual({
-      coins: 35,
-      bossBlood: 3,
-      arcaneFibers: 5,
-      transactions: [{ id: 'old' }],
-    });
-    expect(result.inventory).toBe(current.inventory);
-  });
-
-  it('rechaza comandos desconocidos o cantidades inválidas de forma atómica', () => {
+  it('rechaza los antiguos comandos que concedían recursos u objetos', () => {
     const current = { ...defaultState(), economy: { bossBlood: 2, coins: 4 } };
-    expect(() => applyImportCommands(current, '!+sangre 1\n!+pocion 2')).toThrow('Recurso no válido');
-    expect(() => applyImportCommands(current, '!+sangre 0')).toThrow('Cantidad no válida');
-    expect(current.economy).toEqual({ bossBlood: 2, coins: 4 });
-  });
-
-  it('añade energía de Cacería respetando su límite', () => {
-    const current = {
-      ...defaultState(),
-      game: { cls: 'paladin', hunt: { energyDay: '2000-01-01', energy: 0 } },
-    };
-    const result = applyImportCommands(current, '!+energia 2');
-    expect(result.game.hunt.energy).toBe(12);
-    expect(result.game.hunt.rewardEnergyRemaining).toBe(2);
-    const capped = applyImportCommands(result, '!+energía 10');
-    expect(capped.game.hunt.energy).toBe(20);
-  });
-
-  it('desbloquea outfits y marcos mediante sus nombres públicos', () => {
-    const current = { ...defaultState(), game: { cls: 'paladin' } };
-    const result = applyImportCommands(
-      current,
-      '!+outfit operador-del-nexo\n!+outfit beta-tester\n!+marco corazon-de-freedom',
+    expect(() => importBackup(current, '!+sangre 1')).toThrow(
+      'Los comandos de importación ya no están permitidos',
     );
-    expect(result.game.outfits.owned['arcane-weave-01'].source).toBe('import-command');
-    expect(result.game.outfits.owned['beta-tester'].source).toBe('import-command');
-    expect(result.game.pioneerReward.outfitId).toBe('beta-tester');
-    expect(result.game.frames.owned['beta-tester'].source).toBe('import-command');
+    expect(current.economy).toEqual({ bossBlood: 2, coins: 4 });
   });
 
   it('preserva economía, reliquias, Forja y Tienda en exportación e importación', () => {
@@ -367,8 +395,35 @@ describe('copias de seguridad', () => {
     );
   });
 
-  it('analiza correctamente el código exportado', () => {
-    expect(parseState(exportBackup(v34State))).toEqual(v34State);
+  it('rechaza copias sobredimensionadas, versiones desconocidas y propiedades peligrosas', () => {
+    expect(() => importBackup(defaultState(), 'x'.repeat(4 * 1024 * 1024 + 1))).toThrow(
+      'tamaño máximo',
+    );
+    expect(() => importBackup(defaultState(), JSON.stringify({
+      format: 'freedoom-backup', schemaVersion: 999, state: v34State,
+    }))).toThrow('Versión de copia no compatible');
+    expect(() => importBackup(defaultState(), '{"config":{},"days":{},"__proto__":{"polluted":true}}'))
+      .toThrow('propiedad no permitida');
+  });
+
+  it('limita campos personales y recursos antes de modificar la partida', () => {
+    expect(() => importBackup(defaultState(), JSON.stringify({
+      config: {}, days: {}, game: { cls: 'paladin', name: 'x'.repeat(65) },
+    }))).toThrow('game.name');
+    expect(() => importBackup(defaultState(), JSON.stringify({
+      config: {}, days: {}, economy: { coins: 1000000001 },
+    }))).toThrow('coins');
+    expect(() => importBackup(defaultState(), JSON.stringify({
+      config: {}, days: {}, habits: { items: [{ id: 'safe', title: '' }], entries: {} },
+    }))).toThrow('habits.items[0].title');
+  });
+
+  it('exporta una copia identificada y versionada', () => {
+    expect(parseState(exportBackup(v34State))).toEqual({
+      format: 'freedoom-backup',
+      schemaVersion: 1,
+      state: v34State,
+    });
   });
 });
 
@@ -411,7 +466,7 @@ describe('adaptador del navegador', () => {
       vi.setSystemTime(new Date(2026, 7, 10, 10));
       const localStorage = memoryLocalStorage();
       const store = createBrowserStore({ localStorage });
-      store.set(STORAGE_KEY, exportBackup(v34State));
+      store.set(STORAGE_KEY, serializeState(v34State));
 
       let recoveries = await store.listRecoveries();
       expect(recoveries.find((item) => item.source === 'daily')).toMatchObject({
@@ -428,7 +483,7 @@ describe('adaptador del navegador', () => {
       });
 
       vi.setSystemTime(new Date(2026, 7, 11, 10));
-      store.set(STORAGE_KEY, exportBackup(v34State));
+      store.set(STORAGE_KEY, serializeState(v34State));
       recoveries = await store.listRecoveries();
       expect(recoveries.find((item) => item.source === 'daily')).toMatchObject({
         revision: 2,
@@ -444,7 +499,7 @@ describe('adaptador del navegador', () => {
       });
 
       vi.setSystemTime(new Date(2026, 7, 17, 10));
-      store.set(STORAGE_KEY, exportBackup(v34State));
+      store.set(STORAGE_KEY, serializeState(v34State));
       recoveries = await store.listRecoveries();
       expect(recoveries.find((item) => item.source === 'weekly')).toMatchObject({
         revision: 3,
@@ -458,9 +513,9 @@ describe('adaptador del navegador', () => {
   it('bloquea que un estado inicial sustituya una partida completa', async () => {
     const localStorage = memoryLocalStorage();
     const store = createBrowserStore({ localStorage });
-    store.set(STORAGE_KEY, exportBackup(v34State));
+    store.set(STORAGE_KEY, serializeState(v34State));
 
-    expect(store.set(STORAGE_KEY, exportBackup(defaultState()))).toMatchObject({
+    expect(store.set(STORAGE_KEY, serializeState(defaultState()))).toMatchObject({
       blocked: true,
       revision: 1,
     });
@@ -470,7 +525,7 @@ describe('adaptador del navegador', () => {
       state: v34State,
     });
     await expect(store.get(STORAGE_KEY)).resolves.toMatchObject({
-      value: exportBackup(v34State),
+      value: serializeState(v34State),
       revision: 1,
     });
   });
@@ -478,8 +533,8 @@ describe('adaptador del navegador', () => {
   it('recupera una copia rica aunque una revisión accidental más nueva esté vacía', async () => {
     const localStorage = memoryLocalStorage();
     const store = createBrowserStore({ localStorage });
-    store.set(STORAGE_KEY, exportBackup(v34State));
-    const emptyText = exportBackup(defaultState());
+      store.set(STORAGE_KEY, serializeState(v34State));
+      const emptyText = serializeState(defaultState());
     localStorage.values.set(STORAGE_KEY, emptyText);
     localStorage.values.set(
       `${STORAGE_KEY}:meta`,
@@ -493,7 +548,7 @@ describe('adaptador del navegador', () => {
 
     const reloaded = createBrowserStore({ localStorage });
     await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
-      value: exportBackup(v34State),
+      value: serializeState(v34State),
       recovered: true,
     });
   });
@@ -501,16 +556,16 @@ describe('adaptador del navegador', () => {
   it('respeta un reinicio voluntario y conserva las copias anteriores manuales', async () => {
     const localStorage = memoryLocalStorage();
     const store = createBrowserStore({ localStorage });
-    store.set(STORAGE_KEY, exportBackup(v34State));
+    store.set(STORAGE_KEY, serializeState(v34State));
     store.authorizeDestructiveSave('reset');
-    expect(store.set(STORAGE_KEY, exportBackup(defaultState()))).toMatchObject({
+    expect(store.set(STORAGE_KEY, serializeState(defaultState()))).toMatchObject({
       blocked: false,
       generation: 1,
     });
 
     const reloaded = createBrowserStore({ localStorage });
     await expect(reloaded.get(STORAGE_KEY)).resolves.toMatchObject({
-      value: exportBackup(defaultState()),
+      value: serializeState(defaultState()),
       generation: 1,
       recovered: false,
       source: 'main',
@@ -558,7 +613,7 @@ describe('adaptador del navegador', () => {
     const localStorage=memoryLocalStorage();
     const store=createBrowserStore({localStorage});
     const savedState={...v34State,economy:{coins:60,bossBlood:1,transactions:[]}};
-    store.set(STORAGE_KEY,exportBackup(savedState));
+    store.set(STORAGE_KEY,serializeState(savedState));
     localStorage.values.set(STORAGE_KEY,'{"config":');
 
     const reloaded=createBrowserStore({localStorage});
@@ -622,7 +677,20 @@ describe('adaptador del navegador', () => {
     expect(recoveries).toHaveLength(RECOVERY_SLOT_COUNT);
     expect(recoveries.map(item=>item.revision)).toEqual([5,4,3]);
     expect(store.actionLog()).toHaveLength(ACTION_LOG_LIMIT);
-    expect(store.actionLog()[0].index).toBe(8);
+    expect(store.actionLog()[0]).toEqual({ type: 'test', at: expect.any(Number) });
+  });
+
+  it('borra la partida, recuperaciones y registro de acciones al eliminar datos locales', async () => {
+    const localStorage = memoryLocalStorage();
+    localStorage.setItem('otra-app', 'preservar');
+    const store = createBrowserStore({ localStorage, indexedDB: null });
+    store.set(STORAGE_KEY, JSON.stringify({ config: {}, days: { today: { c: 1 } } }));
+    store.recordAction({ type: 'cigarette:add', count: 1 });
+
+    await expect(store.purge(STORAGE_KEY)).resolves.toBe(true);
+
+    expect([...localStorage.values.keys()].some(key => key.startsWith(STORAGE_KEY))).toBe(false);
+    expect(localStorage.getItem('otra-app')).toBe('preservar');
   });
 
   it('genera checksums estables y sensibles al contenido',()=>{

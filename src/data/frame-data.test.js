@@ -7,6 +7,13 @@ import {
 } from './frame-data.js';
 
 describe('marcos del héroe', () => {
+  it('usa los dos formatos del regalo del Templo solo cuando está desbloqueado',()=>{
+    const game={frames:{owned:{'azariel-temple':{acquiredAt:1}}}};
+    expect(isFrameUnlocked('azariel-temple',{})).toBe(false);
+    expect(heroBackgroundSource('azariel-temple','paladin','hero',game)).toBe('hero_background/azariel_temple.webp');
+    expect(heroBackgroundSource('azariel-temple','paladin','today',game)).toBe('hero_background/azariel_temple_wide.webp');
+    expect(heroBackgroundSource('azariel-temple','paladin','habits',game)).toBe('hero_background/azariel_temple_wide.webp');
+  });
   it('mantiene el marco original disponible y dependiente de la superficie', () => {
     expect(isFrameUnlocked('original', {})).toBe(true);
     expect(heroBackgroundSource('original', 'druid', 'hero')).toBe('hero_background/druid_bg.webp');

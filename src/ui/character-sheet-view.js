@@ -1,11 +1,11 @@
 import { CLASSES } from '../data/game-data.js';
-import { RARITIES, RELIC_DEFINITIONS, relicDefinition } from '../data/loot-data.js';
-import { normalizePotionState, potionBloodChance } from '../domain/potion-rules.js';
+import { RARITIES, relicDefinition } from '../data/loot-data.js';
 import { equippedOutfit } from '../data/outfit-data.js';
 import { ATTRIBUTE_IDS, attributeSheet } from '../domain/attribute-rules.js';
 import { pveHeroStats } from '../domain/pve-combat-rules.js';
 import { heroIntoxicationBadgeMarkup, heroVisualMarkup } from './hero-view.js';
 import { relicArt } from './inventory-view.js';
+import { escapeHtml } from './escape-html.js';
 
 const ATTRIBUTE_COPY = {
   strength: ['Fuerza', 'Daño físico'],
@@ -26,16 +26,6 @@ function equippedRelicMarkup(state, relicId, index) {
   </button>`;
 }
 
-export function characterBloodBadgeMarkup(state) {
-  const bossIndex = Math.max(0, Number(state.game?.bossCombat?.bossIndex) || 0);
-  const bossKey = RELIC_DEFINITIONS[bossIndex]?.rewardId;
-  const potions = normalizePotionState(state.inventory?.potions);
-  const count = potions.bloodPrepared[bossKey] || 0;
-  if (!count) return '';
-  const label = `Pociones de sangre preparadas: ${count}. Bonus para el jefe actual: +${potionBloodChance(potions, bossKey)}%`;
-  return `<span class="hero-intoxication-badge hero-blood-badge" title="${label}" aria-label="${label}"><img src="potions/potion_blood.webp" alt="" loading="lazy" decoding="async"><b>${count}</b></span>`;
-}
-
 export function renderCharacterSheet({ document, state, stats, heroModel }) {
   const root = document.getElementById('characterSheetBody');
   if (!root || !state.game?.cls || !stats) return;
@@ -54,7 +44,7 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
     return `<div class="character-attribute"><div><span>${name}</span><small>${effect}</small></div><b>${sheet.attributes[id]}</b><button type="button" data-character-attribute="${id}" ${sheet.availablePoints ? '' : 'disabled'} aria-label="Subir ${name}">+</button></div>`;
   }).join('');
   root.innerHTML = `<section class="character-identity">
-      <div><span>${classData.name}</span><h2>${game.name || classData.name}</h2></div>
+      <div><span>${classData.name}</span><h2>${escapeHtml(game.name || classData.name)}</h2></div>
       <div class="character-identity-actions">
         <strong>NIVEL ${stats.lvl}</strong>
         <button class="character-skills-shortcut" type="button" data-character-skills aria-label="Abrir libro de habilidades" title="Abrir libro de habilidades">
@@ -76,7 +66,6 @@ export function renderCharacterSheet({ document, state, stats, heroModel }) {
       <div class="character-hero-art${heroModel?.intoxication?.level > 0 ? ' hero-card--intoxicated' : ''}">
         ${heroVisualMarkup({classId:game.cls,mood:heroModel?.mood||'happy',outfitId:outfit.id,frameId:game.frame,game,progress:stats.prog,level:stats.lvl,intoxication:heroModel?.intoxication,interactive:false})}
         ${heroIntoxicationBadgeMarkup(heroModel?.intoxication)}
-        ${characterBloodBadgeMarkup(state)}
         <button type="button" class="character-outfit-trigger" data-character-outfit aria-label="Cambiar outfit. Actual: ${outfit.name}"></button>
       </div>
     </section>

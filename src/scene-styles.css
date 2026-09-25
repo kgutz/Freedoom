@@ -1,0 +1,65 @@
+.scene-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;opacity:0;image-rendering:pixelated}
+.scene-video[data-ready="true"]{opacity:1}
+.frame-video{pointer-events:none;opacity:0}
+.frame-video[data-ready="true"]{opacity:1}
+@media(prefers-reduced-motion:reduce){.frame-video{display:none!important}}
+#templeGiftBg{z-index:120}
+#templeGiftBg .pioneer-reward-item{height:auto;padding:10px}
+#templeGiftBg .temple-gift-media{position:relative;width:210px;max-width:100%;aspect-ratio:1;margin:0 auto 8px;overflow:hidden;border-radius:10px}
+#templeGiftBg .temple-gift-preview{display:block;width:100%;max-width:100%;height:100%;aspect-ratio:1;object-fit:contain;margin:0;border-radius:10px;image-rendering:pixelated}
+#templeGiftBg video.temple-gift-preview{position:absolute;inset:0}
+.temple-gift-later{margin-top:12px;padding:8px;background:transparent;border:0;color:var(--muted);font:12px var(--font-display);cursor:pointer}
+#templeBody{min-height:0;overflow-y:auto;padding:0 14px 14px}
+.temple-scene{position:relative;width:100%;height:100%;margin:0;overflow:hidden;border-radius:19px}
+.inventory-temple-active>.sheet-head,.inventory-temple-active>.inventory-tabs{visibility:hidden}
+.temple-scene>.scene-poster{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.temple-guardian{position:absolute;z-index:2;left:18%;top:20%;width:64%;height:40%;display:flex;align-items:flex-start;justify-content:center;background:transparent;border:0;padding:0;cursor:pointer}
+.temple-guardian>span{display:block;padding:9px 14px;border:1px solid #bca265;border-radius:12px;background:#21190ee8;color:#f3d588;font:16px/1.15 var(--font-display);box-shadow:0 3px 12px #0005}
+.temple-guardian small{display:block;margin-top:2px;font-size:9px;line-height:1.15;color:#e9ddc3}
+.temple-guardian:focus-visible{outline:2px solid #e9c36a;outline-offset:-2px;border-radius:12px}
+.temple-dialogue{position:absolute;z-index:3;left:14px;right:14px;bottom:18px;width:calc(100% - 28px);padding:14px 16px;text-align:left;border:2px solid #bca265;border-radius:10px;background:#17120ff2;box-shadow:inset 0 0 0 3px #382d20,0 4px 18px #0006;color:var(--text);cursor:pointer}
+.temple-dialogue strong{display:block;margin-bottom:8px;color:#f3d588;font:13px/1.2 var(--font-display)}
+.temple-dialogue-copy{display:grid;font:12px/1.65 var(--font-display)}
+.temple-dialogue-copy>span{grid-area:1/1}
+.temple-dialogue [data-dialogue-reserve]{visibility:hidden}
+.temple-scene .temple-dialogue [data-dialogue-hint]{display:block;margin-top:10px;color:#bfb29b;font-family:var(--font-display)!important;font-size:12px;font-weight:400;line-height:1.3;letter-spacing:0;text-align:right}
+.temple-dialogue:focus-visible{outline:2px solid #ffe39a;outline-offset:3px}
+.temple-blessings{height:100%;box-sizing:border-box;overflow-y:auto;padding:62px 20px 24px}
+.temple-blessings>p,.temple-blessings article p{color:var(--muted);line-height:1.6;font-size:13px}
+.temple-blessings article{margin-top:12px;padding:16px;border:1px solid var(--line);border-radius:12px;background:#cbaa5210}
+.temple-blessings h4{color:#e9c36a;font:12px var(--font-display);margin:0 0 8px}
+.temple-back{width:auto;margin-bottom:16px;padding:8px 12px;background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px}
+.temple-scene[hidden],.temple-blessings[hidden],#templeBody[hidden]{display:none}
+@media(prefers-reduced-motion:reduce){.scene-video{display:none}}
+.blessing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
+.blessing-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 10px;background:var(--panel2);border:1px solid #a88b4e;border-radius:14px;color:var(--text);cursor:pointer}
+.blessing-card img{width:100%;max-width:130px;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}
+.blessing-card b{font:13px var(--font-display);line-height:1.4}
+.blessing-card span,.temple-gold{color:var(--kodak);font:12px var(--font-display)}
+.blessing-detail .relic-detail-art img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.blessing-detail .relic-detail-art{border-color:var(--kodak)}
+.blessing-detail .rarity-label{color:var(--kodak)}
+.inventory-sheet.inventory-temple-active:has(.temple-blessings:not([hidden]))>#templeBody{background:linear-gradient(#08070688,#08070688),url('../public/scenes/temple-v2.webp') center/cover no-repeat}
+.temple-blessings{position:absolute;z-index:4;top:50%;left:16px;right:16px;height:auto;max-height:calc(100% - 32px);transform:translateY(-50%);padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 14px 38px #0009;text-align:center}
+.temple-scene[aria-hidden="true"]{filter:brightness(.45);pointer-events:none}
+.temple-scene[aria-hidden="true"] button{visibility:hidden}
+.temple-blessings .shop-destination-nav h2{font-size:15px;white-space:normal;line-height:1.4}
+.temple-blessings .outfit-weave-resources{justify-content:center;margin:14px 0}
+.blessing-card span{margin-top:auto}
+.temple-blessings{top:50%;max-height:calc(100% - 112px)}
+.blessing-art{position:relative;isolation:isolate;display:inline-block;width:100%;max-width:130px;aspect-ratio:1;margin:0!important;pointer-events:none}
+.blessing-art::before{content:'';position:absolute;inset:-10%;z-index:-1;background:radial-gradient(ellipse at 48% 46%,#efbd4c70 0%,#e7ad3540 25%,#d99a2020 43%,#d99a200a 59%,transparent 76%);filter:blur(9px);opacity:.65;animation:blessing-gold-glow 3.8s ease-in-out infinite}
+.blessing-art>img{position:relative;display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+.blessing-spark{position:absolute;z-index:2;display:block;width:11px;height:11px;background:#fffef5;clip-path:polygon(40% 0,60% 0,60% 40%,100% 40%,100% 60%,60% 60%,60% 100%,40% 100%,40% 60%,0 60%,0 40%,40% 40%);opacity:0;animation:blessing-gold-spark 4.8s ease-in-out infinite}
+.blessing-spark--one{left:19%;top:23%;animation-delay:-.6s}
+.blessing-spark--two{right:16%;top:44%;width:9px;height:9px;animation-delay:-2.2s}
+.blessing-spark--three{left:43%;bottom:13%;width:7px;height:7px;animation-delay:-3.8s}
+.blessing-spark--four{right:24%;top:15%;width:8px;height:8px;animation-delay:-1.4s}
+.blessing-spark--five{left:23%;bottom:25%;width:9px;height:9px;animation-delay:-3s}
+.blessing-card:nth-child(2) .blessing-art::before{animation-delay:-1.9s}
+.blessing-detail .blessing-art{max-width:none;height:100%}
+.blessing-card:disabled{filter:grayscale(1);opacity:.55;cursor:default}
+.blessing-card:disabled .blessing-art::before,.blessing-card:disabled .blessing-spark{animation:none;display:none}
+@keyframes blessing-gold-glow{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes blessing-gold-spark{0%,48%,100%{opacity:0}12%,22%{opacity:1}36%{opacity:.45}}
+@media(prefers-reduced-motion:reduce){.blessing-art::before{animation:none;opacity:.35}.blessing-spark{animation:none;display:none}}

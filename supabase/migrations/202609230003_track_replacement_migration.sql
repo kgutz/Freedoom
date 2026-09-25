@@ -1,0 +1,4 @@
+-- Applied by replacing public.save_game_state with the same guarded body from
+-- 202609230002, adding migration_id and migrated_at to the UPDATE branch.
+-- This keeps post-write verification idempotent when an existing save is
+-- replaced by an imported backup.

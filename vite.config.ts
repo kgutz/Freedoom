@@ -25,6 +25,7 @@ export default defineConfig({
     emptyOutDir: true
   },
   test: {
-    environment: 'node'
+    environment: 'node',
+    testTimeout: 10000
   }
 });

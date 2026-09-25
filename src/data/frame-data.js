@@ -1,4 +1,5 @@
 export const FRAME_DEFINITIONS = Object.freeze([
+  // The original remains first as the safe fallback.
   Object.freeze({
     id: 'original',
     name: 'Marco Original',
@@ -12,6 +13,17 @@ export const FRAME_DEFINITIONS = Object.freeze([
     image: 'hero_background/beta_tester_bg_final.webp',
     unlocked: false,
     lore: 'La central arcana donde vive el corazón de Freedom. Un recuerdo reservado para quienes ayudaron a construir este mundo.',
+  }),
+  Object.freeze({
+    id: 'azariel-temple',
+    name: 'Refugio de Azariel',
+    rarity: 'legendary',
+    image: 'hero_background/azariel_temple.webp',
+    wideImage: 'hero_background/azariel_temple_wide.webp',
+    video: 'hero_background/azariel_temple.mp4',
+    wideVideo: 'hero_background/azariel_temple_wide.mp4',
+    unlocked: false,
+    lore: 'Un lugar de calma entre aventuras. Regalo de Azariel por tu primera compra de una bendición en el Templo.',
   }),
   Object.freeze({
     id: 'welder-beta',
@@ -58,6 +70,7 @@ export function equippedFrame(frameId, game = {}) {
 
 export function heroBackgroundSource(frameId, classId = 'paladin', surface = 'hero', game = {}) {
   const frame = equippedFrame(frameId, game);
+  if (frame.wideImage && ['today','habits'].includes(surface)) return frame.wideImage;
   if (frame.image) return frame.image;
   if (surface === 'today') return `hero_background/${classId}_today_bg.webp`;
   if (surface === 'habits') return 'backgrounds/habits_training_bg.webp';

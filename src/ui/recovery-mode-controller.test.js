@@ -14,6 +14,21 @@ function clickableLogo() {
 }
 
 describe('modo de recuperación de emergencia', () => {
+  it('puede dejar importación y exportación visibles sin gesto oculto', () => {
+    const logo = clickableLogo();
+    const emergencySection = { hidden: true };
+    const controller = createRecoveryModeController({
+      logo,
+      emergencySection,
+      showToast: vi.fn(),
+      alwaysVisible: true,
+    });
+    expect(controller.isActive()).toBe(true);
+    expect(emergencySection.hidden).toBe(false);
+    logo.click();
+    expect(controller.tapCount()).toBe(0);
+  });
+
   it('permanece oculto durante seis taps y se activa exactamente en el séptimo', () => {
     const logo = clickableLogo();
     const emergencySection = { hidden: false };

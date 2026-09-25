@@ -191,6 +191,14 @@ export function renderChartView({
     records,
   });
   document.getElementById('grafTitle').textContent = model.title;
+  const setSummary = (id, label, color) => {
+    const labelElement = document.getElementById(`${id}Label`);
+    if (labelElement) labelElement.textContent = label;
+    document.getElementById(id).style.color = color;
+  };
+  setSummary('sumPico', model.disciplineMode ? 'Cumplidos' : 'Pico', model.disciplineMode ? 'var(--ok)' : 'var(--warn)');
+  setSummary('sumMin', model.disciplineMode ? 'Fallados' : 'Mínimo', model.disciplineMode ? 'var(--warn)' : 'var(--ok)');
+  setSummary('sumMedia', model.disciplineMode ? 'Cumplimiento' : 'Media/día', '');
 
   const left = 30;
   const right = 354;
@@ -246,9 +254,9 @@ export function renderChartView({
     });
     svg.innerHTML = content;
     document.getElementById('sumPico').textContent = model.completedDays;
-    document.getElementById('sumPicoDia').textContent = 'cumplidos';
+    document.getElementById('sumPicoDia').textContent = '';
     document.getElementById('sumMin').textContent = model.failedDays;
-    document.getElementById('sumMinDia').textContent = 'fallados';
+    document.getElementById('sumMinDia').textContent = '';
     document.getElementById('sumMedia').textContent =
       model.completedDays+model.failedDays===0
         ? '–'

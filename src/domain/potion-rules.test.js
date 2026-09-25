@@ -207,13 +207,34 @@ describe('pociones', () => {
     expect(potionBloodChance(consumePreparedBlood(three.inventory, ['boss-1']).potions, 'boss-1')).toBe(0);
   });
 
-  it('Vigor solo puede consumirse una vez por día lógico', () => {
+  it('Vigor concede 5, 3 y 2, bloquea el cuarto uso y reinicia cada día lógico', () => {
     const state = richState();
-    state.inventory.potions = { owned: { energy: 2 } };
+    state.inventory.potions = { owned: { energy: 5 } };
     const first = usePotion({ inventory: state.inventory, potionId: 'energy', dayKey: DAY });
     expect(first.ok).toBe(true);
-    expect(first.inventory.potions.owned.energy).toBe(1);
-    expect(usePotion({ inventory: first.inventory, potionId: 'energy', dayKey: DAY }).reason).toBe('limit');
-    expect(usePotion({ inventory: first.inventory, potionId: 'energy', dayKey: '2026-09-03' }).ok).toBe(true);
+    expect(first.energyRestore).toBe(5);
+    const second = usePotion({ inventory: JSON.parse(JSON.stringify(first.inventory)), potionId: 'energy', dayKey: DAY });
+    expect(second.energyRestore).toBe(3);
+    const third = usePotion({ inventory: second.inventory, potionId: 'energy', dayKey: DAY });
+    expect(third.energyRestore).toBe(2);
+    expect(third.inventory.potions.owned.energy).toBe(2);
+    const fourth = usePotion({ inventory: third.inventory, potionId: 'energy', dayKey: DAY });
+    expect(fourth.reason).toBe('limit');
+    expect(fourth.inventory).toEqual(third.inventory);
+    const tomorrow = usePotion({ inventory: third.inventory, potionId: 'energy', dayKey: '2026-09-03' });
+    expect(tomorrow.ok).toBe(true);
+    expect(tomorrow.energyRestore).toBe(5);
+    expect(tomorrow.uses).toBe(1);
+  });
+
+  it.each([[0, 15, 5], [1, 17, 3], [2, 18, 2]])('Vigor con %i usos respeta el espacio y no consume si no cabe', (used, threshold, restore) => {
+    const inventory = { potions: { owned: { energy: 3 }, dailyUses: { [DAY]: { energy: used } } } };
+    const blocked = usePotion({ inventory, potionId: 'energy', dayKey: DAY, huntEnergy: threshold + 1 });
+    expect(blocked.reason).toBe('energy_capacity');
+    expect(blocked.inventory.potions.owned.energy).toBe(3);
+    expect(blocked.inventory.potions.dailyUses[DAY].energy).toBe(used);
+    const allowed = usePotion({ inventory, potionId: 'energy', dayKey: DAY, huntEnergy: threshold });
+    expect(allowed.ok).toBe(true);
+    expect(allowed.energyRestore).toBe(restore);
   });
 });

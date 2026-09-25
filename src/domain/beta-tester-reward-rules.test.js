@@ -102,3 +102,52 @@ describe('regalos sucesivos para beta testers', () => {
     expect(normalized).toMatchObject({ energy: 12, rewardEnergyRemaining: 2 });
   });
 });
+
+
+describe('regalo 05: compensación por reorganizar reliquias', () => {
+  function ready() {
+    const state = betaTesterState();
+    state.game.betaTesterRewards = { claimed: Object.fromEntries([2, 3, 4].map(n => [`pioneer-beta-reward-v${n}`, { claimedAt: n * 100 }])) };
+    state.economy.bossBlood = 7;
+    state.inventory = { relics: { relic_07: { rank: 3 } }, potions: { owned: { energy: 3, life: 1, mana: 1, fortune: 1 } } };
+    return state;
+  }
+  it('tiene identificador independiente y entrega exactamente dos Sangres y dos pociones', () => {
+    const state = ready();
+    const reward = pendingBetaTesterReward(state);
+    expect(reward).toMatchObject({ id: 'pioneer-beta-reward-v5', bossBlood: 2, energyPotions: 2, coins: 150, energy: 0, grantsFrame: false });
+    expect(new Set(BETA_TESTER_REWARD_DEFINITIONS.map(r => r.id)).size).toBe(BETA_TESTER_REWARD_DEFINITIONS.length);
+    const result = claimBetaTesterReward(state, reward.id, 500);
+    expect(result.granted).toBe(true);
+    expect(result.state.economy).toMatchObject({ bossBlood: 9, coins: 170, arcaneFibers: 2 });
+    expect(result.state.inventory.potions.owned).toMatchObject({ energy: 5, life: 1, mana: 1, fortune: 1 });
+    expect(result.state.inventory.relics).toEqual(state.inventory.relics);
+    expect(result.state.game.betaTesterRewards.claimed[reward.id]).toMatchObject({ bossBlood: 2, energyPotions: 2 });
+    expect(result.state.economy.transactions.at(-1)).toMatchObject({ id: reward.id, bossBlood: 2, energyPotions: 2 });
+    expect(state.economy.bossBlood).toBe(7);
+  });
+  it('no permite repetir tras guardar y cargar ni perder uno de los dos registros', () => {
+    const first = claimBetaTesterReward(ready(), 'pioneer-beta-reward-v5', 500);
+    for (const remove of ['none', 'ledger', 'transaction']) {
+      const saved = JSON.parse(JSON.stringify(first.state));
+      if (remove === 'ledger') delete saved.game.betaTesterRewards.claimed['pioneer-beta-reward-v5'];
+      if (remove === 'transaction') saved.economy.transactions = [];
+      const again = claimBetaTesterReward(saved, 'pioneer-beta-reward-v5', 600);
+      expect(again.granted).toBe(false);
+      expect(again.state.economy.bossBlood).toBe(9);
+      expect(again.state.economy.coins).toBe(170);
+      expect(again.state.inventory.potions.owned.energy).toBe(5);
+    }
+  });
+  it('respeta la elegibilidad y el orden anterior sin exigir gasto previo', () => {
+    const state = ready();
+    expect(claimBetaTesterReward(betaTesterState(), 'pioneer-beta-reward-v5', 500).granted).toBe(false);
+    delete state.game.pioneerReward;
+    expect(claimBetaTesterReward(state, 'pioneer-beta-reward-v5', 500).granted).toBe(false);
+    state.game.betaTester = true;
+    state.economy.bossBlood = 0;
+    expect(claimBetaTesterReward(state, 'pioneer-beta-reward-v5', 500).granted).toBe(true);
+    state.onboarded = false;
+    expect(claimBetaTesterReward(state, 'pioneer-beta-reward-v5', 500).granted).toBe(false);
+  });
+});

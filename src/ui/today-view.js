@@ -214,6 +214,7 @@ export function createTodayModel({
       daysBetween(parseKey(config.startDate), currentDate) + 1,
     ),
     weekNumber: weekIndex + 1,
+    showHeaderLimit: !smokeFreeMode,
     limit,
     record,
     hero,
@@ -262,10 +263,12 @@ export function renderTodayView({
   document.getElementById('semanaNum').textContent = model.weekNumber;
   const maxLine = document.querySelector('.semana-tag .max-line');
   if (maxLine) {
-    maxLine.style.display = model.smokeFreeMode ? 'none' : '';
-    maxLine.innerHTML = model.controlledMode
-      ? `máx <b>${model.controlledWeeklyLimit}</b>/semana`
-      : `máx <b id="limiteDia">${model.limit}</b>/día`;
+    maxLine.style.display = model.showHeaderLimit ? '' : 'none';
+    maxLine.innerHTML = model.showHeaderLimit
+      ? model.controlledMode
+        ? `máx <b>${model.controlledWeeklyLimit}</b>/semana`
+        : `máx <b id="limiteDia">${model.limit}</b>/día`
+      : '';
   }
   const limitElement = document.getElementById('limiteDia');
   if (limitElement) limitElement.textContent = model.limit;

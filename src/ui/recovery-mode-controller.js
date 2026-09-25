@@ -4,9 +4,10 @@ export function createRecoveryModeController({
   logo,
   emergencySection,
   showToast,
+  alwaysVisible = false,
 }) {
   let tapCount = 0;
-  let active = false;
+  let active = alwaysVisible;
 
   const render = () => {
     if (emergencySection) emergencySection.hidden = !active;
@@ -22,11 +23,13 @@ export function createRecoveryModeController({
   };
 
   render();
-  logo?.addEventListener('click', handleLogoTap);
+  if (!alwaysVisible) logo?.addEventListener('click', handleLogoTap);
 
   return {
     isActive: () => active,
     tapCount: () => tapCount,
-    destroy: () => logo?.removeEventListener('click', handleLogoTap),
+    destroy: () => {
+      if (!alwaysVisible) logo?.removeEventListener('click', handleLogoTap);
+    },
   };
 }

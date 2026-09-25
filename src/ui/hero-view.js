@@ -4,6 +4,7 @@ import {
   CLASSES,
   classDataForJourney,
 } from '../data/game-data.js';
+import { escapeHtml } from './escape-html.js';
 import { keyOf, minutesOf } from '../domain/date-utils.js';
 import {
   logicalClockMinutes,
@@ -719,7 +720,7 @@ export function renderHeroView({
           : '<div class="boss-victory">✓ Jefe vencido. El siguiente llegará al comenzar tu próxima semana.</div>'
       }
       ${combatLog
-        ? `<div class="boss-combat-report"><div class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></div><div class="boss-combat-report-feed">${combatLog}</div></div>`
+        ? `<details class="boss-combat-report"><summary class="boss-combat-report-title"><span>REGISTRO DE COMBATE</span><b>ESTA SEMANA</b></summary><div class="boss-combat-report-feed">${combatLog}</div></details>`
         : '<div class="boss-log-empty">El combate aún no tiene movimientos registrados.</div>'}
       </section>`;
     bossHistoryBody.scrollTop = scrollTop;
@@ -739,7 +740,7 @@ export function renderHeroView({
               <span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><b>${Math.max(0, huntEnergy - huntEnergyBonus)}/${huntEnergyMax}${huntEnergyBonus ? `<em>+${huntEnergyBonus}</em>` : ''}</b>
             </button>
           </div>
-          <div class="nombre">${game?.name || classData.name}</div>
+          <div class="nombre">${escapeHtml(game?.name || classData.name)}</div>
           <div class="nivel">Nivel ${heroStats.lvl}</div>
           <button class="hero-resource-wallet" type="button" data-open-inventory aria-label="Abrir inventario y forja">
             ${resourceValue('coin', lootState?.economy?.coins)}

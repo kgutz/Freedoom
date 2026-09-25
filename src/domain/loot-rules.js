@@ -1,3 +1,4 @@
+import { normalizeEnchantment } from './enchantment-rules.js';
 import {
   AFFIX_DEFINITIONS,
   BOSS_BLOOD_DOUBLE_RATE,
@@ -137,21 +138,14 @@ function normalizeRelicRecord(id, value) {
         }];
       }),
   );
-  if (fusion && definition.ingredientIds.includes('relic_05')) {
-    const oldManaValue = Math.max(0, Number(inheritedEffects.relic_05) || 0);
-    const inferredManaRank = oldManaValue <= 5 ? 1 : oldManaValue <= 7 ? 2 : 3;
-    const manaRank = ingredientSnapshots.relic_05?.rank || inferredManaRank;
-    const migratedManaValue = relicRankEffect('relic_05', manaRank);
-    inheritedEffects.relic_05 = migratedManaValue;
-    if (ingredientSnapshots.relic_05) {
-      ingredientSnapshots.relic_05.effectValue = migratedManaValue;
-    }
-  }
-  // Preserve the owned fusion and ingredients; replace only the fang's old XP.
-  if (fusion && definition.ingredientIds.includes('relic_06')) {
-    const rank = ingredientSnapshots.relic_06?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
-    inheritedEffects.relic_06 = relicRankEffect('relic_06', rank);
-    if (ingredientSnapshots.relic_06) ingredientSnapshots.relic_06.effectValue = inheritedEffects.relic_06;
+  // Recompute changed main effects from ingredient ranks; historical XP is untouched.
+  // Discard obsolete/injected armor snapshots on recipes without this ingredient.
+  if (!fusion || !definition.ingredientIds.includes('relic_09')) delete inheritedEffects.relic_09;
+  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09']) {
+    if (!fusion || !definition.ingredientIds.includes(baseId)) continue;
+    const rank = ingredientSnapshots[baseId]?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
+    inheritedEffects[baseId] = relicRankEffect(baseId, rank);
+    if (ingredientSnapshots[baseId]) ingredientSnapshots[baseId].effectValue = inheritedEffects[baseId];
   }
   const storedRank = Math.min(3, Math.max(1, Number(relic.rank) || 1));
   const snapshotRanks = Object.values(ingredientSnapshots).map((snapshot) => snapshot.rank);
@@ -321,7 +315,16 @@ export function normalizeLootState(state = {}) {
       equipped,
       dailyActivations: { ...objectOf(inventory.dailyActivations) },
       weeklyActivations: { ...objectOf(inventory.weeklyActivations) },
-      periodicEffects: { ...objectOf(inventory.periodicEffects) },
+      periodicEffects: Object.fromEntries(Object.entries(objectOf(inventory.periodicEffects))
+        .filter(([key]) => !['manaRecovery', 'healthRecovery'].includes(key))),
+      huntCharges: {
+        fusion_18: Boolean(relics.fusion_18) && inventory.huntCharges?.fusion_18 === true,
+        fusion_19: Boolean(relics.fusion_19) && inventory.huntCharges?.fusion_19 === true,
+        fusion_20: equipped.includes('fusion_20') && inventory.huntCharges?.fusion_20 === true,
+        fusion_22: equipped.includes('fusion_22') && inventory.huntCharges?.fusion_22 === true,
+        fusion_26: equipped.includes('fusion_26') && inventory.huntCharges?.fusion_26 === true,
+        fusion_28: equipped.includes('fusion_28') && inventory.huntCharges?.fusion_28 === true,
+      },
       potions: normalizePotionState(inventory.potions),
       constancy: {
         cycleId: typeof inventory.constancy?.cycleId === 'string'
@@ -1464,6 +1467,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
   if (!preview.ok) return { ...normalized, ok: false, ...preview };
   const wasEquipped = normalized.inventory.equipped.includes(relicId);
   const losesConstancy = wasEquipped && relicProvidesConstancy(normalized, relicId);
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   const restoredRelics = {};
   preview.ingredientIds.forEach((ingredientId) => {
     const snapshot = preview.relic.ingredientSnapshots[ingredientId];
@@ -1558,6 +1562,13 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const validReplaceIndex = Number.isInteger(replaceIndex) &&
     replaceIndex >= 0 && replaceIndex < MAX_EQUIPPED_RELICS;
+  const enchantment = normalizeEnchantment(normalized.inventory.relics[relicId].enchantment);
+  const enchantmentConflict = enchantment && normalized.inventory.equipped.find((id, index) =>
+    (!validReplaceIndex || index !== replaceIndex) &&
+    normalizeEnchantment(normalized.inventory.relics[id]?.enchantment)?.id === enchantment.id);
+  if (enchantmentConflict) {
+    return {...normalized, ok:false, reason:'enchantment-equipped-conflict', conflictingRelicId:enchantmentConflict};
+  }
   const definition = relicDefinition(relicId);
   if (definition?.recipeId) {
     const equippedFusionId = normalized.inventory.equipped.find((equippedId, index) =>
@@ -1629,6 +1640,7 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const hasConstancySource = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(replacedRelicId)) normalized.inventory.huntCharges[replacedRelicId] = false;
   if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1659,6 +1671,7 @@ export function unequipRelic(lootState, relicId, options = {}) {
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => id !== relicId,
   );
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   if (removesConstancySource) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1716,125 +1729,71 @@ export function equippedRelicEffectSources(lootState, baseRelicId) {
 }
 
 export const PERIODIC_MANA_RECOVERY_MS = 30 * 60 * 1000;
-const PERIODIC_MANA_RECOVERY_TICKS_PER_DAY = 24 * 60 * 60 * 1000
-  / PERIODIC_MANA_RECOVERY_MS;
-
-export function advancePeriodicManaRecovery({
-  state,
-  nowTimestamp = Date.now(),
-  maxMana = 0,
-  currentMana = 0,
-}) {
-  return advancePeriodicRecovery({ state, nowTimestamp, maxMana, currentMana, baseRelicId: 'relic_05', timerKey: 'manaRecovery' });
+// Compatibility entry points: loading an old save never grants obsolete offline ticks.
+export function advancePeriodicManaRecovery({ state, currentMana = 0 }) {
+  return { ...normalizeLootState(state), mana: currentMana, manaRecovered: 0, ticks: 0, sourceIds: [] };
+}
+export function advancePeriodicHealthRecovery({ state, currentHp = 0 }) {
+  return { ...normalizeLootState(state), hp: currentHp, hpRecovered: 0, ticks: 0, sourceIds: [] };
 }
 
-export function advancePeriodicHealthRecovery({ state, nowTimestamp = Date.now(), maxHp = 0, currentHp = 0 }) {
-  const result = advancePeriodicRecovery({ state, nowTimestamp, maxMana: currentHp > 0 ? maxHp : 0, currentMana: currentHp, baseRelicId: 'relic_06', timerKey: 'healthRecovery' });
-  const { mana, manaRecovered, ...rest } = result;
-  return { ...rest, hp: mana, hpRecovered: manaRecovered };
-}
-
-function advancePeriodicRecovery({ state, nowTimestamp, maxMana, currentMana, baseRelicId, timerKey }) {
+export function chargeFirstHabitVampirism(state, dayKey) {
   const normalized = normalizeLootState(state);
-  const sources = equippedRelicEffectSources(normalized, baseRelicId);
-  const safeNow = Math.max(0, Number(nowTimestamp) || 0);
-  const safeMaxMana = Math.max(0, Number(maxMana) || 0);
-  const safeCurrentMana = Math.max(0, Math.min(safeMaxMana, Number(currentMana) || 0));
-  const previous = objectOf(normalized.inventory.periodicEffects?.[timerKey]);
-  const timers = { ...objectOf(previous.timers) };
-  const activeIds = new Set(sources.map((source) => source.relicId));
-
-  // Migra el temporizador único de versiones anteriores sin perder su progreso.
-  if (!Object.keys(timers).length && previous.signature) {
-    const oldInterval = Math.max(1, Number(previous.intervalMs) || PERIODIC_MANA_RECOVERY_MS);
-    const oldRemaining = Math.max(0, Number(previous.nextAt) - safeNow);
-    String(previous.signature).split('|').forEach((part) => {
-      const [relicId, storedValue] = part.split(':');
-      if (!relicId) return;
-      timers[relicId] = {
-        intervalMs: oldInterval,
-        remainingMs: oldRemaining,
-        paused: !activeIds.has(relicId),
-        nextAt: activeIds.has(relicId) ? safeNow + oldRemaining : 0,
-        carry: Math.max(0, Number(previous.carry) || 0),
-        value: Math.max(0, Number(storedValue) || 0),
-      };
-    });
+  const firstHabitKey = `hunt-charge:first-habit:${dayKey}`;
+  if (normalized.inventory.dailyActivations[firstHabitKey]) return normalized;
+  normalized.inventory.dailyActivations[firstHabitKey] = true;
+  for (const [id, effect] of [['fusion_18', 'first-habit-vampirism'], ['fusion_20', 'first-habit-petrification'], ['fusion_26', 'first-habit-armor-reserve']]) {
+    if (!canActivateFusionDaily(normalized, id, effect, dayKey)) continue;
+    normalized.inventory.huntCharges[id] = true;
+    normalized.forge.fusion.dailyActivations[fusionDailyKey(id, effect, dayKey)] = true;
   }
+  return normalized;
+}
 
-  Object.entries(timers).forEach(([relicId, rawTimer]) => {
-    if (activeIds.has(relicId)) return;
-    const timer = objectOf(rawTimer);
-    const remainingMs = timer.paused
-      ? Math.max(0, Number(timer.remainingMs) || 0)
-      : Math.max(0, (Number(timer.nextAt) || safeNow) - safeNow);
-    timers[relicId] = { ...timer, paused: true, remainingMs, nextAt: 0 };
-  });
+export function collarFirstHabitFusionBonuses(state, dayKey) {
+  const normalized = normalizeLootState(state);
+  const collar = availableDailyEffectSources(normalized, 'relic_07', dayKey);
+  return [['fusion_06', 'relic_01', 'protected-first-habit-xp'], ['fusion_07', 'relic_02', 'first-habit-mana-xp']]
+    .filter(([id, base, effect]) => collar.some(source => source.relicId === id)
+      && availableDailyEffectSources(normalized, base, dayKey).some(source => source.relicId === id)
+      && canActivateFusionDaily(normalized, id, effect, dayKey))
+    .map(([id, , effect]) => [id, effect, fusionDefinition(id).synergy.values[normalized.inventory.relics[id].rank]]);
+}
 
-  let mana = safeCurrentMana;
-  let totalTicks = 0;
-  for (const source of sources) {
-    let timer = objectOf(timers[source.relicId]);
-    if (!Object.keys(timer).length) {
-      timer = {
-        intervalMs: PERIODIC_MANA_RECOVERY_MS,
-        remainingMs: 0,
-        paused: false,
-        nextAt: safeNow + PERIODIC_MANA_RECOVERY_MS,
-        carry: 0,
-        value: source.value,
-      };
-    } else {
-      const oldInterval = Math.max(1, Number(timer.intervalMs) || PERIODIC_MANA_RECOVERY_MS);
-      const oldRemaining = timer.paused
-        ? Math.max(0, Number(timer.remainingMs) || 0)
-        : Math.max(0, (Number(timer.nextAt) || safeNow) - safeNow);
-      const adjustedRemaining = oldInterval === PERIODIC_MANA_RECOVERY_MS
-        ? oldRemaining
-        : PERIODIC_MANA_RECOVERY_MS * Math.min(1, oldRemaining / oldInterval);
-      if (timer.paused || oldInterval !== PERIODIC_MANA_RECOVERY_MS) {
-        timer = {
-          ...timer,
-          intervalMs: PERIODIC_MANA_RECOVERY_MS,
-          paused: false,
-          remainingMs: 0,
-          nextAt: safeNow + adjustedRemaining,
-        };
-      }
-    }
-
-    const nextAt = Number(timer.nextAt) || safeNow + PERIODIC_MANA_RECOVERY_MS;
-    if (safeNow >= nextAt) {
-      const ticks = Math.floor((safeNow - nextAt) / PERIODIC_MANA_RECOVERY_MS) + 1;
-      const rawRecovery = Math.max(0, Number(timer.carry) || 0)
-        + safeMaxMana * source.value / 100
-          * ticks / PERIODIC_MANA_RECOVERY_TICKS_PER_DAY;
-      const recovery = Math.floor(rawRecovery + Number.EPSILON);
-      mana = Math.min(safeMaxMana, mana + recovery);
-      totalTicks += ticks;
-      timer = {
-        ...timer,
-        carry: rawRecovery - recovery,
-        nextAt: nextAt + ticks * PERIODIC_MANA_RECOVERY_MS,
-      };
-    }
-    timers[source.relicId] = {
-      ...timer,
-      intervalMs: PERIODIC_MANA_RECOVERY_MS,
-      paused: false,
-      remainingMs: 0,
-      value: source.value,
-    };
-  }
-
-  normalized.inventory.periodicEffects[timerKey] = { timers };
+export function equippedHuntEffects(state) {
+  const normalized = normalizeLootState(state);
+  const sum = id => equippedRelicEffectSources(normalized, id).reduce((total, source) => total + source.value, 0);
+  const charged = id => normalized.inventory.equipped.includes(id) && normalized.inventory.huntCharges[id];
+  const synergy = id => normalized.inventory.equipped.includes(id)
+    ? fusionDefinition(id).synergy.values[normalized.inventory.relics[id].rank] : 0;
   return {
-    ...normalized,
-    mana,
-    manaRecovered: mana - safeCurrentMana,
-    ticks: totalTicks,
-    sourceIds: sources.map((source) => source.relicId),
+    petrificationFirstBonus: charged('fusion_20') ? synergy('fusion_20') : 0,
+    armorReserve: charged('fusion_26') ? synergy('fusion_26') : 0,
+    armorHuntBonus: charged('fusion_28') ? synergy('fusion_28') : 0,
+    armorXp: synergy('fusion_27'),
+    armorManaCap: synergy('fusion_29'),
+    armorHealthCap: synergy('fusion_30'),
+    armorVampirism: synergy('fusion_31'),
+    petrificationHuntBonus: charged('fusion_22') ? synergy('fusion_22') : 0,
+    petrificationXp: synergy('fusion_21'),
+    petrificationMana: synergy('fusion_23'),
+    petrificationHealth: synergy('fusion_24'),
+    petrificationVampirism: synergy('fusion_25'),
+    vampirism: sum('relic_07'), petrification: sum('relic_08'),
+    damageReduction: sum('relic_09'),
+    victoryHealth: sum('relic_06'), victoryMana: sum('relic_05'),
+    encounterBonus: charged('fusion_18') ? 1 : 0,
+    huntBonus: charged('fusion_19') ? 1 : 0,
+    manaFusion16: normalized.inventory.equipped.includes('fusion_16'),
   };
+}
+
+export function consumeHuntCharges(state) {
+  const normalized = normalizeLootState(state);
+  for (const id of ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28']) {
+    if (normalized.inventory.equipped.includes(id)) normalized.inventory.huntCharges[id] = false;
+  }
+  return normalized;
 }
 
 export function effectActivationKey(sourceRelicId, baseRelicId, periodKey) {
@@ -1963,6 +1922,9 @@ export function activateRelicConstancy({
       normalized.inventory.weeklyActivations[key] = {
         type: 'constancy', cycleId, relicId: source.relicId, xp: source.value, at: nowTimestamp,
       };
+      if (source.relicId === 'fusion_19') normalized.inventory.huntCharges.fusion_19 = true;
+      if (source.relicId === 'fusion_22') normalized.inventory.huntCharges.fusion_22 = true;
+      if (source.relicId === 'fusion_28') normalized.inventory.huntCharges.fusion_28 = true;
       xp += source.value;
       activations.push(key);
     }
@@ -2143,11 +2105,9 @@ export function attemptForge({
   const success = Math.max(0, Math.min(0.999999999, resolvedRandomValue)) <
     preview.finalProbability / 100;
   const bossBloodSpent = success ? preview.bloodRequired : 0;
-  const refundRate = success ? 0 : Math.min(100, equippedRelicEffectSources(
-    normalized,
-    'relic_09',
-  ).reduce((total, source) => total + source.value, 0));
-  const coinsRefunded = success ? 0 : Math.floor(preview.cost * refundRate / 100);
+  // Kept as zero for consumers of historical forge result shapes. No new refund.
+  const refundRate = 0;
+  const coinsRefunded = 0;
   if (success) {
     normalized.economy.bossBlood = Math.max(
       0,
@@ -2160,7 +2120,6 @@ export function attemptForge({
     delete normalized.forge.attempts[preview.attemptKey];
   } else {
     normalized.forge.attempts[preview.attemptKey] = preview.failures + 1;
-    normalized.economy.coins += coinsRefunded;
   }
   const nextPreview = success ? null : forgePreview(normalized, relicId);
   const historyEntry = {
@@ -2199,17 +2158,6 @@ export function attemptForge({
     success,
     at: nowTimestamp,
   });
-  if (coinsRefunded > 0) {
-    normalized.economy.transactions.push({
-      id: `forge:${operationId}:relic-refund`,
-      type: 'forge_relic_refund',
-      relicId,
-      sourceRelicId: 'relic_09',
-      coins: coinsRefunded,
-      refundRate,
-      at: nowTimestamp,
-    });
-  }
   normalized.economy.transactions = normalized.economy.transactions.slice(-200);
   return {
     ...normalized,

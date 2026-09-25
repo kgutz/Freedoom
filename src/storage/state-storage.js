@@ -1,9 +1,12 @@
-import { grantRewardHuntEnergy } from '../domain/pve-combat-rules.js';
+import LZString from 'lz-string';
 
 export const STORAGE_KEY = 'registro-dejar-fumar';
 export const STORAGE_SCHEMA_VERSION = 2;
 export const RECOVERY_SLOT_COUNT = 3;
 export const ACTION_LOG_LIMIT = 50;
+export const BACKUP_FORMAT = 'freedoom-backup';
+export const BACKUP_SCHEMA_VERSION = 1;
+export const MAX_BACKUP_CHARACTERS = 4 * 1024 * 1024;
 
 const META_SUFFIX = ':meta';
 const SLOT_SUFFIX = ':recovery:';
@@ -11,11 +14,121 @@ const ACTION_SUFFIX = ':actions';
 const DAILY_SUFFIX = ':daily';
 const WEEKLY_SUFFIX = ':weekly';
 const LAST_INFO_SUFFIX = ':last-info';
+const TEMPORAL_SLOT_COUNT = 5;
+const TEMPORAL_INTERVAL = 20 * 60 * 1000;
+
+export function selectTemporalRecoveries(candidates, now = Date.now()) {
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const previousDay = localDateKey(yesterday.getTime());
+  const valid = candidates.filter(item => item.savedAt > 0 && item.savedAt <= now);
+  const newest = items => [...items].sort((a, b) => b.savedAt - a.savedAt)[0] || null;
+  return {
+    daily: newest(valid.filter(item => localDateKey(item.savedAt) === previousDay)),
+    hourly: newest(valid.filter(item => localDateKey(item.savedAt) === localDateKey(now) && item.savedAt <= now - 3600000)),
+  };
+}
 const DATABASE_NAME = 'freedoom-recovery';
 const DATABASE_STORE = 'snapshots';
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+const FORBIDDEN_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const MAX_IMPORT_DEPTH = 40;
+const MAX_IMPORT_NODES = 100000;
+const MAX_IMPORT_ARRAY_ITEMS = 10000;
+const MAX_IMPORT_OBJECT_KEYS = 20000;
+const MAX_IMPORT_STRING_LENGTH = 512 * 1024;
+
+function assertStringField(value, name, maximum, { allowEmpty = true } = {}) {
+  if (value === undefined) return;
+  if (typeof value !== 'string' || value.length > maximum || (!allowEmpty && value.length === 0)) {
+    throw new Error(`Campo no válido en la copia: ${name}`);
+  }
+}
+
+function assertBoundedCollection(value, name, maximum) {
+  if (value === undefined) return;
+  const size = Array.isArray(value) ? value.length : isObject(value) ? Object.keys(value).length : -1;
+  if (size < 0 || size > maximum) throw new Error(`Colección no válida en la copia: ${name}`);
+}
+
+function validateObjectGraph(root) {
+  const pending = [{ value: root, depth: 0 }];
+  const seen = new Set();
+  let nodes = 0;
+  while (pending.length) {
+    const { value, depth } = pending.pop();
+    nodes += 1;
+    if (nodes > MAX_IMPORT_NODES || depth > MAX_IMPORT_DEPTH) {
+      throw new Error('La copia es demasiado grande o compleja');
+    }
+    if (typeof value === 'string') {
+      if (value.length > MAX_IMPORT_STRING_LENGTH) throw new Error('La copia contiene un texto demasiado largo');
+      continue;
+    }
+    if (value === null || typeof value !== 'object') continue;
+    if (seen.has(value)) continue;
+    seen.add(value);
+    if (Array.isArray(value)) {
+      if (value.length > MAX_IMPORT_ARRAY_ITEMS) throw new Error('La copia contiene demasiados elementos');
+      value.forEach(item => pending.push({ value: item, depth: depth + 1 }));
+      continue;
+    }
+    const entries = Object.entries(value);
+    if (entries.length > MAX_IMPORT_OBJECT_KEYS) throw new Error('La copia contiene demasiadas propiedades');
+    entries.forEach(([key, child]) => {
+      if (FORBIDDEN_OBJECT_KEYS.has(key) || key.length > 512) {
+        throw new Error('La copia contiene una propiedad no permitida');
+      }
+      pending.push({ value: child, depth: depth + 1 });
+    });
+  }
+}
+
+export function validateImportedState(state) {
+  if (!isObject(state) || (!isObject(state.days) && !isObject(state.config))) {
+    throw new Error('Formato de copia no válido');
+  }
+  validateObjectGraph(state);
+  if (state.config !== undefined && !isObject(state.config)) throw new Error('Configuración no válida en la copia');
+  assertBoundedCollection(state.days, 'days', 10000);
+  if (state.game !== undefined && !isObject(state.game)) throw new Error('Héroe no válido en la copia');
+  assertStringField(state.game?.name, 'game.name', 64);
+  if (state.game?.cls !== undefined && state.game.cls !== null &&
+      !['knight', 'paladin', 'sorcerer', 'druid'].includes(state.game.cls)) {
+    throw new Error('Clase no válida en la copia');
+  }
+  if (state.habits !== undefined && !isObject(state.habits)) throw new Error('Hábitos no válidos en la copia');
+  assertBoundedCollection(state.habits?.items, 'habits.items', 500);
+  assertBoundedCollection(state.habits?.entries, 'habits.entries', 50000);
+  (state.habits?.items || []).forEach((habit, index) => {
+    if (!isObject(habit)) throw new Error(`Hábito no válido en la copia: ${index}`);
+    assertStringField(habit.id, `habits.items[${index}].id`, 128, { allowEmpty: false });
+    assertStringField(habit.title, `habits.items[${index}].title`, 200, { allowEmpty: false });
+    assertStringField(habit.notes, `habits.items[${index}].notes`, 2000);
+  });
+  if (state.todos !== undefined && !isObject(state.todos)) throw new Error('Tareas no válidas en la copia');
+  assertBoundedCollection(state.todos?.items, 'todos.items', 1000);
+  (state.todos?.items || []).forEach((todo, index) => {
+    if (!isObject(todo)) throw new Error(`Tarea no válida en la copia: ${index}`);
+    assertStringField(todo.id, `todos.items[${index}].id`, 128, { allowEmpty: false });
+    assertStringField(todo.title, `todos.items[${index}].title`, 200, { allowEmpty: false });
+    assertStringField(todo.notes, `todos.items[${index}].notes`, 2000);
+  });
+  if (state.economy !== undefined && !isObject(state.economy)) throw new Error('Economía no válida en la copia');
+  ['coins', 'bossBlood', 'arcaneFibers', 'arcaneInks'].forEach((key) => {
+    const value = state.economy?.[key];
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0 || value > 1000000000)) {
+      throw new Error(`Recurso no válido en la copia: ${key}`);
+    }
+  });
+  assertBoundedCollection(state.economy?.transactions, 'economy.transactions', 2000);
+  assertBoundedCollection(state.inventory?.relics, 'inventory.relics', 5000);
+  assertBoundedCollection(state.inventory?.collection, 'inventory.collection', 5000);
+  return state;
 }
 
 function collectionSize(value) {
@@ -220,148 +333,37 @@ export function mergeState(currentState, savedState) {
 }
 
 export function exportBackup(state) {
-  return serializeState(state);
+  return JSON.stringify({
+    format: BACKUP_FORMAT,
+    schemaVersion: BACKUP_SCHEMA_VERSION,
+    state,
+  });
 }
-
-const IMPORT_COMMAND_RESOURCES = Object.freeze({
-  sangre: 'bossBlood',
-  'sangre-de-jefe': 'bossBlood',
-  oro: 'coins',
-  moneda: 'coins',
-  monedas: 'coins',
-  fibra: 'arcaneFibers',
-  fibras: 'arcaneFibers',
-  'fibra-arcana': 'arcaneFibers',
-  'fibras-arcanas': 'arcaneFibers',
-  tinta: 'arcaneInks',
-  tintas: 'arcaneInks',
-  'tinta-arcana': 'arcaneInks',
-  'tintas-arcanas': 'arcaneInks',
-});
-
-const IMPORT_COMMAND_OUTFITS = Object.freeze({
-  'beta-tester': 'beta-tester',
-  'arcane-weave-01': 'arcane-weave-01',
-  'operador-del-nexo': 'arcane-weave-01',
-  'arcane-weave-02': 'arcane-weave-02',
-  'forjador-del-crisol': 'arcane-weave-02',
-  'celestial-rhythm-master': 'celestial-rhythm-master',
-  'maestro-del-ritmo-celestial': 'celestial-rhythm-master',
-});
-
-const IMPORT_COMMAND_FRAMES = Object.freeze({
-  'beta-tester': 'beta-tester',
-  'corazon-de-freedom': 'beta-tester',
-  'santuario-del-crisol': 'welder-beta',
-  'welder-beta': 'welder-beta',
-  'celestial-music-studio': 'celestial-music-studio',
-  'estudio-musical-celestial': 'celestial-music-studio',
-});
 
 export function isImportCommand(value) {
   return String(value ?? '').trimStart().startsWith('!');
 }
 
-export function applyImportCommands(currentState, commandText) {
-  const lines = String(commandText ?? '')
-    .split(/\r?\n/u)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (lines.length === 0) throw new Error('Comando vacío');
-
-  const operations = lines.map((line) => {
-    const match = /^!\+([\p{L}-]+)\s+([\p{L}\d-]+)$/iu.exec(line);
-    if (!match) throw new Error(`Comando no válido: ${line}`);
-    const commandName = match[1].toLocaleLowerCase('es');
-    const argument = match[2].toLocaleLowerCase('es');
-    if (commandName === 'outfit') {
-      const outfitId = IMPORT_COMMAND_OUTFITS[argument];
-      if (!outfitId) throw new Error(`Outfit no válido: ${argument}`);
-      return { type: 'outfit', id: outfitId };
-    }
-    if (['marco', 'fondo'].includes(commandName)) {
-      const frameId = IMPORT_COMMAND_FRAMES[argument];
-      if (!frameId) throw new Error(`Marco no válido: ${argument}`);
-      return { type: 'frame', id: frameId };
-    }
-    if (['energia', 'energía'].includes(commandName)) {
-      const amount = Number(argument);
-      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10) {
-        throw new Error(`Cantidad de energía no válida: ${argument}`);
-      }
-      return { type: 'energy', amount };
-    }
-    const resourceName = commandName;
-    const resourceKey = IMPORT_COMMAND_RESOURCES[resourceName];
-    if (!resourceKey) throw new Error(`Recurso no válido: ${resourceName}`);
-    const amount = Number(argument);
-    if (!Number.isSafeInteger(amount) || amount < 1 || amount > 999999) {
-      throw new Error(`Cantidad no válida: ${argument}`);
-    }
-    return { type: 'resource', resourceKey, amount };
-  });
-
-  let nextState = {
-    ...currentState,
-    economy: { ...(isObject(currentState?.economy) ? currentState.economy : {}) },
-    game: { ...(isObject(currentState?.game) ? currentState.game : {}) },
-  };
-  const acquiredAt = Date.now();
-  operations.forEach((operation) => {
-    if (operation.type === 'resource') {
-      const currentAmount = Math.max(0, Math.trunc(Number(nextState.economy[operation.resourceKey]) || 0));
-      nextState.economy[operation.resourceKey] = currentAmount + operation.amount;
-      return;
-    }
-    if (operation.type === 'energy') {
-      const grant = grantRewardHuntEnergy({
-        hunt: nextState.game.hunt,
-        amount: operation.amount,
-        nowTimestamp: acquiredAt,
-      });
-      nextState.game = { ...nextState.game, hunt: grant.hunt };
-      return;
-    }
-    if (operation.type === 'frame') {
-      nextState.game = {
-        ...nextState.game,
-        frames: {
-          ...(nextState.game.frames || {}),
-          owned: {
-            ...(nextState.game.frames?.owned || {}),
-            [operation.id]: { acquiredAt, source: 'import-command' },
-          },
-        },
-      };
-      return;
-    }
-    const outfits = {
-      ...(nextState.game.outfits || {}),
-      owned: {
-        ...(nextState.game.outfits?.owned || {}),
-        [operation.id]: { acquiredAt, source: 'import-command' },
-      },
-    };
-    nextState.game = { ...nextState.game, outfits };
-    if (operation.id === 'beta-tester') {
-      nextState.game.pioneerReward = {
-        ...(nextState.game.pioneerReward || {}),
-        claimedAt: nextState.game.pioneerReward?.claimedAt || acquiredAt,
-        outfitId: 'beta-tester',
-      };
-    }
-  });
-  return nextState;
-}
-
 export function importBackup(currentState, backupText) {
   if (isImportCommand(backupText)) {
-    return applyImportCommands(currentState, backupText);
+    throw new Error('Los comandos de importación ya no están permitidos');
   }
-  const savedState = parseState(backupText);
-  if (!isObject(savedState.days) && !isObject(savedState.config)) {
-    throw new Error('Formato de copia no válido');
+  if (typeof backupText !== 'string' || backupText.length > MAX_BACKUP_CHARACTERS) {
+    throw new Error('La copia supera el tamaño máximo permitido');
   }
+  const parsed = parseState(backupText);
+  let savedState = parsed;
+  if (parsed.format !== undefined || parsed.schemaVersion !== undefined || parsed.state !== undefined) {
+    if (
+      parsed.format !== BACKUP_FORMAT ||
+      parsed.schemaVersion !== BACKUP_SCHEMA_VERSION ||
+      !isObject(parsed.state)
+    ) {
+      throw new Error('Versión de copia no compatible');
+    }
+    savedState = parsed.state;
+  }
+  validateImportedState(savedState);
 
   return {
     ...mergeState(currentState, savedState),
@@ -399,8 +401,20 @@ export function createStateEnvelope(
   return envelope;
 }
 
+const COMPRESSED_ENVELOPE_PREFIX = 'freedoom-lz1:';
+
+function serializeEnvelope(envelope) {
+  const plain = JSON.stringify(envelope);
+  if (plain.length < 16384) return plain;
+  const compressed = COMPRESSED_ENVELOPE_PREFIX + LZString.compressToUTF16(plain);
+  return compressed.length < plain.length ? compressed : plain;
+}
+
 export function parseStateEnvelope(serialized) {
-  const envelope = JSON.parse(serialized);
+  const plain = typeof serialized === 'string' && serialized.startsWith(COMPRESSED_ENVELOPE_PREFIX)
+    ? LZString.decompressFromUTF16(serialized.slice(COMPRESSED_ENVELOPE_PREFIX.length))
+    : serialized;
+  const envelope = JSON.parse(plain);
   if (
     !isObject(envelope) ||
     envelope.format !== 'freedoom-state' ||
@@ -441,6 +455,16 @@ function openRecoveryDatabase(indexedDB) {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('IndexedDB no disponible'));
+  });
+}
+
+function deleteRecoveryDatabase(indexedDB) {
+  if (!indexedDB?.deleteDatabase) return Promise.resolve(false);
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DATABASE_NAME);
+    request.onsuccess = () => resolve(true);
+    request.onerror = () => reject(request.error || new Error('No se pudo borrar IndexedDB'));
+    request.onblocked = () => reject(new Error('IndexedDB está en uso y no se pudo borrar'));
   });
 }
 
@@ -495,6 +519,10 @@ async function writeIndexedEnvelope(indexedDB, envelope) {
 
 function localCandidates(localStorage, key) {
   const candidates = [];
+  for (const suffix of [':previous-day', ':hour-ago', ...Array.from({length:TEMPORAL_SLOT_COUNT}, (_, i) => `:timeline:${i}`)]) {
+    const candidate = safeEnvelope(localStorage.getItem(`${key}${suffix}`), suffix.slice(1));
+    if (candidate) candidates.push(candidate);
+  }
   const mainValue = localStorage.getItem(key);
   if (mainValue !== null) {
     try {
@@ -611,7 +639,7 @@ function updateProtectedSnapshot({
         periodKey,
       },
     );
-    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    localStorage.setItem(storageKey, serializeEnvelope(protectedEnvelope));
     const verified = parseStateEnvelope(localStorage.getItem(storageKey));
     return {
       available: verified.checksum === protectedEnvelope.checksum,
@@ -646,7 +674,7 @@ function updateLastInformativeSnapshot({ localStorage, key, envelope }) {
         periodKey: localDateKey(envelope.savedAt),
       },
     );
-    localStorage.setItem(storageKey, JSON.stringify(protectedEnvelope));
+    localStorage.setItem(storageKey, serializeEnvelope(protectedEnvelope));
     const verified = parseStateEnvelope(localStorage.getItem(storageKey));
     return {
       available: verified.checksum === protectedEnvelope.checksum,
@@ -655,6 +683,27 @@ function updateLastInformativeSnapshot({ localStorage, key, envelope }) {
     };
   } catch (error) {
     return { available: Boolean(existing), updated: false, error };
+  }
+}
+
+// Compact only valid recovery copies, in place, without deleting any history.
+// localStorage replacement is atomic: a failed write leaves the old copy intact.
+function compactRecoveryCopies(localStorage, key) {
+  const suffixes = [DAILY_SUFFIX, WEEKLY_SUFFIX, LAST_INFO_SUFFIX, ':previous-day', ':hour-ago',
+    ...Array.from({length:RECOVERY_SLOT_COUNT}, (_, i) => `${SLOT_SUFFIX}${i}`),
+    ...Array.from({length:TEMPORAL_SLOT_COUNT}, (_, i) => `:timeline:${i}`)];
+  for (const suffix of suffixes) {
+    try {
+      const stored = localStorage.getItem(`${key}${suffix}`);
+      if (!stored || stored.startsWith(COMPRESSED_ENVELOPE_PREFIX)) continue;
+      const packed = serializeEnvelope(parseStateEnvelope(stored));
+      if (packed.length < stored.length) {
+        parseStateEnvelope(packed); // Validate the lossless round trip before replacing.
+        localStorage.setItem(`${key}${suffix}`, packed);
+      }
+    } catch {
+      // Preserve unreadable or unwritable copies; normal save reports write failures.
+    }
   }
 }
 
@@ -737,6 +786,7 @@ export function createBrowserStore(browserWindow) {
       if (usesExternalStorage) return externalStorage.set(key, value);
       if (!localStorage) throw new Error('Almacenamiento local no disponible');
       const parsedState = parseState(value);
+      compactRecoveryCopies(localStorage, key);
       const existingCandidates = localCandidates(localStorage, key).filter(
         (candidate) => (candidate.generation || 0) === currentGeneration,
       );
@@ -772,7 +822,27 @@ export function createBrowserStore(browserWindow) {
       const envelope = createStateEnvelope(parsedState, revision, savedAt, {
         generation: currentGeneration,
       });
-      const envelopeText = JSON.stringify(envelope);
+      const envelopeText = serializeEnvelope(envelope);
+      // Freeze historical candidates before the rolling/current slots are overwritten.
+      // Legacy daily/weekly snapshots remain readable and are never relabelled as yesterday.
+      const historical = selectTemporalRecoveries(localCandidates(localStorage, key), savedAt);
+      let temporalError = null;
+      try {
+        for (const [name, snapshot] of [['previous-day', historical.daily], ['hour-ago', historical.hourly]]) {
+          if (snapshot) localStorage.setItem(`${key}:${name}`, serializeEnvelope(snapshot));
+        }
+        if (stateInformationProfile(parsedState).meaningful) {
+          const bucket = Math.floor(savedAt / TEMPORAL_INTERVAL);
+          const temporalKey = `${key}:timeline:${bucket % TEMPORAL_SLOT_COUNT}`;
+          const existing = safeEnvelope(localStorage.getItem(temporalKey), 'timeline');
+          // Keep the first save in each bucket, rather than replacing it on every action.
+          if (!existing || Math.floor(existing.savedAt / TEMPORAL_INTERVAL) !== bucket) {
+            localStorage.setItem(temporalKey, envelopeText);
+          }
+        }
+      } catch (error) {
+        temporalError = error;
+      }
       const slotKey = `${key}${SLOT_SUFFIX}${revision % RECOVERY_SLOT_COUNT}`;
       let recoverySaved = false;
       let mainSaved = false;
@@ -859,6 +929,7 @@ export function createBrowserStore(browserWindow) {
               !weeklySnapshot.available ||
               !lastInformativeSnapshot.available)),
         errors: [
+          temporalError,
           mainError,
           recoveryError,
           dailySnapshot.error,
@@ -897,7 +968,8 @@ export function createBrowserStore(browserWindow) {
       } catch {
         actions = [];
       }
-      actions.push({ ...action, at: action.at || Date.now() });
+      const type = typeof action.type === 'string' ? action.type.slice(0, 80) : 'unknown';
+      actions.push({ type, at: action.at || Date.now() });
       localStorage.setItem(
         actionKey,
         JSON.stringify(actions.slice(-ACTION_LOG_LIMIT)),
@@ -915,6 +987,41 @@ export function createBrowserStore(browserWindow) {
       } catch {
         return [];
       }
+    },
+
+    async purge(key = STORAGE_KEY) {
+      if (usesExternalStorage) {
+        throw new Error('El almacenamiento externo debe borrar sus datos desde el proveedor');
+      }
+      if (localStorage?.removeItem) {
+        const keys = [];
+        if (Number.isFinite(localStorage.length) && typeof localStorage.key === 'function') {
+          for (let index = 0; index < localStorage.length; index += 1) {
+            const candidate = localStorage.key(index);
+            if (candidate?.startsWith(key)) keys.push(candidate);
+          }
+        } else {
+          keys.push(
+            key,
+            `${key}${META_SUFFIX}`,
+            `${key}${ACTION_SUFFIX}`,
+            `${key}${DAILY_SUFFIX}`,
+            `${key}${WEEKLY_SUFFIX}`,
+            `${key}${LAST_INFO_SUFFIX}`,
+            `${key}:previous-day`,
+            `${key}:hour-ago`,
+            ...Array.from({ length: RECOVERY_SLOT_COUNT }, (_, index) => `${key}${SLOT_SUFFIX}${index}`),
+            ...Array.from({ length: TEMPORAL_SLOT_COUNT }, (_, index) => `${key}:timeline:${index}`),
+          );
+        }
+        [...new Set(keys)].forEach(candidate => localStorage.removeItem(candidate));
+      }
+      await deleteRecoveryDatabase(indexedDB);
+      currentRevision = 0;
+      currentSavedAt = 0;
+      currentGeneration = 0;
+      pendingGenerationAdvance = false;
+      return true;
     },
 
     get revision() {

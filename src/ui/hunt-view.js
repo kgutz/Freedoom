@@ -1,5 +1,6 @@
 import {
   HUNT_ENEMIES,
+  HUNT_ENCOUNTER_RECOVERY,
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
   huntDifficultyForRegion,
@@ -8,6 +9,17 @@ import {
 } from '../domain/pve-combat-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 import { bossMedalNameLines } from './hero-view.js';
+
+export function huntRecoveryNoteMarkup({ regionId, difficultyId } = {}) {
+  const gain = Math.round(HUNT_ENCOUNTER_RECOVERY.hpPercent * 100);
+  const cap = Math.round(HUNT_ENCOUNTER_RECOVERY.hpCapPercent * 100);
+  const rend = difficultyId === 'hard' ? Number(huntDifficultyForRegion(regionId, difficultyId)?.enemyStatMultipliers?.rendPercent) || 0 : 0;
+  const pressure = rend > 0 ? `<p class="hunt-recovery-note"><b>Desgarro · Difícil:</b> cada golpe enemigo suma un ${rend}% de tu Vida actual. Puede ser crítico, esquivado o reducido por tus reliquias.</p>` : '';
+  const tuning = difficultyId === 'hard' ? huntDifficultyForRegion(regionId, difficultyId)?.enemyStatMultipliers : null;
+  const guard = Math.max(0, ...Object.values(tuning || {}).map(value => Number(value?.guardPercent) || 0));
+  const tenacity = guard > 0 ? `<p class="hunt-recovery-note"><b>Tenacidad del minijefe:</b> cada golpe puede quitarle como máximo un ${guard}% de su Vida máxima.</p>` : '';
+  return `<p class="hunt-recovery-note">Entre enemigos, cada victoria recupera un ${gain}% de tu Vida máxima, hasta el ${cap}%. Las reliquias suman su recuperación aparte.</p>${pressure}${tenacity}`;
+}
 
 function remainingLabel(milliseconds) {
   const seconds = Math.max(0, Math.ceil(milliseconds / 1000));
@@ -33,7 +45,7 @@ function monsterCard(enemy) {
       <img src="${enemy.art}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
       <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
-    <span>${enemy.role}</span><b>${bossMedalNameLines(enemy.name).join('<br>')}</b>
+    <span>${enemy.role}</span><b>${(enemy.nameLines || bossMedalNameLines(enemy.name)).join('<br>')}</b>
   </button>`;
 }
 
@@ -54,7 +66,8 @@ export function renderHuntMonsterDetail({ document, enemyId }) {
   const root = document.getElementById('huntMonsterBody');
   if (!enemy || !root) return false;
   root.innerHTML = `<div class="hunt-monster-detail-art ${enemy.id}">
-      <img src="${enemy.art}" alt="${enemy.name}" loading="lazy" decoding="async">
+      <img src="${enemy.art}" alt="${enemy.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'">
+      <span class="hunt-art-fallback" style="display:none">?</span>
     </div>
     <span class="hunt-monster-detail-role">${enemy.role}</span>
     <h2>${enemy.name}</h2>
@@ -143,13 +156,25 @@ function reportMarkup(report) {
     const movesToNextEnemy = encounter.won && encounterIndex < report.encounters.length - 1;
     const nextHpPercent = resourcePercent(nextHeroHp, heroMaxHp);
     const nextManaPercent = resourcePercent(nextHeroMana, heroMaxMana);
-    const rewardsMarkup = encounter.won
+    const rewardsMarkup = encounter.won || Number(encounter.petrificationXp) > 0
       ? `<div class="hunt-encounter-rewards"><span>BOTÍN</span><b>✦ ${encounter.rewards?.xp || 0} XP</b>${resourceValue('coin', encounter.rewards?.gold || 0)}${encounter.rewards?.arcaneFibers ? resourceValue('arcane-fiber', encounter.rewards.arcaneFibers) : ''}${encounter.rewards?.arcaneInks ? resourceValue('arcane-ink', encounter.rewards.arcaneInks) : ''}${encounter.rewards?.bossBlood ? resourceValue('boss-blood', encounter.rewards.bossBlood) : ''}</div>`
       : '';
     const recoveryMarkup = recoveryAfterHp > 0 || recoveryAfterMana > 0
       ? `<div class="hunt-encounter-recovery"><span>RECUPERACIÓN</span><b>+${recoveryAfterHp} vida · +${recoveryAfterMana} maná</b></div>`
       : '';
     const roleClass = enemyRoleClass(encounter.role);
+    const miradaRecovery = [
+      Number(encounter.petrificationManaRecovered) > 0 ? `+${encounter.petrificationManaRecovered} maná` : '',
+      Number(encounter.petrificationHealthRecovered) > 0 ? `+${encounter.petrificationHealthRecovered} vida` : '',
+      Number(encounter.petrificationXp) > 0 ? `+${encounter.petrificationXp} XP` : '',
+    ].filter(Boolean).join(' · ');
+    const armorBonus = [
+      Number(encounter.armorReserveUsed) > 0 ? `${encounter.armorReserveUsed} daño extra evitado` : '',
+      Number(encounter.armorManaRecovered) > 0 ? `+${encounter.armorManaRecovered} maná` : '',
+      Number(encounter.armorHealthRecovered) > 0 ? `+${encounter.armorHealthRecovered} vida` : '',
+      Number(encounter.armorXp) > 0 ? `+${encounter.armorXp} XP` : '',
+      Number(encounter.armorVampirismUsed) > 0 ? 'Vampirismo reforzado' : '',
+    ].filter(Boolean).join(' · ');
     return `<details class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
       <summary>
         <span class="hunt-report-enemy"><strong>${encounter.name}</strong><small class="hunt-report-role ${roleClass}">${encounter.role}</small></span>
@@ -163,6 +188,8 @@ function reportMarkup(report) {
           <span><small>DAÑO RECIBIDO</small><b>${Math.max(0, Number(encounter.damageTaken) || 0)}</b></span>
         </div>
         ${recoveryMarkup}
+        ${miradaRecovery ? `<div class="hunt-encounter-recovery"><span>BONUS DE MIRADA</span><b>${miradaRecovery}</b></div>` : ''}
+        ${armorBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE ESCAMAS</span><b>${armorBonus}</b></div>` : ''}
         ${rewardsMarkup}
         <div class="hunt-encounter-next"><span>${movesToNextEnemy ? 'SIGUIENTE COMBATE' : 'FIN DE LOS COMBATES'}</span><b>${nextHpPercent}% vida · ${nextManaPercent}% maná</b></div>
       </div>
@@ -219,9 +246,9 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   const compactRegionName = activeRegionId === 'dead-hours-bunker' ? 'Búnker' : activeRegion?.name || 'Zona de cacería';
   const activeNoticeLabel = `${reportReady ? 'Informe pendiente' : 'Cacería en curso'} · ${activeRegion?.name || 'Zona de cacería'} · ${activeDifficulty?.name || ''}`;
   const activeNotice = hunt.active ? `<button type="button" class="hunt-map-active-notice${reportReady ? ' is-ready' : ''}" data-open-pending-hunt="${activeRegionId}" aria-label="${activeNoticeLabel}">
-    <span>${reportReady ? 'INFORME PENDIENTE' : 'CACERÍA EN CURSO'}</span>
+    <span>${reportReady ? 'INFORME PENDIENTE' : `CACERÍA EN CURSO — ${remainingLabel(hunt.active.endsAt - nowTimestamp)}`}</span>
     <strong>${compactRegionName} · ${activeDifficulty?.name || ''}</strong>
-    <small>${reportReady ? 'Expedición terminada · recoge el resultado.' : remainingLabel(hunt.active.endsAt - nowTimestamp)}</small>
+    ${reportReady ? '<small>Expedición terminada · recoge el resultado.</small>' : ''}
     <b>${reportReady ? 'RESULTADO' : 'EXPEDICIÓN'} →</b>
   </button>` : '';
   return `<div class="hunt-map-heading">
@@ -234,14 +261,16 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   </div>
   ${activeNotice}
   <section class="hunt-world-map" data-hunt-zoom-surface aria-label="Mapa de zonas de caza. Pellizca con dos dedos para ampliar.">
-    <img data-hunt-zoom-image src="hunt/world-map-bunker.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
+    <img data-hunt-zoom-image src="hunt/world-map-nuncabasta.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
     <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="fields-of-mist">
-      Campos de la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
+      Campos de<br>la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
     <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="dead-hours-bunker">
-      Búnker de las Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
+      Búnker de las<br>Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <div class="hunt-map-coming-soon hunt-map-coming-soon--northwest"><span>Próximamente</span></div>
+    <button type="button" class="hunt-map-zone hunt-map-zone--nuncabasta${activeRegionId === 'nuncabasta-peaks' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="nuncabasta-peaks">
+      Picos de<br>Nuncabasta${activeRegionId === 'nuncabasta-peaks' ? '<i aria-hidden="true">!</i>' : ''}
+    </button>
   </section>
   `;
 }

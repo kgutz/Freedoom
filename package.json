@@ -1,12 +1,12 @@
 {
   "name": "freedoom",
   "private": true,
-  "version": "2.28.47",
+  "version": "2.29.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "npm run build:standalone && vite build",
-    "build:standalone": "esbuild src/main.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=app.js",
+    "build:standalone": "esbuild ./src/main.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=app.js",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -15,6 +15,10 @@
     "esbuild": "^0.28.1",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.0",
+    "lz-string": "1.5.0"
   }
 }

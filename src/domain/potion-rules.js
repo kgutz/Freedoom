@@ -5,6 +5,7 @@ import {
   POTION_BY_ID,
   POTION_DAILY_LIMITS,
   POTION_DURATION_MS,
+  POTION_ENERGY_RESTORES,
 } from '../data/potion-data.js';
 import {
   habitEntryKey,
@@ -94,7 +95,12 @@ export function purchasePotion({ inventory, economy, potionId, operationId, quan
   return { ok: true, inventory: { ...inventory, potions }, economy: safeEconomy };
 }
 
-export function usePotion({ inventory, potionId, dayKey, bossKey = '', nowTimestamp = Date.now() }) {
+export function potionEnergyRestore(potions, dayKey) {
+  const used = normalizePotionState(potions).dailyUses[dayKey]?.energy || 0;
+  return POTION_ENERGY_RESTORES[used] || 0;
+}
+
+export function usePotion({ inventory, potionId, dayKey, bossKey = '', nowTimestamp = Date.now(), huntEnergy = 0, huntEnergyCapacity = 20 }) {
   const potions = normalizePotionState(inventory?.potions);
   const definition = POTION_BY_ID[potionId];
   if (!definition) return { ok: false, reason: 'unknown', inventory: { ...inventory, potions } };
@@ -113,6 +119,10 @@ export function usePotion({ inventory, potionId, dayKey, bossKey = '', nowTimest
   if (dailyLimit && used >= dailyLimit) {
     return { ok: false, reason: 'limit', inventory: { ...inventory, potions } };
   }
+  const energyRestore = potionId === 'energy' ? potionEnergyRestore(potions, dayKey) : 0;
+  if (energyRestore && huntEnergy > huntEnergyCapacity - energyRestore) {
+    return { ok: false, reason: 'energy_capacity', energyRestore, inventory: { ...inventory, potions } };
+  }
   if (['fortune', 'experience'].includes(potionId) && potions.active?.endsAt > nowTimestamp) {
     return { ok: false, reason: 'active', inventory: { ...inventory, potions } };
   }
@@ -127,6 +137,7 @@ export function usePotion({ inventory, potionId, dayKey, bossKey = '', nowTimest
     ok: true,
     inventory: { ...inventory, potions },
     uses: dailyLimit ? used + 1 : null,
+    energyRestore,
     active: potions.active,
   };
 }

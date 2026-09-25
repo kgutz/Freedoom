@@ -15,6 +15,7 @@ import {
   HUNT_FORTUNE_BONUS_PERCENT,
   HUNT_REGIONS,
   huntRecoveryRates,
+  recoverHuntEncounterHealth,
   localHuntDayKey,
   normalizeHuntState,
   pveHeroStats,
@@ -22,11 +23,69 @@ import {
   resolvePveAttack,
   revokeHabitHuntEnergy,
   simulatePveCombat,
+  scaledEnemy,
   startHunt,
   syncHabitSetHuntEnergy,
 } from './pve-combat-rules.js';
 
 describe('PvE combat rules', () => {
+  it('reduce exactamente un 5% solo defensa y constitución de Madre en Medio', () => {
+    for (const region of Object.values(HUNT_REGIONS)) {
+      for (const difficultyId of ['easy', 'medium', 'hard']) {
+        const difficulty = { ...huntDifficultyForRegion(region.id, difficultyId), enemyStatMultipliers: undefined };
+        for (const enemy of region.enemies) {
+          const previous = scaledEnemy(enemy, { ...difficulty, enemyEffectiveAttributeMultipliers: {} });
+          const current = scaledEnemy(enemy, difficulty);
+          if (region.id === 'fields-of-mist' && difficultyId === 'medium' && enemy.id === 'mist-mother') {
+            expect(current.defense).toBeCloseTo(previous.defense * 0.95);
+            expect(current.attributes.constitution).toBeCloseTo(previous.attributes.constitution * 0.95);
+            expect(current.maxHp).toBeCloseTo(20 + previous.attributes.constitution * 0.95 * 6);
+            expect(current.physicalAttack).toBe(previous.physicalAttack);
+            expect(current.magicAttack).toBe(previous.magicAttack);
+            expect(current.criticalChance).toBe(previous.criticalChance);
+            expect(current.dodgeChance).toBe(previous.dodgeChance);
+          } else {
+            expect(current).toEqual(previous);
+          }
+        }
+      }
+    }
+  });
+  it.each([['medium', 5], ['hard', 11]])('respeta el nuevo acceso de Bruma %s', (difficultyId, level) => {
+    expect(startHunt({ difficultyId, level: level - 1, nowTimestamp: 1000 })).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: level });
+    expect(startHunt({ difficultyId, level, nowTimestamp: 1000 })).toMatchObject({ ok: true });
+  });
+  it('abre solo Bruma fácil desde nivel uno sin cambiar su balance', () => {
+    expect(startHunt({ regionId: 'fields-of-mist', difficultyId: 'easy', level: 1, nowTimestamp: 1000 })).toMatchObject({ ok: true });
+    expect(HUNT_DIFFICULTIES.easy).toMatchObject({ minLevel: 1, multiplier: 1.25, energyCost: 1, xp: 5 });
+    for (const [regionId, levels] of [
+      ['fields-of-mist', { easy: 1, medium: 5, hard: 11 }],
+      ['dead-hours-bunker', { easy: 13, medium: 17, hard: 22 }],
+      ['nuncabasta-peaks', { easy: 25, medium: 29, hard: 34 }],
+    ]) {
+      expect(HUNT_REGIONS[regionId].difficultyMinLevels).toEqual(levels);
+    }
+  });
+  it.each(Object.keys(HUNT_REGIONS))('conserva región, enemigos y premios al resolver %s', (regionId) => {
+    const started = startHunt({ hunt: null, regionId, difficultyId: 'easy', level: 100, nowTimestamp: 1000, seed: 42 });
+    const result = resolveHunt({ hunt: started.hunt, classId: 'sorcerer', level: 100, allocation: { power: 150, constitution: 100, defense: 50 }, nowTimestamp: 1000 + HUNT_DIFFICULTIES.easy.durationMinutes * 60000 });
+    expect(result.report.regionId).toBe(regionId);
+    expect(result.report.won).toBe(true);
+    expect(result.report.encounters.map(e => e.name)).toEqual(HUNT_REGIONS[regionId].enemies.map(e => e.name));
+    expect(result.report.rewards.xp).toBeGreaterThan(0);
+    expect(result.report.rewards.gold).toBeGreaterThan(0);
+  });
+  it.each([['easy', 25, 3], ['medium', 29, 4], ['hard', 34, 5]])('abre Nuncabasta por nivel sin aumentar materiales: %s', (difficultyId, level, energyCost) => {
+    const args = { hunt: null, regionId: 'nuncabasta-peaks', difficultyId, nowTimestamp: 1_000 };
+    expect(startHunt({ ...args, level: level - 1 })).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: level });
+    const started = startHunt({ ...args, level });
+    expect(started.ok).toBe(true);
+    expect(started.hunt.active.regionId).toBe('nuncabasta-peaks');
+    const difficulty = huntDifficultyForRegion(args.regionId, difficultyId);
+    expect(difficulty.energyCost).toBe(energyCost);
+    expect(difficulty.xp).toBeGreaterThan(huntDifficultyForRegion('dead-hours-bunker', difficultyId).xp);
+    expect(huntDropRules(args.regionId, difficultyId)).toEqual(huntDropRules('dead-hours-bunker', difficultyId));
+  });
   it('sortea cada repetición y mantiene el límite diario de dos', () => {
     const args = { rewardKey: 'repeat|d:today', target: 3 };
     const first = syncHabitRepetitionEnergy({ ...args, previousCount: 0, count: 1, roll: () => 0.09 });
@@ -115,11 +174,11 @@ describe('PvE combat rules', () => {
     expect([1, 2, 3].map(rank => relicRankEffect('relic_11', rank))).toEqual([12, 18, 25]);
   });
 
-  it('el Ojo aporta ataque físico sin alterar su magnitud ni su efecto de oro', () => {
+  it('el Ojo aporta ataque físico y Mirada petrificante por rango', () => {
     for (const rank of [1, 2, 3]) {
       expect(relicCombatBonus('relic_08', rank)).toEqual({ stat: 'physicalAttack', value: rank + 2 });
       expect(relicCombatBonuses('relic_08', rank)).toEqual([{ stat: 'physicalAttack', value: rank + 2 }]);
-      expect(relicRankEffect('relic_08', rank)).toBe([2, 3, 5][rank - 1]);
+      expect(relicRankEffect('relic_08', rank)).toBe([10, 15, 27][rank - 1]);
     }
   });
 
@@ -216,7 +275,8 @@ describe('PvE combat rules', () => {
     expect(result.report.heroHpBeforeRecovery).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.8));
     expect(result.report.encounters[0].recoveryAfter.hp).toBeGreaterThan(0);
     expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
+    expect(result.report.encounters[0].recoveryAfter.hp).toBeLessThanOrEqual(Math.round(result.report.heroMaxHp * 0.15));
     expect(result.report.encounters[0].nextHeroMana).toBeGreaterThanOrEqual(result.report.encounters[0].heroMana);
     expect(result.report.heroHp).toBeGreaterThan(result.report.heroHpBeforeRecovery);
     expect(result.report.heroMana).toBeGreaterThan(result.report.heroManaBeforeRecovery);
@@ -242,7 +302,7 @@ describe('PvE combat rules', () => {
     expect(result.report.recovery).toEqual({ hp: 0, mana: 0 });
     expect(result.report.heroHp).toBe(0);
     expect(result.report.heroMana).toBe(result.report.heroManaBeforeRecovery);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
     expect(result.report.encounters[1].heroHpAtStart).toBe(result.report.encounters[0].nextHeroHp);
   });
 
@@ -253,13 +313,13 @@ describe('PvE combat rules', () => {
       hunt: started.hunt,
       classId: 'sorcerer',
       level: 12,
-      allocation: { power: 2 },
+      allocation: { power: 2, constitution: 4 },
       nowTimestamp: now + HUNT_DIFFICULTIES.hard.durationMinutes * 60_000,
     });
     expect(result.report).toMatchObject({ won: false, heroDied: true, defeatedEnemies: 2 });
     expect(result.report.recovery.hp).toBe(0);
     expect(result.report.heroHp).toBe(0);
-    expect(result.report.encounters[0].nextHeroHp).toBeGreaterThanOrEqual(Math.round(result.report.heroMaxHp * 0.7));
+    expect(result.report.encounters[0].nextHeroHp).toBe(recoverHuntEncounterHealth(result.report.encounters[0].heroHp, result.report.heroMaxHp));
     expect(result.report.encounters[1].recoveryAfter.hp).toBeGreaterThan(0);
     expect(result.report.encounters[2].heroHpAtStart).toBe(result.report.encounters[1].nextHeroHp);
   });
@@ -554,8 +614,8 @@ describe('PvE combat rules', () => {
   });
 
   it('bloquea cada dificultad hasta alcanzar su nivel mínimo', () => {
-    const blocked = startHunt({ hunt: null, difficultyId: 'hard', level: 11, nowTimestamp: 1_000 });
-    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 12 });
+    const blocked = startHunt({ hunt: null, difficultyId: 'hard', level: 10, nowTimestamp: 1_000 });
+    expect(blocked).toMatchObject({ ok: false, reason: 'level-locked', requiredLevel: 11 });
   });
 
   it('abre el Búnker como una región independiente a partir del nivel trece', () => {
@@ -584,7 +644,7 @@ describe('PvE combat rules', () => {
   });
 
   it('conserva la Bruma en 1/2/3 y el Búnker en 3/4/5 sin cambiar recompensas', () => {
-    expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toBe(HUNT_DIFFICULTIES.hard);
+    expect(huntDifficultyForRegion('fields-of-mist', 'hard')).toMatchObject(HUNT_DIFFICULTIES.hard);
     expect(huntDifficultyForRegion('dead-hours-bunker', 'easy')).toMatchObject({
       minLevel: 13,
       energyCost: 3,

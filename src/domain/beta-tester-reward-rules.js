@@ -40,6 +40,20 @@ export const BETA_TESTER_REWARD_DEFINITIONS = Object.freeze([
     energyPotions: 2,
     grantsFrame: false,
   }),
+  Object.freeze({
+    id: 'pioneer-beta-reward-v5',
+    displayNumber: '05',
+    active: true,
+    title: 'Un impulso para tus reliquias',
+    intro: 'Los ajustes de reliquias pueden haberte llevado a gastar Sangre de Jefe al reorganizar tu equipo. Recibe 2 unidades de Sangre de Jefe, 2 Pociones de Vigor y 150 de oro como compensación. Gracias por ayudarnos a mejorar Freedom.',
+    coins: 150,
+    arcaneFibers: 0,
+    arcaneInks: 0,
+    energy: 0,
+    bossBlood: 2,
+    energyPotions: 2,
+    grantsFrame: false,
+  }),
 ]);
 
 function transactionsOf(state) {
@@ -78,6 +92,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
   const potions = normalizePotionState(state?.inventory?.potions);
   const energyPotions = Math.max(0, Math.trunc(Number(reward.energyPotions) || 0));
   potions.owned.energy = Math.max(0, Number(potions.owned.energy) || 0) + energyPotions;
+  const bossBlood = Math.max(0, Math.trunc(Number(reward.bossBlood) || 0));
   const nextState = {
     ...state,
     inventory: {
@@ -105,6 +120,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
             arcaneInks: reward.arcaneInks || 0,
             energy: energyGrant.granted,
             energyPotions,
+            bossBlood,
             frameId: reward.frameId,
           },
         },
@@ -112,6 +128,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
     },
     economy: {
       ...economy,
+      bossBlood: Math.max(0, Math.trunc(Number(economy.bossBlood) || 0)) + bossBlood,
       coins: Math.max(0, Math.trunc(Number(economy.coins) || 0)) + reward.coins,
       arcaneFibers: Math.max(0, Math.trunc(Number(economy.arcaneFibers) || 0)) + reward.arcaneFibers,
       arcaneInks: Math.max(0, Math.trunc(Number(economy.arcaneInks) || 0)) + (reward.arcaneInks || 0),
@@ -125,6 +142,7 @@ export function claimBetaTesterReward(state, rewardId, nowTimestamp = Date.now()
           arcaneInks: reward.arcaneInks || 0,
           energy: energyGrant.granted,
           energyPotions,
+          bossBlood,
           frameId: reward.frameId,
           at: claimedAt,
         },

@@ -66,7 +66,7 @@
       </div>
       <div class="ob-field" id="obLimitField">
         <label for="obLimit">Objetivo diario inicial</label>
-        <div class="ob-input-unit"><input type="number" id="obLimit" min="1" max="99" placeholder="—" autocomplete="off"><span>cigarros</span></div>
+        <div class="ob-input-unit"><input type="number" id="obLimit" min="0" max="99" placeholder="—" autocomplete="off"><span>cigarros</span></div>
         <p class="ob-note">Cada semana el objetivo bajará en 1.</p>
       </div>
       <div id="obControlledFields" style="display:none">
@@ -152,17 +152,120 @@
       <div class="ob-hero-preview" id="obHeroPreview"></div>
       <div class="ob-field">
         <label for="obName">Nombre del héroe</label>
-        <input type="text" id="obName" maxlength="16" placeholder="Nombre del héroe" autocomplete="off">
+        <input type="text" id="obName" maxlength="16" placeholder="Nombre del héroe" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.28.47</div>
+  <div class="ob-version" id="obVersion">v2.29</div>
 </div>
 
 <div id="loading" class="loading">
   <img src="backgrounds/onboarding_bg.webp" alt="" class="onboarding-scene" aria-hidden="true">
   <img src="logo.webp" alt="Freedom" class="load-logo" onerror="this.style.display='none'">
+  <div class="auth-return-status" id="authReturnStatus" hidden role="status" aria-live="polite">
+    <span class="auth-return-spinner" aria-hidden="true"></span>
+    <strong>Conectando con Google…</strong>
+    <small>Estamos preparando tu aventura.</small>
+  </div>
+</div>
+
+<!-- AUTH CLOUD PREVIEW: se conecta a Supabase en la siguiente fase -->
+<section id="authGate" class="auth-gate" hidden aria-labelledby="authTitle">
+  <img src="backgrounds/onboarding_bg.webp" alt="" class="auth-scene" aria-hidden="true">
+  <div class="auth-shell">
+    <img src="logo.webp" alt="Freedom" class="auth-logo">
+    <div class="auth-card">
+      <div class="auth-heading">
+        <span class="auth-kicker" id="authKicker">CUENTA DE FREEDOM</span>
+        <h1 id="authTitle">Continúa tu aventura</h1>
+        <p id="authSubtitle">Tu progreso, protegido y disponible en tus dispositivos.</p>
+      </div>
+
+      <form class="auth-view" id="authLogin" data-auth-view="login">
+        <p class="auth-error" id="authLoginError" role="alert" hidden></p>
+        <button class="auth-google" id="authGoogleSignIn" type="submit"><span class="auth-google-mark" aria-hidden="true">G</span>Continuar con Google</button>
+        <p class="auth-invite-copy">¿Todavía no tienes acceso? <button type="button" class="auth-link" data-auth-target="invite-request">Introducir código</button></p>
+      </form>
+
+      <form class="auth-view active" id="authInviteRequest" data-auth-view="invite-request">
+        <label class="auth-field" for="authInviteCode"><span>Código Freedom Beta</span><input id="authInviteCode" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Introduce tu código" required></label>
+        <p class="auth-privacy-note">Validaremos el código de forma segura. Después Google verificará tu identidad sin enviar correos de invitación.</p>
+        <p class="auth-error" id="authInviteError" role="alert" hidden></p>
+        <button class="auth-google" id="authInviteGoogle" type="submit" disabled><span class="auth-google-mark" aria-hidden="true">G</span>Continuar con Google</button>
+        <p class="auth-invite-copy">¿Ya tienes una cuenta autorizada? <button type="button" class="auth-link" data-auth-target="login">Entra con Google</button></p>
+      </form>
+
+      <div class="auth-view" data-auth-view="invite-sent">
+        <div class="auth-icon auth-icon--success" aria-hidden="true">✓</div>
+        <h2>Revisa tu correo</h2><p>Si los datos son válidos, recibirás un enlace personal para verificar tu correo y crear tu contraseña.</p>
+        <button type="button" class="auth-primary" data-auth-target="login">Volver al acceso</button>
+      </div>
+
+      <form class="auth-view" id="authSetPassword" data-auth-view="set-password">
+        <div class="auth-callout"><span aria-hidden="true">✦</span><div><b>Invitación verificada</b><small>Elige una contraseña para proteger tu cuenta.</small></div></div>
+        <label class="auth-field" for="authNewPassword"><span>Nueva contraseña</span><span class="auth-password-wrap"><input id="authNewPassword" type="password" autocomplete="new-password" placeholder="Mínimo 10 caracteres" required><button type="button" class="auth-password-toggle" data-toggle-password="authNewPassword" aria-label="Mostrar contraseña">VER</button></span></label>
+        <div class="auth-strength" id="authStrength" data-level="0"><i></i><i></i><i></i><i></i><span>Usa mayúsculas, minúsculas, números y símbolos</span></div>
+        <label class="auth-field" for="authConfirmPassword"><span>Repite la contraseña</span><input id="authConfirmPassword" type="password" autocomplete="new-password" placeholder="Repite la contraseña" required></label>
+        <p class="auth-error" id="authPasswordError" role="alert" hidden></p>
+        <button class="auth-primary" type="submit">Crear mi cuenta <span aria-hidden="true">→</span></button>
+        <button type="button" class="auth-secondary" data-auth-target="login">Ya tengo una cuenta</button>
+      </form>
+
+      <form class="auth-view" id="authRecover" data-auth-view="recover">
+        <div class="auth-icon" aria-hidden="true">↺</div>
+        <label class="auth-field" for="authRecoveryEmail"><span>Correo electrónico</span><input id="authRecoveryEmail" type="email" autocomplete="email" inputmode="email" placeholder="tu@correo.com" required></label>
+        <p class="auth-privacy-note">Si existe una cuenta, recibirás un enlace seguro. No confirmaremos públicamente qué correos están registrados.</p>
+        <p class="auth-error" id="authRecoveryError" role="alert" hidden></p>
+        <button class="auth-primary" type="submit">Enviar enlace de recuperación</button>
+        <button type="button" class="auth-secondary" data-auth-target="login">Volver a iniciar sesión</button>
+      </form>
+
+      <div class="auth-view" data-auth-view="recovery-sent">
+        <div class="auth-icon auth-icon--success" aria-hidden="true">✓</div>
+        <h2>Revisa tu correo</h2><p>Si existe una cuenta asociada, hemos enviado un enlace para restablecer la contraseña.</p>
+        <button type="button" class="auth-primary" data-auth-target="login">Volver al acceso</button>
+      </div>
+
+      <div class="auth-view" data-auth-view="migration">
+        <div class="auth-callout auth-callout--migration"><span aria-hidden="true">⌁</span><div><b>Encontramos una partida local</b><small>Decide si quieres vincularla a esta cuenta.</small></div></div>
+        <div class="auth-save-summary"><div><span>Días registrados</span><b id="authMigrationDays">0</b></div><div><span>Hábitos</span><b id="authMigrationHabits">0</b></div><div><span>Héroe</span><b id="authMigrationHero">Sin elegir</b></div></div>
+        <p class="auth-privacy-note">La vinculación se hará una sola vez. Antes de guardar en la nube volverás a ver un resumen final.</p>
+        <p class="auth-error" id="authMigrationError" role="alert" hidden></p>
+        <button type="button" class="auth-primary" id="authLinkSave">Vincular esta partida <span aria-hidden="true">→</span></button>
+        <button type="button" class="auth-secondary" id="authSkipSave">Continuar sin vincular</button>
+        <button type="button" class="auth-danger-link" id="authSignOutPreview">Cerrar sesión y usar otra cuenta</button>
+      </div>
+    </div>
+    <p class="auth-footer">Tu acceso lo protege Google. Freedom nunca puede ver tu contraseña.</p>
+  </div>
+</section>
+
+<div class="modal-bg center" id="authRateLimitBg" style="z-index:80">
+  <div class="modal auth-rate-limit-modal" role="dialog" aria-modal="true" aria-labelledby="authRateLimitTitle">
+    <div class="auth-icon" aria-hidden="true">⌛</div>
+    <h3 id="authRateLimitTitle">Enlace ya solicitado</h3>
+    <p id="authRateLimitMessage">Revisa tu correo antes de solicitar otro enlace.</p>
+    <button class="close" id="authRateLimitClose" type="button">Entendido</button>
+  </div>
+</div>
+
+<div class="modal-bg center" id="authDuplicateSaveBg" style="z-index:160">
+  <div class="modal auth-rate-limit-modal" role="dialog" aria-modal="true" aria-labelledby="authDuplicateSaveTitle">
+    <div class="auth-icon" aria-hidden="true">⛨</div>
+    <h3 id="authDuplicateSaveTitle">Esta partida ya está vinculada</h3>
+    <p>Esta partida pertenece a otra cuenta de Freedom y no puede copiarse aquí. Tus datos y recursos permanecen intactos.</p>
+    <button class="close" id="authDuplicateSaveClose" type="button">Entendido</button>
+  </div>
+</div>
+
+<div class="modal-bg center" id="authExistingAccountBg" style="z-index:160">
+  <div class="modal auth-rate-limit-modal" role="dialog" aria-modal="true" aria-labelledby="authExistingAccountTitle">
+    <div class="auth-icon auth-icon--success" aria-hidden="true">✓</div>
+    <h3 id="authExistingAccountTitle">Esta cuenta ya está registrada</h3>
+    <p>Tu cuenta de Google ya tiene acceso a Freedom. No necesitas volver a usar el código de la beta.</p>
+    <button class="close" id="authExistingAccountContinue" type="button">Entrar en Freedom</button>
+  </div>
 </div>
 
 <div id="app" style="display:none">
@@ -320,9 +423,9 @@
         </div>
         <svg id="grafSvg" class="graf-svg" viewBox="0 0 360 230" xmlns="http://www.w3.org/2000/svg"></svg>
         <div class="graf-sum">
-          <div class="pk"><b id="sumPico">–</b>Pico<span id="sumPicoDia" style="display:block"></span></div>
-          <div class="mn"><b id="sumMin">–</b>Mínimo<span id="sumMinDia" style="display:block"></span></div>
-          <div class="md"><b id="sumMedia">–</b>Media/día</div>
+          <div class="pk"><b id="sumPico">–</b><span id="sumPicoLabel">Pico</span><span id="sumPicoDia" style="display:block"></span></div>
+          <div class="mn"><b id="sumMin">–</b><span id="sumMinLabel">Mínimo</span><span id="sumMinDia" style="display:block"></span></div>
+          <div class="md"><b id="sumMedia">–</b><span id="sumMediaLabel">Media/día</span></div>
         </div>
         <p class="hint" id="chartHint">La línea discontinua es el límite diario de cada semana. Verde: tu mejor día. Rojo: días por encima del límite.</p>
       </div>
@@ -337,6 +440,16 @@
   <div class="sheet">
     <div class="sheet-head"><h3>Ajustes</h3><button class="sheet-close" data-sheet="sheetSet">✕</button></div>
     <div class="settings-content">
+      <div class="settings-section-title"><span aria-hidden="true">◎</span><div><b>Cuenta</b><small>Acceso y sesión de Google</small></div></div>
+      <section class="settings-account" id="settingsAccount" hidden aria-labelledby="settingsAccountTitle">
+        <div class="settings-account-mark" aria-hidden="true">G</div>
+        <div class="settings-account-copy">
+          <b id="settingsAccountTitle">Conectado con Google</b>
+          <span id="settingsAccountEmail"></span>
+        </div>
+        <button type="button" id="settingsSignOut">Cerrar sesión</button>
+      </section>
+      <div class="settings-section-title"><span aria-hidden="true">↟</span><div><b>Plan y objetivos</b><small>Camino, límites y calendario</small></div></div>
       <div class="set-row">
         <label for="cfgStart">Inicio del plan</label>
         <input type="date" id="cfgStart">
@@ -344,14 +457,6 @@
       <div class="set-row" id="settingsLimitRow">
         <label for="cfgLimit">Límite diario semana 1</label>
         <input type="number" id="cfgLimit" min="1" max="99" style="width:80px">
-      </div>
-      <div class="set-row">
-        <label for="cfgWake">Me levanto a las</label>
-        <input type="time" id="cfgWake">
-      </div>
-      <div class="set-row">
-        <label for="cfgSleep">Me acuesto a las</label>
-        <input type="time" id="cfgSleep">
       </div>
       <div class="set-row">
         <label>Camino actual</label>
@@ -402,10 +507,20 @@
           <input type="number" id="cfgControlledWeeklyLimit" min="1" max="99" style="width:80px">
         </div>
       </div>
+      <div class="settings-section-title"><span aria-hidden="true">☼</span><div><b>Rutina diaria</b><small>Horarios y cambio de día</small></div></div>
+      <div class="set-row">
+        <label for="cfgWake">Me levanto a las</label>
+        <input type="time" id="cfgWake">
+      </div>
+      <div class="set-row">
+        <label for="cfgSleep">Me acuesto a las</label>
+        <input type="time" id="cfgSleep">
+      </div>
       <div class="set-row">
         <label for="cfgDayStart">El día cambia a las</label>
         <input type="time" id="cfgDayStart">
       </div>
+      <div class="settings-section-title"><span aria-hidden="true">✓</span><div><b>Seguimiento</b><small>Registros diarios de salud</small></div></div>
       <div class="set-row">
         <label for="cfgPills">Pastillas al día</label>
         <input type="number" id="cfgPills" min="1" max="10" style="width:80px">
@@ -417,18 +532,20 @@
           <button class="st-tg" id="beerNo" data-beer="no">No</button>
         </div>
       </div>
+      <div class="settings-section-title"><span aria-hidden="true">♜</span><div><b>Héroe</b><small>Identidad y clase del personaje</small></div></div>
       <div class="set-row">
         <label for="cfgHeroName">Nombre del héroe</label>
-        <input type="text" id="cfgHeroName" maxlength="16" style="width:150px">
+        <input type="text" id="cfgHeroName" maxlength="16" style="width:150px" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="set-row">
         <label>Clase del héroe</label>
         <button class="mini-btn" id="cfgResetCls">Cambiar clase</button>
       </div>
+      <div class="settings-section-title"><span aria-hidden="true">⚙</span><div><b>Aplicación</b><small>Versión y reinicio</small></div></div>
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.28.47</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29</span></p>
       </div>
     </div>
   </div>
@@ -581,7 +698,7 @@
           </details>
           <details class="faq-item" data-faq-item="qué pasa combate cacería atributos reliquias vida maná pociones automático informe">
             <summary><span>¿Qué ocurre durante una expedición?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Tu héroe combate hasta tres enemigos usando clase, nivel, Atributos y reliquias. Entra con su Vida y Maná actuales y conserva el estado de salida.</p><p>Puedes permitir el uso automático de Pociones de Vida y Maná. Al terminar, el informe muestra rondas, daño, recuperación, pociones y botín de cada encuentro.</p></div>
+            <div class="faq-answer"><p>Tu héroe combate hasta tres enemigos usando clase, nivel, Atributos y reliquias. Entra con su Vida y Maná actuales y conserva el estado de salida.</p><p>Tras vencer, si queda otro enemigo, recupera un 15% de su Vida máxima, hasta el 70%. Si ya supera ese límite no pierde Vida. La recuperación de las reliquias se añade después y puede superar ese límite, sin exceder la Vida máxima. La recuperación al salir se calcula por separado.</p><p>Solo en Difícil, Desgarro añade a cada golpe enemigo un porcentaje de tu Vida actual, indicado antes de entrar. Puede ser crítico o esquivado; Ojo y Malla reducen el golpe completo. Un enemigo derrotado no responde.</p><p>En Búnker Difícil, el minijefe tiene Tenacidad: cada golpe puede quitarle como máximo un 49% de su Vida máxima. La curación por Vampirismo usa el daño real causado.</p><p>Puedes permitir el uso automático de Pociones de Vida y Maná. Al terminar, el informe muestra rondas, daño, recuperación, pociones y botín de cada encuentro.</p></div>
           </details>
           <details class="faq-item" data-faq-item="informe pendiente resultado dónde zona mapa no puedo iniciar otra cacería recoger botín">
             <summary><span>¿Por qué no puedo iniciar otra Cacería?</span><span class="faq-icon" aria-hidden="true"></span></summary>
@@ -655,15 +772,15 @@
         <div class="faq-category-body">
           <details class="faq-item" data-faq-item="dónde guarda mi partida dispositivo automáticamente">
             <summary><span>¿Dónde se guarda mi partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Freedom guarda automáticamente en el almacenamiento de este dispositivo y conserva copias recientes, diarias, semanales y una última partida con información. Una acción importante puede tardar un instante en quedar confirmada.</p><p><b>Para proteger tu progreso:</b> exporta periódicamente el archivo desde Copias de seguridad y envíatelo o guárdalo fuera del móvil. No existe cuenta ni nube; otra instalación, navegador o dispositivo no comparte la misma partida.</p></div>
+            <div class="faq-answer"><p>Freedom guarda automáticamente tu partida en tu cuenta y mantiene un historial reciente protegido en la nube. También conserva una copia local para que puedas seguir jugando ante una interrupción breve.</p><p>Al iniciar sesión en otro dispositivo, Freedom recupera la partida vinculada a tu cuenta. Nadie más puede leerla mediante la aplicación.</p></div>
           </details>
           <details class="faq-item" data-faq-item="cómo recupero partida copia seguridad restaurar">
             <summary><span>¿Cómo recupero una partida?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>Abre <b>Menú → Copias de seguridad</b>. Compara fecha, nivel y cantidad de información antes de restaurar; Freedom destaca la opción más segura cuando puede identificarla. Restaurar sustituye la partida activa.</p><p>Para mover una partida, usa <b>Exportar partida</b>, comparte el archivo .txt y selecciónalo con <b>Importar partida</b> en el dispositivo de destino. Comprueba el resumen y confirma solo si corresponde a la partida correcta.</p></div>
+            <div class="faq-answer"><p>Abre <b>Menú → Soporte y recuperación</b> y crea un ticket explicando qué ocurrió. El ticket se vincula a la revisión y al historial de tu partida sin que tengas que enviar archivos.</p><p>Soporte revisará el caso y solo restaurará o corregirá información con tu autorización.</p></div>
           </details>
           <details class="faq-item" data-faq-item="qué hago cambio no se guardó error espacio cerrar">
             <summary><span>¿Qué hago si un cambio no se guardó?</span><span class="faq-icon" aria-hidden="true"></span></summary>
-            <div class="faq-answer"><p>No cierres, borres datos ni reinstales la aplicación. Espera unos segundos y abre <b>Copias de seguridad</b> para comprobar si existe una copia reciente con tu progreso.</p><p>Compara fecha, nivel y recursos antes de restaurar. Si puedes abrir la partida actual, expórtala primero como medida de seguridad; conserva ambos archivos hasta confirmar que todo funciona.</p></div>
+            <div class="faq-answer"><p>No borres datos ni reinstales la aplicación. Comprueba tu conexión y espera unos segundos para que Freedom vuelva a sincronizar.</p><p>Si el cambio sigue sin aparecer, abre <b>Soporte y recuperación</b> y crea un ticket. Tu historial en la nube permitirá investigar el problema sin que modifiques la partida.</p></div>
           </details>
         </div>
       </details>
@@ -697,9 +814,10 @@
   <button type="button" class="shop-return-character" id="inventoryReturnCharacter" data-return-character-sheet hidden>‹ Volver a Ficha</button>
   <div class="sheet inventory-sheet">
     <div class="sheet-head sk-head-center"><h3>Inventario</h3><button class="sheet-close" data-sheet="sheetInventory">✕</button></div>
-    <div class="inventory-tabs" role="tablist" aria-label="Bolso y Mercado">
+    <div class="inventory-tabs" role="tablist" aria-label="Bolso, Mercado y Templo">
       <button type="button" class="active" id="bagTab" role="tab" aria-selected="true">Bolso</button>
       <button type="button" id="shopTab" role="tab" aria-selected="false">Mercado</button>
+      <button type="button" id="templeTab" role="tab" aria-selected="false">Templo</button>
     </div>
     <div id="bagBody">
       <div id="inventoryBody"></div>
@@ -707,6 +825,7 @@
     </div>
     <div id="forgeBody" hidden></div>
     <div id="shopBody" hidden></div>
+    <div id="templeBody" hidden></div>
   </div>
 </div>
 
@@ -736,14 +855,6 @@
   </div>
 </div>
 
-<div class="modal-bg center" id="relicEffectInfoBg" style="z-index:32">
-  <div class="modal relic-effect-info-modal" role="dialog" aria-modal="true" aria-labelledby="relicEffectInfoTitle">
-    <span class="relic-effect-info-kicker">EFECTO EXTRA</span>
-    <h3 id="relicEffectInfoTitle"></h3>
-    <p id="relicEffectInfoDescription"></p>
-    <button class="close" id="relicEffectInfoClose" type="button">Entendido</button>
-  </div>
-</div>
 
 <div class="sheet-bg" id="sheetHeroSkills" style="z-index:29">
   <div class="sheet hero-skills-sheet">
@@ -809,7 +920,8 @@
   <div class="modal">
     <h3 id="backupTitle">Copia de seguridad</h3>
     <div class="backup-scroll-body">
-      <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…"></textarea>
+      <p class="hint">La copia contiene tus hábitos, registros personales y progreso. Guárdala en un lugar privado y solo importa archivos de confianza.</p>
+      <textarea id="backupText" style="width:100%;height:150px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:10px;resize:none" placeholder="Pega aquí tu copia de seguridad…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
       <input id="backupFile" type="file" accept=".txt,.json,text/plain,application/json" hidden>
       <button class="close" id="backupAction">Importar</button>
     </div>
@@ -902,6 +1014,10 @@
         <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardInks">
           <span class="resource-icon resource-icon--arcane-ink" role="img" aria-label="Tinta Arcana"></span>
           <strong id="betaTesterRewardInksAmount">+20</strong><small>TINTAS ARCANAS</small>
+        </div>
+        <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardBlood" hidden>
+          <span class="resource-icon resource-icon--boss-blood" role="img" aria-label="Sangre de Jefe"></span>
+          <strong id="betaTesterRewardBloodAmount">+2</strong><small>SANGRE DE JEFE</small>
         </div>
         <div class="pioneer-reward-item beta-tester-resource-reward" id="betaTesterRewardEnergyPotions" hidden>
           <img class="beta-tester-potion-art" src="potions/potion_energy.webp" alt="" loading="lazy" decoding="async">
@@ -1150,7 +1266,7 @@
     <h3 id="menuTitle" style="display:none">Menú</h3>
     <button class="menu-item" id="menuInstr">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5h6c1.2 0 2 .8 2 2V20c-.5-1-1.5-1.5-2.7-1.5H5z"/><path d="M19 4.5h-6c-1.2 0-2 .8-2 2V20c.5-1 1.5-1.5 2.7-1.5H19z" transform="translate(0 0)"/></svg>
-      Ayuda
+      Guía
     </button>
     <button class="menu-item" id="menuAjustes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.2" fill="var(--panel2)"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.2" fill="var(--panel2)"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="7" cy="17" r="2.2" fill="var(--panel2)"/></svg>
@@ -1158,7 +1274,7 @@
     </button>
     <button class="menu-item" id="menuRecoveries">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7.5C5 5.6 8.1 4 12 4s7 1.6 7 3.5S15.9 11 12 11 5 9.4 5 7.5Z"/><path d="M5 7.5v4c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-4"/><path d="M5 11.5v4c0 1.9 3.1 3.5 7 3.5s7-1.6 7-3.5v-4"/></svg>
-      Copias de seguridad
+      Soporte y recuperación
     </button>
   </div>
 </div>
@@ -1236,28 +1352,52 @@
   </div>
 </div>
 
-<!-- COPIAS DE SEGURIDAD -->
+<!-- SOPORTE Y RECUPERACIÓN -->
 <div class="modal-bg center" id="recoveryBg" style="z-index:32">
   <div class="modal recovery-modal">
-    <h3>Copias de seguridad</h3>
-    <p class="hint" style="margin-top:-8px">Recupera una partida anterior guardada automáticamente.</p>
+    <div class="sheet-head support-sheet-head">
+      <h3>Soporte y recuperación</h3>
+      <button class="sheet-close" id="recoveryClose" type="button" aria-label="Cerrar soporte y recuperación">✕</button>
+    </div>
+    <div class="support-heading">
+      <span class="support-kicker">CUENTA DE FREEDOM</span>
+      <p class="hint">Si algo no va bien, crea un ticket vinculado de forma segura a tu partida.</p>
+    </div>
+    <section class="support-ticket-card" aria-labelledby="supportTicketTitle">
+      <div class="support-ticket-icon" aria-hidden="true">✦</div>
+      <div class="support-ticket-copy">
+        <b id="supportTicketTitle">¿Necesitas ayuda?</b>
+        <small>Describe lo ocurrido. Recibirás un número de ticket para consultar el caso sin enviar tu partida por correo o WhatsApp.</small>
+      </div>
+      <label class="support-field">
+        <span>¿Qué ha ocurrido?</span>
+        <select id="supportTicketCategory">
+          <option value="lost_progress">He perdido progreso</option>
+          <option value="incorrect_data">Mis datos no coinciden</option>
+          <option value="access_problem">No puedo entrar</option>
+          <option value="other">Otro problema</option>
+        </select>
+      </label>
+      <label class="support-field">
+        <span>Cuéntanos el problema</span>
+        <textarea id="supportTicketDescription" maxlength="2000" rows="4" placeholder="Explícanos qué estabas haciendo y qué esperabas que ocurriera."></textarea>
+      </label>
+      <label class="support-consent">
+        <input id="supportTicketConsent" type="checkbox">
+        <span>Autorizo a vincular este ticket con la revisión actual y el historial de mi partida para investigar el problema.</span>
+      </label>
+      <button class="support-ticket-submit" id="supportTicketSubmit" type="button">Abrir ticket</button>
+      <div class="support-ticket-result" id="supportTicketResult" role="status" hidden></div>
+    </section>
     <div class="storage-health" id="storageHealth" data-state="idle">
       <span class="storage-health-dot" aria-hidden="true"></span>
       <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
     </div>
-    <div id="recoveryList" class="recovery-list"></div>
-    <div class="recovery-manual" id="emergencyRecoverySection" hidden>
-      <div class="recovery-manual-copy">
-        <b>Recuperación de emergencia</b>
-        <small>Herramientas destinadas únicamente a recuperar o trasladar una partida. No son necesarias para el uso normal de Freedom.</small>
-      </div>
-      <div class="recovery-manual-actions">
-        <button class="mini-btn" id="btnExport" type="button">Exportar partida</button>
-        <button class="mini-btn" id="btnImport" type="button">Importar partida</button>
-        <button class="mini-btn" id="btnImportText" type="button">Pegar copia manualmente</button>
-      </div>
+    <div id="recoveryList" class="recovery-list" hidden></div>
+    <div class="support-managed-recovery">
+      <b>Tu partida está protegida</b>
+      <small>Las recuperaciones se gestionan desde el historial seguro asociado a tu ticket. No necesitas descargar ni enviar archivos.</small>
     </div>
-    <button class="close" id="recoveryClose" type="button">Cerrar</button>
   </div>
 </div>
 
@@ -1272,11 +1412,11 @@
     <div class="habit-reward-preview">Recompensa: <b id="habitRewardPreview">+3 XP · +2 oro</b></div>
     <label class="habit-field">
       <span>Nombre</span>
-      <input type="text" id="habitTitle" maxlength="60" placeholder="Ej. Caminar 20 minutos">
+      <input type="text" id="habitTitle" maxlength="60" placeholder="Ej. Caminar 20 minutos" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </label>
     <label class="habit-field">
       <span>Nota opcional</span>
-      <textarea id="habitNotes" maxlength="180" placeholder="Una pequeña ayuda o recordatorio"></textarea>
+      <textarea id="habitNotes" maxlength="180" placeholder="Una pequeña ayuda o recordatorio" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
     </label>
     <div class="habit-editor-section" id="habitDifficultySection">
       <span class="habit-editor-label">Dificultad</span>
@@ -1324,6 +1464,7 @@
   </div>
 </div>
 
+<script src="cloud-config.js"></script>
 <script src="../app.js"></script>
 </body>
 </html>
