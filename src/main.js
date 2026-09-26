@@ -240,6 +240,7 @@ import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
+import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
 import { applyFeedbackReward, isFeedbackRewardApplied, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
@@ -291,6 +292,7 @@ const AUREO_NOTICE_TARGETS=['outfits','weave','backgrounds'];
 const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
 const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-bag-market','inventory-market','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
+const CLOUD_STARTUP_TIMEOUT_MS=8000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const INITIAL_LOCATION_HREF=location.href;
@@ -7613,22 +7615,46 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       onSkipSave:()=>startOnboarding(),
     });
     const callback=new URLSearchParams(location.search).get('authCallback');
-    let session=callback==='google'&&LOCAL_CLEAN_AUTH_TEST
-      ? await cloudService.restoreSessionFromUrl(INITIAL_LOCATION_HREF)
-      : await cloudService.session();
-    if(callback==='google'&&!session) session=await cloudService.restoreSessionFromUrl(authReturnUrl);
-    const cloudSave=session?await cloudService.loadGameSave():null;
-    if(callback==='google'){
+    let cloudUnavailable=false;
+    let session=null;
+    let cloudSave=null;
+    try{
+      session=callback==='google'&&LOCAL_CLEAN_AUTH_TEST
+        ? await withCloudTimeout(cloudService.restoreSessionFromUrl(INITIAL_LOCATION_HREF),CLOUD_STARTUP_TIMEOUT_MS,'restoreSessionFromUrl')
+        : await withCloudTimeout(cloudService.session(),CLOUD_STARTUP_TIMEOUT_MS,'session');
+      if(callback==='google'&&!session) session=await withCloudTimeout(cloudService.restoreSessionFromUrl(authReturnUrl),CLOUD_STARTUP_TIMEOUT_MS,'restoreSessionFromUrl');
+      cloudSave=session?await withCloudTimeout(cloudService.loadGameSave(),CLOUD_STARTUP_TIMEOUT_MS,'loadGameSave'):null;
+    }catch(error){
+      cloudUnavailable=true;
+      console.warn('Freedom Nube no respondió a tiempo al iniciar; se continúa con la copia local',error);
+    }
+    if(cloudUnavailable&&callback){
+      await finishInitialReturnSplash();
+      authController.show('invite-request');
+      const inviteError=document.getElementById('authInviteError');
+      if(inviteError){
+        inviteError.textContent='No se pudo conectar con Freedom Nube. Comprueba tu conexión e inténtalo de nuevo en unos segundos.';
+        inviteError.hidden=false;
+      }
+      return;
+    }
+    if(cloudUnavailable){
+      setStorageHealth({
+        warning:'No se pudo conectar con Freedom Nube al iniciar. Estás jugando con la copia local; el guardado en la nube se reintentará automáticamente.'
+      });
+      /* seguir con la copia local exactamente igual que si la nube estuviera deshabilitada */
+    }
+    else if(callback==='google'){
       const betaCode=sessionStorage.getItem('freedom-beta-code')||'';
       if(betaCode){
         try{
-          if(await cloudService.hasBetaAccess()){
+          if(await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess')){
             sessionStorage.removeItem('freedom-beta-code');
             await finishInitialReturnSplash();
             authController.showExistingAccount();
             return;
           }
-          await cloudService.claimBetaAccess(betaCode);
+          await withCloudTimeout(cloudService.claimBetaAccess(betaCode),CLOUD_STARTUP_TIMEOUT_MS,'claimBetaAccess');
           sessionStorage.removeItem('freedom-beta-code');
         }catch(error){
           await finishInitialReturnSplash();
@@ -7638,7 +7664,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           return;
         }
       }
-      if(!await cloudService.hasBetaAccess()) authController.show('invite-request');
+      if(!await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess')) authController.show('invite-request');
       else await routeAuthenticatedUser();
     }
     else if(callback==='invite'||callback==='recovery') authController.show('set-password');
@@ -7671,7 +7697,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     else if(stateInformationProfile(state).meaningful) authController.show('migration');
     else startOnboarding();
     if(session&&cloudSave&&!callback){
-      try{ pendingFeedbackReward=await cloudService.pendingFeedbackReward(); }
+      try{ pendingFeedbackReward=await withCloudTimeout(cloudService.pendingFeedbackReward(),CLOUD_STARTUP_TIMEOUT_MS,'pendingFeedbackReward'); }
       catch(error){ console.warn('No se pudo consultar la recompensa de reportes',error); }
       if(pendingFeedbackReward&&isFeedbackRewardApplied(state,pendingFeedbackReward.event_id)){
         const rewardToSync=pendingFeedbackReward;
@@ -7679,7 +7705,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         void syncClaimedFeedbackReward(rewardToSync);
       }
     }
-    if(!cloudSave||!session||callback) return;
+    if(!cloudUnavailable&&(!cloudSave||!session||callback)) return;
   }
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
