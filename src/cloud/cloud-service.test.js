@@ -33,6 +33,27 @@ describe('cloud service', () => {
     expect(client.from).toHaveBeenCalledWith('game_saves');
   });
 
+  it('solo pide la revisión al comprobar una fila antes de guardar, sin descargar el estado', async () => {
+    const row = { revision: 7 };
+    let selectedColumns = null;
+    const client = {
+      auth: {},
+      from: vi.fn(() => ({
+        select: (columns) => {
+          selectedColumns = columns;
+          return { maybeSingle: async () => ({ data: row, error: null }) };
+        },
+      })),
+    };
+    const service = createCloudService({
+      client,
+      config: { enabled: true, url: 'https://example.supabase.co', publishableKey: 'sb_publishable_example' },
+    });
+    await expect(service.loadGameSaveRevision()).resolves.toEqual(row);
+    expect(client.from).toHaveBeenCalledWith('game_saves');
+    expect(selectedColumns).toBe('revision');
+  });
+
   it('crea un ticket vinculado mediante la función protegida', async () => {
     const rpc = vi.fn(async () => ({
       data: [{ ticket_code: 'FREEDOM-000001', status: 'open', save_revision: 4 }],

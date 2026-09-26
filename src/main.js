@@ -761,7 +761,7 @@ function scheduleCloudSave(){
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(async()=>{
     try{
-      const previous=await activeCloudService.loadGameSave();
+      const previous=await activeCloudService.loadGameSaveRevision();
       if(!previous) return;
       const migrationPlan=createMigrationPlan(state);
       const plan={...migrationPlan,migrationId:null};
@@ -3174,7 +3174,7 @@ function queueFeedbackReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+320){
 }
 async function persistFeedbackRewardToCloud(){
   if(!activeCloudService) throw new Error('La cuenta de Freedom no está conectada');
-  const previous=await activeCloudService.loadGameSave();
+  const previous=await activeCloudService.loadGameSaveRevision();
   if(!previous) throw new Error('No existe una partida en la nube para guardar el regalo');
   const migrationPlan=createMigrationPlan(state);
   const plan={...migrationPlan,migrationId:null};
@@ -7606,7 +7606,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           : state);
         await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
         const plan=createMigrationPlan(state);
-        const previous=await cloudService.loadGameSave();
+        const previous=await cloudService.loadGameSaveRevision();
         await cloudService.saveGameState(plan,previous?.revision||0);
         const saved=await cloudService.loadGameSave();
         if(!verifyCloudSave(saved,plan)) throw new Error('La copia no coincide. Tu partida local sigue intacta.');
