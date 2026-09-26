@@ -1083,7 +1083,7 @@
   .skill-buff-icon--intoxication{filter:drop-shadow(0 0 3px rgba(76,3,28,.78));animation:intoxicationCurseGlow 3.4s ease-in-out infinite}
   .skill-buff-icon--intoxication img{width:69%;height:69%}
   .hero-skill-hotbar{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0 0 14px;padding:8px;border:1px solid var(--line);border-radius:12px;background:rgba(20,16,12,.72)}
-  .hero-skill-slot{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;aspect-ratio:1;padding:0;overflow:hidden;border:1px solid #59451f;border-radius:8px;background:#0e0b09;color:var(--kodak);font:400 18px var(--font-display);cursor:pointer}
+  .hero-skill-slot{position:relative;display:flex;align-items:center;justify-content:center;min-width:0;aspect-ratio:1;padding:0;overflow:hidden;border:1px solid #59451f;border-radius:8px;background:#0e0b09;color:var(--kodak);font:400 18px var(--font-display);cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
   .hero-skill-slot img{display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
   .hero-skill-slot.off{opacity:.38;filter:grayscale(1)}
   .hero-skill-slot.future{border-style:dashed;color:#77684f;background:rgba(14,11,9,.65);cursor:default}
@@ -2232,6 +2232,17 @@
   .relic-effect-dialog p{font:400 14px/1.6 var(--font-copy);margin:0 0 20px;overflow-wrap:anywhere}
   .relic-effect-dialog button{width:100%;min-height:44px;border:0;border-radius:10px;background:var(--kodak);color:#1a1408;font:400 12px/1.4 var(--font-display);cursor:pointer}
   .relic-effect-dialog button:focus-visible{outline:2px solid var(--kodak);outline-offset:3px}
+  .skill-info-dialog{text-align:left;padding:18px;width:min(310px,calc(100% - 32px))}
+  .skill-info-dialog .skill-info-row{display:flex;gap:12px;align-items:center}
+  .skill-info-dialog .skill-info-icon{width:80px;height:80px;flex-shrink:0;margin:0;border:1px solid var(--line);border-radius:16px;background:#0000001a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .skill-info-dialog .skill-info-icon img{width:100%;height:100%;object-fit:cover}
+  .skill-info-dialog .skill-info-icon .sk-fallback{font:400 30px var(--font-display);color:var(--kodak)}
+  .skill-info-dialog .skill-info-text{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;min-height:80px}
+  .skill-info-dialog h3{margin:0 0 6px;color:var(--kodak);font:400 19px/1.25 var(--font-display);overflow-wrap:anywhere}
+  .skill-info-dialog p{margin:0;color:var(--text);font:400 13px/1.55 var(--font-copy);overflow-wrap:normal;word-break:normal;text-wrap:balance}
+  .skill-info-dialog .skill-info-chips{display:flex;gap:8px;margin-top:14px}
+  .skill-info-dialog .skill-info-chip{display:inline-flex;align-items:center;font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--panel2)}
+  .skill-info-dialog .skill-info-chip b{color:var(--kodak);font-family:var(--font-display);font-weight:400;font-size:13px}
   .fusion-preview-main-effects,.fusion-preview-extra{grid-column:1/-1;min-width:0}
   #relicDetailBody .relic-inspect .relic-effect-row p,#relicDetailBody .relic-inspect .relic-affixes li p{display:inline;margin:0;font-size:11px;line-height:1.55}
   #relicDetailBody .relic-inspect .relic-effect-name{display:inline;margin-right:.45em;color:var(--kodak);text-decoration:underline;text-underline-offset:3px;font:400 11px/1.55 var(--font-copy);cursor:default;letter-spacing:0;text-align:left}
