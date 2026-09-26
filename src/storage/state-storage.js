@@ -173,7 +173,11 @@ export function stateInformationProfile(state) {
     : 0;
   const hasHero = typeof game.cls === 'string' && game.cls.length > 0;
   const onboarded = safeState.onboarded === true;
-  const score =
+  // Spendable currency is intentionally excluded from structuralScore: coins/bossBlood/
+  // arcaneFibers are meant to go up and down through normal play (shop purchases, forging),
+  // so a drop there must never by itself look like catastrophic data loss.
+  const economyScore = Math.min(80, Math.floor(economyValue / 10));
+  const structuralScore =
     (onboarded ? 40 : 0) +
     (hasHero ? 80 : 0) +
     Math.min(240, dayCount * 4) +
@@ -185,14 +189,15 @@ export function stateInformationProfile(state) {
     Math.min(180, discoveredRelicCount * 25) +
     Math.min(120, claimedRewardCount * 20) +
     Math.min(60, earlyVictoryOutcomeCount * 10) +
-    Math.min(80, Math.floor(economyValue / 10)) +
     Math.min(40, forgeHistoryCount * 5) +
     Math.min(80, fusionHistoryCount * 10) +
     Math.min(60, weavingHistoryCount * 15) +
     Math.min(60, ownedOutfitCount * 20);
+  const score = structuralScore + economyScore;
 
   return {
     score,
+    structuralScore,
     onboarded,
     hasHero,
     dayCount,
@@ -246,13 +251,15 @@ export function isCatastrophicStateRegression(candidateState, referenceState) {
     (reference.discoveredRelicCount >= 1 && candidate.discoveredRelicCount === 0) ||
     (reference.fusionHistoryCount >= 1 && candidate.fusionHistoryCount === 0) ||
     (reference.claimedRewardCount >= 1 && candidate.claimedRewardCount === 0) ||
-    (reference.earlyVictoryOutcomeCount >= 1 && candidate.earlyVictoryOutcomeCount === 0) ||
-    (reference.economyValue >= 50 && candidate.economyValue === 0);
+    (reference.earlyVictoryOutcomeCount >= 1 && candidate.earlyVictoryOutcomeCount === 0);
+  // Uses structuralScore (excludes spendable currency) so a normal purchase or forging
+  // cost can never by itself look like the catastrophic loss this guard exists to catch.
   const scoreCollapsed =
-    reference.score >= 120 && candidate.score <= reference.score * 0.35;
+    reference.structuralScore >= 120 &&
+    candidate.structuralScore <= reference.structuralScore * 0.35;
 
   return lootCollapsed || scoreCollapsed ||
-    (daysCollapsed && (habitsCollapsed || bossesCollapsed || candidate.score < 120));
+    (daysCollapsed && (habitsCollapsed || bossesCollapsed || candidate.structuralScore < 120));
 }
 
 function localDateKey(timestamp) {

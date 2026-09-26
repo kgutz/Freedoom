@@ -444,6 +444,18 @@ describe('adaptador del navegador', () => {
     expect(isCatastrophicStateRegression(richState, defaultState())).toBe(false);
   });
 
+  it('no confunde gastar monedas/reliquias con una regresión catastrófica', () => {
+    const richInCoins = {
+      ...v34State,
+      economy: { coins: 5000, bossBlood: 0 },
+    };
+    const afterSpendingEverything = {
+      ...v34State,
+      economy: { coins: 0, bossBlood: 0 },
+    };
+    expect(isCatastrophicStateRegression(afterSpendingEverything, richInCoins)).toBe(false);
+  });
+
   it('protege un resultado persistido de Victoria Anticipada frente a su desaparición', () => {
     const resolved = defaultState();
     resolved.loot = {
