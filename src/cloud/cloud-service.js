@@ -143,6 +143,18 @@ export function createCloudService({ client, config, fetchImpl = globalThis.fetc
       return data;
     },
 
+    // Igual que loadGameSave, pero sin descargar el JSONB completo del estado.
+    // Úsalo cuando solo necesites saber si ya existe una fila y cuál es su
+    // revisión (comprobación previa a un guardado), no el estado en sí.
+    async loadGameSaveRevision() {
+      const { data, error } = await client
+        .from('game_saves')
+        .select('revision')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+
     async saveGameState(plan, expectedRevision) {
       const { data, error } = await client.rpc('save_game_state', {
         p_state: plan.state,

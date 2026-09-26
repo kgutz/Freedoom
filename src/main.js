@@ -240,6 +240,7 @@ import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
+import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
 import { applyFeedbackReward, isFeedbackRewardApplied, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
@@ -281,7 +282,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.5';
+const APP_VERSION='2.29.6';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -291,6 +292,7 @@ const AUREO_NOTICE_TARGETS=['outfits','weave','backgrounds'];
 const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
 const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-bag-market','inventory-market','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
+const CLOUD_STARTUP_TIMEOUT_MS=8000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
 const LOCAL_DEMO_PARAMS=new URLSearchParams(location.search);
 const INITIAL_LOCATION_HREF=location.href;
@@ -759,12 +761,11 @@ function scheduleCloudSave(){
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(async()=>{
     try{
-      const previous=await activeCloudService.loadGameSave();
+      const previous=await activeCloudService.loadGameSaveRevision();
       if(!previous) return;
       const migrationPlan=createMigrationPlan(state);
       const plan={...migrationPlan,migrationId:null};
-      await activeCloudService.saveGameState(plan,previous.revision||0);
-      const saved=await activeCloudService.loadGameSave();
+      const saved=await activeCloudService.saveGameState(plan,previous.revision||0);
       if(!verifyUpdatedCloudSave(saved,plan)){
         throw new Error('La verificación del guardado remoto no coincide');
       }
@@ -3172,12 +3173,11 @@ function queueFeedbackReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+320){
 }
 async function persistFeedbackRewardToCloud(){
   if(!activeCloudService) throw new Error('La cuenta de Freedom no está conectada');
-  const previous=await activeCloudService.loadGameSave();
+  const previous=await activeCloudService.loadGameSaveRevision();
   if(!previous) throw new Error('No existe una partida en la nube para guardar el regalo');
   const migrationPlan=createMigrationPlan(state);
   const plan={...migrationPlan,migrationId:null};
-  await activeCloudService.saveGameState(plan,previous.revision||0);
-  const saved=await activeCloudService.loadGameSave();
+  const saved=await activeCloudService.saveGameState(plan,previous.revision||0);
   if(!verifyUpdatedCloudSave(saved,plan)){
     throw new Error('La recompensa no quedó verificada en la nube');
   }
@@ -7352,9 +7352,8 @@ bindBackupControls({
     const candidate=ensureCloudIdentity(migratePioneerRewardEligibility(imported,{existingProfile:true}).state);
     if(activeCloudService){
       const plan=createMigrationPlan(candidate);
-      const previous=await activeCloudService.loadGameSave();
-      await activeCloudService.saveGameState(plan,previous?.revision||0);
-      const saved=await activeCloudService.loadGameSave();
+      const previous=await activeCloudService.loadGameSaveRevision();
+      const saved=await activeCloudService.saveGameState(plan,previous?.revision||0);
       if(!verifyCloudSave(saved,plan)){
         throw new Error('La copia no coincide. La partida local sigue intacta.');
       }
@@ -7563,15 +7562,20 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     activeCloudService=cloudService;
     const enterExistingGame=()=>location.reload();
     let authController;
-    const routeAuthenticatedUser=async()=>{
+    const routeAuthenticatedUser=async(known={})=>{
       if(new URLSearchParams(location.search).has('authCallback')){
         history.replaceState({},'',authenticatedEntryUrl);
       }
-      if(!await cloudService.hasBetaAccess()){
+      const access='hasBetaAccess' in known
+        ? known.hasBetaAccess
+        : await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
+      if(!access){
         await finishInitialReturnSplash();
         return authController.show('invite-request');
       }
-      const cloudSave=await cloudService.loadGameSave();
+      const cloudSave='cloudSave' in known
+        ? known.cloudSave
+        : await withCloudTimeout(cloudService.loadGameSave(),CLOUD_STARTUP_TIMEOUT_MS,'loadGameSave');
       if(cloudSave) return enterExistingGame();
       await finishInitialReturnSplash();
       if(stateInformationProfile(state).meaningful) return authController.show('migration');
@@ -7604,32 +7608,59 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           : state);
         await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
         const plan=createMigrationPlan(state);
-        const previous=await cloudService.loadGameSave();
-        await cloudService.saveGameState(plan,previous?.revision||0);
-        const saved=await cloudService.loadGameSave();
+        const previous=await cloudService.loadGameSaveRevision();
+        const saved=await cloudService.saveGameState(plan,previous?.revision||0);
         if(!verifyCloudSave(saved,plan)) throw new Error('La copia no coincide. Tu partida local sigue intacta.');
         enterExistingGame();
       },
       onSkipSave:()=>startOnboarding(),
     });
     const callback=new URLSearchParams(location.search).get('authCallback');
-    let session=callback==='google'&&LOCAL_CLEAN_AUTH_TEST
-      ? await cloudService.restoreSessionFromUrl(INITIAL_LOCATION_HREF)
-      : await cloudService.session();
-    if(callback==='google'&&!session) session=await cloudService.restoreSessionFromUrl(authReturnUrl);
-    const cloudSave=session?await cloudService.loadGameSave():null;
-    if(callback==='google'){
+    let cloudUnavailable=false;
+    let session=null;
+    let cloudSave=null;
+    try{
+      session=callback==='google'&&LOCAL_CLEAN_AUTH_TEST
+        ? await withCloudTimeout(cloudService.restoreSessionFromUrl(INITIAL_LOCATION_HREF),CLOUD_STARTUP_TIMEOUT_MS,'restoreSessionFromUrl')
+        : await withCloudTimeout(cloudService.session(),CLOUD_STARTUP_TIMEOUT_MS,'session');
+      if(callback==='google'&&!session) session=await withCloudTimeout(cloudService.restoreSessionFromUrl(authReturnUrl),CLOUD_STARTUP_TIMEOUT_MS,'restoreSessionFromUrl');
+      cloudSave=session?await withCloudTimeout(cloudService.loadGameSave(),CLOUD_STARTUP_TIMEOUT_MS,'loadGameSave'):null;
+    }catch(error){
+      cloudUnavailable=true;
+      console.warn('Freedom Nube no respondió a tiempo al iniciar; se continúa con la copia local',error);
+    }
+    if(cloudUnavailable&&callback){
+      await finishInitialReturnSplash();
+      authController.show('invite-request');
+      const inviteError=document.getElementById('authInviteError');
+      if(inviteError){
+        inviteError.textContent='No se pudo conectar con Freedom Nube. Comprueba tu conexión e inténtalo de nuevo en unos segundos.';
+        inviteError.hidden=false;
+      }
+      return;
+    }
+    if(cloudUnavailable){
+      setStorageHealth({
+        warning:'No se pudo conectar con Freedom Nube al iniciar. Estás jugando con la copia local; el guardado en la nube se reintentará automáticamente.'
+      });
+      /* seguir con la copia local exactamente igual que si la nube estuviera deshabilitada */
+    }
+    else if(callback==='google'){
       const betaCode=sessionStorage.getItem('freedom-beta-code')||'';
+      let access;
       if(betaCode){
         try{
-          if(await cloudService.hasBetaAccess()){
+          access=await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
+          if(access){
             sessionStorage.removeItem('freedom-beta-code');
             await finishInitialReturnSplash();
             authController.showExistingAccount();
             return;
           }
-          await cloudService.claimBetaAccess(betaCode);
+          await withCloudTimeout(cloudService.claimBetaAccess(betaCode),CLOUD_STARTUP_TIMEOUT_MS,'claimBetaAccess');
           sessionStorage.removeItem('freedom-beta-code');
+          /* claimBetaAccess ya confirmó el acceso al no lanzar; no hace falta repreguntar */
+          access=true;
         }catch(error){
           await finishInitialReturnSplash();
           authController.show('invite-request');
@@ -7637,9 +7668,11 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           document.getElementById('authInviteError').hidden=false;
           return;
         }
+      }else{
+        access=await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
       }
-      if(!await cloudService.hasBetaAccess()) authController.show('invite-request');
-      else await routeAuthenticatedUser();
+      if(!access) authController.show('invite-request');
+      else await routeAuthenticatedUser({hasBetaAccess:access,cloudSave});
     }
     else if(callback==='invite'||callback==='recovery') authController.show('set-password');
     else if(!session) authController.show('invite-request');
@@ -7671,7 +7704,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     else if(stateInformationProfile(state).meaningful) authController.show('migration');
     else startOnboarding();
     if(session&&cloudSave&&!callback){
-      try{ pendingFeedbackReward=await cloudService.pendingFeedbackReward(); }
+      try{ pendingFeedbackReward=await withCloudTimeout(cloudService.pendingFeedbackReward(),CLOUD_STARTUP_TIMEOUT_MS,'pendingFeedbackReward'); }
       catch(error){ console.warn('No se pudo consultar la recompensa de reportes',error); }
       if(pendingFeedbackReward&&isFeedbackRewardApplied(state,pendingFeedbackReward.event_id)){
         const rewardToSync=pendingFeedbackReward;
@@ -7679,7 +7712,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         void syncClaimedFeedbackReward(rewardToSync);
       }
     }
-    if(!cloudSave||!session||callback) return;
+    if(!cloudUnavailable&&(!cloudSave||!session||callback)) return;
   }
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
