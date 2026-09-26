@@ -243,6 +243,7 @@ import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStored
 import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
 import { applyFeedbackReward, isFeedbackRewardApplied, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
+import { showSkillInfoDialog, closeSkillInfoDialog } from './ui/skill-info-dialog.js';
 import { installSceneMedia } from './ui/scene-media.js';
 import { createScenePreloader } from './ui/scene-preloader.js';
 import { installFrameMedia } from './ui/frame-media.js';
@@ -282,7 +283,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.7';
+const APP_VERSION='2.29.8';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5571,6 +5572,64 @@ function openClassChangeConfirmation(selectedClass){
   document.getElementById('classChangeConfirmBg').classList.add('show');
 }
 
+const SKILL_LONG_PRESS_MS=450;
+const SKILL_LONG_PRESS_MOVE_TOLERANCE=8;
+let skillLongPress=null;
+let skillLongPressFired=false;
+let skillInfoOpenPointerId=null;
+
+function openSkillInfoDialog(button){
+  const id=button.dataset.cast;
+  const g=state.game;
+  const classData=classDataForJourney(g.cls,{smokeFree:usesSmokeFreeSkills(state.config)});
+  const ability=classData?.act?.find(a=>a.id===id);
+  if(!ability) return;
+  showSkillInfoDialog(document,{
+    trigger:button,
+    name:ability.name,
+    description:ability.d,
+    mana:ability.cost,
+    level:ability.lvl,
+    iconSrc:`spells/${g.cls}_spells/${g.cls}_act_${ability.icon}.webp`,
+    iconFallback:ability.name.charAt(0),
+  });
+}
+
+function endSkillLongPress(pointerId){
+  if(skillLongPress&&skillLongPress.pointerId===pointerId){
+    window.clearTimeout(skillLongPress.timer);
+    skillLongPress=null;
+  }
+  if(skillInfoOpenPointerId===pointerId){
+    skillInfoOpenPointerId=null;
+    closeSkillInfoDialog(document);
+  }
+}
+
+document.getElementById('view-hero').addEventListener('pointerdown',e=>{
+  const button=e.target.closest('.hero-skill-hotbar [data-cast]');
+  if(!button||(e.pointerType==='mouse'&&e.button!==0)) return;
+  skillLongPress={pointerId:e.pointerId,button,startX:e.clientX,startY:e.clientY};
+  skillLongPress.timer=window.setTimeout(()=>{
+    if(!skillLongPress||skillLongPress.pointerId!==e.pointerId) return;
+    skillLongPressFired=true;
+    skillInfoOpenPointerId=e.pointerId;
+    skillLongPress=null;
+    if(navigator.vibrate) navigator.vibrate(18);
+    openSkillInfoDialog(button);
+  },SKILL_LONG_PRESS_MS);
+});
+window.addEventListener('pointermove',e=>{
+  if(!skillLongPress||e.pointerId!==skillLongPress.pointerId) return;
+  const movedEarly=Math.hypot(e.clientX-skillLongPress.startX,e.clientY-skillLongPress.startY)>SKILL_LONG_PRESS_MOVE_TOLERANCE;
+  if(movedEarly){
+    window.clearTimeout(skillLongPress.timer);
+    skillLongPress=null;
+  }
+});
+window.addEventListener('pointerup',e=>endSkillLongPress(e.pointerId));
+window.addEventListener('pointercancel',e=>endSkillLongPress(e.pointerId));
+
 document.getElementById('view-hero').addEventListener('click',e=>{
   if(e.target.closest('[data-open-hunt-from-hero]')){
     habitViewSection='hunt';
@@ -5583,6 +5642,10 @@ document.getElementById('view-hero').addEventListener('click',e=>{
   }
   const quickCast=e.target.closest('.hero-skill-hotbar [data-cast]');
   if(quickCast){
+    if(skillLongPressFired){
+      skillLongPressFired=false;
+      return;
+    }
     castSpell(quickCast.dataset.cast);
     return;
   }
