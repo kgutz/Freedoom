@@ -54,6 +54,28 @@ describe('cloud service', () => {
     expect(selectedColumns).toBe('revision');
   });
 
+  it('devuelve la fila completa de save_game_state para poder verificar sin releer game_saves', async () => {
+    // save_game_state (migración 202609260001) devuelve state/state_schema_version/
+    // migration_id además de revision/checksum/updated_at/replayed, precisamente para
+    // que el cliente pueda verificar el guardado sin una segunda lectura completa.
+    const rpcRow = {
+      revision: 5,
+      checksum: 'abcdef01',
+      updated_at: '2026-09-26T00:00:00.000Z',
+      replayed: false,
+      state: { game: { name: 'Ayla' } },
+      state_schema_version: 1,
+      migration_id: '11111111-1111-4111-8111-111111111111',
+    };
+    const rpc = vi.fn(async () => ({ data: [rpcRow], error: null }));
+    const service = createCloudService({
+      client: { auth: {}, rpc },
+      config: { enabled: true, url: 'https://example.supabase.co', publishableKey: 'sb_publishable_example' },
+    });
+    await expect(service.saveGameState({ state: {}, schemaVersion: 1, checksum: 'abcdef01' }, 4))
+      .resolves.toEqual(rpcRow);
+  });
+
   it('crea un ticket vinculado mediante la función protegida', async () => {
     const rpc = vi.fn(async () => ({
       data: [{ ticket_code: 'FREEDOM-000001', status: 'open', save_revision: 4 }],

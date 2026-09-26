@@ -765,8 +765,7 @@ function scheduleCloudSave(){
       if(!previous) return;
       const migrationPlan=createMigrationPlan(state);
       const plan={...migrationPlan,migrationId:null};
-      await activeCloudService.saveGameState(plan,previous.revision||0);
-      const saved=await activeCloudService.loadGameSave();
+      const saved=await activeCloudService.saveGameState(plan,previous.revision||0);
       if(!verifyUpdatedCloudSave(saved,plan)){
         throw new Error('La verificación del guardado remoto no coincide');
       }
@@ -3178,8 +3177,7 @@ async function persistFeedbackRewardToCloud(){
   if(!previous) throw new Error('No existe una partida en la nube para guardar el regalo');
   const migrationPlan=createMigrationPlan(state);
   const plan={...migrationPlan,migrationId:null};
-  await activeCloudService.saveGameState(plan,previous.revision||0);
-  const saved=await activeCloudService.loadGameSave();
+  const saved=await activeCloudService.saveGameState(plan,previous.revision||0);
   if(!verifyUpdatedCloudSave(saved,plan)){
     throw new Error('La recompensa no quedó verificada en la nube');
   }
@@ -7354,9 +7352,8 @@ bindBackupControls({
     const candidate=ensureCloudIdentity(migratePioneerRewardEligibility(imported,{existingProfile:true}).state);
     if(activeCloudService){
       const plan=createMigrationPlan(candidate);
-      const previous=await activeCloudService.loadGameSave();
-      await activeCloudService.saveGameState(plan,previous?.revision||0);
-      const saved=await activeCloudService.loadGameSave();
+      const previous=await activeCloudService.loadGameSaveRevision();
+      const saved=await activeCloudService.saveGameState(plan,previous?.revision||0);
       if(!verifyCloudSave(saved,plan)){
         throw new Error('La copia no coincide. La partida local sigue intacta.');
       }
@@ -7612,8 +7609,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
         const plan=createMigrationPlan(state);
         const previous=await cloudService.loadGameSaveRevision();
-        await cloudService.saveGameState(plan,previous?.revision||0);
-        const saved=await cloudService.loadGameSave();
+        const saved=await cloudService.saveGameState(plan,previous?.revision||0);
         if(!verifyCloudSave(saved,plan)) throw new Error('La copia no coincide. Tu partida local sigue intacta.');
         enterExistingGame();
       },
