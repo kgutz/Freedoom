@@ -7565,15 +7565,20 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     activeCloudService=cloudService;
     const enterExistingGame=()=>location.reload();
     let authController;
-    const routeAuthenticatedUser=async()=>{
+    const routeAuthenticatedUser=async(known={})=>{
       if(new URLSearchParams(location.search).has('authCallback')){
         history.replaceState({},'',authenticatedEntryUrl);
       }
-      if(!await cloudService.hasBetaAccess()){
+      const access='hasBetaAccess' in known
+        ? known.hasBetaAccess
+        : await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
+      if(!access){
         await finishInitialReturnSplash();
         return authController.show('invite-request');
       }
-      const cloudSave=await cloudService.loadGameSave();
+      const cloudSave='cloudSave' in known
+        ? known.cloudSave
+        : await withCloudTimeout(cloudService.loadGameSave(),CLOUD_STARTUP_TIMEOUT_MS,'loadGameSave');
       if(cloudSave) return enterExistingGame();
       await finishInitialReturnSplash();
       if(stateInformationProfile(state).meaningful) return authController.show('migration');
@@ -7646,9 +7651,11 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     }
     else if(callback==='google'){
       const betaCode=sessionStorage.getItem('freedom-beta-code')||'';
+      let access;
       if(betaCode){
         try{
-          if(await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess')){
+          access=await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
+          if(access){
             sessionStorage.removeItem('freedom-beta-code');
             await finishInitialReturnSplash();
             authController.showExistingAccount();
@@ -7656,6 +7663,8 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           }
           await withCloudTimeout(cloudService.claimBetaAccess(betaCode),CLOUD_STARTUP_TIMEOUT_MS,'claimBetaAccess');
           sessionStorage.removeItem('freedom-beta-code');
+          /* claimBetaAccess ya confirmó el acceso al no lanzar; no hace falta repreguntar */
+          access=true;
         }catch(error){
           await finishInitialReturnSplash();
           authController.show('invite-request');
@@ -7663,9 +7672,11 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
           document.getElementById('authInviteError').hidden=false;
           return;
         }
+      }else{
+        access=await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
       }
-      if(!await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess')) authController.show('invite-request');
-      else await routeAuthenticatedUser();
+      if(!access) authController.show('invite-request');
+      else await routeAuthenticatedUser({hasBetaAccess:access,cloudSave});
     }
     else if(callback==='invite'||callback==='recovery') authController.show('set-password');
     else if(!session) authController.show('invite-request');
