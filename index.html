@@ -157,7 +157,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.29.9</div>
+  <div class="ob-version" id="obVersion">v2.29.10</div>
 </div>
 
 <div id="loading" class="loading">
@@ -545,7 +545,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.9</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.10</span></p>
       </div>
     </div>
   </div>
@@ -916,7 +916,7 @@
 </div>
 
 <!-- MODAL COPIA DE SEGURIDAD -->
-<div class="modal-bg center" id="backupBg" style="z-index:31">
+<div class="modal-bg center" id="backupBg" style="z-index:33">
   <div class="modal">
     <h3 id="backupTitle">Copia de seguridad</h3>
     <div class="backup-scroll-body">
@@ -1425,11 +1425,25 @@
       <span class="storage-health-dot" aria-hidden="true"></span>
       <div><b id="storageHealthTitle">Comprobando guardado…</b><small id="storageHealthDetail"></small></div>
     </div>
-    <div id="recoveryList" class="recovery-list" hidden></div>
     <div class="support-managed-recovery">
       <b>Tu partida está protegida</b>
       <small>Las recuperaciones se gestionan desde el historial seguro asociado a tu ticket. No necesitas descargar ni enviar archivos.</small>
     </div>
+    <details class="support-advanced">
+      <summary>Copia manual (exportar / importar)</summary>
+      <div id="recoveryList" class="recovery-list" hidden></div>
+      <div class="recovery-manual">
+        <div class="recovery-manual-copy">
+          <b>Copia de seguridad manual</b>
+          <small>Guarda tu partida en un archivo propio, o restaura una copia que ya tengas. Útil como respaldo extra o para cambiar de dispositivo.</small>
+        </div>
+        <div class="recovery-manual-actions">
+          <button class="mini-btn" id="btnExport" type="button">Exportar partida</button>
+          <button class="mini-btn" id="btnImport" type="button">Importar partida</button>
+          <button class="mini-btn" id="btnImportText" type="button">Pegar copia manualmente</button>
+        </div>
+      </div>
+    </details>
   </div>
 </div>
 
