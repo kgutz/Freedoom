@@ -191,6 +191,7 @@ import {
   STORAGE_KEY,
   selectTemporalRecoveries,
   createBrowserStore,
+  isCatastrophicStateRegression,
   mergeState,
   parseState,
   serializeState,
@@ -234,7 +235,7 @@ import {
   renderRelicReplacementPicker,
   renderShopView
 } from './ui/inventory-view.js';
-import { bindBackupControls } from './ui/backup-controller.js';
+import { bindBackupControls, exportStateAsFile } from './ui/backup-controller.js';
 import { escapeHtml } from './ui/escape-html.js';
 import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
@@ -283,7 +284,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.9';
+const APP_VERSION='2.29.10';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -582,6 +583,14 @@ function savedAtLabel(timestamp){
   return new Intl.DateTimeFormat('es-ES',{
     day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'
   }).format(new Date(timestamp));
+}
+function relativeAgoLabel(timestamp,now=Date.now()){
+  const minutes=Math.max(0,Math.round((now-timestamp)/60000));
+  if(minutes<1) return 'Hace unos segundos';
+  if(minutes<60) return `Hace ${minutes} min`;
+  const hours=Math.floor(minutes/60);
+  const rest=minutes%60;
+  return rest?`Hace ${hours}h ${rest}min`:`Hace ${hours}h`;
 }
 function renderStorageHealth(){
   const box=document.getElementById('storageHealth');
@@ -4376,6 +4385,16 @@ function appendRecoverySection(list,{title,description,items}){
     const meta=document.createElement('small');
     meta.textContent=`${savedAtLabel(recovery.savedAt)} · ${detail}`;
     info.append(name,meta);
+    const actions=document.createElement('div');
+    actions.className='recovery-row-actions';
+    const exportButton=document.createElement('button');
+    exportButton.type='button';
+    exportButton.className='mini-btn mini-btn-ghost';
+    exportButton.dataset.recoveryRevision=String(recovery.revision);
+    exportButton.dataset.recoverySource=recovery.source;
+    exportButton.dataset.recoveryLabel=label;
+    exportButton.dataset.recoveryAction='export';
+    exportButton.textContent='Exportar';
     const button=document.createElement('button');
     button.type='button';
     button.className='mini-btn';
@@ -4383,7 +4402,8 @@ function appendRecoverySection(list,{title,description,items}){
     button.dataset.recoverySource=recovery.source;
     button.dataset.recoveryLabel=label;
     button.textContent='Restaurar';
-    row.append(info,button);
+    actions.append(exportButton,button);
+    row.append(info,actions);
     rows.append(row);
   });
   section.append(heading,rows);
@@ -4392,6 +4412,7 @@ function appendRecoverySection(list,{title,description,items}){
 async function openRecoveryModal(){
   const modal=document.getElementById('recoveryBg');
   const list=document.getElementById('recoveryList');
+  list.hidden=false;
   list.textContent='Buscando copias…';
   modal.classList.add('show');
   try{
@@ -4415,6 +4436,18 @@ async function openRecoveryModal(){
         detail:'Protegida contra regresiones',
         recommended:true
       }]:[]
+    });
+    const timelinePoints=recoveries
+      .filter(recovery=>recovery.source?.startsWith('timeline:'))
+      .sort((left,right)=>right.savedAt-left.savedAt);
+    appendRecoverySection(list,{
+      title:'Puntos de las últimas horas',
+      description:'Copias automáticas de las últimas ~2 horas, cada ~20 minutos. Útiles cuando el problema es tan reciente que "Recomendada" ya lo incluyó.',
+      items:timelinePoints.map(recovery=>({
+        recovery,
+        label:relativeAgoLabel(recovery.savedAt),
+        detail:'Copia automática'
+      }))
     });
     appendRecoverySection(list,{
       title:'Copias protegidas',
@@ -4481,8 +4514,6 @@ async function submitSupportTicket(){
 function closeRecoveryModal(){
   document.getElementById('recoveryBg').classList.remove('show');
 }
-document.getElementById('btnExport')?.addEventListener('click',closeRecoveryModal);
-document.getElementById('btnImport')?.addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryClose').addEventListener('click',closeRecoveryModal);
 document.getElementById('recoveryBg').addEventListener('click',event=>{
   if(event.target.id==='recoveryBg') closeRecoveryModal();
@@ -4494,6 +4525,20 @@ document.getElementById('recoveryList').addEventListener('click',async event=>{
   const revision=Number(button.dataset.recoveryRevision);
   const source=button.dataset.recoverySource||null;
   const label=button.dataset.recoveryLabel||'esta partida';
+  if(button.dataset.recoveryAction==='export'){
+    if(!confirm(`¿Exportar “${label}” como archivo?`)) return;
+    button.disabled=true;
+    try{
+      const recovered=await store.recoveryState(revision,ACTIVE_STORAGE_KEY,source);
+      if(!recovered) throw new Error('La copia ya no está disponible');
+      await exportStateAsFile({state:recovered,document,navigator,showToast});
+    }catch(error){
+      showToast('No se pudo exportar: '+(error.message||'error desconocido'),'dmg');
+    }finally{
+      button.disabled=false;
+    }
+    return;
+  }
   if(!confirm(`¿Restaurar “${label}”? La partida actual se conservará como otra copia.`)) return;
   button.disabled=true;
   try{
@@ -7743,25 +7788,55 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       if(!verifyStoredCloudSave(cloudSave)){
         throw new Error('La partida guardada en la nube no superó la verificación. La copia local sigue intacta.');
       }
-      state=mergeState(state,cloudSave.state);
-      state=ensureCloudIdentity({
-        ...state,
-        cloudIdentity:{
-          ...(state.cloudIdentity||{}),
-          lineageId:cloudSave.migration_id||state.cloudIdentity?.lineageId,
-        },
-      });
-      rememberSaveLineage(cloudSave.migration_id);
-      state={...state,...initializeForgeSeed(state)};
-      await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
-      setStorageHealth({
-        state:'saved',
-        revision:cloudSave.revision||0,
-        savedAt:cloudSave.updated_at?new Date(cloudSave.updated_at).getTime():Date.now(),
-        title:'Partida sincronizada ✓',
-        detail:'Recuperada desde tu cuenta de Freedom',
-        warning:''
-      });
+      /* La nube puede ir por detrás del dispositivo si el envío en segundo plano
+         no llegó a completarse antes de cerrar la pestaña (p. ej. tras usar
+         energía/pociones justo antes de salir). Nunca se pisa una partida local
+         igual o más reciente: en ese caso se conserva y se reintenta subirla. */
+      const localSavedAt=store.savedAt||0;
+      const cloudSavedAt=cloudSave.updated_at?new Date(cloudSave.updated_at).getTime():0;
+      const localIsMeaningful=stateInformationProfile(state).meaningful;
+      const cloudIsStrictlyNewer=cloudSavedAt>localSavedAt;
+      const cloudWouldEraseLocalProgress=isCatastrophicStateRegression(cloudSave.state,state);
+      const keepLocalInstead=localIsMeaningful&&(!cloudIsStrictlyNewer||cloudWouldEraseLocalProgress);
+      if(keepLocalInstead){
+        state=ensureCloudIdentity({
+          ...state,
+          cloudIdentity:{
+            ...(state.cloudIdentity||{}),
+            lineageId:cloudSave.migration_id||state.cloudIdentity?.lineageId,
+          },
+        });
+        rememberSaveLineage(cloudSave.migration_id);
+        setStorageHealth({
+          state:'saved',
+          revision:storageHealth.revision,
+          savedAt:localSavedAt,
+          title:'Partida local conservada ✓',
+          detail:'Tu copia de este dispositivo era igual o más reciente que la de la nube; se sube automáticamente.',
+          warning:''
+        });
+        scheduleCloudSave();
+      }else{
+        state=mergeState(state,cloudSave.state);
+        state=ensureCloudIdentity({
+          ...state,
+          cloudIdentity:{
+            ...(state.cloudIdentity||{}),
+            lineageId:cloudSave.migration_id||state.cloudIdentity?.lineageId,
+          },
+        });
+        rememberSaveLineage(cloudSave.migration_id);
+        state={...state,...initializeForgeSeed(state)};
+        await store.set(ACTIVE_STORAGE_KEY,serializeState(state));
+        setStorageHealth({
+          state:'saved',
+          revision:cloudSave.revision||0,
+          savedAt:cloudSavedAt||Date.now(),
+          title:'Partida sincronizada ✓',
+          detail:'Recuperada desde tu cuenta de Freedom',
+          warning:''
+        });
+      }
       history.replaceState({},'',authenticatedEntryUrl);
     }
     else if(stateInformationProfile(state).meaningful) authController.show('migration');

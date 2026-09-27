@@ -39,6 +39,44 @@ function downloadBackupFile(document, file) {
   return true;
 }
 
+export async function exportStateAsFile({
+  state,
+  document,
+  navigator,
+  showToast,
+  createFile = createBackupFile,
+  downloadFile = (file) => downloadBackupFile(document, file),
+  now = () => new Date(),
+  onFallbackToTextArea,
+}) {
+  const data = exportBackup(state);
+  const file = createFile(data, backupFileName(now()));
+  try {
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({
+        title: 'Partida de Freedom',
+        text: 'Copia de seguridad de mi partida de Freedom.',
+        files: [file],
+      });
+      showToast('Partida compartida ✓', 'heal');
+      return;
+    }
+    if (downloadFile(file)) {
+      showToast('Partida descargada ✓', 'heal');
+      return;
+    }
+    await navigator.clipboard.writeText(data);
+    showToast('Datos copiados al portapapeles ✓', 'heal');
+  } catch (error) {
+    if (error?.name === 'AbortError') return;
+    if (downloadFile(file)) {
+      showToast('Partida descargada ✓', 'heal');
+      return;
+    }
+    onFallbackToTextArea?.(data);
+  }
+}
+
 export function bindBackupControls({
   document,
   navigator,
@@ -64,41 +102,27 @@ export function bindBackupControls({
     background.classList.add('show');
   };
 
-  document.getElementById('btnExport')?.addEventListener('click', async () => {
-    const data = exportBackup(getState());
-    const file = createFile(data, backupFileName(now()));
-    try {
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: 'Partida de Freedom',
-          text: 'Copia de seguridad de mi partida de Freedom.',
-          files: [file],
-        });
-        showToast('Partida compartida ✓', 'heal');
-        return;
-      }
-      if (downloadFile(file)) {
-        showToast('Partida descargada ✓', 'heal');
-        return;
-      }
-      await navigator.clipboard.writeText(data);
-      showToast('Datos copiados al portapapeles ✓', 'heal');
-    } catch (error) {
-      if (error?.name === 'AbortError') return;
-      if (downloadFile(file)) {
-        showToast('Partida descargada ✓', 'heal');
-        return;
-      }
-      mode = 'export';
-      document.getElementById('backupTitle').textContent = 'Exportar datos';
-      textArea.value = data;
-      textArea.readOnly = true;
-      document.getElementById('backupAction').textContent = 'Cerrar';
-      background.classList.add('show');
-      textArea.focus();
-      textArea.select();
-    }
-  });
+  const showExportFallback = (data) => {
+    mode = 'export';
+    document.getElementById('backupTitle').textContent = 'Exportar datos';
+    textArea.value = data;
+    textArea.readOnly = true;
+    document.getElementById('backupAction').textContent = 'Cerrar';
+    background.classList.add('show');
+    textArea.focus();
+    textArea.select();
+  };
+
+  document.getElementById('btnExport')?.addEventListener('click', () => exportStateAsFile({
+    state: getState(),
+    document,
+    navigator,
+    showToast,
+    createFile,
+    downloadFile,
+    now,
+    onFallbackToTextArea: showExportFallback,
+  }));
 
   document.getElementById('btnImport')?.addEventListener('click', () => {
     if (fileInput?.click) fileInput.click();
