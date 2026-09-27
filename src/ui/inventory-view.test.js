@@ -863,7 +863,7 @@ describe('interfaz de inventario y botín', () => {
     renderShopView(document, lootWithBosses(2), 20 * 86400000, { section: 'map' });
     const html = document.elements.shopBody.innerHTML;
     expect(html).toContain('scenes/shops-v2.webp');
-    expect(html).toContain('scenes/shops-v2.mp4');
+    expect(html).not.toContain('.mp4');
     expect(html).toContain('Forja del Crisol');
     expect(html).toContain('Botica de Pociones');
     expect(html).toContain('Telar Arcano');

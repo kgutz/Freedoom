@@ -1,5 +1,3 @@
-.scene-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;opacity:0;image-rendering:pixelated}
-.scene-video[data-ready="true"]{opacity:1}
 .frame-video{pointer-events:none;opacity:0}
 .frame-video[data-ready="true"]{opacity:1}
 @media(prefers-reduced-motion:reduce){.frame-video{display:none!important}}
@@ -12,7 +10,7 @@
 #templeBody{min-height:0;overflow-y:auto;padding:0 14px 14px}
 .temple-scene{position:relative;width:100%;height:100%;margin:0;overflow:hidden;border-radius:19px}
 .inventory-temple-active>.sheet-head,.inventory-temple-active>.inventory-tabs{visibility:hidden}
-.temple-scene>.scene-poster{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.temple-scene>.scene-poster{display:block;width:100%;height:100%;object-fit:cover}
 .temple-guardian{position:absolute;z-index:2;left:18%;top:20%;width:64%;height:40%;display:flex;align-items:flex-start;justify-content:center;background:transparent;border:0;padding:0;cursor:pointer}
 .temple-guardian>span{display:block;padding:9px 14px;border:1px solid #bca265;border-radius:12px;background:#21190ee8;color:#f3d588;font:16px/1.15 var(--font-display);box-shadow:0 3px 12px #0005}
 .temple-guardian small{display:block;margin-top:2px;font-size:9px;line-height:1.15;color:#e9ddc3}
@@ -30,7 +28,6 @@
 .temple-blessings h4{color:#e9c36a;font:12px var(--font-display);margin:0 0 8px}
 .temple-back{width:auto;margin-bottom:16px;padding:8px 12px;background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px}
 .temple-scene[hidden],.temple-blessings[hidden],#templeBody[hidden]{display:none}
-@media(prefers-reduced-motion:reduce){.scene-video{display:none}}
 .blessing-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0}
 .blessing-card{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px 10px;background:var(--panel2);border:1px solid #a88b4e;border-radius:14px;color:var(--text);cursor:pointer}
 .blessing-card img{width:100%;max-width:130px;aspect-ratio:1;object-fit:contain;image-rendering:pixelated}

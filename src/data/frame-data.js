@@ -20,8 +20,6 @@ export const FRAME_DEFINITIONS = Object.freeze([
     rarity: 'legendary',
     image: 'hero_background/azariel_temple.webp',
     wideImage: 'hero_background/azariel_temple_wide.webp',
-    video: 'hero_background/azariel_temple.mp4',
-    wideVideo: 'hero_background/azariel_temple_wide.mp4',
     unlocked: false,
     lore: 'Un lugar de calma entre aventuras. Regalo de Azariel por tu primera compra de una bendición en el Templo.',
   }),

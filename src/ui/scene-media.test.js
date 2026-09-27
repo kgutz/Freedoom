@@ -1,30 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { sceneMediaMarkup, installSceneMedia } from './scene-media.js';
+import { describe, it, expect } from 'vitest';
+import { sceneMediaMarkup } from './scene-media.js';
 import { templeMarkup, templeShopMarkup, renderBlessingDetail, blessingArt } from './temple-view.js';
 
-function fixture() {
-  const handlers = {};
-  const button = {setAttribute:vi.fn()};
-  const video = {isConnected:true, dataset:{}, paused:true, pause:vi.fn(), play:vi.fn(() => Promise.resolve()), addEventListener:vi.fn(), closest:() => null, getClientRects:() => [1], parentElement:{querySelector:() => button}};
-  const root = {classList:{contains:() => true}, querySelectorAll:() => [video], addEventListener:(key,fn) => {handlers[key]=fn;}};
-  const reduced = {matches:false,addEventListener:(key,fn) => {handlers.motion=fn;}};
-  const document = {hidden:false,getElementById:() => root,addEventListener:(key,fn) => {handlers[key]=fn;}};
-  const window = {matchMedia:() => reduced,MutationObserver:class {observe(){}},requestAnimationFrame:vi.fn(),addEventListener:vi.fn()};
-  return {document,window,video,root,reduced,handlers};
-}
-
-describe('animated inventory scenes', () => {
-  it('reuses a warmed scene and retries playback on a user gesture', () => {
-    const f=fixture();
-    f.video.querySelector=()=>({getAttribute:()=> 'scenes/shops-v2.mp4'});
-    const preloader={forPlayback:vi.fn(()=> 'blob:cached-market')};
-    installSceneMedia(f.document,f.window,preloader);
-    expect(f.video.src).toBe('blob:cached-market');
-    expect(preloader.forPlayback).toHaveBeenCalledOnce();
-    f.handlers.pointerup();
-    expect(f.video.play).toHaveBeenCalledTimes(2);
-    expect(preloader.forPlayback).toHaveBeenCalledOnce();
-  });
+describe('inventory scenes', () => {
   it('disables only active blessing cards and unlocks them after consumption',()=>{
     for(const id of ['experience','energy']){
       const active=templeShopMarkup({blessings:{[id]:{active:true}}},{coins:1000},19);
@@ -42,13 +20,14 @@ describe('animated inventory scenes', () => {
       expect(html).not.toContain('<video');
     }
   });
-  it('keeps a still fallback and silent inline looping media', () => {
-    const html = sceneMediaMarkup('temple', 'Templo');
-    expect(html).toContain('src="scenes/temple-v2.webp"');
-    expect(html).toContain('muted loop playsinline preload="none"');
-    expect(html).toContain('scenes/temple-v2.mp4');
-    expect(html).not.toContain('data-scene-toggle');
-    expect(sceneMediaMarkup('shops', 'Callejón')).not.toContain('<button');
+  it('shows only the unified pixel-art still, with no video on top', () => {
+    for (const name of ['temple', 'shops']) {
+      const html = sceneMediaMarkup(name, 'Escena');
+      expect(html).toContain(`src="scenes/${name}-v2.webp"`);
+      expect(html).not.toContain('<video');
+      expect(html).not.toContain('.mp4');
+      expect(html).not.toContain('<button');
+    }
   });
   it('shows Azariel and both blessing cards with details before purchase', () => {
     const html = templeMarkup();
@@ -71,29 +50,5 @@ describe('animated inventory scenes', () => {
     expect(elements.relicDetailBody.innerHTML).toContain('disabled');
     renderBlessingDetail(document,{}, {coins:0},19,'energy');
     expect(elements.relicDetailBody.innerHTML).toContain('FALTA ORO');
-  });
-  it('plays visible scenes but pauses when the tab is hidden', () => {
-    const f = fixture();
-    installSceneMedia(f.document,f.window);
-    expect(f.video.play).toHaveBeenCalledOnce();
-    expect(f.video.muted).toBe(true);
-    f.document.hidden=true;
-    f.handlers.visibilitychange();
-    expect(f.video.pause).toHaveBeenCalled();
-  });
-  it('does not start motion when reduced motion is requested', () => {
-    const f=fixture(); f.reduced.matches=true;
-    installSceneMedia(f.document,f.window);
-    expect(f.video.play).not.toHaveBeenCalled();
-    expect(f.video.dataset.ready).toBe('false');
-  });
-  it('does not play closed sheets or hidden panels', () => {
-    const f=fixture(); f.root.classList.contains=() => false;
-    installSceneMedia(f.document,f.window);
-    expect(f.video.play).not.toHaveBeenCalled();
-    f.root.classList.contains=() => true;
-    f.video.closest=() => ({});
-    f.handlers.visibilitychange();
-    expect(f.video.play).not.toHaveBeenCalled();
   });
 });
