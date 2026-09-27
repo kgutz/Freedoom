@@ -282,7 +282,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.12';
+const APP_VERSION='2.29.13';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -7643,7 +7643,14 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
   const cloudConfig=readCloudConfig(window);
   if(cloudConfig.enabled){
     const initialAuthCallback=new URLSearchParams(location.search).get('authCallback');
-    if(initialAuthCallback!=='google') await finishInitialReturnSplash();
+    /* Solo esperamos a que la pantalla de carga haya terminado de aparecer, sin
+       arrancar todavía su cuenta atrás para ocultarse: eso lo dispara más abajo
+       cada rama, exactamente cuando ya sabe qué pantalla real va a mostrar. Si
+       aquí se llamara a finishInitialReturnSplash(), la pantalla de carga se
+       ocultaría sola pasado un tiempo fijo, sin importar si la sesión/nube
+       todavía no ha respondido; con conexión lenta eso deja una tirada en
+       blanco y luego un salto brusco cuando el contenido real por fin aparece. */
+    if(initialAuthCallback!=='google') await initialSplashReady;
     const authReturnUrl=location.href;
     const googleCallbackUrl=LOCAL_CLEAN_AUTH_TEST
       ? `${location.origin}${location.pathname}?cleanAuthTest=1&authCallback=google`

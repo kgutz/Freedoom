@@ -1569,11 +1569,12 @@
   .inventory-sheet.inventory-shop-active>.sheet-head{padding-top:max(16px,env(safe-area-inset-top))!important}
   .inventory-sheet.inventory-shop-active>#forgeBody,.inventory-sheet.inventory-shop-active>#shopBody{flex:1 1 auto}
   .inventory-sheet.inventory-shop-active .shop-city-heading{display:none}
-  .inventory-sheet.inventory-shop-map-overlay>#shopBody,.inventory-sheet.inventory-temple-active>#templeBody{position:fixed;z-index:60;top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));left:50%;width:min(calc(100% - 16px),412px);max-height:none;overflow:hidden!important;scrollbar-gutter:auto;transform:translateX(-50%);padding:0!important;border:1px solid var(--line);border-radius:20px;background:var(--bg);box-shadow:0 20px 60px rgba(0,0,0,.66)}
+  .inventory-sheet.inventory-shop-map-overlay>#shopBody,.inventory-sheet.inventory-temple-active>#templeBody{position:fixed;z-index:60;inset:0;width:100%;max-height:none;overflow:hidden!important;scrollbar-gutter:auto;padding:0!important;margin:0;border:0;border-radius:0;background:var(--bg);box-shadow:none}
   .inventory-sheet.inventory-shop-map-overlay .shop-city,.inventory-sheet.inventory-shop-map-overlay .shop-city-map{width:100%;height:100%}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-heading{display:none}
-  .inventory-sheet.inventory-shop-map-overlay .shop-city-map{aspect-ratio:auto;border-color:var(--line);border-radius:19px}
+  .inventory-sheet.inventory-shop-map-overlay .shop-city-map{aspect-ratio:auto;border:0;border-radius:0}
   .inventory-sheet.inventory-shop-map-overlay .shop-city-map>img{object-fit:cover}
+  .inventory-sheet.inventory-shop-map-overlay .shop-city-close,.inventory-sheet.inventory-temple-active .shop-city-close{top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right))}
   .inventory-sheet.inventory-shop-destination{overflow:visible;border-color:transparent;background:transparent;box-shadow:none;isolation:isolate}
   .inventory-sheet.inventory-shop-destination::before{content:'';position:fixed;z-index:59;top:max(8px,env(safe-area-inset-top));bottom:max(8px,env(safe-area-inset-bottom));left:50%;width:min(calc(100vw - 16px),412px);border:1px solid var(--line);border-radius:20px;background:linear-gradient(rgba(8,7,6,.5),rgba(8,7,6,.5)),#0e0b09 url('/shop/callejon-oficios.webp') center/cover no-repeat;box-shadow:0 20px 60px rgba(0,0,0,.66);transform:translateX(-50%);pointer-events:none}
   .inventory-sheet.inventory-shop-destination>.sheet-head,.inventory-sheet.inventory-shop-destination>.inventory-tabs{display:none!important}
