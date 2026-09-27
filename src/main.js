@@ -282,7 +282,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.11';
+const APP_VERSION='2.29.12';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -420,7 +420,11 @@ async function revealReturnSplash({replay=false}={}){
   loading.classList.remove('exit','ready','replay');
   await waitForSplashAssets(loading);
   if(!returnSplashPlaying) return null;
-  void loading.offsetWidth;
+  // When every asset resolves from cache in the same tick (a warm reload), a single
+  // reflow isn't enough to guarantee the browser actually painted the pre-'ready'
+  // state before we flip it: the fade-in gets skipped and looks like a hard jump
+  // straight to the final size. Two real animation frames make that paint happen.
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
   loading.classList.add('ready');
   if(replay) loading.classList.add('replay');
   return performance.now();

@@ -114,6 +114,11 @@ export function createOnboardingController({
     intro.classList.remove('exit','intro-ready');
     await waitForSplashAssets(intro);
     if(sequence!==introSequence||!intro.classList.contains('active')) return;
+    // Same fix as the returning-player splash: guarantee a real paint of the
+    // pre-'intro-ready' state before flipping it, so a fast cache-warm load can't
+    // skip the fade-in and jump straight to the final size.
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    if(sequence!==introSequence||!intro.classList.contains('active')) return;
     intro.classList.add('intro-ready');
     introTimer=setTimeout(()=>{
       if(!intro.classList.contains('active')) return;
