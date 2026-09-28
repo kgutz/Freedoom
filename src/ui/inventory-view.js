@@ -304,18 +304,18 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;');
 }
 
-export function relicArt(definition, overlay = '') {
+export function relicArt(definition, overlay = '', imageLoading = 'lazy') {
   if (definition.ingredientIds?.length === 2 && !definition.image) {
     const ingredients = definition.ingredientIds.map((id) => relicDefinition(id));
     return `<div class="relic-art relic-art--fusion relic-art--${definition.id}">
-      ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true" loading="lazy" decoding="async">`).join('')}
+      ${ingredients.map((ingredient, index) => `<img class="fusion-art-part fusion-art-part--${index + 1}" src="${ingredient.image}" alt="" aria-hidden="true" loading="${imageLoading}" decoding="${imageLoading === 'eager' ? 'sync' : 'async'}">`).join('')}
       <span class="fusion-art-sigil" aria-hidden="true">✦</span>
       ${overlay}
     </div>`;
   }
   const fusionClass = definition.ingredientIds?.length === 2 ? ' relic-art--fusion' : '';
   return `<div class="relic-art${fusionClass} relic-art--${definition.id}">
-    <img src="${definition.image}" alt="${escapeHtml(definition.name)}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <img src="${definition.image}" alt="${escapeHtml(definition.name)}" loading="${imageLoading}" decoding="${imageLoading === 'eager' ? 'sync' : 'async'}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
     ${overlay}
   </div>`;
@@ -923,10 +923,11 @@ function fusionResultPreviewMarkup(preview) {
     ? effectControlList(relic.affixes.map(id => ({ id, ...AFFIX_DEFINITIONS[id] })), 'EFECTO EXTRA')
     : escapeHtml(extrasCopy);
   return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
-    <div class="fusion-preview-art">${relicArt(definition)}</div>
+    <div class="fusion-preview-art">${relicArt(definition, '', 'eager')}</div>
     <div class="fusion-preview-copy">
+      <span class="fusion-preview-kicker">RELIQUIA FUSIONADA</span>
       <h3>${escapeHtml(definition.name)}</h3>
-      <b class="fusion-preview-quality">${escapeHtml(rarityCopy)} · RANGO ${relic.rank}</b>
+      <b class="fusion-preview-quality"><span>${escapeHtml(rarityCopy)}</span><span>RANGO ${relic.rank}</span></b>
     </div>
     <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic)}</div>
     <div class="fusion-preview-copy fusion-preview-extra">

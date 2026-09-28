@@ -8,7 +8,7 @@
 #templeGiftBg video.temple-gift-preview{position:absolute;inset:0}
 .temple-gift-later{margin-top:12px;padding:8px;background:transparent;border:0;color:var(--muted);font:12px var(--font-display);cursor:pointer}
 #templeBody{min-height:0;overflow-y:auto;padding:0 14px 14px}
-.temple-scene{position:relative;width:100%;height:100%;margin:0;overflow:hidden}
+.temple-scene{position:relative;width:100%;height:100%;margin:0;overflow:hidden;border-radius:19px}
 .inventory-temple-active>.sheet-head,.inventory-temple-active>.inventory-tabs{visibility:hidden}
 .temple-scene>.scene-poster{display:block;width:100%;height:100%;object-fit:cover}
 .temple-guardian{position:absolute;z-index:2;left:18%;top:20%;width:64%;height:40%;display:flex;align-items:flex-start;justify-content:center;background:transparent;border:0;padding:0;cursor:pointer}

@@ -613,6 +613,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('fusion-flow has-pair');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
     expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.webp');
+    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion_01_corazon_espectral\.webp"[^>]*loading="eager" decoding="sync"/);
+    expect(document.elements.forgeBody.innerHTML).toContain('fusion-preview-kicker">RELIQUIA FUSIONADA');
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
     expect(document.elements.forgeBody.innerHTML).toContain('RANGO 2');
