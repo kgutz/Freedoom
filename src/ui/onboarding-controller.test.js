@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { createOnboardingResult } from './onboarding-controller.js';
+import { createOnboardingController, createOnboardingResult } from './onboarding-controller.js';
 
 describe('resultado del onboarding', () => {
   it.each(['0', '', undefined, '-1'])('no inventa consumo inicial para %s', (startLimit) => {
@@ -100,5 +101,62 @@ describe('resultado del onboarding', () => {
       pillsGoal: 0,
     });
     expect(result.game).toEqual({ cls: 'knight', name: 'Caballero' });
+  });
+});
+
+function element() {
+  const classes = new Set();
+  return {
+    style: {},
+    value: '',
+    scrollTop: 0,
+    classList: {
+      add: (...names) => names.forEach((name) => classes.add(name)),
+      remove: (...names) => names.forEach((name) => classes.delete(name)),
+      contains: (name) => classes.has(name),
+      toggle: (name, force) => {
+        if (force) classes.add(name);
+        else classes.delete(name);
+      },
+    },
+    addEventListener() {},
+  };
+}
+
+describe('onboarding intro handoff', () => {
+  it('keeps just one background and logo for loading and the welcome step', () => {
+    const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+    expect(html.match(/class="onboarding-scene"/g)).toHaveLength(1);
+    expect(html.match(/class="load-logo"/g)).toHaveLength(1);
+    expect(html).not.toContain('class="ob-logo"');
+  });
+
+  it('uses the already playing loading intro instead of showing the same logo twice', () => {
+    const nodes = new Map();
+    const get = (id) => {
+      if (!nodes.has(id)) nodes.set(id, element());
+      return nodes.get(id);
+    };
+    const document = {
+      getElementById: get,
+      querySelectorAll: (selector) => selector === '.ob-step'
+        ? [1, 2, 3, 4, 5].map((step) => get(`ob${step}`))
+        : [],
+    };
+    const onboarding = createOnboardingController({
+      document,
+      todayKey: () => '2026-09-28',
+      spriteImage: () => '',
+      onFinish() {},
+    });
+
+    onboarding.start({ skipIntro: true, keepLoading: true });
+
+    expect(get('loading').style.display).toBeUndefined();
+    expect(get('onboard').style.display).toBe('flex');
+    expect(get('onboard').classList.contains('splash-handoff')).toBe(true);
+    expect(get('ob1').classList.contains('active')).toBe(false);
+    expect(get('ob2').classList.contains('active')).toBe(true);
+    expect(get('ob1').classList.contains('intro-ready')).toBe(false);
   });
 });

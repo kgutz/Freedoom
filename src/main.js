@@ -282,7 +282,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.15';
+const APP_VERSION='2.29.16';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -442,6 +442,7 @@ function finishReturnSplash(startedAt){
     returnSplashTimer=setTimeout(()=>{
       loading.style.display='none';
       loading.classList.remove('exit','ready','replay');
+      document.getElementById('onboard').classList.remove('splash-handoff');
       returnSplashPlaying=false;
     },SPLASH_FADE_MS);
   },Math.max(0,SPLASH_MIN_VISIBLE_MS-elapsed));
@@ -7591,7 +7592,16 @@ function startOnboarding(){
   if(new URLSearchParams(location.search).has('authCallback')){
     history.replaceState({},'',`${location.pathname}${location.hash}`);
   }
-  onboarding.start();
+  const loading=document.getElementById('loading');
+  const reuseInitialSplash=returnSplashPlaying&&loading.style.display!=='none'&&!loading.classList.contains('exit');
+  // Loading is the only background/logo pair. Continue that same introduction
+  // into the first onboarding choice instead of mounting a second pair.
+  if(!reuseInitialSplash){
+    clearTimeout(returnSplashTimer);
+    returnSplashPlaying=false;
+  }
+  onboarding.start({skipIntro:reuseInitialSplash,keepLoading:reuseInitialSplash});
+  if(reuseInitialSplash) void finishInitialReturnSplash();
 }
 
 /* reiniciar app: frase deliberada + confirmación final */

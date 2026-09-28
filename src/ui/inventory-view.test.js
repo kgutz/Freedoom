@@ -614,6 +614,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
     expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.webp');
     expect(document.elements.forgeBody.innerHTML).toMatch(/fusion_01_corazon_espectral\.webp"[^>]*loading="eager" decoding="sync"/);
+    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion-preview-art"><div class="relic-art relic-art--fusion relic-art--fusion_01"[^>]*><\/div>\s*<div class="fusion-preview-illustration relic-art--fusion_01">/);
+    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion-preview-illustration relic-art--fusion_01">\s*<img src="relics\/fusion_01_corazon_espectral\.webp"/);
     expect(document.elements.forgeBody.innerHTML).toContain('fusion-preview-kicker">RELIQUIA FUSIONADA');
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');

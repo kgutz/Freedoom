@@ -111,27 +111,34 @@ export function createOnboardingController({
     clearTimeout(introTimer);
     const sequence=++introSequence;
     const intro=document.getElementById('ob1');
-    intro.classList.remove('exit','intro-ready');
-    await waitForSplashAssets(intro);
+    const loading=document.getElementById('loading');
+    loading.style.display='flex';
+    loading.classList.remove('exit','ready','replay');
+    await waitForSplashAssets(loading);
     if(sequence!==introSequence||!intro.classList.contains('active')) return;
-    // Same fix as the returning-player splash: guarantee a real paint of the
-    // pre-'intro-ready' state before flipping it, so a fast cache-warm load can't
-    // skip the fade-in and jump straight to the final size.
+    // Paint the shared logo once before starting its animation, even from cache.
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
     if(sequence!==introSequence||!intro.classList.contains('active')) return;
-    intro.classList.add('intro-ready');
+    loading.classList.add('ready');
     introTimer=setTimeout(()=>{
       if(!intro.classList.contains('active')) return;
-      intro.classList.add('exit');
+      loading.classList.add('exit');
       introTimer=setTimeout(()=>{
-        if(intro.classList.contains('active')) showStep(2);
+        if(!intro.classList.contains('active')) return;
+        loading.style.display='none';
+        loading.classList.remove('exit','ready','replay');
+        showStep(2);
       },SPLASH_FADE_MS);
     },SPLASH_MIN_VISIBLE_MS);
   };
 
-  const showStep = (step) => {
+  const showStep = (step, { keepLoading = false } = {}) => {
     clearIntroTimer();
-    document.getElementById('ob1').classList.remove('exit','intro-ready');
+    if(step!==1&&!keepLoading){
+      const loading=document.getElementById('loading');
+      loading.style.display='none';
+      loading.classList.remove('exit','ready','replay');
+    }
     document
       .querySelectorAll('.ob-step')
       .forEach((element) => element.classList.remove('active'));
@@ -196,14 +203,16 @@ export function createOnboardingController({
     });
   };
 
-  const start = () => {
+  const start = ({ skipIntro = false, keepLoading = false } = {}) => {
     resetChoices();
-    document.getElementById('loading').style.display = 'none';
+    if (!keepLoading) document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = 'none';
     document.getElementById('mainNav').classList.remove('show');
-    document.getElementById('onboard').style.display = 'flex';
+    const onboard = document.getElementById('onboard');
+    onboard.classList.toggle('splash-handoff', keepLoading);
+    onboard.style.display = 'flex';
     renderHeroes();
-    showStep(1);
+    showStep(skipIntro ? 2 : 1, { keepLoading });
   };
 
   document.querySelectorAll('[data-ob-back]').forEach((button) => {

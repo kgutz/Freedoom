@@ -49,7 +49,7 @@ export function waitForSplashAssets(
 ) {
   if (!container) return Promise.resolve([]);
   const images = container.querySelectorAll(
-    '.onboarding-scene, .load-logo, .ob-logo',
+    '.onboarding-scene, .load-logo',
   );
   return Promise.all(
     Array.from(images, (image) => waitForImageAsset(image, options)),
