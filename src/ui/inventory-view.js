@@ -922,14 +922,11 @@ function fusionResultPreviewMarkup(preview) {
   const extrasMarkup = preview.qualityDeterministic && relic.affixes.length
     ? effectControlList(relic.affixes.map(id => ({ id, ...AFFIX_DEFINITIONS[id] })), 'EFECTO EXTRA')
     : escapeHtml(extrasCopy);
-  // Keep the illustration outside the animated background's stacking context.
-  // Mobile Safari can composite the rotating pseudo-elements above its child img.
+  // Paint the preview as a background in its own fixed-size layer. An <img>
+  // inside this animated thumbnail can remain blank on mobile browsers.
   const artMarkup = definition.image
     ? `<div class="relic-art relic-art--fusion relic-art--${definition.id}" aria-hidden="true"></div>
-      <div class="fusion-preview-illustration relic-art--${definition.id}">
-        <img src="${definition.image}" alt="${escapeHtml(definition.name)}" loading="eager" decoding="sync" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <span class="relic-art-fallback" style="display:none" aria-hidden="true">✦</span>
-      </div>`
+      <div class="fusion-preview-illustration relic-art--${definition.id}" role="img" aria-label="${escapeHtml(definition.name)}" style="background-image:url('${definition.image}')"></div>`
     : relicArt(definition, '', 'eager');
   return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
     <div class="fusion-preview-art">${artMarkup}</div>
