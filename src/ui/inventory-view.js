@@ -922,14 +922,8 @@ function fusionResultPreviewMarkup(preview) {
   const extrasMarkup = preview.qualityDeterministic && relic.affixes.length
     ? effectControlList(relic.affixes.map(id => ({ id, ...AFFIX_DEFINITIONS[id] })), 'EFECTO EXTRA')
     : escapeHtml(extrasCopy);
-  // Paint the preview as a background in its own fixed-size layer. An <img>
-  // inside this animated thumbnail can remain blank on mobile browsers.
-  const artMarkup = definition.image
-    ? `<div class="relic-art relic-art--fusion relic-art--${definition.id}" aria-hidden="true"></div>
-      <div class="fusion-preview-illustration relic-art--${definition.id}" role="img" aria-label="${escapeHtml(definition.name)}" style="background-image:url('${definition.image}')"></div>`
-    : relicArt(definition, '', 'eager');
   return `<article class="fusion-result-preview ${rarityClass(relic.rarity)}">
-    <div class="fusion-preview-art">${artMarkup}</div>
+    <div class="fusion-preview-art relic-collection-item fusion-relic ${rarityClass(relic.rarity)}" role="img" aria-label="${escapeHtml(definition.name)}">${relicArt(definition, '', 'eager')}</div>
     <div class="fusion-preview-copy">
       <span class="fusion-preview-kicker">RELIQUIA FUSIONADA</span>
       <h3>${escapeHtml(definition.name)}</h3>

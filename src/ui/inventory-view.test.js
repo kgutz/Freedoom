@@ -613,9 +613,8 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('fusion-flow has-pair');
     expect(document.elements.forgeBody.innerHTML).toContain('Corazón Espectral');
     expect(document.elements.forgeBody.innerHTML).toContain('fusion_01_corazon_espectral.webp');
-    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion-preview-art"><div class="relic-art relic-art--fusion relic-art--fusion_01"[^>]*><\/div>\s*<div class="fusion-preview-illustration relic-art--fusion_01"/);
-    expect(document.elements.forgeBody.innerHTML).toContain("background-image:url('relics/fusion_01_corazon_espectral.webp')");
-    expect(document.elements.forgeBody.innerHTML).not.toMatch(/fusion-preview-illustration[^>]*>\s*<img/);
+    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion-preview-art relic-collection-item fusion-relic rarity-mythic"[^>]*>\s*<div class="relic-art relic-art--fusion relic-art--fusion_01">/);
+    expect(document.elements.forgeBody.innerHTML).toMatch(/fusion_01_corazon_espectral\.webp"[^>]*loading="eager" decoding="sync"/);
     expect(document.elements.forgeBody.innerHTML).toContain('fusion-preview-kicker">RELIQUIA FUSIONADA');
     expect(document.elements.forgeBody.innerHTML).not.toContain('<span>RESULTADO</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('MÍTICO');
@@ -650,7 +649,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('PODER +2');
   });
 
-  it('muestra también la ilustración de Mandíbula del Pulso Ardiente como fondo independiente', () => {
+  it('reutiliza el icono de Colección para Mandíbula del Pulso Ardiente', () => {
     const document = fakeDocument();
     const state = lootWithBosses(6);
     state.economy.coins = 500;
@@ -658,7 +657,8 @@ describe('interfaz de inventario y botín', () => {
     renderFusionView(document, state, 'relic_01', 'relic_06');
     const html = document.elements.forgeBody.innerHTML;
     expect(html).toContain('Mandíbula del Pulso Ardiente');
-    expect(html).toContain("background-image:url('relics/fusion_11_mandibula_pulso_ardiente.webp')");
+    expect(html).toContain('fusion-preview-art relic-collection-item fusion-relic');
+    expect(html).toMatch(/fusion_11_mandibula_pulso_ardiente\.webp"[^>]*loading="eager" decoding="sync"/);
   });
 
   it('permite cambiar el slot ocupado, abre el vacío y muestra feedback dentro de la Forja', () => {
