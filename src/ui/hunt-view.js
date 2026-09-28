@@ -175,6 +175,15 @@ function reportMarkup(report) {
       Number(encounter.armorXp) > 0 ? `+${encounter.armorXp} XP` : '',
       Number(encounter.armorVampirismUsed) > 0 ? 'Vampirismo reforzado' : '',
     ].filter(Boolean).join(' · ');
+    const skullBonus = [
+      Number(encounter.miniFirstHitShieldPrevented) > 0 ? `${encounter.miniFirstHitShieldPrevented} daño evitado` : '',
+      Number(encounter.miniManaSaved) > 0 ? `${encounter.miniManaSaved} maná ahorrado` : '',
+      Number(encounter.miniFirstHitManaRecovered) > 0 ? `+${encounter.miniFirstHitManaRecovered} maná` : '',
+      Number(encounter.miniOpeningDamageDealt) > 0 ? `+${encounter.miniOpeningDamageDealt} daño` : '',
+      Number(encounter.miniVictoryHealthRecovered) > 0 ? `+${encounter.miniVictoryHealthRecovered} vida` : '',
+      Number(encounter.miniVictoryXp) > 0 ? `+${encounter.miniVictoryXp} XP` : '',
+      Number(encounter.miniAllHabitsGold) > 0 ? `+${encounter.miniAllHabitsGold} oro` : '',
+    ].filter(Boolean).join(' · ');
     return `<details class="hunt-report-row ${encounter.won ? 'won' : 'lost'}">
       <summary>
         <span class="hunt-report-enemy"><strong>${encounter.name}</strong><small class="hunt-report-role ${roleClass}">${encounter.role}</small></span>
@@ -190,6 +199,7 @@ function reportMarkup(report) {
         ${recoveryMarkup}
         ${miradaRecovery ? `<div class="hunt-encounter-recovery"><span>BONUS DE MIRADA</span><b>${miradaRecovery}</b></div>` : ''}
         ${armorBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE ESCAMAS</span><b>${armorBonus}</b></div>` : ''}
+        ${skullBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE CALAVERA</span><b>${skullBonus}</b></div>` : ''}
         ${rewardsMarkup}
         <div class="hunt-encounter-next"><span>${movesToNextEnemy ? 'SIGUIENTE COMBATE' : 'FIN DE LOS COMBATES'}</span><b>${nextHpPercent}% vida · ${nextManaPercent}% maná</b></div>
       </div>

@@ -65,6 +65,17 @@ function fusionBonus(definition, rank, inherited) {
     fusion_29: `Cuando Escamas protectoras evita daño y sobrevives, recuperas como Maná el 20% del total evitado, sin decimales. Hasta ${value} de Maná por enemigo; lo que sobre se pierde.`,
     fusion_30: `Cuando Escamas protectoras evita daño y sobrevives, recuperas como Vida el 15% del total evitado, sin decimales. Hasta ${value} de Vida por enemigo; lo que sobre se pierde.`,
     fusion_31: `Cuando Escamas protectoras evita un total de 5 de daño contra un enemigo, Vampirismo sube ${increase('relic_07', value)} hasta terminar ese combate. Contra el siguiente enemigo, vuelve a empezar.`,
+    fusion_32: `Cuando un minijefe de Cacería conecte su primer golpe, hace ${value} de daño menos, sin reducir a cero un golpe con daño.`,
+    fusion_33: `Con un minijefe de Cacería, ${value === 1 ? 'el primer ataque gasta 1 de Maná menos' : `los primeros ${value} ataques gastan 1 de Maná menos cada uno`}; nunca baja a cero un gasto positivo.`,
+    fusion_34: `Al derrotar a un minijefe de Cacería, ganas ${value} XP extra. Solo una vez por Cacería.`,
+    fusion_35: `Cuando tu primer ataque dañe a un minijefe de Cacería, recuperas ${value} de Maná, sin superar el máximo.`,
+    fusion_36: `Con un minijefe de Cacería, Vampirismo sube ${increase('relic_07', value)}.`,
+    fusion_37: `Con un minijefe de Cacería, Mirada petrificante sube ${increase('relic_08', value)}.`,
+    fusion_38: `Con un minijefe de Cacería, Escamas protectoras sube ${increase('relic_09', value)}, sin reducir a cero un golpe con daño.`,
+    fusion_39: `Al completar 3 hábitos distintos hoy, el primer ataque que dañe al próximo minijefe de Cacería hace ${value} de daño extra. Una vez al día.`,
+    fusion_40: `Al completar todos los hábitos del día, el primer minijefe derrotado hoy concede ${value} de oro extra. Una vez al día.`,
+    fusion_41: `Al completar Constancia, el primer ataque que dañe a un minijefe en la próxima Cacería hace ${value} de daño extra. ${equippedCharge}`,
+    fusion_42: `Al derrotar al primer minijefe de una Cacería, recuperas ${value}% de la Vida máxima, sin resucitar ni superar el máximo.`,
   }[definition.id];
 }
 
@@ -81,7 +92,7 @@ export function relicEffectCopy(definition, relic) {
   return rows;
 }
 
-export const HUNT_CHARGE_RELIC_IDS = ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'];
+export const HUNT_CHARGE_RELIC_IDS = ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'];
 export function huntChargeCopy(ready) {
   return ready ? 'Preparada · se consume al iniciar Cacería' : 'Sin carga preparada';
 }

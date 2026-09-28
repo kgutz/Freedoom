@@ -9,6 +9,14 @@ describe('Catálogo: ajustes ópticos localizados',()=>{
     expect(css).toContain('.relic-art--fusion_28>img{transform:translateX(-2px)}');
     expect(css).toContain('.relic-art--fusion_26>img,.relic-art--fusion_28>img{width:92%;height:92%;');
   });
+  it('sube los tres dibujos de Calavera sin mover sus marcos ni cambiar su escala',()=>{
+    for(const [id,pixels] of [['fusion_33',2],['fusion_35',4],['fusion_40',2]]){
+      expect(css).toContain(`.relic-art--${id}>img{transform:translateY(-${pixels}px)}`);
+    }
+  });
+  it('amplía ligeramente solo el dibujo del Colmillo de la Llama Devorada',()=>{
+    expect(css).toContain('.relic-art--fusion_42>img{width:108%;height:108%;max-width:none;object-fit:contain;transform:translateY(-3px)}');
+  });
   it.each(ALL_RELIC_DEFINITIONS)('$id conserva proporciones, arte real y clase propia compartida',definition=>{
     const html=relicArt(definition);
     expect(html).toContain(`relic-art--${definition.id}`);

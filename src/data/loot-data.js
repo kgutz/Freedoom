@@ -231,6 +231,72 @@ export const RELIC_DEFINITIONS = [
 
 export const FUSION_RELIC_DEFINITIONS = [
   {
+    id: 'fusion_32', recipeId: 'fusion_recipe_32', ingredientIds: ['relic_01', 'relic_10'],
+    name: 'Corazón de la Llama Difunta', equipmentType: 'heart', image: 'relics/fusion_32_corazon_llama_difunta.webp',
+    effectLabel: 'Hereda Protección y Sangre adicional. Reduce el primer golpe que conecte un minijefe de Cacería.',
+    synergy: { type: 'mini-first-hit-shield', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_33', recipeId: 'fusion_recipe_33', ingredientIds: ['relic_02', 'relic_10'],
+    name: 'Calavera del Espectro Consumido', equipmentType: 'skull', image: 'relics/fusion_33_calavera_espectro_consumido.webp',
+    effectLabel: 'Hereda Maná del hábito y Sangre adicional. Ahorra Maná en los primeros ataques contra un minijefe.',
+    synergy: { type: 'mini-mana-openings', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_34', recipeId: 'fusion_recipe_34', ingredientIds: ['relic_03', 'relic_10'],
+    name: 'Daga de Ceniza Eterna', equipmentType: 'dagger', image: 'relics/fusion_34_daga_ceniza_eterna.webp',
+    effectLabel: 'Hereda XP del hábito y Sangre adicional. Vencer a un minijefe concede XP extra una vez por Cacería.',
+    synergy: { type: 'mini-victory-xp', values: { 1: 2, 2: 3, 3: 5 } },
+  },
+  {
+    id: 'fusion_35', recipeId: 'fusion_recipe_35', ingredientIds: ['relic_05', 'relic_10'],
+    name: 'Frasco de Cenizas Hambrientas', equipmentType: 'vessel', image: 'relics/fusion_35_frasco_cenizas_hambrientas.webp',
+    effectLabel: 'Hereda Maná de victoria y Sangre adicional. El primer ataque que dañe a un minijefe recupera Maná.',
+    synergy: { type: 'mini-first-hit-mana', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_36', recipeId: 'fusion_recipe_36', ingredientIds: ['relic_07', 'relic_10'],
+    name: 'Collar de la Ceniza Voraz', equipmentType: 'collar', image: 'relics/fusion_36_collar_ceniza_voraz.webp',
+    effectLabel: 'Hereda Vampirismo y Sangre adicional. Aumenta ligeramente el Vampirismo contra minijefes.',
+    synergy: { type: 'mini-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_37', recipeId: 'fusion_recipe_37', ingredientIds: ['relic_08', 'relic_10'],
+    name: 'Ojo de las Brasas Selladas', equipmentType: 'eye', image: 'relics/fusion_37_ojo_brasas_selladas.webp',
+    effectLabel: 'Hereda Mirada petrificante y Sangre adicional. Su reducción es mayor contra minijefes.',
+    synergy: { type: 'mini-petrification', values: { 1: 3, 2: 4, 3: 5 } },
+  },
+  {
+    id: 'fusion_38', recipeId: 'fusion_recipe_38', ingredientIds: ['relic_09', 'relic_10'],
+    name: 'Malla del Réquiem Calcinado', equipmentType: 'armor', image: 'relics/fusion_38_malla_requiem_calcinado.webp',
+    effectLabel: 'Hereda Escamas protectoras y Sangre adicional. Escamas protege algo más contra minijefes.',
+    synergy: { type: 'mini-armor', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_39', recipeId: 'fusion_recipe_39', ingredientIds: ['relic_11', 'relic_10'],
+    name: 'Gargantilla de las Tres Almas', equipmentType: 'choker', image: 'relics/fusion_39_gargantilla_tres_almas.webp',
+    effectLabel: 'Hereda Tres hábitos y Sangre adicional. Tras completar tres hábitos, refuerza el primer ataque al próximo minijefe.',
+    synergy: { type: 'mini-three-habits-hit', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_40', recipeId: 'fusion_recipe_40', ingredientIds: ['relic_12', 'relic_10'],
+    name: 'Puño del Óbolo Final', equipmentType: 'fist', image: 'relics/fusion_40_puno_obolo_final.webp',
+    effectLabel: 'Hereda Hábitos completos y Sangre adicional. Tras completar todos los hábitos del día, el primer minijefe concede oro extra.',
+    synergy: { type: 'mini-all-habits-gold', values: { 1: 5, 2: 8, 3: 12 } },
+  },
+  {
+    id: 'fusion_41', recipeId: 'fusion_recipe_41', ingredientIds: ['relic_04', 'relic_10'],
+    name: 'Yelmo de la Pira Eterna', equipmentType: 'helmet', image: 'relics/fusion_41_yelmo_pira_eterna.webp',
+    effectLabel: 'Hereda Constancia y Sangre adicional. Al activar Constancia, refuerza el primer ataque al próximo minijefe.',
+    synergy: { type: 'mini-constancy-hit', values: { 1: 3, 2: 4, 3: 5 } },
+  },
+  {
+    id: 'fusion_42', recipeId: 'fusion_recipe_42', ingredientIds: ['relic_06', 'relic_10'],
+    name: 'Colmillo de la Llama Devorada', equipmentType: 'fang', image: 'relics/fusion_42_colmillo_llama_devorada.webp',
+    effectLabel: 'Hereda Vida de victoria y Sangre adicional. Derrotar al primer minijefe de la Cacería recupera Vida extra.',
+    synergy: { type: 'mini-victory-health', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
     id: 'fusion_26', recipeId: 'fusion_recipe_26', ingredientIds: ['relic_02', 'relic_09'],
     name: 'Manto de la Lluvia Olvidada', equipmentType: 'armor', image: 'relics/fusion_26_manto_lluvia_olvidada.webp',
     effectLabel: 'Hereda Maná del primer hábito y Escamas protectoras. El primer hábito prepara una reserva que evita un punto adicional por golpe en la próxima Cacería, sin bajar de uno.',

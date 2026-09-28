@@ -324,6 +324,7 @@ export function normalizeLootState(state = {}) {
         fusion_22: equipped.includes('fusion_22') && inventory.huntCharges?.fusion_22 === true,
         fusion_26: equipped.includes('fusion_26') && inventory.huntCharges?.fusion_26 === true,
         fusion_28: equipped.includes('fusion_28') && inventory.huntCharges?.fusion_28 === true,
+        fusion_41: equipped.includes('fusion_41') && inventory.huntCharges?.fusion_41 === true,
       },
       potions: normalizePotionState(inventory.potions),
       constancy: {
@@ -1467,7 +1468,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
   if (!preview.ok) return { ...normalized, ok: false, ...preview };
   const wasEquipped = normalized.inventory.equipped.includes(relicId);
   const losesConstancy = wasEquipped && relicProvidesConstancy(normalized, relicId);
-  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   const restoredRelics = {};
   preview.ingredientIds.forEach((ingredientId) => {
     const snapshot = preview.relic.ingredientSnapshots[ingredientId];
@@ -1640,7 +1641,7 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   }
   const hasConstancySource = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
-  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(replacedRelicId)) normalized.inventory.huntCharges[replacedRelicId] = false;
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'].includes(replacedRelicId)) normalized.inventory.huntCharges[replacedRelicId] = false;
   if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1671,7 +1672,7 @@ export function unequipRelic(lootState, relicId, options = {}) {
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => id !== relicId,
   );
-  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
+  if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
   if (removesConstancySource) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
@@ -1774,6 +1775,17 @@ export function equippedHuntEffects(state) {
     armorManaCap: synergy('fusion_29'),
     armorHealthCap: synergy('fusion_30'),
     armorVampirism: synergy('fusion_31'),
+    miniFirstHitShield: synergy('fusion_32'),
+    miniManaOpenings: synergy('fusion_33'),
+    miniVictoryXp: synergy('fusion_34'),
+    miniFirstHitMana: synergy('fusion_35'),
+    miniVampirism: synergy('fusion_36'),
+    miniPetrification: synergy('fusion_37'),
+    miniArmor: synergy('fusion_38'),
+    miniThreeHabitsHit: synergy('fusion_39'),
+    miniAllHabitsGold: synergy('fusion_40'),
+    miniConstancyHit: charged('fusion_41') ? synergy('fusion_41') : 0,
+    miniVictoryHealth: synergy('fusion_42'),
     petrificationHuntBonus: charged('fusion_22') ? synergy('fusion_22') : 0,
     petrificationXp: synergy('fusion_21'),
     petrificationMana: synergy('fusion_23'),
@@ -1790,7 +1802,7 @@ export function equippedHuntEffects(state) {
 
 export function consumeHuntCharges(state) {
   const normalized = normalizeLootState(state);
-  for (const id of ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28']) {
+  for (const id of ['fusion_18', 'fusion_19', 'fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41']) {
     if (normalized.inventory.equipped.includes(id)) normalized.inventory.huntCharges[id] = false;
   }
   return normalized;
@@ -1925,6 +1937,7 @@ export function activateRelicConstancy({
       if (source.relicId === 'fusion_19') normalized.inventory.huntCharges.fusion_19 = true;
       if (source.relicId === 'fusion_22') normalized.inventory.huntCharges.fusion_22 = true;
       if (source.relicId === 'fusion_28') normalized.inventory.huntCharges.fusion_28 = true;
+      if (source.relicId === 'fusion_41') normalized.inventory.huntCharges.fusion_41 = true;
       xp += source.value;
       activations.push(key);
     }

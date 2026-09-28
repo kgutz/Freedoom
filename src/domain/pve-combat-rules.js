@@ -619,6 +619,14 @@ export function simulatePveCombat({
   let armorManaRecovered = 0;
   let armorHealthRecovered = 0;
   let armorVampirismUsed = 0;
+  let miniFirstHitManaUsed = false;
+  let miniFirstHitManaRecovered = 0;
+  let miniFirstHitShieldUsed = false;
+  let miniFirstHitShieldPrevented = 0;
+  let miniManaSaved = 0;
+  let miniOpeningDamageUsed = false;
+  let miniOpeningDamageDealt = 0;
+  let miniThreeHabitsTriggered = false;
   const potions = normalizePotionState(suppliedPotions);
   const potionUses = [];
   const roundDetails = [];
@@ -643,7 +651,10 @@ export function simulatePveCombat({
       roundPotionUses.push(use);
       log.push({ round, actor: 'potion', potionId: 'mana', restored, remainingMana: heroMana, remainingHp: heroHp });
     }
-    const manaSpent = Math.min(2, heroMana);
+    const normalManaSpent = Math.min(2, heroMana);
+    const miniManaDiscount = round <= safeInteger(relicEffects.miniManaOpenings) && normalManaSpent > 1 ? 1 : 0;
+    const manaSpent = normalManaSpent - miniManaDiscount;
+    miniManaSaved += miniManaDiscount;
     const heroHit = resolvePveAttack({
       attacker: hero,
       defender: enemy,
@@ -659,9 +670,26 @@ export function simulatePveCombat({
       heroHit.guardPrevented = Math.max(0, heroHit.damage - limit);
       heroHit.damage = Math.min(heroHit.damage, limit);
     }
+    if (heroHit.damage > 0 && !miniOpeningDamageUsed) {
+      const openingBonus = safeInteger(relicEffects.miniThreeHabitsHit) + safeInteger(relicEffects.miniConstancyHit);
+      if (openingBonus > 0) {
+        heroHit.damage += openingBonus;
+        miniOpeningDamageDealt = Math.min(openingBonus, Math.max(0, enemyHp - (heroHit.damage - openingBonus)));
+        miniOpeningDamageUsed = true;
+      }
+    }
     heroMana = Math.max(0, heroMana - manaSpent);
     const realDamage = Math.min(enemyHp, heroHit.damage);
+    if (realDamage > 0 && miniOpeningDamageUsed && safeInteger(relicEffects.miniThreeHabitsHit) > 0) {
+      miniThreeHabitsTriggered = true;
+    }
     enemyHp = Math.max(0, enemyHp - realDamage);
+    if (realDamage > 0 && !miniFirstHitManaUsed && safeInteger(relicEffects.miniFirstHitMana) > 0) {
+      const restored = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.miniFirstHitMana));
+      heroMana += restored;
+      miniFirstHitManaRecovered = restored;
+      miniFirstHitManaUsed = true;
+    }
     // Integer hundredths carry across encounters; overhealing cannot be banked.
     const hitVampirismBonus = realDamage > 0 ? nextVampirismBonus : 0;
     if (realDamage > 0) {
@@ -692,7 +720,7 @@ export function simulatePveCombat({
       }
       if (petrificationPending && !enemyHit.dodged) {
         const originalDamage = enemyHit.damage;
-        const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus);
+        const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus) + safeInteger(relicEffects.miniPetrification);
         enemyHit.damage = Math.floor(originalDamage * (100 - clamp(reduction, 0, 100)) / 100);
         enemyHit.petrificationPrevented = originalDamage - enemyHit.damage;
         petrificationTriggered = true;
@@ -704,7 +732,7 @@ export function simulatePveCombat({
       if (enemyHit.damage > 0) {
         const beforeArmor = enemyHit.damage;
         const armorReduction = safeInteger(relicEffects.damageReduction) > 0
-          ? safeInteger(relicEffects.damageReduction) + safeInteger(relicEffects.armorHuntBonus) : 0;
+          ? safeInteger(relicEffects.damageReduction) + safeInteger(relicEffects.armorHuntBonus) + safeInteger(relicEffects.miniArmor) : 0;
         enemyHit.damage = Math.max(1, Math.floor(beforeArmor * (100 - clamp(armorReduction, 0, 100)) / 100));
         enemyHit.armorPrevented = beforeArmor - enemyHit.damage;
         armorPrevented += enemyHit.armorPrevented;
@@ -713,6 +741,12 @@ export function simulatePveCombat({
           armorReserveRemaining -= 1;
           armorReserveUsed += 1;
           enemyHit.armorReservePrevented = 1;
+        }
+        if (!miniFirstHitShieldUsed && safeInteger(relicEffects.miniFirstHitShield) > 0 && enemyHit.damage > 0) {
+          const prevented = Math.min(enemyHit.damage - 1, safeInteger(relicEffects.miniFirstHitShield));
+          enemyHit.damage -= prevented;
+          miniFirstHitShieldPrevented = prevented;
+          miniFirstHitShieldUsed = true;
         }
       }
       damageTaken = enemyHit.damage;
@@ -770,6 +804,11 @@ export function simulatePveCombat({
     });
   }
   return {
+    miniFirstHitManaRecovered,
+    miniFirstHitShieldPrevented,
+    miniManaSaved,
+    miniOpeningDamageDealt,
+    miniThreeHabitsTriggered,
     petrificationTriggered,
     rendDamageBeforeMitigation: log.reduce((sum, entry) => sum + (entry.rendDamageBeforeMitigation || 0), 0),
     guardDamagePrevented: log.reduce((sum, entry) => sum + (entry.guardPrevented || 0), 0),
@@ -849,7 +888,7 @@ function resourceRatio(current, maximum) {
     : 1;
 }
 
-export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, relicEffects = {}, autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
+export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, level = 1, currentHp, maxHp, currentMana, maxMana, relicBonuses = {}, relicEffects = {}, bonusDayKey = '', autoUsePotions = false, fortune = null, nowTimestamp = Date.now(), seed = nowTimestamp }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const region = huntRegion(regionId);
   if (!region) return { ok: false, reason: 'unknown-region', hunt: normalized };
@@ -890,12 +929,13 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
     entryHpRatio: resourceRatio(currentHp, maxHp),
     entryManaRatio: resourceRatio(currentMana, maxMana),
     autoUsePotions: Boolean(autoUsePotions),
+    bonusDayKey: String(bonusDayKey || ''),
     fortune: fortune?.dayKey ? {
       dayKey: String(fortune.dayKey),
       bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
     } : null,
     relicEffects: {
-      ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism']
+      ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniThreeHabitsHit', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
     },
@@ -943,8 +983,15 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   let firstPetrificationUsed = false;
   let petrificationXpAwarded = false;
   let armorReserveRemaining = safeInteger(effects.armorReserve);
+  let miniRewardAwarded = false;
+  let miniHealthAwarded = false;
   for (const [enemyIndex, definition] of region.enemies.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
+    const isMiniboss = enemy.role === 'Minijefe';
+    const miniOnly = Object.fromEntries([
+      'miniFirstHitShield', 'miniManaOpenings', 'miniFirstHitMana', 'miniPetrification',
+      'miniArmor', 'miniThreeHabitsHit', 'miniConstancyHit',
+    ].map(key => [key, isMiniboss ? safeInteger(effects[key]) : 0]));
     const heroHpAtStart = currentHp;
     const heroManaAtStart = currentMana;
     const result = simulatePveCombat({
@@ -956,9 +1003,10 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       roll: random,
       relicEffects: {
         ...effects,
+        ...miniOnly,
         armorReserve: armorReserveRemaining,
         petrificationFirstBonus: firstPetrificationUsed ? 0 : safeInteger(effects.petrificationFirstBonus),
-        vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0),
+        vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0) + (isMiniboss ? safeInteger(effects.miniVampirism) : 0),
       },
       relicCarry: carry,
       autoUsePotions: Boolean(active.autoUsePotions),
@@ -967,6 +1015,9 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     carry.vampirism = result.vampirismCarry;
     armorReserveRemaining = result.armorReserveRemaining;
     const armorXp = result.won && result.armorPrevented >= 5 ? safeInteger(effects.armorXp) : 0;
+    const miniVictoryXp = isMiniboss && result.won && !miniRewardAwarded ? safeInteger(effects.miniVictoryXp) : 0;
+    const miniAllHabitsGold = isMiniboss && result.won && !miniRewardAwarded ? safeInteger(effects.miniAllHabitsGold) : 0;
+    if (isMiniboss && result.won) miniRewardAwarded = true;
     firstPetrificationUsed ||= result.petrificationTriggered;
     const petrificationXp = !petrificationXpAwarded && result.petrificationReduced ? safeInteger(effects.petrificationXp) : 0;
     petrificationXpAwarded ||= petrificationXp > 0;
@@ -986,6 +1037,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     }
     // Apply the new rewards after the unchanged between-encounter recovery.
     const relicRecovery = { hp: 0, mana: 0 };
+    let miniVictoryHealthRecovered = 0;
     if (result.won) {
       const hpRaw = carry.health + hero.maxHp * safeInteger(effects.victoryHealth);
       const manaRaw = carry.mana + hero.maxMana * safeInteger(effects.victoryMana);
@@ -996,8 +1048,23 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       carry.health = currentHp >= hero.maxHp ? 0 : hpRaw % 100;
       carry.mana = currentMana >= hero.maxMana ? 0 : manaRaw % 100;
       if (effects.manaFusion16 && relicRecovery.mana > 0) fusion16ManaRecovered = true;
+      if (isMiniboss && !miniHealthAwarded && currentHp > 0) {
+        miniVictoryHealthRecovered = Math.min(hero.maxHp - currentHp,
+          Math.floor(hero.maxHp * safeInteger(effects.miniVictoryHealth) / 100));
+        currentHp += miniVictoryHealthRecovered;
+        relicRecovery.hp += miniVictoryHealthRecovered;
+        miniHealthAwarded = true;
+      }
     }
     encounters.push({
+      miniVictoryXp,
+      miniAllHabitsGold,
+      miniVictoryHealthRecovered,
+      miniFirstHitManaRecovered: result.miniFirstHitManaRecovered,
+      miniFirstHitShieldPrevented: result.miniFirstHitShieldPrevented,
+      miniManaSaved: result.miniManaSaved,
+      miniOpeningDamageDealt: result.miniOpeningDamageDealt,
+      miniThreeHabitsTriggered: result.miniThreeHabitsTriggered,
       rendPercent: enemy.huntRendPercent || 0,
       rendDamageBeforeMitigation: result.rendDamageBeforeMitigation,
       guardPercent: enemy.huntGuardPercent || 0,
@@ -1046,8 +1113,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const xpByEnemy = splitEncounterReward(Math.round(difficulty.xp * rewardMultiplier));
   encounters.forEach((encounter, index) => {
     encounter.rewards = {
-      xp: (encounter.won ? xpByEnemy[index] : 0) + encounter.petrificationXp + encounter.armorXp,
-      gold: encounter.won ? goldByEnemy[index] : 0,
+      xp: (encounter.won ? xpByEnemy[index] : 0) + encounter.petrificationXp + encounter.armorXp + encounter.miniVictoryXp,
+      gold: (encounter.won ? goldByEnemy[index] : 0) + encounter.miniAllHabitsGold,
       arcaneFibers: 0,
       arcaneInks: 0,
       bossBlood: 0,
@@ -1118,6 +1185,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const report = {
     fusion16ManaRecovered,
     id: active.id,
+    bonusDayKey: active.bonusDayKey || '',
     regionId: active.regionId,
     difficultyId: difficulty.id,
     startedAt: active.startedAt,

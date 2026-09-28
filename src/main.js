@@ -282,7 +282,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.13';
+const APP_VERSION='2.29.14';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -302,6 +302,7 @@ const LOCAL_OUTFIT_AUDIT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoOutfitAudit
 const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewProgressionUpdate')==='1';
 const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
+const LOCAL_DEMO_SKULL_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoSkullFusions')==='1';
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_CELESTIAL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoCelestial')==='1';
@@ -322,7 +323,7 @@ const LOCAL_BETA_TESTER_REWARD_PREVIEW=['2','3','4','5'].includes(LOCAL_BETA_TES
 const LOCAL_FEEDBACK_REWARD_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewFeedbackReward')==='martin';
 const LOCAL_DEMO_PALADIN_EFFECTS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPaladinEffects')==='1';
 const LOCAL_DEMO_SHOP=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoShop')||'':'';
-const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control');
+const LOCAL_DEMO_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoFusions')==='1'||LOCAL_DEMO_PROFILE==='control'||LOCAL_DEMO_SKULL_FUSIONS);
 const LOCAL_DEMO_DEFUSION=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoDefusion')==='1';
 const LOCAL_DEMO_PENDING_HUNT=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoPendingHunt')==='1';
 const LOCAL_DEMO_CONSTANCY=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.has('demoConstancy')
@@ -348,7 +349,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
-    ? `${STORAGE_KEY}:${LOCAL_DEMO_PENDING_HUNT?'demo-pending-hunt-v2':LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
+    ? `${STORAGE_KEY}:${LOCAL_DEMO_SKULL_FUSIONS?'demo-skull-fusions-v1':LOCAL_DEMO_PENDING_HUNT?'demo-pending-hunt-v2':LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
     : LOCAL_DEMO_CONSTANCY!==null
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
@@ -795,6 +796,7 @@ function scheduleCloudSave(){
   },900);
 }
 function scheduleSave(action){
+  if(LOCAL_DEMO_SKULL_FUSIONS) return; // La partida ficticia existe solo durante esta vista.
   if(action){
     try{ store.recordAction(action,ACTIVE_STORAGE_KEY); }
     catch(error){ console.warn('No se pudo registrar la acción',error); }
@@ -1052,6 +1054,13 @@ function prepareLocalBossDemo(){
     buffs:{...(state.game?.buffs||{})},
     day:todayKey()
   };
+  if(LOCAL_DEMO_SKULL_FUSIONS){
+    const demoLevel=LOCAL_DEMO_LEVEL||35;
+    state.game={...state.game,cls:'sorcerer',name:'Héroe de prueba · Fusiones de Calavera',bonusXp:35*(demoLevel-1)*(demoLevel-1)};
+    const demoMaxes=heroMaxes();
+    state.game.hp=demoMaxes.maxHp;
+    state.game.mp=demoMaxes.maxMp;
+  }
   if(['3','4','5'].includes(LOCAL_BETA_TESTER_REWARD_PREVIEW_ID)){
     const ownedFrames={...(state.game.frames?.owned||{})};
     const claimedRewards={...(state.game.betaTesterRewards?.claimed||{})};
@@ -1132,7 +1141,9 @@ function prepareLocalBossDemo(){
     scheduleSave({type:'demo:loot-migration',count:LOCAL_DEMO_MIGRATION});
     return;
   }
-  if(LOCAL_LOOT_NOTICE_PREVIEW){
+  if(LOCAL_DEMO_SKULL_FUSIONS){
+    // La vista ficticia ya crea las reliquias abajo; no necesita liquidar doce jefes.
+  }else if(LOCAL_LOOT_NOTICE_PREVIEW){
     const previousBosses=Math.max(0,LOCAL_DEMO_BOSSES-1);
     if(previousBosses>0){
       applyLootSlices(grantBossRewards({
@@ -1190,7 +1201,10 @@ function prepareLocalBossDemo(){
       fusion_07:{rarity:'legendary',affixes:['arcane']},
       fusion_08:{rarity:'mythic',affixes:['arcane','discipline']}
     };
-    FUSION_RELIC_DEFINITIONS.forEach((definition,index)=>{
+    const demoRecipes=LOCAL_DEMO_SKULL_FUSIONS
+      ? FUSION_RELIC_DEFINITIONS.filter(({id})=>Number(id.slice(7))>=32&&Number(id.slice(7))<=42)
+      : FUSION_RELIC_DEFINITIONS;
+    demoRecipes.forEach((definition,index)=>{
       const demoStyle=demoFusionStyles[definition.id]||{rarity:'rare',affixes:[]};
       const ingredientSnapshots=Object.fromEntries(definition.ingredientIds.map(id=>[
         id,{
@@ -1220,7 +1234,7 @@ function prepareLocalBossDemo(){
         lastOwnedRecord:record
       };
     });
-    state.forge.fusion.discoveredRecipes=FUSION_RELIC_DEFINITIONS.map(({recipeId})=>recipeId);
+    state.forge.fusion.discoveredRecipes=demoRecipes.map(({recipeId})=>recipeId);
     applyLootSlices(normalizeLootState(state));
     if(LOCAL_DEMO_DEFUSION){
       delete state.inventory.relics.relic_01;
@@ -1241,6 +1255,8 @@ function prepareLocalBossDemo(){
   }
   state.inventory.equipped=(LOCAL_DEMO_DEFUSION
     ? ['fusion_01']
+    : LOCAL_DEMO_SKULL_FUSIONS
+    ? ['fusion_32','relic_02']
     : LOCAL_DEMO_FUSIONS
     ? ['fusion_06','relic_02']
     : LOCAL_DEMO_CONSTANCY!==null
@@ -1842,6 +1858,7 @@ function showPendingWeekResult(){
 
 let earlyVictoryNoticeOpening=false;
 async function showPendingEarlyVictoryNotice(){
+  if(LOCAL_DEMO_SKULL_FUSIONS) return;
   const earlyVictory=state.game?.bossCombat?.earlyVictory;
   if(earlyVictoryNoticeOpening||!earlyVictory?.noticePending) return;
   if(document.getElementById('weekResultBg').classList.contains('show')) return;
@@ -1958,7 +1975,7 @@ function syncBossCombat(nowDate=currentDayDate(),actualTimestamp=Date.now()){
       .map(weekResult=>weekResult.earlyVictory),
     ...(result.earlyVictory?[result.earlyVictory]:[])
   ];
-  syncLootRewards(
+  if(!LOCAL_DEMO_SKULL_FUSIONS) syncLootRewards(
     state.loot?.migrationComplete===true?'victory':'retroactive',
     earlyVictoryBonuses
   );
@@ -2985,6 +3002,7 @@ function openShopSaleRelicDetail(relicId){
   showSheet(document,'sheetRelicDetail');
 }
 async function showPendingLootNotice(){
+  if(LOCAL_DEMO_SKULL_FUSIONS) return;
   if(lootNoticeOpening||document.getElementById('lootNoticeBg').classList.contains('show')) return;
   if(document.getElementById('weekResultBg').classList.contains('show')) return;
   const notice=pendingLootNotice(state);
@@ -3196,6 +3214,7 @@ async function persistFeedbackRewardToCloud(){
   return saved;
 }
 async function showPendingFiberCatchup(){
+  if(LOCAL_DEMO_SKULL_FUSIONS) return;
   fiberCatchupTimer=null;
   const notice=pendingFiberCatchupNotice(state);
   if(fiberCatchupOpening||!notice) return;
@@ -3233,6 +3252,7 @@ function progressionUpdateAcknowledged(){
   return Boolean(state.game?.updateNotices?.[PROGRESSION_UPDATE_NOTICE_ID]?.acknowledgedAt);
 }
 function shouldDisplayProgressionUpdate(){
+  if(LOCAL_DEMO_SKULL_FUSIONS) return false;
   if(LOCAL_PROGRESSION_UPDATE_PREVIEW) return Boolean(state.onboarded&&state.game?.cls);
   return Boolean(state.onboarded&&state.game?.cls&&!progressionUpdateAcknowledged());
 }
@@ -4036,6 +4056,11 @@ function confirmHuntStart(){
   const fortune=activePotion?.id==='fortune'&&activePotion.endsAt>nowTimestamp
     ? {dayKey:activePotion.dayKey}
     : null;
+  const bonusDayKey=todayKey(new Date(nowTimestamp));
+  const relicEffects=equippedHuntEffects(state);
+  const activations=state.inventory?.dailyActivations||{};
+  if(!activations[`fusion_39:relic_11:${bonusDayKey}`]||activations[`fusion_39:mini-hit:${bonusDayKey}`]) relicEffects.miniThreeHabitsHit=0;
+  if(!activations[`fusion_40:relic_12:${bonusDayKey}`]||activations[`fusion_40:mini-gold:${bonusDayKey}`]) relicEffects.miniAllHabitsGold=0;
   const result=startHunt({
     hunt:state.game.hunt,
     regionId,
@@ -4046,7 +4071,8 @@ function confirmHuntStart(){
     currentMana:state.game.mp,
     maxMana:stats.maxMp,
     relicBonuses:relicBonuses(),
-    relicEffects:equippedHuntEffects(state),
+    relicEffects,
+    bonusDayKey,
     autoUsePotions,
     fortune,
     nowTimestamp
@@ -4271,6 +4297,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     state.inventory={...(state.inventory||{}),potions:result.potions};
     if(result.report.fusion16ManaRecovered){
       state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
+    }
+    if(result.report.bonusDayKey){
+      if(result.report.encounters.some(encounter=>encounter.miniThreeHabitsTriggered))
+        state.inventory.dailyActivations[`fusion_39:mini-hit:${result.report.bonusDayKey}`]=true;
+      if(result.report.encounters.some(encounter=>encounter.miniAllHabitsGold>0))
+        state.inventory.dailyActivations[`fusion_40:mini-gold:${result.report.bonusDayKey}`]=true;
     }
     state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
     state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
@@ -7641,7 +7673,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     return;
   }
   const cloudConfig=readCloudConfig(window);
-  if(cloudConfig.enabled){
+  if(cloudConfig.enabled&&!LOCAL_DEMO_SKULL_FUSIONS){
     const initialAuthCallback=new URLSearchParams(location.search).get('authCallback');
     /* Solo esperamos a que la pantalla de carga haya terminado de aparecer, sin
        arrancar todavía su cuenta atrás para ocultarse: eso lo dispara más abajo
