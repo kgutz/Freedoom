@@ -6,6 +6,7 @@ import {
   classDataForJourney
 } from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
+import { createSingleFlightSave } from './cloud/single-flight-save.js';
 import { deathExperiencePenalty } from './domain/death-rules.js';
 import {
   calculateBossCombatStatus,
@@ -282,7 +283,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.20';
+const APP_VERSION='2.29.21';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -383,6 +384,8 @@ let calCursor=currentDayDate();
 let editingKey=null;
 let saveTimer=null;
 let cloudSaveTimer=null;
+const enqueueCloudSave=createSingleFlightSave();
+let cloudSaveConflictPaused=false;
 let returnSplashTimer=null;
 let returnSplashPlaying=true;
 let backgroundedAt=null;
@@ -771,10 +774,12 @@ async function prepareLocalMigrationTest(){
   history.replaceState({},'',location.pathname);
 }
 function scheduleCloudSave(){
-  if(!activeCloudService) return;
+  if(!activeCloudService||cloudSaveConflictPaused) return;
   clearTimeout(cloudSaveTimer);
   cloudSaveTimer=setTimeout(async()=>{
     try{
+      await enqueueCloudSave(async()=>{
+      if(!activeCloudService||cloudSaveConflictPaused) return;
       const previous=await activeCloudService.loadGameSaveRevision();
       if(!previous) return;
       const migrationPlan=createMigrationPlan(state);
@@ -791,7 +796,13 @@ function scheduleCloudSave(){
         detail:'Partida verificada en tu cuenta de Freedom',
         warning:''
       });
+      });
     }catch(error){
+      if(error?.code==='PT409'||error?.message==='save conflict'){
+        cloudSaveConflictPaused=true;
+        clearTimeout(cloudSaveTimer);
+        setStorageHealth({state:'error',title:'Conflicto de guardado en la nube',detail:'Tu progreso local se conserva. La sincronización se ha pausado.',warning:'Hay otra versión en la nube. No borres los datos ni fuerces una subida; revisa Soporte y recuperación.'});
+      }
       console.warn('No se pudo sincronizar la partida con Freedom Nube',error);
     }
   },900);
