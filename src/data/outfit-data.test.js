@@ -95,6 +95,17 @@ describe('outfits de héroe', () => {
     expect(profile.face).toEqual(previous.face);
   });
 
+  it('amplía el cuerpo del Hechicero de Halloween un 3% y lo desplaza a la derecha', () => {
+    const profile = outfitDisplayProfile('sorcerer', 'drowned-reliquary');
+    const previous = outfitDisplayProfile('sorcerer', 'celestial-rhythm-master');
+    for (const surface of ['hero', 'sheet', 'card']) {
+      expect(profile[surface][0]).toBeCloseTo(previous[surface][0] * 1.03, 3);
+      expect(profile[surface][1]).toBe(3);
+      expect(profile[surface][2]).toBe(previous[surface][2]);
+    }
+    expect(profile.face).toEqual(previous.face);
+  });
+
   it('exige una calibracion completa para cada outfit y cada heroe', () => {
     const remastered = OUTFIT_DEFINITIONS;
     const classes = ['knight', 'paladin', 'sorcerer', 'druid'];
