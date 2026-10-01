@@ -20,7 +20,7 @@ function baseDescription(id, value) {
     relic_07: `Recupera Vida igual al ${value}% del daño real de tus ataques en Cacería.`,
     relic_08: `Reduce un ${value}% el siguiente golpe que te alcance tras tu primer ataque a cada enemigo de Cacería.`,
     relic_09: `Reduce un ${value}% el daño recibido en Cacería. No reduce a cero un golpe con daño.`,
-    relic_10: `Suma ${value} p. p. a la probabilidad de +1 Sangre de Jefe al vencer al jefe semanal.`,
+    relic_10: `Suma ${value}% a la probabilidad de +1 Sangre de Jefe al vencer al jefe semanal.`,
     relic_11: `Gana ${value} XP al completar 3 hábitos distintos en el día. Una vez al día.`,
     relic_12: `Gana ${value} de oro al completar todos los hábitos programados para el día. Una vez al día.`,
   }[id];
