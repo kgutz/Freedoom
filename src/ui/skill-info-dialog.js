@@ -1,4 +1,5 @@
-// Peek dialog: visible only while the trigger is held, closed by the caller on pointer release.
+// Peek dialog: opens on long-press, stays visible so the finger can move freely (scroll, release, etc.)
+// and only closes on an explicit tap/click outside it (the native backdrop) or Esc.
 // Native dialog still provides top-layer isolation and an inert background while shown.
 export function installSkillInfoDialog(document) {
   const existing = document.getElementById('skillInfoDialog');
@@ -36,10 +37,14 @@ export function installSkillInfoDialog(document) {
   }
   dialog.addEventListener('close', finish);
   dialog.addEventListener('cancel', event => {
-    // Esc still works as a keyboard-only fallback; the normal path is releasing the pointer.
     event.preventDefault();
     event.stopPropagation();
     dialog.close();
+  });
+  dialog.addEventListener('pointerdown', event => {
+    // A pointerdown that lands on the dialog element itself (not a descendant) hit the
+    // native backdrop, i.e. a tap outside the visible card: dismiss.
+    if (event.target === dialog) dialog.close();
   });
   dialog.openForTrigger = (triggerEl, data) => {
     if (dialog.open) return;

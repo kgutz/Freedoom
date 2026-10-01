@@ -253,7 +253,7 @@ import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStored
 import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
 import { applyFeedbackReward, isFeedbackRewardApplied, FIRST_REPORT_REWARD_ID } from './domain/feedback-reward-rules.js';
 import { installRelicEffectDialog } from './ui/relic-effect-dialog.js';
-import { showSkillInfoDialog, closeSkillInfoDialog } from './ui/skill-info-dialog.js';
+import { showSkillInfoDialog } from './ui/skill-info-dialog.js';
 import { installFrameMedia } from './ui/frame-media.js';
 import { templeMarkup, templeShopMarkup, renderBlessingDetail } from './ui/temple-view.js';
 import { startTempleDialogue } from './ui/temple-dialogue.js';
@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.30';
+const APP_VERSION='2.29.31';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5820,7 +5820,6 @@ const SKILL_LONG_PRESS_MS=450;
 const SKILL_LONG_PRESS_MOVE_TOLERANCE=8;
 let skillLongPress=null;
 let skillLongPressFired=false;
-let skillInfoOpenPointerId=null;
 
 function openSkillInfoDialog(button){
   const id=button.dataset.cast;
@@ -5840,13 +5839,11 @@ function openSkillInfoDialog(button){
 }
 
 function endSkillLongPress(pointerId){
+  /* soltar o mover el dedo ya no cierra el tooltip: se queda abierto hasta que
+     se toca fuera de él (ver el pointerdown sobre el backdrop en skill-info-dialog.js) */
   if(skillLongPress&&skillLongPress.pointerId===pointerId){
     window.clearTimeout(skillLongPress.timer);
     skillLongPress=null;
-  }
-  if(skillInfoOpenPointerId===pointerId){
-    skillInfoOpenPointerId=null;
-    closeSkillInfoDialog(document);
   }
 }
 
@@ -5857,7 +5854,6 @@ document.getElementById('view-hero').addEventListener('pointerdown',e=>{
   skillLongPress.timer=window.setTimeout(()=>{
     if(!skillLongPress||skillLongPress.pointerId!==e.pointerId) return;
     skillLongPressFired=true;
-    skillInfoOpenPointerId=e.pointerId;
     skillLongPress=null;
     if(navigator.vibrate) navigator.vibrate(18);
     openSkillInfoDialog(button);
@@ -6505,8 +6501,16 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     }
   }
   if(event.target.closest('[data-open-potion-shop]')){
+    document.getElementById('sheetRelicDetail')?.classList.remove('show');
     shopViewSection='potions';
     boticaMode='potions';
+    showInventoryPanel('shop');
+    return;
+  }
+  if(event.target.closest('[data-open-candy-shop]')){
+    document.getElementById('sheetRelicDetail')?.classList.remove('show');
+    shopViewSection='potions';
+    boticaMode='candy';
     showInventoryPanel('shop');
     return;
   }
@@ -7128,6 +7132,20 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
   const potionUse=event.target.closest('[data-use-potion]');
   if(potionUse){
     handlePotionUse(potionUse.dataset.usePotion);
+    return;
+  }
+  if(event.target.closest('[data-open-potion-shop]')){
+    document.getElementById('sheetRelicDetail').classList.remove('show');
+    shopViewSection='potions';
+    boticaMode='potions';
+    showInventoryPanel('shop');
+    return;
+  }
+  if(event.target.closest('[data-open-candy-shop]')){
+    document.getElementById('sheetRelicDetail').classList.remove('show');
+    shopViewSection='potions';
+    boticaMode='candy';
+    showInventoryPanel('shop');
     return;
   }
   const forgeShortcut=event.target.closest('[data-open-forge-relic]');

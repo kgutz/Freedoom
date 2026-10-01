@@ -433,11 +433,14 @@ export function renderCandyDetail(document, lootState, candyId, options = {}) {
   const prepared = candy.prepared[candyId];
   const title = document.getElementById('relicDetailTitle');
   if (title) title.textContent = 'Chuche de Halloween';
+  const outOfStock = owned < 1 && !prepared;
   const blocked = owned < 1 || (candyId === 'blood' && prepared) || (candyId === 'experience' && prepared);
   const action = shopMode
     ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-candy-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-candy-quantity>1</output><button type="button" data-candy-quantity-step="1" aria-label="Aumentar cantidad">+</button></div>
       <button type="button" data-buy-candy="${candyId}" data-unit-price="${definition.price}">COMPRAR · ${definition.price}</button>`
-    : `<button type="button" data-use-candy="${candyId}"${blocked ? ' disabled' : ''}>${prepared ? 'PREPARADA' : blocked ? 'NO DISPONIBLE' : 'USAR'}</button>`;
+    : outOfStock
+      ? `<button type="button" data-open-candy-shop>COMPRAR MÁS</button>`
+      : `<button type="button" data-use-candy="${candyId}"${blocked ? ' disabled' : ''}>${prepared ? 'PREPARADA' : 'USAR'}</button>`;
   body.innerHTML = `<div class="shop-potion-detail candy-detail"><div class="relic-detail-frame potion-detail-frame candy-detail-frame"><div class="relic-detail-art">${candyArt(definition)}</div><div class="rarity-label">HALLOWEEN</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode ? `PRECIO · ${definition.price} ORO` : `DISPONIBLES · ${owned}`}</div></div>
     <div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${candyId === 'blood' ? 'Máximo una por Cacería difícil. Se gasta al vencer al minijefe; si no llegas a vencerlo, vuelve al bolso.' : candyId === 'experience' ? 'Se aplica a la experiencia obtenida en la próxima Cacería. Si no obtienes XP, vuelve al bolso.' : 'Uso instantáneo. Suma 2 puntos a tu reserva extra, sin tope de acumulación ni límite diario de usos. Las 10 de recarga diaria no cambian.'}</p></div>
     <div class="relic-equip-actions">${action}</div></div>`;
@@ -459,14 +462,17 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const active=potions.active?.endsAt>(options.nowTimestamp||Date.now());
   const energyRestore=potionEnergyRestore(potions,options.dayKey);
   const energyBlocked=potionId==='energy'&&(options.huntEnergy||0)>(options.huntEnergyCapacity||20)-energyRestore;
-  const blocked=owned<1||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active)||energyBlocked;
+  const outOfStock=owned<1;
+  const blocked=outOfStock||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active)||energyBlocked;
   const shopMode=options.mode==='shop';
   const lacksCoins=normalized.economy.coins<definition.price;
   const occupiedSlots=Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length;
   const bagFull=shopMode&&owned<1&&occupiedSlots>=POTION_BAG_SLOT_LIMIT;
   const action=shopMode
     ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins||bagFull?' aria-disabled="true"':''}>${bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
-    : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
+    : outOfStock
+      ? `<button type="button" data-open-potion-shop>COMPRAR MÁS</button>`
+      : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${blocked?'NO DISPONIBLE':'USAR'}</button>`;
   const usageCopy=limit===null?'Usos diarios: SIN LÍMITE':`Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}${potionId==='energy'&&energyRestore?` · Próxima dosis: +${energyRestore} energía`:''}`;
   body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div><div class="relic-equip-actions">${action}</div>`;
   if (potionId === 'blood') body.innerHTML = bloodPreparedNotice(normalized, options) + body.innerHTML;

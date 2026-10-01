@@ -90,6 +90,20 @@ describe('Detalle de habilidad al mantener pulsado', () => {
     expect(f.dialog.close).toHaveBeenCalledTimes(1);
   });
 
+  it('un pointerdown sobre el backdrop (target es el propio diálogo) lo cierra', () => {
+    const f = fixture();
+    showSkillInfoDialog(f.document, { trigger: f.trigger, name: 'A', description: 'a', mana: 1, level: 1 });
+    f.listeners['dialog:pointerdown'](f.event({ target: f.dialog }));
+    expect(f.dialog.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('un pointerdown sobre el contenido (no el propio diálogo) no lo cierra', () => {
+    const f = fixture();
+    showSkillInfoDialog(f.document, { trigger: f.trigger, name: 'A', description: 'a', mana: 1, level: 1 });
+    f.listeners['dialog:pointerdown'](f.event({ target: {} }));
+    expect(f.dialog.close).not.toHaveBeenCalled();
+  });
+
   it('no devuelve foco a un disparador retirado del DOM', () => {
     const f = fixture();
     showSkillInfoDialog(f.document, { trigger: f.trigger, name: 'A', description: 'a', mana: 1, level: 1 });
