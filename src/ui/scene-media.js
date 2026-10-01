@@ -1,3 +1,3 @@
-export function sceneMediaMarkup(name, alt) {
-  return `<img class="scene-poster" src="scenes/${name}-v2.webp" alt="${alt}" decoding="async">`;
+export function sceneMediaMarkup(name, alt, halloweenActive = false) {
+  return `<img class="scene-poster" src="scenes/${name}-${halloweenActive ? 'halloween' : 'v2'}.webp" alt="${alt}" decoding="async">`;
 }

@@ -3,6 +3,12 @@ import { sceneMediaMarkup } from './scene-media.js';
 import { templeMarkup, templeShopMarkup, renderBlessingDetail, blessingArt } from './temple-view.js';
 
 describe('inventory scenes', () => {
+  it('replaces only the poster in Halloween, preserving the same clickable zones',()=>{
+    for(const name of ['shops','temple']) expect(sceneMediaMarkup(name,'Escena',true)).toContain(`scenes/${name}-halloween.webp`);
+    const normal=templeMarkup({}, {},1,false);
+    const seasonal=templeMarkup({}, {},1,true);
+    expect(seasonal.replace('temple-halloween.webp','temple-v2.webp')).toBe(normal);
+  });
   it('disables only active blessing cards and unlocks them after consumption',()=>{
     for(const id of ['experience','energy']){
       const active=templeShopMarkup({blessings:{[id]:{active:true}}},{coins:1000},19);

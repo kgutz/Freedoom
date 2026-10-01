@@ -30,6 +30,7 @@ import {
   relicRankEffect,
 } from '../data/loot-data.js';
 import { emptyPotionState, normalizePotionState } from './potion-rules.js';
+import { normalizeHalloweenCandy } from './halloween-candy-rules.js';
 
 const objectOf = (value) =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -91,6 +92,7 @@ export function emptyLootState() {
         lastIncreaseAt: 0, lastIncreaseCharge: 0,
       },
       potions: emptyPotionState(),
+      halloweenCandy: normalizeHalloweenCandy(),
     },
     forge: {
       seed: '',
@@ -327,6 +329,7 @@ export function normalizeLootState(state = {}) {
         fusion_41: equipped.includes('fusion_41') && inventory.huntCharges?.fusion_41 === true,
       },
       potions: normalizePotionState(inventory.potions),
+      halloweenCandy: normalizeHalloweenCandy(inventory.halloweenCandy),
       constancy: {
         cycleId: typeof inventory.constancy?.cycleId === 'string'
           ? inventory.constancy.cycleId
@@ -1555,6 +1558,8 @@ function clearedConstancy(cycleId = '') {
 
 export function equipRelic(lootState, relicId, replaceIndex = null, options = {}) {
   const normalized = normalizeLootState(lootState);
+  if (relicId === 'halloween-mask' && normalized.inventory.relics[relicId]?.expiresAt > 0 && normalized.inventory.relics[relicId].expiresAt <= (options.nowTimestamp ?? Date.now()))
+    return { ...normalized, ok:false, reason:'expired' };
   if (!normalized.inventory.relics[relicId]?.unlocked) {
     return { ...normalized, ok: false, reason: 'locked' };
   }
@@ -1645,6 +1650,10 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
     normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
   }
+  if (relicId === 'halloween-mask' && !normalized.inventory.relics[relicId].firstEquippedAt) {
+    const now = options.nowTimestamp ?? Date.now();
+    normalized.inventory.relics[relicId] = { ...normalized.inventory.relics[relicId], firstEquippedAt:now, expiresAt:now+86400000 };
+  }
   if (hasConstancySource && (!hadConstancySource || removesConstancySource)) {
     normalized.inventory.constancy = {
       ...clearedConstancy(normalized.inventory.constancy.cycleId),
@@ -1696,6 +1705,7 @@ export function equippedRelicBonuses(lootState) {
   for (const relicId of normalized.inventory.equipped) {
     const relic = normalized.inventory.relics[relicId];
     if (!relic) continue;
+    if (relicId === 'halloween-mask' && relic.expiresAt > 0 && relic.expiresAt <= Date.now()) continue;
     result.rankEffects[relicId] = relicRankEffect(relicId, relic.rank);
     const combatBonuses = relicCombatBonuses(relicId, relic.rank, relic.ingredientSnapshots);
     for (const combatBonus of combatBonuses) {
@@ -1763,6 +1773,8 @@ export function collarFirstHabitFusionBonuses(state, dayKey) {
 
 export function equippedHuntEffects(state) {
   const normalized = normalizeLootState(state);
+  const mask = normalized.inventory.relics['halloween-mask'];
+  const maskActive = normalized.inventory.equipped.includes('halloween-mask') && (!mask.expiresAt || mask.expiresAt > Date.now());
   const sum = id => equippedRelicEffectSources(normalized, id).reduce((total, source) => total + source.value, 0);
   const charged = id => normalized.inventory.equipped.includes(id) && normalized.inventory.huntCharges[id];
   const synergy = id => normalized.inventory.equipped.includes(id)
@@ -1791,7 +1803,8 @@ export function equippedHuntEffects(state) {
     petrificationMana: synergy('fusion_23'),
     petrificationHealth: synergy('fusion_24'),
     petrificationVampirism: synergy('fusion_25'),
-    vampirism: sum('relic_07'), petrification: sum('relic_08'),
+    maskBloodChance: maskActive ? 50 : 0,
+    vampirism: sum('relic_07') + (maskActive ? 10 : 0), petrification: sum('relic_08'),
     damageReduction: sum('relic_09'),
     victoryHealth: sum('relic_06'), victoryMana: sum('relic_05'),
     encounterBonus: charged('fusion_18') ? 1 : 0,

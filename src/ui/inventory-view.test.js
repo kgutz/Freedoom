@@ -11,6 +11,7 @@ import {
   inventoryAccessMarkup,
   nextFusionSelection,
   renderCollectionView,
+  renderCandyDetail,
   renderDefusionView,
   renderForgeView,
   renderForgeRelicPicker,
@@ -44,6 +45,19 @@ function fakeDocument() {
 }
 
 describe('interfaz de inventario y botín', () => {
+  it('muestra solo el arte de las chuches en la Botica y deja nombre y precio en su ficha', () => {
+    const document = fakeDocument();
+    renderShopView(document, {}, 20 * 86400000, { section: 'potions', halloweenActive: true, boticaMode: 'candy' });
+    const cards = [...document.elements.shopBody.innerHTML.matchAll(/<button[^>]*data-open-shop-candy="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
+    expect(cards).toHaveLength(3);
+    for (const [, , content] of cards) {
+      expect(content).toContain('candy-art');
+      expect(content).not.toMatch(/<b>|potion-owned|ORO/);
+    }
+    expect(renderCandyDetail(document, {}, 'blood', { mode: 'shop' })).toBe(true);
+    expect(document.elements.relicDetailBody.innerHTML).toContain('Chuche de Sangre');
+    expect(document.elements.relicDetailBody.innerHTML).toContain('PRECIO · 100 ORO');
+  });
   it.each([[0, 5, 15], [1, 3, 17], [2, 2, 18]])('Vigor muestra la siguiente dosis con %i usos', (used, restore, threshold) => {
     const document = fakeDocument();
     const state = { inventory: { potions: { owned: { energy: 4 }, dailyUses: { '2026-09-24': { energy: used } } } } };
@@ -623,7 +637,9 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.forgeBody.innerHTML).toContain('Recupera 7% del Maná máximo con el primer hábito con XP del día.');
     expect(document.elements.forgeBody.innerHTML).toContain('Con el primer hábito que te dé XP del día, recuperas un 3% extra del Maná máximo.');
     expect(document.elements.forgeBody.innerHTML).not.toContain('POTENCIA HEREDADA');
-    expect(document.elements.forgeBody.innerHTML.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(3);
+    expect(document.elements.forgeBody.innerHTML.match(/data-effect-kind="EFECTO PRINCIPAL"/g)).toHaveLength(2);
+    expect(document.elements.forgeBody.innerHTML).toContain('data-effect-kind="BONUS DE FUSIÓN"');
+    expect(document.elements.forgeBody.innerHTML).toContain('relic-effect-period">.</span>');
     expect(document.elements.forgeBody.innerHTML).toContain('EFECTOS EXTRAS · ');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="vitality">Vitalidad</button>');
     expect(document.elements.forgeBody.innerHTML).toContain('data-relic-effect="arcane">Arcano</button>');
@@ -885,6 +901,32 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Pintor de Mundos');
     expect(html).toContain('Contrabandista de Reliquias');
     expect(html.match(/data-shop-destination=/g)).toHaveLength(5);
+  });
+
+  it('pone un único rótulo de Halloween en la Botica del callejón durante el evento', () => {
+    const document = fakeDocument();
+    renderShopView(document, {}, 20 * 86400000, { section: 'map', halloweenActive: true });
+    const html = document.elements.shopBody.innerHTML;
+    expect(html).toContain('shop-city-zone--halloween');
+    expect(html).toContain('aria-label="Entrar en Botica de Halloween"><span>Botica de Halloween</span>');
+    expect(html).not.toContain('shop-halloween-badge');
+    expect(html).not.toContain('CHUCHES DE HALLOWEEN');
+  });
+
+  it('señala el Telar y el Pintor de Halloween y ofrece sus cosméticos solo durante el evento', () => {
+    const document = fakeDocument();
+    renderShopView(document, {}, 20 * 86400000, { section: 'map', halloweenActive: true });
+    expect(document.elements.shopBody.innerHTML).toContain('Entrar en Telar de las Sombras');
+    expect(document.elements.shopBody.innerHTML).toContain('Entrar en Pintor de Pesadillas');
+    const state = lootWithBosses(2);
+    renderOutfitSelector(document, state, null, { section: 'weave', context: 'shop', halloweenActive: false });
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('drowned-reliquary');
+    renderOutfitSelector(document, state, null, { section: 'weave', context: 'shop', halloweenActive: true });
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-weave-outfit="drowned-reliquary"');
+    renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop', halloweenActive: false });
+    expect(document.elements.outfitSelectorBody.innerHTML).not.toContain('halloween-crypt');
+    renderOutfitSelector(document, state, null, { section: 'frames', context: 'shop', halloweenActive: true });
+    expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="halloween-crypt"');
   });
 
   it('abre cada comercio con su nombre y descripción contextual', () => {

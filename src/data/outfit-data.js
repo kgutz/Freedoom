@@ -50,6 +50,19 @@ export const OUTFIT_DEFINITIONS = Object.freeze([
     lore: 'Dicen que un Beta Tester aprendió a escuchar la frecuencia oculta de Freedom. Entre máquinas ancestrales, discos de cristal y ritmos capaces de hacer vibrar el oro, convirtió cada expedición en una obra digna de los dioses.',
     recipe: Object.freeze({ arcaneFibers: 20, coins: 320 }),
   }),
+  Object.freeze({
+    id: 'drowned-reliquary',
+    name: 'Relicario Anegado',
+    assetId: 'drowned-reliquary',
+    rarity: 'legendary',
+    released: true,
+    seasonal: 'halloween',
+    unlocked: false,
+    craftable: true,
+    transparentPortrait: true,
+    lore: 'En octubre, el guardián de la cripta sale a vigilar las reliquias que nadie se atreve a reclamar.',
+    recipe: Object.freeze({ arcaneFibers: 20, coins: 320 }),
+  }),
 ]);
 
 const DISPLAY_CLASSES = Object.freeze(['knight', 'paladin', 'sorcerer', 'druid']);
@@ -84,6 +97,12 @@ export const OUTFIT_DISPLAY_PROFILES = Object.freeze({
     druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [116.9, 0, -4.86], face: [118.5, 0, -10.1] }),
   }),
   'celestial-rhythm-master': Object.freeze({
+    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [139, 0, -2.8] }),
+    paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [134, 0, -2.3] }),
+    sorcerer: Object.freeze({ hero: [90.4467, 0, -2.83], sheet: [88.9667, 0, -2.8], card: [115.67, 0, -5.38], face: [134, 0, -2] }),
+    druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [139, 0, -0.6] }),
+  }),
+  'drowned-reliquary': Object.freeze({
     knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [139, 0, -2.8] }),
     paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [134, 0, -2.3] }),
     sorcerer: Object.freeze({ hero: [90.4467, 0, -2.83], sheet: [88.9667, 0, -2.8], card: [115.67, 0, -5.38], face: [134, 0, -2] }),

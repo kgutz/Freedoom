@@ -43,6 +43,19 @@ export const FRAME_DEFINITIONS = Object.freeze([
     recipe: Object.freeze({ arcaneInks: 35, coins: 350 }),
     lore: 'En este estudio ancestral, cada nota queda grabada en cristal y oro. Sus máquinas celestiales transforman el ritmo de Freedom en tinta capaz de reescribir el destino.',
   }),
+  Object.freeze({
+    id: 'halloween-crypt',
+    compatibleOutfitId: 'drowned-reliquary',
+    name: 'Cripta del Último Suspiro',
+    rarity: 'legendary',
+    image: 'hero_background/cripta_halloween.webp',
+    wideImage: 'hero_background/cripta_halloween_wide.webp',
+    released: true,
+    seasonal: 'halloween',
+    unlocked: false,
+    recipe: Object.freeze({ arcaneInks: 35, coins: 350 }),
+    lore: 'Bajo la ciudad duerme una cripta que solo abre sus puertas durante las noches de Halloween.',
+  }),
 ]);
 
 function frameDefinition(frameId) {

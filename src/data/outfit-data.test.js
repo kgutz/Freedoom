@@ -60,6 +60,30 @@ describe('outfits de héroe', () => {
       .toBe('outfits/celestial-rhythm/knight_happy.webp');
   });
 
+  it('usa las cuatro variantes del Custodio de Halloween y conserva la propiedad después del evento', () => {
+    const outfit = OUTFIT_DEFINITIONS.find((candidate) => candidate.id === 'drowned-reliquary');
+    const game = { outfits: { owned: { 'drowned-reliquary': { acquiredAt: 1 } } } };
+    expect(outfit).toMatchObject({ seasonal: 'halloween', recipe: { arcaneFibers: 20, coins: 320 } });
+    expect(equippedOutfit('drowned-reliquary', game).id).toBe('drowned-reliquary');
+    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
+      expect(heroFaceSource(classId, outfit.id)).toBe(`outfits/drowned-reliquary/${classId}_face.webp`);
+      expect(heroSpriteSource(classId, 'happy', outfit.id)).toBe(`outfits/drowned-reliquary/${classId}_happy.webp`);
+    }
+  });
+
+  it('muestra el Custodio a escala de outfit especial en todas sus vistas', () => {
+    for (const classId of ['knight', 'paladin', 'sorcerer', 'druid']) {
+      const profile = outfitDisplayProfile(classId, 'drowned-reliquary');
+      const original = outfitDisplayProfile(classId, 'original');
+      for (const surface of ['hero', 'sheet', 'card', 'face']) {
+        expect(profile[surface][0]).toBeGreaterThan(original[surface][0]);
+      }
+      expect(profile.hero[0]).toBeGreaterThanOrEqual(90);
+      expect(profile.card[0]).toBeGreaterThanOrEqual(110);
+      expect(profile.face[0]).toBeGreaterThanOrEqual(120);
+    }
+  });
+
   it('exige una calibracion completa para cada outfit y cada heroe', () => {
     const remastered = OUTFIT_DEFINITIONS;
     const classes = ['knight', 'paladin', 'sorcerer', 'druid'];

@@ -110,8 +110,8 @@ function outfitColumn(classId, outfit) {
   </article>`;
 }
 
-export function outfitAuditMarkup() {
-  const outfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.released !== false);
+export function outfitAuditMarkup({outfitIds=null}={}) {
+  const outfits = OUTFIT_DEFINITIONS.filter((outfit) => outfit.released !== false && (!outfitIds || outfitIds.includes(outfit.id)));
   const navigation = AUDIT_CLASSES.map((heroClass) => (
     `<a href="#audit-${heroClass.id}">${heroClass.name}</a>`
   )).join('');

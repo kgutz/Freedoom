@@ -505,7 +505,7 @@ describe('PvE combat rules', () => {
     expect(nextDay).toMatchObject({ energy: 14, rewardEnergyRemaining: 4 });
   });
 
-  it('premia las listas completas y limita la energía acumulada a veinte', () => {
+  it('premia las listas completas y permite acumular más de veinte de energía', () => {
     const daily = syncHabitSetHuntEnergy({
       hunt: null, rewardKey: 'daily:2026-08-27', amount: 1, allCompleted: true,
     });
@@ -517,8 +517,25 @@ describe('PvE combat rules', () => {
     expect(weekly.granted).toBe(2);
     expect(weekly.hunt.energy).toBe(13);
     const capped = grantRewardHuntEnergy({ hunt: weekly.hunt, amount: 9 });
-    expect(capped.granted).toBe(7);
-    expect(capped.hunt.energy).toBe(20);
+    expect(capped.granted).toBe(9);
+    expect(capped.hunt.energy).toBe(22);
+  });
+
+  it('conserva una reserva extra grande al recargar las diez normales y la gasta primero', () => {
+    const now = new Date(2026, 9, 1, 12).getTime();
+    const initial = normalizeHuntState(null, now);
+    const granted = grantRewardHuntEnergy({hunt:initial,amount:100,nowTimestamp:now});
+    expect(granted.hunt).toMatchObject({energy:110,baseEnergy:10,rewardEnergyRemaining:100});
+    const reloaded = normalizeHuntState(JSON.parse(JSON.stringify(granted.hunt)), now);
+    expect(reloaded.energy).toBe(110);
+    const nextDay = normalizeHuntState(reloaded, now + 86400000);
+    expect(nextDay).toMatchObject({energy:110,baseEnergy:10,rewardEnergyRemaining:100});
+    const started = startHunt({hunt:nextDay,difficultyId:'hard',level:22,currentHp:100,maxHp:100,currentMana:100,maxMana:100,nowTimestamp:now+86400000});
+    expect(started.ok).toBe(true);
+    expect(started.hunt.energy).toBe(107);
+    expect(started.hunt.rewardEnergyRemaining).toBe(97);
+    const normalized = normalizeHuntState(started.hunt, now+86400000);
+    expect(normalized.energy-normalized.rewardEnergyRemaining).toBe(10);
   });
 
   it('retira el premio de lista completa si se deshace antes de gastarlo', () => {

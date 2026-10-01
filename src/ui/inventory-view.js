@@ -1,4 +1,5 @@
 import { sceneMediaMarkup } from './scene-media.js';
+import { halloweenMaskActive, halloweenMaskPrice } from '../domain/halloween-mask-rules.js';
 import {
   AFFIX_DEFINITIONS,
   ALL_RELIC_DEFINITIONS,
@@ -45,6 +46,7 @@ import {
   isFrameUnlocked,
 } from '../data/frame-data.js';
 import { normalizePotionState, potionBloodChance, potionEnergyRestore } from '../domain/potion-rules.js';
+import { HALLOWEEN_CANDIES, HALLOWEEN_CANDY_BY_ID, normalizeHalloweenCandy } from '../domain/halloween-candy-rules.js';
 import { arcaneResourceDailyDemand } from '../domain/outfit-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 import { relicEffectCopy, HUNT_CHARGE_RELIC_IDS, huntChargeCopy } from './relic-effect-copy.js';
@@ -98,7 +100,8 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   const shopContext = options.context === 'shop';
   const shopMode = shopContext && options.shopMode === 'sell' ? 'sell' : 'buy';
   const previewUnreleased = options.previewUnreleased === true;
-  const isVisible = (definition) => definition.released !== false || previewUnreleased;
+  const isVisible = (definition) => (definition.released !== false || previewUnreleased)
+    && (!shopContext || definition.seasonal !== 'halloween' || options.halloweenActive);
   const isPreviewOnly = (definition) => previewUnreleased && definition?.released === false;
   const isOutfitAvailable = (outfit) => isOutfitUnlocked(outfit, lootState?.game) || isPreviewOnly(outfit);
   const isFrameAvailable = (frame) => isFrameUnlocked(frame, lootState?.game) || isPreviewOnly(frame);
@@ -187,7 +190,7 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
       <button type="button" role="tab" data-outfit-section="frames" aria-selected="${section === 'frames'}" class="${section === 'frames' ? 'active' : ''}">Fondos</button>
     </div>`}
     ${shopContext ? `<div class="shop-relic-mode-tabs outfit-shop-mode-tabs" role="tablist" aria-label="Comprar o vender materiales">
-      <button type="button" role="tab" data-outfit-shop-mode="buy" aria-selected="${shopMode === 'buy'}" class="${shopMode === 'buy' ? 'active' : ''}">Comprar</button>
+      <button type="button" role="tab" data-outfit-shop-mode="buy" aria-selected="${shopMode === 'buy'}" class="${shopMode === 'buy' ? 'active' : ''}${options.halloweenActive ? ' halloween-buy-text' : ''}">Comprar</button>
       <button type="button" role="tab" data-outfit-shop-mode="sell" aria-selected="${shopMode === 'sell'}" class="${shopMode === 'sell' ? 'active' : ''}">Vender</button>
     </div>` : ''}
     <div class="outfit-selector-scroll-content">
@@ -401,6 +404,45 @@ function inventoryPotionItemsMarkup(normalized, { dayKey = '', bossKey = '', now
   return [...ownedItems, ...emptySlots].join('');
 }
 
+function candyArt(definition) {
+  return `<span class="potion-art candy-art"><img src="${definition.image}" alt="" loading="lazy" decoding="async"></span>`;
+}
+
+function candyGridMarkup(normalized, mode = 'shop') {
+  const candy = normalizeHalloweenCandy(normalized.inventory.halloweenCandy);
+  const definitions = mode === 'shop' ? HALLOWEEN_CANDIES : HALLOWEEN_CANDIES.filter(({ id }) => candy.owned[id] || candy.prepared[id]);
+  if (!definitions.length) return '<p class="collection-hint">Todavía no tienes chuches de Halloween.</p>';
+  return `<div class="potion-grid candy-grid">${definitions.map(definition => {
+    const owned = candy.owned[definition.id];
+    const attr = mode === 'shop' ? 'data-open-shop-candy' : 'data-open-candy';
+    return `<button type="button" class="potion-card potion-card--shop candy-card candy-card--${definition.id}" ${attr}="${definition.id}" aria-label="${escapeHtml(definition.name)}${mode === 'shop' ? ` · ${definition.price} de oro` : ` · ${owned} disponibles`}">
+      ${candyArt(definition)}${mode === 'shop' ? '' : `<b>${escapeHtml(definition.name)}</b><span class="potion-owned">×${owned}</span>`}
+    </button>`;
+  }).join('')}</div>`;
+}
+
+export function renderCandyDetail(document, lootState, candyId, options = {}) {
+  const definition = HALLOWEEN_CANDY_BY_ID[candyId];
+  const body = document.getElementById('relicDetailBody');
+  if (!definition || !body) return false;
+  const normalized = normalizeLootState(lootState);
+  const candy = normalizeHalloweenCandy(normalized.inventory.halloweenCandy);
+  const shopMode = options.mode === 'shop';
+  const owned = candy.owned[candyId];
+  const prepared = candy.prepared[candyId];
+  const title = document.getElementById('relicDetailTitle');
+  if (title) title.textContent = 'Chuche de Halloween';
+  const blocked = owned < 1 || (candyId === 'blood' && prepared) || (candyId === 'experience' && prepared);
+  const action = shopMode
+    ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-candy-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-candy-quantity>1</output><button type="button" data-candy-quantity-step="1" aria-label="Aumentar cantidad">+</button></div>
+      <button type="button" data-buy-candy="${candyId}" data-unit-price="${definition.price}">COMPRAR · ${definition.price}</button>`
+    : `<button type="button" data-use-candy="${candyId}"${blocked ? ' disabled' : ''}>${prepared ? 'PREPARADA' : blocked ? 'NO DISPONIBLE' : 'USAR'}</button>`;
+  body.innerHTML = `<div class="shop-potion-detail candy-detail"><div class="relic-detail-frame potion-detail-frame candy-detail-frame"><div class="relic-detail-art">${candyArt(definition)}</div><div class="rarity-label">HALLOWEEN</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode ? `PRECIO · ${definition.price} ORO` : `DISPONIBLES · ${owned}`}</div></div>
+    <div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${candyId === 'blood' ? 'Máximo una por Cacería difícil. Se gasta al vencer al minijefe; si no llegas a vencerlo, vuelve al bolso.' : candyId === 'experience' ? 'Se aplica a la experiencia obtenida en la próxima Cacería. Si no obtienes XP, vuelve al bolso.' : 'Uso instantáneo. Suma 2 puntos a tu reserva extra, sin tope de acumulación ni límite diario de usos. Las 10 de recarga diaria no cambian.'}</p></div>
+    <div class="relic-equip-actions">${action}</div></div>`;
+  return true;
+}
+
 export function renderPotionDetail(document, lootState, potionId, options = {}) {
   const normalized=normalizeLootState(lootState);
   const definition=POTION_DEFINITIONS.find((item)=>item.id===potionId);
@@ -488,8 +530,8 @@ function relicEffectValue(relicId, value) {
   return `${value} XP`;
 }
 
-function relicEffectRows(definition, relic) {
-  return effectControlList(relicEffectCopy(definition, relic));
+function relicEffectRows(definition, relic, options) {
+  return effectControlList(relicEffectCopy(definition, relic), 'EFECTO PRINCIPAL', options);
 }
 
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
@@ -580,6 +622,11 @@ export function renderInventoryView(document, lootState, options = {}) {
       <p class="collection-hint">Toca una poción para consultar su efecto y usarla.</p>
       <div class="relic-grid bag-potion-grid">${potionItems}</div>
       ${bloodPreparedNotice(normalized, options)}
+    </section>
+    <section class="inventory-section bag-candy-section"${options.halloweenActive || HALLOWEEN_CANDIES.some(({ id }) => normalizeHalloweenCandy(normalized.inventory.halloweenCandy).owned[id] || normalizeHalloweenCandy(normalized.inventory.halloweenCandy).prepared[id]) ? '' : ' hidden'}>
+      <div class="inventory-section-head"><span>CHUCHES DE HALLOWEEN</span></div>
+      <p class="collection-hint">Bonos especiales de Cacería. No ocupan huecos de pociones.</p>
+      ${candyGridMarkup(normalized, 'inventory')}
     </section>`;
 }
 
@@ -681,7 +728,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
       <div class="relic-detail-identity">
       <div class="rarity-label">${rarity.label}</div>
       <h3>${escapeHtml(definition.name)}</h3>
-      <div class="relic-rank">RANGO ${relic.rank}${fusion ? ' · RELIQUIA FUSIONADA' : ''}</div>
+      ${relicId === 'halloween-mask' ? `<div class="relic-identity-badges"><div class="relic-rank">RANGO ${relic.rank}</div><div class="relic-rank relic-duration-badge">DURACIÓN: 24H</div></div>` : `<div class="relic-rank">RANGO ${relic.rank}${fusion ? ' · RELIQUIA FUSIONADA' : ''}</div>`}
       </div>
     </div>
     ${combatMarkup}
@@ -691,8 +738,15 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     ${relic.affixes.length ? `<div class="relic-affixes"><span>EFECTOS EXTRAS</span>${affixes}</div>` : ''}
     <div class="relic-equip-actions">
       ${equipmentActions}
-      ${owned && !fusion && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
+      ${owned && !fusion && !definition.fixedRank && !options.shopSale ? `<button type="button" class="relic-forge-shortcut" data-open-forge-relic="${relicId}">FORJAR</button>` : ''}
     </div></div>`;
+  if (relicId === 'halloween-mask') {
+    const expiry = relic.expiresAt;
+    const expired = expiry > 0 && expiry <= (options.nowTimestamp ?? Date.now());
+    const status = !expiry ? '24 horas reales desde la primera equipación.' : expired ? 'CADUCADA · puedes recomprarla en octubre.' : `Caduca: ${new Date(expiry).toLocaleString('es-ES')}. El reloj no se pausa al desequiparla.`;
+    body.innerHTML += `<aside class="halloween-mask-duration-notice" aria-label="Duración de la reliquia"><strong>RELIQUIA TEMPORAL · 24 HORAS</strong><p>${status}</p><small>Rango 3 fijo. No se mejora, fusiona ni revende.</small></aside>`;
+    if (expired) body.querySelector?.('[data-equip-relic]')?.setAttribute('disabled','');
+  }
   return true;
 }
 
@@ -929,7 +983,7 @@ function fusionResultPreviewMarkup(preview) {
       <h3>${escapeHtml(definition.name)}</h3>
       <b class="fusion-preview-quality"><span>${escapeHtml(rarityCopy)}</span><span>RANGO ${relic.rank}</span></b>
     </div>
-    <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic)}</div>
+    <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic, { separateFinal: true })}</div>
     <div class="fusion-preview-copy fusion-preview-extra">
       <small class="fusion-preview-affixes"><span>EFECTOS EXTRAS · </span>${extrasMarkup}</small>
     </div>
@@ -994,7 +1048,7 @@ function shopTimeLabel(endsAt, nowTimestamp) {
   return `${Math.max(1, hours)} H`;
 }
 
-function shopCityMapMarkup() {
+function shopCityMapMarkup(halloweenActive = false) {
   return `<section class="shop-city" aria-label="El Callejón de los Oficios">
     <div class="shop-city-heading">
       <span>DISTRITO COMERCIAL</span>
@@ -1002,13 +1056,13 @@ function shopCityMapMarkup() {
       <p>Elige un comercio para preparar a tu héroe.</p>
     </div>
     <div class="shop-city-map">
-      ${sceneMediaMarkup('shops', 'Callejón medieval con cinco comercios')}
+      ${sceneMediaMarkup('shops', 'Callejón medieval con cinco comercios', halloweenActive)}
       <button type="button" class="shop-city-close" data-close-shop-map aria-label="Cerrar mapa de tiendas">✕</button>
       <button type="button" class="shop-city-zone shop-city-zone--forge" data-shop-destination="forge" aria-label="Entrar en Forja del Crisol"><span>Forja del Crisol</span></button>
-      <button type="button" class="shop-city-zone shop-city-zone--potions" data-shop-destination="potions" aria-label="Entrar en Botica de Pociones"><span>Botica de Pociones</span></button>
-      <button type="button" class="shop-city-zone shop-city-zone--weave" data-shop-destination="weave" aria-label="Entrar en Telar Arcano"><span>Telar Arcano</span></button>
-      <button type="button" class="shop-city-zone shop-city-zone--frames" data-shop-destination="frames" aria-label="Entrar en Pintor de Mundos"><span>Pintor de Mundos</span></button>
-      <button type="button" class="shop-city-zone shop-city-zone--relics" data-shop-destination="relics" aria-label="Entrar en Contrabandista de Reliquias"><span>Contrabandista de Reliquias</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--potions${halloweenActive ? ' shop-city-zone--halloween' : ''}" data-shop-destination="potions" aria-label="Entrar en ${halloweenActive ? 'Botica de Halloween' : 'Botica de Pociones'}"><span>${halloweenActive ? 'Botica de Halloween' : 'Botica de Pociones'}</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--weave${halloweenActive ? ' shop-city-zone--halloween' : ''}" data-shop-destination="weave" aria-label="Entrar en ${halloweenActive ? 'Telar de las Sombras' : 'Telar Arcano'}"><span>${halloweenActive ? 'Telar de las Sombras' : 'Telar Arcano'}</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--frames${halloweenActive ? ' shop-city-zone--halloween' : ''}" data-shop-destination="frames" aria-label="Entrar en ${halloweenActive ? 'Pintor de Pesadillas' : 'Pintor de Mundos'}"><span>${halloweenActive ? 'Pintor de Pesadillas' : 'Pintor de Mundos'}</span></button>
+      <button type="button" class="shop-city-zone shop-city-zone--relics${halloweenActive ? ' shop-city-zone--halloween' : ''}" data-shop-destination="relics" aria-label="Entrar en Contrabandista de Reliquias"><span>Contrabandista de Reliquias</span></button>
     </div>
   </section>`;
 }
@@ -1036,10 +1090,17 @@ function shopOfferContext(offer) {
     BOSSES[offer.bossIndex] || `Jefe ${offer.bossIndex + 1}`;
 }
 
-function relicShopModeTabs(active) {
+function relicShopModeTabs(active, halloweenActive = false) {
   return `<div class="shop-relic-mode-tabs" role="tablist" aria-label="Operación del Contrabandista">
-    <button type="button" data-shop-relic-mode="buy" class="${active === 'buy' ? 'active' : ''}" role="tab" aria-selected="${active === 'buy'}">Comprar</button>
+    <button type="button" data-shop-relic-mode="buy" class="${active === 'buy' ? 'active' : ''}${halloweenActive ? ' halloween-buy-text' : ''}" role="tab" aria-selected="${active === 'buy'}">Comprar</button>
     <button type="button" data-shop-relic-mode="sell" class="${active === 'sell' ? 'active' : ''}" role="tab" aria-selected="${active === 'sell'}">Vender</button>
+  </div>`;
+}
+
+function boticaTabs(active) {
+  return `<div class="shop-relic-mode-tabs" role="tablist" aria-label="Productos de la Botica">
+    <button type="button" data-botica-mode="potions" class="${active === 'potions' ? 'active' : ''}" role="tab" aria-selected="${active === 'potions'}">Pociones</button>
+    <button type="button" data-botica-mode="candy" class="${active === 'candy' ? 'active' : ''} halloween-buy-text" role="tab" aria-selected="${active === 'candy'}">Chuches</button>
   </div>`;
 }
 
@@ -1049,30 +1110,33 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   if (!body) return;
   const section = ['map', 'relics', 'potions'].includes(options.section) ? options.section : 'market';
   if (section === 'map') {
-    body.innerHTML = shopCityMapMarkup();
+    body.innerHTML = shopCityMapMarkup(options.halloweenActive);
     return;
   }
   const relicMode = options.relicMode === 'sell' ? 'sell' : 'buy';
   const offers = shopOffers(normalized, nowTimestamp);
+  if (options.halloweenActive) offers.unshift({relicId:'halloween-mask',definition:relicDefinition('halloween-mask'),
+    relic:{rank:3,rarity:'legendary',affixes:[]},coinPrice:halloweenMaskPrice(options.level||1),bloodPrice:0,source:'halloween'});
   const rotation = normalized.shop.rotation;
   const content = offers.length
     ? `<div class="shop-grid">${offers.map((offer) => {
         const rarity = RARITIES[offer.relic.rarity] || RARITIES.rare;
-        const lacksCoins = normalized.economy.coins < offer.coinPrice;
+        const alreadyOwned = offer.relicId === 'halloween-mask' && halloweenMaskActive(normalized.inventory.relics['halloween-mask'],nowTimestamp);
+        const lacksCoins = alreadyOwned || normalized.economy.coins < offer.coinPrice;
         const lacksBlood = normalized.economy.bossBlood < offer.bloodPrice;
-        const buttonText = lacksCoins ? 'FALTA ORO' : lacksBlood ? 'FALTA SANGRE' : 'COMPRAR';
+        const buttonText = alreadyOwned ? 'YA LA TIENES' : lacksCoins ? 'FALTA ORO' : lacksBlood ? 'FALTA SANGRE' : 'COMPRAR';
         return `<article class="shop-relic ${rarityClass(offer.relic.rarity)}">
           <button type="button" class="shop-relic-preview" data-open-shop-relic="${offer.relicId}" aria-label="Ver detalles de ${escapeHtml(offer.definition.name)}">
             ${relicArt(offer.definition)}
             <span class="shop-relic-copy">
               <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
               <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
-              <small>${escapeHtml(shopOfferContext(offer))}</small>
+              <small>${escapeHtml(offer.source==='halloween'?'HALLOWEEN · 24 HORAS · SOLO ORO':shopOfferContext(offer))}</small>
             </span>
           </button>
           <div class="shop-price">
             ${resourceValue('coin', offer.coinPrice)}
-            ${resourceValue('boss-blood', offer.bloodPrice)}
+            ${offer.source==='halloween' ? '' : resourceValue('boss-blood', offer.bloodPrice)}
           </div>
           <button type="button" class="shop-relic-buy" data-buy-relic="${offer.relicId}" aria-label="Comprar ${escapeHtml(offer.definition.name)}"${lacksCoins || lacksBlood ? ' disabled' : ''}>${buttonText}</button>
         </article>`;
@@ -1122,11 +1186,12 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
     const description = relicMode === 'sell'
       ? 'Vende reliquias normales para recuperar oro y darles otra oportunidad en futuras rotaciones.'
       : 'Recupera reliquias perdidas con una nueva rareza, rango y combinación de efectos.';
-    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', description)}${relicShopModeTabs(relicMode)}${resources}${relicMode === 'sell' ? saleShop : relicShop}`;
+    body.innerHTML = `${shopDestinationHeading('Contrabandista de Reliquias', description)}${relicShopModeTabs(relicMode, options.halloweenActive)}${resources}${relicMode === 'sell' ? saleShop : relicShop}`;
     return;
   }
   if (section === 'potions') {
-    body.innerHTML = `${shopDestinationHeading('Botica de Pociones', 'Brebajes para recuperar fuerzas y torcer la suerte a tu favor.')}${resources}${potionShop}`;
+    const candyMode = options.halloweenActive && options.boticaMode === 'candy';
+    body.innerHTML = `${shopDestinationHeading('Botica de Pociones', 'Brebajes para recuperar fuerzas y preparar a tu héroe.')}${options.halloweenActive ? boticaTabs(candyMode ? 'candy' : 'potions') : ''}${resources}${candyMode ? `<div class="shop-heading"><span>CHUCHES DE HALLOWEEN</span><small>SOLO EN OCTUBRE</small></div>${candyGridMarkup(normalized)}` : potionShop}`;
     return;
   }
   body.innerHTML = `
@@ -1180,6 +1245,10 @@ export function renderLootNotice(document, lootState, notice) {
   const earlyVictoryMarkup = notice.earlyVictoryBonusCoins > 0
     ? `<div class="loot-early-victory-bonus"><b>BONUS VICTORIA ANTICIPADA</b><span>${resourceIcon('coin')} +${notice.earlyVictoryBonusCoins} oro</span>${notice.earlyVictoryBonusBossBlood > 0 ? `<span>${resourceIcon('boss-blood')} +${notice.earlyVictoryBonusBossBlood} Sangre de Jefe</span>` : ''}</div>`
     : '';
+  const halloweenCandy = notice.halloweenCandy || {};
+  const halloweenCandyMarkup = Object.values(halloweenCandy).some(value => Number(value) > 0)
+    ? `<div class="loot-early-victory-bonus"><b>CHUCHES DE HALLOWEEN</b><span>Sangre ×${Number(halloweenCandy.blood) || 0} · Energía ×${Number(halloweenCandy.energy) || 0} · Experiencia ×${Number(halloweenCandy.experience) || 0}</span></div>`
+    : '';
   document.getElementById('lootNoticeTitle').textContent =
     retroactive ? 'NUEVAS RECOMPENSAS' : 'BOTÍN CONSEGUIDO';
   document.getElementById('lootNoticeIntro').textContent = retroactive
@@ -1190,7 +1259,7 @@ export function renderLootNotice(document, lootState, notice) {
   document.getElementById('lootNoticeRewards').innerHTML =
     (retroactive ? '' : '<div class="loot-chest" aria-hidden="true"><img src="relics/boss_loot_chest_open_sapphire.webp" alt=""></div>') +
     `<div class="loot-reward-grid">${rewards}${failedRewards}${resourceRewards}${emptyRewards}</div>` +
-    bloodBonusMarkup + earlyVictoryMarkup;
+    bloodBonusMarkup + earlyVictoryMarkup + halloweenCandyMarkup;
   const summary = document.getElementById('lootNoticeSummary');
   summary.innerHTML = '';
   summary.hidden = true;

@@ -46,4 +46,12 @@ describe('marcos del héroe', () => {
     expect(heroBackgroundSource('celestial-music-studio', 'druid', 'today', game))
       .toBe('hero_background/celestial_music_studio.webp');
   });
+
+  it('usa ambos formatos de la cripta tras comprarla, incluso después de octubre', () => {
+    const frame = FRAME_DEFINITIONS.find((candidate) => candidate.id === 'halloween-crypt');
+    const game = { frames: { owned: { 'halloween-crypt': { acquiredAt: 1 } } } };
+    expect(frame).toMatchObject({ seasonal: 'halloween', recipe: { arcaneInks: 35, coins: 350 } });
+    expect(heroBackgroundSource(frame.id, 'paladin', 'hero', game)).toBe('hero_background/cripta_halloween.webp');
+    expect(heroBackgroundSource(frame.id, 'paladin', 'today', game)).toBe('hero_background/cripta_halloween_wide.webp');
+  });
 });

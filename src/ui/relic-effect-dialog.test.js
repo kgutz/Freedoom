@@ -40,6 +40,15 @@ describe('Detalle accesible compartido de efectos', () => {
     expect(html).not.toContain('aria-hidden="true"');
     expect(html.replace(/<[^>]+>/g, '')).toBe('A, B, C');
   });
+  it('separa el bonus final con un punto solo cuando la vista lo solicita', () => {
+    const effects = ['Protección', 'Vampirismo', 'Bonus de fusión']
+      .map(id => ({ id, name: id, description: `Detalle ${id}` }));
+    const html = effectControlList(effects, 'EFECTO PRINCIPAL', { separateFinal: true });
+    expect(html).toContain('>Vampirismo</button><span class="relic-effect-period">.</span>');
+    expect(html).toContain('class="relic-effect-item relic-effect-item--fusion-bonus"');
+    expect(html).toContain('data-effect-kind="BONUS DE FUSIÓN"');
+    expect(html.replace(/<[^>]+>/g, '')).toBe('Protección, Vampirismo. Bonus de fusión');
+  });
   it('abre una sola instancia, muestra copy exacto y coloca el foco en cerrar', () => {
     const f = fixture();
     f.listeners.click(f.event());

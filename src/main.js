@@ -6,7 +6,14 @@ import {
   classDataForJourney
 } from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
+import { recordHalloweenAnalytics, halloweenHuntMetrics } from './domain/event-analytics.js';
+import { buyHalloweenMask, expireHalloweenMask, halloweenMaskPrice } from './domain/halloween-mask-rules.js';
+// Image cache only: never intercepts saves, cloud requests or application code.
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => navigator.serviceWorker.register(new URL('service-worker.js',location.href),{updateViaCache:'none'}).catch(error => console.warn('Caché de imágenes no disponible',error)));
+}
 import { createSingleFlightSave } from './cloud/single-flight-save.js';
+import { HALLOWEEN_CANDY_BY_ID, buyHalloweenCandy, halloweenSeasonActive, normalizeHalloweenCandy, prepareHalloweenCandy, takePreparedHalloweenCandy, rollHalloweenHuntCandy, rollHalloweenWeeklyCandy } from './domain/halloween-candy-rules.js';
 import { deathExperiencePenalty } from './domain/death-rules.js';
 import {
   calculateBossCombatStatus,
@@ -232,6 +239,7 @@ import {
   renderLootNotice,
   renderOutfitSelector,
   renderPotionDetail,
+  renderCandyDetail,
   renderRelicDetail,
   renderRelicReplacementPicker,
   renderShopView
@@ -250,6 +258,8 @@ import { installFrameMedia } from './ui/frame-media.js';
 import { templeMarkup, templeShopMarkup, renderBlessingDetail } from './ui/temple-view.js';
 import { startTempleDialogue } from './ui/temple-dialogue.js';
 import { showTempleGift } from './ui/temple-gift.js';
+import { showHalloweenGift } from './ui/halloween-gift.js';
+import { claimHalloweenGift, halloweenGiftId, shouldOfferHalloweenGift } from './domain/halloween-gift-rules.js';
 import { BLESSINGS, blessingPrice, purchaseBlessing, blessedDeathPenalty, blessedDailyEnergy } from './domain/blessing-rules.js';
 import { commitLootOperation } from './ui/persisted-loot-operation.js';
 import { createOnboardingController } from './ui/onboarding-controller.js';
@@ -283,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.21';
+const APP_VERSION='2.29.22';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -304,6 +314,7 @@ const LOCAL_PROGRESSION_UPDATE_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('p
 const LOCAL_DEATH_PREVIEW=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('previewDeath')==='1';
 const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'':'';
 const LOCAL_DEMO_SKULL_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoSkullFusions')==='1';
+const LOCAL_DEMO_HALLOWEEN=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHalloween')==='1';
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
 const LOCAL_DEMO_CELESTIAL=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoCelestial')==='1';
@@ -338,10 +349,12 @@ const LOCAL_DEMO_BOSS_INK_CATCHUP=LOCAL_DEMO_HOST
   ? Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('previewBossInkCatchup')||'0',10)||0))
   : 0;
 const LOCAL_DEMO_BOSSES=LOCAL_DEMO_HOST
-  ? LOCAL_DEMO_BOSS_INK_CATCHUP||LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)||(LOCAL_DEMO_REDUCTION_14?1:0)
+  ? LOCAL_DEMO_BOSS_INK_CATCHUP||LOCAL_DEMO_MIGRATION||Math.max(0,Math.min(12,parseInt(LOCAL_DEMO_PARAMS.get('demoBosses')||'0',10)||0))||(LOCAL_DEMO_FIBER_OUTFIT?2:0)||(LOCAL_DEMO_FUSIONS?12:0)||(LOCAL_DEMO_CONSTANCY!==null?4:0)||(LOCAL_DEMO_SHOP?1:0)||(LOCAL_DEMO_PALADIN_EFFECTS?1:0)||(LOCAL_DEMO_REDUCTION_14?1:0)||(LOCAL_DEMO_HALLOWEEN?1:0)
   : 0;
 const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
-  ? LOCAL_DEMO_PALADIN_EFFECTS
+  ? LOCAL_DEMO_HALLOWEEN
+    ? `${STORAGE_KEY}:demo-halloween-v2-${LOCAL_DEMO_CLASS||'paladin'}`
+    : LOCAL_DEMO_PALADIN_EFFECTS
     ? `${STORAGE_KEY}:demo-paladin-effects-v3`
     : LOCAL_DEMO_FIBER_OUTFIT
     ? `${STORAGE_KEY}:demo-fiber-outfit-v1`
@@ -680,12 +693,12 @@ async function load(){
   try{
     let r=LOCAL_DEMO_PALADIN_EFFECTS
       ? await store.get(STORAGE_KEY)
-      : LOCAL_DEMO_FIBER_OUTFIT||LOCAL_DEMO_FUSIONS||LOCAL_DEMO_CONSTANCY!==null
+      : LOCAL_DEMO_FIBER_OUTFIT||LOCAL_DEMO_FUSIONS||LOCAL_DEMO_HALLOWEEN||LOCAL_DEMO_CONSTANCY!==null
         ? null
         : await store.get(ACTIVE_STORAGE_KEY);
     if(LOCAL_DEMO_PALADIN_EFFECTS) initializeLocalDemo=true;
     if(!r&&LOCAL_DEMO_BOSSES){
-      if(!LOCAL_DEMO_FIBER_OUTFIT&&!LOCAL_DEMO_FUSIONS&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
+      if(!LOCAL_DEMO_FIBER_OUTFIT&&!LOCAL_DEMO_FUSIONS&&!LOCAL_DEMO_HALLOWEEN&&LOCAL_DEMO_CONSTANCY===null) r=await store.get(STORAGE_KEY);
       initializeLocalDemo=true;
     }
     if(r&&r.value){
@@ -808,7 +821,7 @@ function scheduleCloudSave(){
   },900);
 }
 function scheduleSave(action){
-  if(LOCAL_DEMO_SKULL_FUSIONS) return; // La partida ficticia existe solo durante esta vista.
+  if(LOCAL_DEMO_SKULL_FUSIONS||LOCAL_DEMO_HALLOWEEN) return; // Las partidas ficticias son temporales y no modifican partidas reales.
   if(action){
     try{ store.recordAction(action,ACTIVE_STORAGE_KEY); }
     catch(error){ console.warn('No se pudo registrar la acción',error); }
@@ -863,6 +876,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 /* ---------- render ---------- */
 function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderHunt();renderSettings();renderStorageHealth();queueLootNotice();}
 function renderStartupPrimary(){
+  syncHalloweenPresentation();
   applyPendingJourneyTransition();
   repairJourneyTransitionHistory();
   renderHoy();
@@ -1039,6 +1053,17 @@ function applyLootSlices(result){
   state.shop=result.shop;
 }
 
+function trackHalloweenBalance(entry,nowTimestamp=Date.now(),seasonTimestamp=nowTimestamp){
+  try{
+    state.eventAnalytics=recordHalloweenAnalytics(state.eventAnalytics,{level:gameStats().lvl,...entry},{
+      active:halloweenSeasonActive(seasonTimestamp,LOCAL_DEMO_HALLOWEEN),nowTimestamp
+    });
+  }catch(error){
+    // Analytics must never prevent gameplay or saving a player's progress.
+    console.warn('No se pudo actualizar el resumen del evento',error);
+  }
+}
+
 function prepareLocalBossDemo(){
   if(!LOCAL_DEMO_BOSSES) return;
   initializeLocalDemo=false;
@@ -1133,6 +1158,17 @@ function prepareLocalBossDemo(){
     }))
   };
   Object.assign(state,emptyLootState());
+  if(LOCAL_DEMO_HALLOWEEN){
+    state.game.name='Héroe de prueba · Halloween';
+    state.game.cls=LOCAL_DEMO_CLASS||'paladin';
+    state.game.bonusXp=35*14*14;
+    state.game.outfit='drowned-reliquary';
+    state.game.outfits={owned:{'drowned-reliquary':{acquiredAt:Date.now(),source:'demo'}}};
+    state.game.frame='halloween-crypt';
+    state.game.frames={owned:{'halloween-crypt':{acquiredAt:Date.now(),source:'demo'}}};
+    state.economy.coins=1500;
+    state.inventory.halloweenCandy=normalizeHalloweenCandy({owned:{blood:3,energy:3,experience:3}});
+  }
   state.economy.arcaneFibers=LOCAL_DEMO_FIBER_OUTFIT?0:8;
   if(LOCAL_DEMO_BOSS_INK_CATCHUP){
     const settledBossCount=21;
@@ -1184,6 +1220,10 @@ function prepareLocalBossDemo(){
       seed:`local-demo-${LOCAL_DEMO_BOSSES}`,
       nowTimestamp:Date.now()
     }));
+  }
+  if(LOCAL_DEMO_HALLOWEEN){
+    state.economy.arcaneFibers=40;
+    state.economy.arcaneInks=40;
   }
   const demoRelics=state.inventory.relics;
   if(LOCAL_DEMO_FUSIONS){
@@ -1490,6 +1530,22 @@ function syncLootRewards(source,earlyVictoryBonuses=[]){
   applyLootSlices(result);
   if(source==='victory'&&result.rewards.length){
     state.inventory=consumePreparedBlood(state.inventory,result.rewards.map(reward=>reward.rewardId));
+    if(halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)){
+      let candy=state.inventory.halloweenCandy;
+      const total={blood:0,energy:0,experience:0};
+      for(const reward of result.rewards){
+        const rolled=rollHalloweenWeeklyCandy({candy,rewardId:reward.rewardId,active:true});
+        candy=rolled.candy;
+        trackHalloweenBalance({operationId:`weekly:${reward.rewardId}`,source:'weekly',metrics:{
+          goldEarnedWeekly:reward.coins,bloodDropped:rolled.drops.blood,energyDropped:rolled.drops.energy,experienceDropped:rolled.drops.experience
+        }});
+        for(const id of Object.keys(total)) total[id]+=rolled.drops[id];
+      }
+      state.inventory.halloweenCandy=candy;
+      const notice=state.loot?.notices?.[state.loot.notices.length-1];
+      if(notice&&Object.values(total).some(Boolean)) notice.halloweenCandy=total;
+      if(Object.values(total).some(Boolean)) showToast(`Jefe semanal · chuches: Sangre ${total.blood}, Energía ${total.energy}, Experiencia ${total.experience}`,'heal');
+    }
   }
   const after=JSON.stringify({
     economy:state.economy,loot:state.loot,
@@ -1870,7 +1926,7 @@ function showPendingWeekResult(){
 
 let earlyVictoryNoticeOpening=false;
 async function showPendingEarlyVictoryNotice(){
-  if(LOCAL_DEMO_SKULL_FUSIONS) return;
+  if(LOCAL_DEMO_SKULL_FUSIONS||LOCAL_DEMO_HALLOWEEN) return;
   const earlyVictory=state.game?.bossCombat?.earlyVictory;
   if(earlyVictoryNoticeOpening||!earlyVictory?.noticePending) return;
   if(document.getElementById('weekResultBg').classList.contains('show')) return;
@@ -1887,6 +1943,7 @@ async function showPendingEarlyVictoryNotice(){
   }finally{earlyVictoryNoticeOpening=false;}
 }
 function queueEarlyVictoryNotice(){
+  if(LOCAL_DEMO_HALLOWEEN) return;
   window.setTimeout(()=>void showPendingEarlyVictoryNotice(),0);
 }
 
@@ -2546,6 +2603,7 @@ function flashHeroStatFeedback(stat){
 }
 
 function renderHero(){
+  syncHalloweenPresentation();
   const cls=state.game&&state.game.cls;
   if(!cls||!CLASSES[cls]){
     renderHeroView({
@@ -2613,6 +2671,7 @@ let shopLocked=false;
 let pendingShopPurchase=null;
 let shopViewSection='map';
 let relicShopMode='buy';
+let boticaMode='potions';
 let forgeFromCity=false;
 let selectedForgeRelicId=null;
 let forgeMode='upgrade';
@@ -2652,7 +2711,7 @@ function confirmConstancyLoss(result, action='Desequipar'){
 function forgeRenderOptions(){
   return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId,cityEntry:forgeFromCity};
 }
-function shopRenderOptions(){return {...potionViewOptions(),section:shopViewSection,relicMode:relicShopMode};}
+function shopRenderOptions(){return {...potionViewOptions(),section:shopViewSection,relicMode:relicShopMode,boticaMode};}
 function clearFusionFeedback(){ fusionErrorId=null; }
 function positionInventorySheetFromForge(){
   const overlay=document.getElementById('sheetInventory');
@@ -2759,7 +2818,9 @@ function showInventoryPanel(panel='inventory',scrollToEquipped=false){
     renderInventoryView(document,state,potionViewOptions());
     renderCollectionView(document,state);
   }else if(templeSelected){
-    templeBody.innerHTML=templeMarkup(state.game,state.economy,gameStats().lvl);
+    const halloweenActive=halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN);
+    templeBody.classList.toggle('temple-halloween',halloweenActive);
+    templeBody.innerHTML=templeMarkup(state.game,state.economy,gameStats().lvl,halloweenActive);
     startTempleDialogue(templeBody,state.game,window);
     showTempleGift(document,state.game);
     templeBody.scrollTop=0;
@@ -3000,6 +3061,11 @@ function openRelicDetail(relicId){
   showSheet(document,'sheetRelicDetail');
 }
 function openShopRelicDetail(relicId){
+  if(relicId==='halloween-mask'&&halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)){
+    renderRelicDetail(document,state,relicId,{relicOverride:{rank:3,rarity:'legendary',affixes:[]},shopPreview:true});
+    showSheet(document,'sheetRelicDetail');
+    return;
+  }
   const offer=shopOffers(normalizeLootState(state),Date.now())
     .find(item=>item.relicId===relicId);
   if(!offer||!renderRelicDetail(document,state,relicId,{
@@ -3065,6 +3131,38 @@ function queuePioneerReward(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
   clearTimeout(pioneerRewardTimer);
   if(!shouldDisplayPioneerReward()) return;
   pioneerRewardTimer=window.setTimeout(showPendingPioneerReward,delay);
+}
+function queueHalloweenGift() {
+  if (!shouldOfferHalloweenGift(state, Date.now(), LOCAL_DEMO_HALLOWEEN)) return;
+  const show = () => {
+    if (!shouldOfferHalloweenGift(state, Date.now(), LOCAL_DEMO_HALLOWEEN)) return;
+    if (returnSplashPlaying || document.querySelector('.modal-bg.show')) {
+      window.setTimeout(show, 500);
+      return;
+    }
+    showHalloweenGift(document, async () => {
+      const previous = state;
+      const now = Date.now();
+      const result = claimHalloweenGift(state, now, LOCAL_DEMO_HALLOWEEN);
+      if (!result.granted) return;
+      state = result.state;
+      trackHalloweenBalance({operationId:halloweenGiftId(now),source:'gift',metrics:{bloodGifted:1,energyGifted:1,experienceGifted:1}},now);
+      try {
+        handleSaveResult(await store.set(ACTIVE_STORAGE_KEY, serializeState(state)));
+      } catch (error) {
+        state = previous;
+        throw error;
+      }
+      scheduleSave({type:'reward:halloween-welcome'});
+      renderAll();
+      showToast('Regalo de Halloween · 3 chuches', 'heal');
+    }, () => {
+      shopViewSection = 'map';
+      relicShopMode = 'buy';
+      openInventory('shop');
+    });
+  };
+  window.setTimeout(show, SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+420);
 }
 function resetBetaTesterRewardModal(){
   const thanks=document.getElementById('betaTesterRewardThanks');
@@ -3226,6 +3324,7 @@ async function persistFeedbackRewardToCloud(){
   return saved;
 }
 async function showPendingFiberCatchup(){
+  if(LOCAL_DEMO_HALLOWEEN) return;
   if(LOCAL_DEMO_SKULL_FUSIONS) return;
   fiberCatchupTimer=null;
   const notice=pendingFiberCatchupNotice(state);
@@ -3256,6 +3355,7 @@ async function showPendingFiberCatchup(){
   }finally{fiberCatchupOpening=false;}
 }
 function queueFiberCatchup(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
+  if(LOCAL_DEMO_HALLOWEEN) return;
   clearTimeout(fiberCatchupTimer);
   if(!pendingFiberCatchupNotice(state)) return;
   fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),delay);
@@ -3264,7 +3364,7 @@ function progressionUpdateAcknowledged(){
   return Boolean(state.game?.updateNotices?.[PROGRESSION_UPDATE_NOTICE_ID]?.acknowledgedAt);
 }
 function shouldDisplayProgressionUpdate(){
-  if(LOCAL_DEMO_SKULL_FUSIONS) return false;
+  if(LOCAL_DEMO_SKULL_FUSIONS||LOCAL_DEMO_HALLOWEEN) return false;
   if(LOCAL_PROGRESSION_UPDATE_PREVIEW) return Boolean(state.onboarded&&state.game?.cls);
   return Boolean(state.onboarded&&state.game?.cls&&!progressionUpdateAcknowledged());
 }
@@ -4073,6 +4173,7 @@ function confirmHuntStart(){
   const activations=state.inventory?.dailyActivations||{};
   if(!activations[`fusion_39:relic_11:${bonusDayKey}`]||activations[`fusion_39:mini-hit:${bonusDayKey}`]) relicEffects.miniThreeHabitsHit=0;
   if(!activations[`fusion_40:relic_12:${bonusDayKey}`]||activations[`fusion_40:mini-gold:${bonusDayKey}`]) relicEffects.miniAllHabitsGold=0;
+  const analyticsBonusBefore=normalizeHuntState(state.game.hunt,nowTimestamp).bonusEnergyRemaining;
   const result=startHunt({
     hunt:state.game.hunt,
     regionId,
@@ -4094,6 +4195,16 @@ function confirmHuntStart(){
     return;
   }
   state.game.hunt=result.hunt;
+  if(halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)){
+    const taken=takePreparedHalloweenCandy(state.inventory.halloweenCandy,difficultyId);
+    state.inventory.halloweenCandy=taken.candy;
+    state.game.hunt.active.halloweenCandy=taken.used;
+    state.game.hunt.active.eventAnalyticsLevel=stats.lvl;
+    trackHalloweenBalance({operationId:`start:${result.hunt.active.id}`,source:'hunt',region:regionId,difficulty:difficultyId,
+      metrics:{huntsStarted:1,energySpentNormal:huntDifficultyForRegion(regionId,difficultyId).energyCost-
+        Math.max(0,(analyticsBonusBefore||0)-(result.hunt.bonusEnergyRemaining||0)),
+        energySpentExtra:Math.max(0,(analyticsBonusBefore||0)-(result.hunt.bonusEnergyRemaining||0))}},nowTimestamp);
+  }
   applyLootSlices(consumeHuntCharges(state));
   scheduleSave({type:'hunt:start',regionId,difficultyId});
   renderHunt();
@@ -4307,6 +4418,20 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
     state.game.hunt=result.hunt;
     state.inventory={...(state.inventory||{}),potions:result.potions};
+    const candyResult=rollHalloweenHuntCandy({
+      candy:state.inventory.halloweenCandy,report:result.report,
+      active:halloweenSeasonActive(result.report.startedAt,LOCAL_DEMO_HALLOWEEN)
+    });
+    state.inventory.halloweenCandy=candyResult.candy;
+    result.report.rewards.xp+=candyResult.xpBonus;
+    result.report.rewards.bossBlood+=candyResult.bloodBonus+candyResult.maskBloodBonus;
+    result.report.rewards.maskBloodBonus=candyResult.maskBloodBonus;
+    result.report.rewards.candyDrops=candyResult.drops;
+    result.report.rewards.candyXpBonus=candyResult.xpBonus;
+    result.report.rewards.candyBloodBonus=candyResult.bloodBonus;
+    trackHalloweenBalance({operationId:`result:${result.report.id}`,source:'hunt',region:result.report.regionId,
+      difficulty:result.report.difficultyId,level:result.report.eventAnalyticsLevel||stats.lvl,
+      metrics:halloweenHuntMetrics(result.report)},result.report.completedAt,result.report.startedAt);
     if(result.report.fusion16ManaRecovered){
       state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
     }
@@ -5122,7 +5247,7 @@ function potionViewOptions(){
   const bossIndex=Math.max(0,Number(state.game?.bossCombat?.bossIndex)||0);
   const nowTimestamp=Date.now();
   const hunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
-  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY};
+  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',level:gameStats().lvl,huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY,halloweenActive:halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)};
 }
 
 function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
@@ -5981,6 +6106,54 @@ function handlePotionUse(potionId){
   return true;
 }
 
+function handleCandyUse(candyId){
+  const candy=normalizeHalloweenCandy(state.inventory?.halloweenCandy);
+  if(candy.owned[candyId]<1){showToast('No tienes esa chuche','dmg');return false;}
+  if(candyId==='energy'){
+    const now=Date.now();
+    const hunt=normalizeHuntState(state.game.hunt,now,huntBaseEnergyForToday(new Date(now)),state.config.dayStartTime);
+    const reward=grantRewardHuntEnergy({hunt,amount:2,nowTimestamp:now});
+    if(reward.granted!==2) return false;
+    candy.owned.energy-=1;
+    state.game.hunt=reward.hunt;
+    state.inventory.halloweenCandy=candy;
+    showToast('+2 Energía de Cacería','heal');
+  }else{
+    const result=prepareHalloweenCandy(candy,candyId);
+    if(!result.ok){showToast('Ya tienes una chuche preparada','dmg');return false;}
+    state.inventory.halloweenCandy=result.candy;
+    showToast(candyId==='blood'?'Sangre preparada para Cacería difícil':'Experiencia preparada para la próxima Cacería','heal');
+  }
+  trackHalloweenBalance({operationId:`candy-use:${crypto.randomUUID()}`,source:'candy-use',metrics:
+    candyId==='energy'?{energyCandyGranted:2}:candyId==='blood'?{bloodPrepared:1}:{experiencePrepared:1}});
+  scheduleSave({type:'halloween:candy-use',candyId});
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  if(document.getElementById('sheetRelicDetail')?.classList.contains('show'))
+    renderCandyDetail(document,state,candyId,potionViewOptions());
+  return true;
+}
+
+function handleCandyPurchase(candyId,quantity=1){
+  if(!halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)) return false;
+  const result=buyHalloweenCandy({candy:state.inventory?.halloweenCandy,coins:state.economy?.coins,id:candyId,quantity});
+  if(!result.ok){showToast('No tienes suficiente oro','dmg');return false;}
+  state.inventory.halloweenCandy=result.candy;
+  state.economy.coins-=result.cost;
+  state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
+  const transactionId=`halloween:candy:${crypto.randomUUID()}`;
+  state.economy.transactions.push({id:transactionId,type:'halloween_candy',candyId,quantity:result.quantity,coins:-result.cost,at:Date.now()});
+  trackHalloweenBalance({operationId:transactionId,source:'candy-purchase',metrics:{goldSpentCandy:result.cost,[`${candyId}Bought`]:result.quantity}});
+  state.economy.transactions=state.economy.transactions.slice(-200);
+  scheduleSave({type:'halloween:candy-purchase',candyId,quantity:result.quantity});
+  renderShopView(document,state,Date.now(),shopRenderOptions());
+  renderInventoryView(document,state,potionViewOptions());
+  renderHero();
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
+  showToast(`${HALLOWEEN_CANDY_BY_ID[candyId].name} ×${result.quantity} comprada`,'heal');
+  return true;
+}
+
 function openShopPurchaseConfirmation(purchase){
   pendingShopPurchase=purchase;
   const body=document.getElementById('shopPurchaseConfirmBody');
@@ -6028,6 +6201,7 @@ function renderCurrentCosmeticShop(selectedId=null){
     context:outfitSelectorContext,
     shopMode:outfitShopMode,
     previewUnreleased:LOCAL_DEMO_CELESTIAL,
+    halloweenActive:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN),
   });
 }
 
@@ -6048,8 +6222,9 @@ function handleArcaneResourceSale(resourceId,quantity=1){
 }
 
 function handleOutfitWeave(outfitId){
+  const analyticsCoinsBefore=Number(state.economy?.coins)||0;
   const operationId=`outfit-${outfitId}-${Date.now()}`;
-  const result=weaveOutfit({state,outfitId,operationId,nowTimestamp:Date.now()});
+  const result=weaveOutfit({state,outfitId,operationId,nowTimestamp:Date.now(),localPreview:LOCAL_DEMO_HALLOWEEN});
   if(!result.ok){
     showToast(result.reason==='resources'?'No tienes suficientes recursos':'Este outfit ya está conseguido','dmg');
     return false;
@@ -6057,7 +6232,8 @@ function handleOutfitWeave(outfitId){
   applyLootSlices(result);
   state.game=result.game;
   outfitSelectorSection=outfitSelectorContext==='shop'?'weave':'owned';
-  selectedOutfitDraft=renderOutfitSelector(document,state,outfitSelectorContext==='shop'?outfitId:null,{section:outfitSelectorSection,context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
+  trackHalloweenBalance({operationId,source:'cosmetic-purchase',metrics:{goldSpentCosmetics:analyticsCoinsBefore-(Number(state.economy?.coins)||0)}});
+  selectedOutfitDraft=renderOutfitSelector(document,state,outfitSelectorContext==='shop'?outfitId:null,{section:outfitSelectorSection,context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL,halloweenActive:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)});
   scheduleSave({type:'outfit:woven',outfitId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -6066,15 +6242,17 @@ function handleOutfitWeave(outfitId){
 }
 
 function handleFramePaint(frameId){
+  const analyticsCoinsBefore=Number(state.economy?.coins)||0;
   const operationId=`frame-${frameId}-${Date.now()}`;
-  const result=paintFrame({state,frameId,operationId,nowTimestamp:Date.now()});
+  const result=paintFrame({state,frameId,operationId,nowTimestamp:Date.now(),localPreview:LOCAL_DEMO_HALLOWEEN});
   if(!result.ok){
     showToast(result.reason==='resources'?'No tienes suficientes recursos':'Este fondo ya está conseguido','dmg');
     return false;
   }
   applyLootSlices(result);
   state.game=result.game;
-  selectedOutfitDraft=renderOutfitSelector(document,state,frameId,{section:'frames',context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL});
+  selectedOutfitDraft=renderOutfitSelector(document,state,frameId,{section:'frames',context:'shop',previewUnreleased:LOCAL_DEMO_CELESTIAL,halloweenActive:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)});
+  trackHalloweenBalance({operationId,source:'cosmetic-purchase',metrics:{goldSpentCosmetics:analyticsCoinsBefore-(Number(state.economy?.coins)||0)}});
   scheduleSave({type:'frame:painted',frameId,operationId});
   renderInventoryView(document,state,potionViewOptions());
   renderHero();
@@ -6087,21 +6265,29 @@ async function handleRelicPurchase(relicId){
   shopLocked=true;
   const operationId=`${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const previousLootState=normalizeLootState(state);
-  const result=purchaseShopRelic({state,relicId,operationId,nowTimestamp:Date.now()});
+  const previousAnalytics=state.eventAnalytics;
+  const result=relicId==='halloween-mask'
+    ? buyHalloweenMask({state:normalizeLootState(state),level:gameStats().lvl,active:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN),operationId})
+    : purchaseShopRelic({state,relicId,operationId,nowTimestamp:Date.now()});
   if(result.ok){
     applyLootSlices(result);
+    if(relicId==='halloween-mask'&&!result.duplicate) trackHalloweenBalance({operationId:`mask:${operationId}`,source:'mask-purchase',metrics:{goldSpentMask:result.cost}});
     let purchaseSaved=true;
     try{handleSaveResult(await store.set(ACTIVE_STORAGE_KEY,serializeState(state)));}
     catch(error){
       purchaseSaved=false;
       applyLootSlices(previousLootState);
+      state.eventAnalytics=previousAnalytics;
       console.error('No se pudo guardar la compra de la Tienda',error);
       showToast('No se pudo confirmar el guardado de la compra','dmg');
     }
     renderShopView(document,state,Date.now(),shopRenderOptions());
     renderInventoryView(document,state,potionViewOptions());
     renderHero();
-    if(purchaseSaved) showToast('Reliquia recuperada','heal');
+    if(purchaseSaved){
+      scheduleSave({type:'shop:relic-purchase',relicId,operationId});
+      showToast(relicId==='halloween-mask'?'Máscara adquirida · el reloj empieza al equiparla':'Reliquia recuperada','heal');
+    }
   }else{
     const message=result.reason==='coins'?'No tienes suficiente oro'
       :result.reason==='blood'?'No tienes suficiente Sangre de Jefe':'Esta reliquia ya no está disponible';
@@ -6290,7 +6476,14 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
   if(event.target.closest('[data-open-potion-shop]')){
     shopViewSection='potions';
+    boticaMode='potions';
     showInventoryPanel('shop');
+    return;
+  }
+  const boticaTab=event.target.closest('[data-botica-mode]');
+  if(boticaTab){
+    boticaMode=boticaTab.dataset.boticaMode==='candy'?'candy':'potions';
+    renderShopView(document,state,Date.now(),shopRenderOptions());
     return;
   }
   const relicShopModeButton=event.target.closest('[data-shop-relic-mode]');
@@ -6340,6 +6533,10 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(purchase){
     if(purchase.disabled||shopLocked) return;
     const relicId=purchase.dataset.buyRelic;
+    if(relicId==='halloween-mask'){
+      openShopPurchaseConfirmation({type:'relic',relicId,name:'Máscara del Diezmo Carmesí',coinCost:halloweenMaskPrice(gameStats().lvl),bloodCost:0});
+      return;
+    }
     const offer=shopOffers(normalizeLootState(state),Date.now()).find(item=>item.relicId===relicId);
     if(!offer) return;
     openShopPurchaseConfirmation({type:'relic',relicId,name:offer.definition.name,coinCost:offer.coinPrice,bloodCost:offer.bloodPrice});
@@ -6415,6 +6612,16 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     if(renderPotionDetail(document,state,shopPotionOpen.dataset.openShopPotion,{...potionViewOptions(),mode:'shop',nowTimestamp:Date.now()})){
       showSheet(document,'sheetRelicDetail');
     }
+    return;
+  }
+  const shopCandyOpen=event.target.closest('[data-open-shop-candy]');
+  if(shopCandyOpen&&halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)){
+    if(renderCandyDetail(document,state,shopCandyOpen.dataset.openShopCandy,{...potionViewOptions(),mode:'shop'})) showSheet(document,'sheetRelicDetail');
+    return;
+  }
+  const candyOpen=event.target.closest('[data-open-candy]');
+  if(candyOpen){
+    if(renderCandyDetail(document,state,candyOpen.dataset.openCandy,potionViewOptions())) showSheet(document,'sheetRelicDetail');
     return;
   }
   const potionUse=event.target.closest('[data-use-potion]');
@@ -6847,6 +7054,30 @@ document.getElementById('sheetRelicDetail').addEventListener('click',async event
     buyButton.textContent=bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${total}`;
     return;
   }
+  const candyQuantityStep=event.target.closest('[data-candy-quantity-step]');
+  if(candyQuantityStep){
+    const output=event.currentTarget.querySelector('[data-candy-quantity]');
+    const button=event.currentTarget.querySelector('[data-buy-candy]');
+    if(!output||!button) return;
+    const next=Math.min(99,Math.max(1,(Number(output.textContent)||1)+Number(candyQuantityStep.dataset.candyQuantityStep)));
+    output.textContent=String(next);
+    const total=next*(Number(button.dataset.unitPrice)||0);
+    button.textContent=total>(Number(state.economy?.coins)||0)?'FALTA ORO':`COMPRAR · ${total}`;
+    button.setAttribute('aria-disabled',String(total>(Number(state.economy?.coins)||0)));
+    return;
+  }
+  const candyBuy=event.target.closest('[data-buy-candy]');
+  if(candyBuy){
+    const candyId=candyBuy.dataset.buyCandy;
+    const quantity=Number(event.currentTarget.querySelector('[data-candy-quantity]')?.textContent)||1;
+    const definition=HALLOWEEN_CANDY_BY_ID[candyId];
+    if(!definition||!halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)) return;
+    if(definition.price*quantity>(Number(state.economy?.coins)||0)){showToast('No tienes suficiente oro','dmg');return;}
+    openShopPurchaseConfirmation({type:'candy',candyId,name:definition.name,quantity,coinCost:definition.price*quantity});
+    return;
+  }
+  const candyUse=event.target.closest('[data-use-candy]');
+  if(candyUse){handleCandyUse(candyUse.dataset.useCandy);return;}
   const potionPurchase=event.target.closest('[data-buy-potion]');
   if(potionPurchase){
     const quantity=Number(event.currentTarget.querySelector('[data-potion-quantity]')?.textContent)||1;
@@ -7017,6 +7248,7 @@ document.getElementById('shopPurchaseConfirmAccept').addEventListener('click',as
   if(purchase.type==='sale') await handleRelicSale(purchase.relicId);
   else if(purchase.type==='resource-sale') handleArcaneResourceSale(purchase.resourceId,purchase.quantity);
   else if(purchase.type==='potion') handlePotionPurchase(purchase.potionId,purchase.quantity);
+  else if(purchase.type==='candy') handleCandyPurchase(purchase.candyId,purchase.quantity);
   else if(purchase.type==='blessing'){
     const result=purchaseBlessing({game:state.game,economy:state.economy,id:purchase.blessingId,level:gameStats().lvl,dayKey:todayKey(),operationId:purchase.operationId,expectedPrice:purchase.coinCost});
     if(result.ok){
@@ -7224,7 +7456,7 @@ document.getElementById('betaTesterRewardContinue').addEventListener('click',()=
     shopViewSection='map';
     openInventory('shop');
     document.getElementById('sheetInventory')?.classList.add('inventory-shop-cosmetic-open');
-    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL});
+    selectedOutfitDraft=renderOutfitSelector(document,state,null,{section:'frames',context:outfitSelectorContext,previewUnreleased:LOCAL_DEMO_CELESTIAL,halloweenActive:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)});
     document.getElementById('outfitSelectorBg').classList.add('show');
   }
   showToast(inkRewardVisible?'+20 Tintas · +192 oro':energyPotionsVisible?'+80 oro · +2 Pociones de Vigor':'Fondo · +140 oro · +10 Fibras · +2 Energía','heal');
@@ -7520,7 +7752,25 @@ bindBackupControls({
 /* refresco cada minuto: todos los sistemas respetan la hora de corte configurada */
 let lastDay=todayKey();
 let lastHabitDay=habitDayKey();
+function syncHalloweenPresentation() {
+  const active = halloweenSeasonActive(Date.now(), LOCAL_DEMO_HALLOWEEN);
+  document.body.classList.toggle('halloween-season', active);
+  const expired = expireHalloweenMask(state);
+  if (expired.expired) {
+    state = expired.state;
+    scheduleSave({type:'halloween:mask-expired'});
+  }
+  if (!active) document.getElementById('halloweenGiftBg')?.classList.remove('show');
+}
 function checkDay(){
+  const seasonChanged = document.body.classList.contains('halloween-season') !== halloweenSeasonActive(Date.now(), LOCAL_DEMO_HALLOWEEN);
+  syncHalloweenPresentation();
+  if (seasonChanged && document.getElementById('sheetInventory')?.classList.contains('show')) {
+    showInventoryPanel(document.getElementById('templeTab')?.getAttribute('aria-selected') === 'true' ? 'temple' : document.getElementById('shopTab')?.getAttribute('aria-selected') === 'true' ? 'shop' : 'bag');
+  }
+  if (seasonChanged && document.getElementById('outfitSelectorBg')?.classList.contains('show')) {
+    selectedOutfitDraft=renderOutfitSelector(document,state,selectedOutfitDraft,{section:outfitSelectorSection,context:outfitSelectorContext,halloweenActive:halloweenSeasonActive(Date.now(),LOCAL_DEMO_HALLOWEEN)});
+  }
   syncPeriodicRelicMana(Date.now(),true);
   const currentDay=todayKey();
   const currentHabitDay=habitDayKey();
@@ -7694,7 +7944,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     return;
   }
   const cloudConfig=readCloudConfig(window);
-  if(cloudConfig.enabled&&!LOCAL_DEMO_SKULL_FUSIONS){
+  if(cloudConfig.enabled&&!LOCAL_DEMO_SKULL_FUSIONS&&!LOCAL_DEMO_HALLOWEEN){
     const initialAuthCallback=new URLSearchParams(location.search).get('authCallback');
     /* Solo esperamos a que la pantalla de carga haya terminado de aparecer, sin
        arrancar todavía su cuenta atrás para ocultarse: eso lo dispara más abajo
@@ -7957,6 +8207,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       }
     }else finishInitialReturnSplash();
   }
+  queueHalloweenGift();
   if(!LOCAL_DEMO_QUIET){
     if(!LOCAL_PROGRESSION_UPDATE_PREVIEW){
       queuePioneerReward();

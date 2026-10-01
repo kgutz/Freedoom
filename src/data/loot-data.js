@@ -561,6 +561,9 @@ export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
 export const ALL_RELIC_DEFINITIONS = [
   ...RELIC_DEFINITIONS,
   ...FUSION_RELIC_DEFINITIONS,
+  { id:'halloween-mask', name:'Máscara del Diezmo Carmesí', image:'relics/relic_halloween_mascara_diezmo_carmesi.webp',
+    equipmentType:'halloween-mask', effectFamily:'halloween-blood', seasonal:'halloween', fixedRank:3,
+    effectLabel:'10% de Vampirismo y una tirada independiente del 50% para +1 Sangre al vencer al minijefe difícil. Dura 24 horas desde la primera equipación.', affixPool:[] },
 ];
 
 // Rangos II y III son valores conservadores provisionales y están aislados aquí
@@ -651,6 +654,7 @@ export function relicCombatBonus(relicId, rank = 1) {
 }
 
 export function relicCombatBonuses(relicId, rank = 1, ingredientSnapshots = {}) {
+  if (relicId === 'halloween-mask') return [{stat:'physicalAttack',value:5},{stat:'magicAttack',value:5},{stat:'defense',value:4}];
   const definition = relicDefinition(relicId);
   if (!Array.isArray(definition?.ingredientIds)) {
     const bonus = relicCombatBonus(relicId, rank);

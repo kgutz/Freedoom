@@ -31,9 +31,9 @@ export function renderBlessingDetail(document,game,economy,level,id) {
   return true;
 }
 
-export function templeMarkup(game={},economy={},level=1) {
+export function templeMarkup(game={},economy={},level=1, halloweenActive=false) {
   return `<section class="temple-scene" aria-label="Templo de Azariel">
-    ${sceneMediaMarkup('temple', 'Santuario celestial con Azariel, el ángel guardián')}
+    ${sceneMediaMarkup('temple', 'Santuario celestial con Azariel, el ángel guardián', halloweenActive)}
     <button type="button" class="shop-city-close" data-close-temple aria-label="Cerrar templo">✕</button>
     <button type="button" class="temple-guardian" data-temple-blessings aria-label="Ver las bendiciones de Azariel"><span>Azariel<small>Ángel guardián</small></span></button>
     <button type="button" class="temple-dialogue" data-temple-dialogue><strong>Azariel</strong><span class="temple-dialogue-copy" aria-hidden="true"><span data-dialogue-reserve></span><span data-dialogue-text></span></span><small data-dialogue-hint aria-hidden="true"></small></button>

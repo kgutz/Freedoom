@@ -37,6 +37,7 @@
 .blessing-detail .relic-detail-art{border-color:var(--kodak)}
 .blessing-detail .rarity-label{color:var(--kodak)}
 .inventory-sheet.inventory-temple-active:has(.temple-blessings:not([hidden]))>#templeBody{background:linear-gradient(#08070688,#08070688),url('../public/scenes/temple-v2.webp') center/cover no-repeat}
+.inventory-sheet.inventory-temple-active:has(.temple-blessings:not([hidden]))>#templeBody.temple-halloween{background-image:linear-gradient(#08070688,#08070688),url('../public/scenes/temple-halloween.webp')}
 .temple-blessings{position:absolute;z-index:4;top:50%;left:16px;right:16px;height:auto;max-height:calc(100% - 32px);transform:translateY(-50%);padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 14px 38px #0009;text-align:center}
 .temple-scene[aria-hidden="true"]{filter:brightness(.45);pointer-events:none}
 .temple-scene[aria-hidden="true"] button{visibility:hidden}

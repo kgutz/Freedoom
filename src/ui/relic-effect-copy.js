@@ -80,6 +80,10 @@ function fusionBonus(definition, rank, inherited) {
 }
 
 export function relicEffectCopy(definition, relic) {
+  if (definition.id === 'halloween-mask') return [
+    {id:'halloween-vampirism',name:'Vampirismo',description:'Recupera el 10% del daño infligido como Vida en Cacería.'},
+    {id:'halloween-extraction',name:'Diezmo Carmesí',description:'Una tirada independiente del 50% para +1 Sangre al vencer al minijefe difícil. Se calcula aparte de la chuche y la sangre normal.'},
+  ];
   const inherited = definition.recipeId
     ? Object.entries(relic.inheritedEffects || {})
     : [[definition.id, relicRankEffect(definition.id, relic.rank)]];

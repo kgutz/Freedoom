@@ -8,6 +8,7 @@ function data(definition, rank) {
   const base = grantBossRewards({ state: {}, bossesDown: 12, source: 'retroactive', seed: 'copy', nowTimestamp: 1 });
   base.economy.coins = 100000; base.economy.bossBlood = 100;
   Object.values(base.inventory.relics).forEach(relic => { relic.rank = rank; });
+  if (definition.fixedRank) base.inventory.relics[definition.id]={unlocked:true,rank:definition.fixedRank,rarity:'legendary',affixes:[],expiresAt:0};
   if (!definition.recipeId) return { base, state: base, relic: base.inventory.relics[definition.id] };
   const [leftId, rightId] = definition.ingredientIds;
   const state = fuseRelics({ state: base, leftId, rightId, operationId: `copy-${definition.id}-${rank}`, randomValue: 0 });
@@ -18,14 +19,14 @@ function documentStub() {
   const elements = Object.fromEntries(['relicDetailBody', 'relicDetailTitle', 'forgeBody'].map(id => [id, { innerHTML: '', textContent: '' }]));
   return { elements, getElementById: id => elements[id] || null };
 }
-const cases = ALL_RELIC_DEFINITIONS.flatMap(definition => [1, 2, 3].map(rank => [definition.id, rank, definition]));
+const cases = ALL_RELIC_DEFINITIONS.flatMap(definition => (definition.fixedRank ? [definition.fixedRank] : [1, 2, 3]).map(rank => [definition.id, rank, definition]));
 const effectRows = html => (html.match(/<button[^>]+data-effect-kind="EFECTO PRINCIPAL"[^>]*>.*?<\/button>/g) || []);
 
 describe('Microcopy de efectos: catálogo completo', () => {
   it.each(cases)('%s R%i: valores reales y mismas unidades en ficha y Forja', (_id, rank, definition) => {
     const { base, state, relic } = data(definition, rank);
     const rows = relicEffectCopy(definition, relic);
-    expect(rows).toHaveLength(definition.recipeId ? 3 : 1);
+    expect(rows).toHaveLength(definition.fixedRank ? 2 : definition.recipeId ? 3 : 1);
     for (const row of rows) {
       expect(row.name).toBeTruthy(); expect(row.description).toBeTruthy();
       expect(row.description).not.toMatch(/undefined|NaN|Hereda|mientras está equipad|Valor actual/);
@@ -41,7 +42,9 @@ describe('Microcopy de efectos: catálogo completo', () => {
     if (definition.recipeId) renderFusionView(document, base, ...definition.ingredientIds);
     else renderForgeView(document, base, definition.id);
     const forgeRows = effectRows(document.elements.forgeBody.innerHTML);
-    expect(definition.recipeId ? forgeRows.slice(0, -1) : forgeRows).toEqual(effectRows(detail));
+    if (definition.fixedRank) expect(detail).not.toContain('data-open-forge-relic');
+    else expect(forgeRows).toEqual(effectRows(detail));
+    if (definition.recipeId) expect(document.elements.forgeBody.innerHTML).toContain('data-effect-kind="BONUS DE FUSIÓN"');
     expect(effectRows(detail)).toHaveLength(definition.recipeId ? rows.length - 1 : rows.length);
     expect(detail).toContain('aria-haspopup="dialog"');
     expect(detail).not.toContain('<p>' + rows[0].description);

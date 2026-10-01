@@ -334,6 +334,7 @@ export function mergeState(currentState, savedState) {
   if (isObject(savedState.inventory)) nextState.inventory = savedState.inventory;
   if (isObject(savedState.forge)) nextState.forge = savedState.forge;
   if (isObject(savedState.shop)) nextState.shop = savedState.shop;
+  if (isObject(savedState.eventAnalytics)) nextState.eventAnalytics = savedState.eventAnalytics;
   if (savedState.onboarded === true) nextState.onboarded = true;
 
   return nextState;

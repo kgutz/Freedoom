@@ -98,7 +98,15 @@ export function huntResultRewardsMarkup(rewards = {}) {
   const fortuneMarkup = fortuneGold
     ? `<div class="hunt-result-fortune-bonus">Poción de Fortuna · +${fortuneGold} oro (50%)</div>`
     : '';
-  return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>${fortuneMarkup}`;
+  const candyDrops = rewards.candyDrops || {};
+  const candyLabels = [
+    ['blood', 'Sangre'], ['energy', 'Energía'], ['experience', 'Experiencia'],
+  ].filter(([id]) => Number(candyDrops[id]) > 0).map(([id, label]) => `${label} ×${candyDrops[id]}`);
+  const candyMarkup = candyLabels.length
+    ? `<div class="hunt-result-fortune-bonus">Chuches de Halloween · ${candyLabels.join(' · ')}</div>` : '';
+  const bonusMarkup = Number(rewards.candyBloodBonus) > 0 || Number(rewards.candyXpBonus) > 0
+    ? `<div class="hunt-result-fortune-bonus">Bonus de chuches · ${Number(rewards.candyBloodBonus) || 0} Sangre · ${Number(rewards.candyXpBonus) || 0} XP</div>` : '';
+  return `<div class="hunt-result-reward-grid items-${items.length}">${items.join('')}</div>${fortuneMarkup}${candyMarkup}${bonusMarkup}`;
 }
 
 export function huntResultSummaryMarkup(report = {}) {

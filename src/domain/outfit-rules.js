@@ -1,5 +1,6 @@
 import { OUTFIT_DEFINITIONS, isOutfitUnlocked } from '../data/outfit-data.js';
 import { FRAME_DEFINITIONS, isFrameUnlocked } from '../data/frame-data.js';
+import { halloweenSeasonActive } from './halloween-candy-rules.js';
 import { normalizeLootState } from './loot-rules.js';
 
 export const BOSS_FIBER_BONUS_RATE = 0.25;
@@ -215,12 +216,15 @@ export function sellArcaneResource({ state, resourceId, quantity = 1, operationI
   };
 }
 
-export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.now() }) {
+export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.now(), localPreview = false }) {
   const normalized = normalizeLootState(state);
   const outfit = OUTFIT_DEFINITIONS.find((item) => (
     item.id === outfitId && item.released !== false && item.craftable && item.recipe
   ));
   if (!outfit || !operationId) return { ...slices(normalized), game: state.game, ok: false, reason: 'invalid' };
+  if (outfit.seasonal === 'halloween' && !halloweenSeasonActive(nowTimestamp, localPreview)) {
+    return { ...slices(normalized), game: state.game, ok: false, reason: 'season' };
+  }
   if (isOutfitUnlocked(outfit, state.game)) return { ...slices(normalized), game: state.game, ok: false, reason: 'owned' };
   if (normalized.forge.weaving.history.some((entry) => entry.operationId === operationId)) {
     return { ...slices(normalized), game: state.game, ok: false, reason: 'duplicate' };
@@ -247,10 +251,13 @@ export function weaveOutfit({ state, outfitId, operationId, nowTimestamp = Date.
   return { ...slices(normalized), game, ok: true, outfit };
 }
 
-export function paintFrame({ state, frameId, operationId, nowTimestamp = Date.now() }) {
+export function paintFrame({ state, frameId, operationId, nowTimestamp = Date.now(), localPreview = false }) {
   const normalized = normalizeLootState(state);
   const frame = FRAME_DEFINITIONS.find((item) => item.id === frameId && item.released !== false && item.recipe);
   if (!frame || !operationId) return { ...slices(normalized), game: state.game, ok: false, reason: 'invalid' };
+  if (frame.seasonal === 'halloween' && !halloweenSeasonActive(nowTimestamp, localPreview)) {
+    return { ...slices(normalized), game: state.game, ok: false, reason: 'season' };
+  }
   if (isFrameUnlocked(frame, state.game)) return { ...slices(normalized), game: state.game, ok: false, reason: 'owned' };
   if (normalized.forge.weaving.history.some((entry) => entry.operationId === operationId)) {
     return { ...slices(normalized), game: state.game, ok: false, reason: 'duplicate' };

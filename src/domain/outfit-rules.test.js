@@ -230,4 +230,20 @@ describe('Fibras Arcanas y tejido de outfits', () => {
     expect(frame).toMatchObject({ ok: true, economy: { coins: 0, arcaneInks: 0 } });
     expect(frame.game.frames.owned['celestial-music-studio']).toMatchObject({ source: 'painted' });
   });
+
+  it('limita las compras de cosméticos de Halloween a octubre y a la demo local', () => {
+    const september = new Date(2026, 8, 29, 12).getTime();
+    const october = new Date(2026, 9, 1, 12).getTime();
+    const initial = stateWithGame();
+    initial.economy = { ...initial.economy, coins: 800, arcaneFibers: 40, arcaneInks: 40 };
+    expect(weaveOutfit({ state: initial, outfitId: 'drowned-reliquary', operationId: 'early-outfit', nowTimestamp: september }))
+      .toMatchObject({ ok: false, reason: 'season' });
+    expect(paintFrame({ state: initial, frameId: 'halloween-crypt', operationId: 'early-frame', nowTimestamp: september }))
+      .toMatchObject({ ok: false, reason: 'season' });
+    const outfit = weaveOutfit({ state: initial, outfitId: 'drowned-reliquary', operationId: 'october-outfit', nowTimestamp: october });
+    expect(outfit).toMatchObject({ ok: true, economy: { coins: 480, arcaneFibers: 20 } });
+    const frame = paintFrame({ state: { ...initial, ...outfit }, frameId: 'halloween-crypt', operationId: 'october-frame', nowTimestamp: october });
+    expect(frame).toMatchObject({ ok: true, economy: { coins: 130, arcaneInks: 5 } });
+    expect(paintFrame({ state: initial, frameId: 'halloween-crypt', operationId: 'demo-frame', nowTimestamp: september, localPreview: true }).ok).toBe(true);
+  });
 });

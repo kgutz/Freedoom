@@ -4,8 +4,16 @@ export function effectControl({ id, name, description }, kind = 'EFECTO PRINCIPA
   return `<button type="button" class="relic-effect-link" aria-haspopup="dialog" aria-controls="relicEffectInfoDialog" data-effect-name="${escapeHtml(name)}" data-effect-description="${escapeHtml(description)}" data-effect-kind="${kind}" data-relic-effect="${escapeHtml(id)}">${escapeHtml(name)}</button>`;
 }
 
-export function effectControlList(effects, kind = 'EFECTO PRINCIPAL') {
-  return `<div class="relic-effect-controls">${effects.map((effect, index) => `<span class="relic-effect-item">${effectControl(effect, kind)}${index < effects.length - 1 ? '<span class="relic-effect-comma">,</span>' : ''}</span>`).join(' ')}</div>`;
+export function effectControlList(effects, kind = 'EFECTO PRINCIPAL', { separateFinal = false } = {}) {
+  return `<div class="relic-effect-controls">${effects.map((effect, index) => {
+    const isFinalBonus = separateFinal && index === effects.length - 1;
+    const punctuation = index < effects.length - 1
+      ? separateFinal && index === effects.length - 2
+        ? '<span class="relic-effect-period">.</span>'
+        : '<span class="relic-effect-comma">,</span>'
+      : '';
+    return `<span class="relic-effect-item${isFinalBonus ? ' relic-effect-item--fusion-bonus' : ''}">${effectControl(effect, isFinalBonus ? 'BONUS DE FUSIÓN' : kind)}${punctuation}</span>`;
+  }).join(' ')}</div>`;
 }
 
 // Native dialog provides top-layer isolation, inert background and keyboard focus containment.

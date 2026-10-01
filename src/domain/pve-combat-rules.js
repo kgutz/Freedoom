@@ -8,7 +8,8 @@ import { HUNT_BALANCE_TUNING } from '../data/hunt-balance-data.js';
 
 export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
-export const MAX_HUNT_ENERGY = 20;
+// Storage has no gameplay cap. Keep JSON-safe arithmetic; daily refill remains 10.
+export const MAX_HUNT_ENERGY = Number.MAX_SAFE_INTEGER;
 export const HUNT_ENERGY_CAPACITY_VERSION = 3;
 const HUNT_ENERGY_CAPACITY_UPGRADE_GIFT = 5;
 const HUNT_ENERGY_ROLLOVER_REPAIR_GIFT = 2;
@@ -196,7 +197,8 @@ export function huntDropRules(regionId = 'fields-of-mist', difficultyId) {
   };
 }
 
-const safeInteger = (value) => Math.max(0, Math.floor(Number(value) || 0));
+const safeInteger = (value) => Number.isFinite(Number(value))
+  ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(Number(value) || 0))) : 0;
 
 export function localHuntDayKey(timestamp = Date.now(), dayStartTime = DEFAULT_DAY_START_TIME) {
   return logicalDayKey(new Date(timestamp), dayStartTime);
@@ -938,6 +940,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniThreeHabitsHit', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
+      maskBloodChance: relicEffects.maskBloodChance === 50 ? 50 : 0,
     },
     relicBonuses: {
       physicalAttack: safeInteger(relicBonuses.physicalAttack),
@@ -1186,6 +1189,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     fusion16ManaRecovered,
     id: active.id,
     bonusDayKey: active.bonusDayKey || '',
+    eventAnalyticsLevel: active.eventAnalyticsLevel || null,
     regionId: active.regionId,
     difficultyId: difficulty.id,
     startedAt: active.startedAt,
@@ -1202,6 +1206,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     recovery,
     encounters,
     rewards,
+    halloweenCandy: active.halloweenCandy || null,
+    maskBloodChance: active.relicEffects?.maskBloodChance || 0,
     fortune: active.fortune?.dayKey ? {
       dayKey: active.fortune.dayKey,
       bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,

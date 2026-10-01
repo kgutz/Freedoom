@@ -1649,8 +1649,8 @@
   .forge-upgrade-max>div strong{min-width:100px}
   .forge-cost{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:6px;color:var(--muted);font:400 9px var(--font-display)}.forge-cost>span{letter-spacing:.12em;color:var(--kodak)}.forge-cost .resource-value{font-size:10px}.forge-cost .resource-icon{transform:scale(.8)}
   .forge-focus .forge-attempt{min-height:40px;margin-top:6px;border-radius:10px;font-size:11px;letter-spacing:.08em}
-  .fusion-flow{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;margin:1px 0 0}
-  .fusion-ingredients{display:grid;grid-template-columns:clamp(88px,16vh,116px) auto clamp(88px,16vh,116px);align-items:center;justify-content:center;gap:10px;width:100%;max-width:100%}
+  .fusion-flow{--fusion-slot-size:clamp(88px,16vh,116px);display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;margin:8px 0 0}
+  .fusion-ingredients{display:grid;grid-template-columns:var(--fusion-slot-size) auto var(--fusion-slot-size);align-items:center;justify-content:center;gap:10px;width:100%;max-width:100%}
   .fusion-ingredients>b{color:var(--kodak);font:400 22px var(--font-display)}
   .fusion-result-arrow{color:var(--kodak);font:400 16px var(--font-display)}
   @property --forge-slot-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
@@ -1672,10 +1672,10 @@
   .fusion-slot{min-width:0;aspect-ratio:1;padding:0;border:1px solid #67523a;border-radius:11px;background:radial-gradient(circle at 50% 40%,var(--relic-surface-light) 0%,var(--relic-surface) 52%,var(--relic-surface-edge) 100%);display:grid;place-items:center;align-content:center;overflow:hidden;color:var(--kodak);font:inherit}
   .fusion-slot>.relic-art{width:100%;height:100%;grid-area:1/1;aspect-ratio:1;border-radius:9px}.fusion-slot>span{font:400 25px var(--font-display)}
   .fusion-slot>small{z-index:3;max-width:92%;padding:2px 4px;border-radius:4px;background:rgba(18,13,9,.86);color:var(--text);font:400 7px var(--font-display);line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fusion-slot.filled>small{grid-area:1/1;align-self:end;margin-bottom:3px}
-  .fusion-result-preview{--preview-accent:var(--rarity-rare);--preview-light:#9bc9dc;position:relative;isolation:isolate;display:grid;grid-template-columns:92px minmax(0,1fr);align-items:center;gap:10px 12px;box-sizing:border-box;width:100%;padding:11px;border:1px solid var(--preview-accent);border-radius:13px;background:linear-gradient(140deg,#251d1a,#191614 78%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 0 16px rgba(0,0,0,.22);text-align:left}.fusion-result-preview.rarity-legendary{--preview-accent:var(--rarity-legendary);--preview-light:#ffe09a}.fusion-result-preview.rarity-mythic{--preview-accent:var(--rarity-mythic);--preview-light:#dda4fa}
+  .fusion-result-preview{--preview-accent:var(--rarity-rare);--preview-light:#9bc9dc;position:relative;isolation:isolate;display:grid;grid-template-columns:var(--fusion-slot-size) minmax(0,1fr);align-items:center;gap:10px 12px;box-sizing:border-box;width:100%;padding:11px;border:1px solid var(--preview-accent);border-radius:13px;background:linear-gradient(140deg,#251d1a,#191614 78%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),0 0 16px rgba(0,0,0,.22);text-align:left}.fusion-result-preview.rarity-legendary{--preview-accent:var(--rarity-legendary);--preview-light:#ffe09a}.fusion-result-preview.rarity-mythic{--preview-accent:var(--rarity-mythic);--preview-light:#dda4fa}
   .fusion-result-preview::before{content:'';position:absolute;inset:-1px;z-index:3;border-radius:inherit;padding:2px;pointer-events:none;background:conic-gradient(from var(--relic-border-angle),var(--preview-accent) 0deg 255deg,var(--preview-light) 285deg,var(--preview-accent) 325deg 360deg);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:relic-border-shine 4.5s linear infinite}
   /* Reuse the collection icon's exact layers and positioning; only fix its preview size. */
-  .fusion-preview-art.relic-collection-item{width:92px;height:92px;aspect-ratio:auto;box-sizing:border-box}
+  .fusion-preview-art.relic-collection-item{width:var(--fusion-slot-size);height:var(--fusion-slot-size);aspect-ratio:1;box-sizing:border-box}
   /* Mobile browsers can drop the illustration while compositing the two nested animated masks. */
   @keyframes fusion-preview-mobile-glow{50%{border-color:var(--preview-light);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 0 13px var(--preview-accent)}}
   @media(max-width:600px){
@@ -1686,10 +1686,10 @@
     .fusion-preview-art .relic-art--fusion::before,.fusion-preview-art .relic-art--fusion::after{content:none}
     .fusion-preview-art .relic-art--fusion>img{z-index:1}
   }
-  .fusion-preview-copy{min-width:0}.fusion-preview-copy>span{display:block;color:var(--kodak);font:400 8px var(--font-display);letter-spacing:.1em}.fusion-preview-copy .fusion-preview-kicker{color:var(--preview-accent);font-size:8px;line-height:1.3}.fusion-preview-copy h3{margin:5px 0 8px;font:400 14px/1.25 var(--font-display);overflow-wrap:anywhere}.fusion-preview-quality{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--preview-accent);font:400 9px/1.35 var(--font-display);letter-spacing:.03em}.fusion-preview-quality>span:last-child{padding:3px 6px;border:1px solid var(--preview-accent);border-radius:5px;color:var(--text);white-space:nowrap}
+  .fusion-preview-copy{min-width:0}.fusion-result-preview>.fusion-preview-copy:not(.fusion-preview-extra){display:flex;min-height:var(--fusion-slot-size);box-sizing:border-box;flex-direction:column;justify-content:center}.fusion-preview-copy>span{display:block;color:var(--kodak);font:400 8px var(--font-display);letter-spacing:.1em}.fusion-preview-copy .fusion-preview-kicker{color:var(--preview-accent);font-size:9px;line-height:1.3}.fusion-preview-copy h3{margin:7px 0 9px;font:400 16px/1.25 var(--font-display);overflow-wrap:anywhere}.fusion-preview-quality{display:flex;flex-wrap:wrap;align-items:center;gap:5px;color:var(--preview-accent);font:400 10px/1.35 var(--font-display);letter-spacing:.03em}.fusion-preview-quality>span:last-child{padding:4px 7px;border:1px solid var(--line);border-radius:5px;color:var(--muted);white-space:nowrap}
   .fusion-preview-copy>p{margin:4px 0 0;color:var(--muted);font-size:7px;line-height:1.35}.fusion-preview-inherited{display:flex;flex-wrap:wrap;gap:3px 5px}.fusion-preview-inherited span{color:var(--kodak)}.fusion-preview-inherited b{color:var(--text);font-family:var(--font-display)}.fusion-preview-copy>small{display:block;margin-top:4px;color:var(--muted);font:400 7px var(--font-display);line-height:1.25}
-  .fusion-result-preview .fusion-preview-main-effects{margin-top:0;padding:10px;background:rgba(255,255,255,.035)}.fusion-preview-main-effects .relic-effect-controls{display:block;margin:0;line-height:1.5}.fusion-preview-main-effects .relic-effect-item{display:inline;max-width:none}.fusion-preview-main-effects .relic-effect-link{display:inline;min-height:0;padding:2px 0;font-size:11px;line-height:1.5;overflow-wrap:normal}.fusion-preview-main-effects .relic-effect-comma{padding-right:4px}.fusion-result-preview .fusion-preview-extra{padding:0 2px 1px}.fusion-result-preview .fusion-preview-affixes{font-size:9px;line-height:1.4}
-  @media(max-width:360px){.fusion-result-preview{grid-template-columns:76px minmax(0,1fr);gap:9px;padding:9px}.fusion-preview-art.relic-collection-item{width:76px;height:76px}.fusion-preview-copy h3{font-size:12px}}
+  .fusion-result-preview .fusion-preview-main-effects{margin-top:0;padding:10px;background:rgba(255,255,255,.035)}.fusion-preview-main-effects .relic-effect-controls{display:block;margin:0;line-height:1.25}.fusion-preview-main-effects .relic-effect-item{display:inline;max-width:none}.fusion-preview-main-effects .relic-effect-controls .relic-effect-link{display:inline;min-height:0;padding:0;font:400 12px/1.25 var(--font-copy);overflow-wrap:normal}.fusion-preview-main-effects .relic-effect-comma{padding-right:4px}.fusion-preview-main-effects .relic-effect-period{color:var(--kodak);font:400 12px/1.25 var(--font-copy)}.fusion-preview-main-effects .relic-effect-item--fusion-bonus{display:block;margin-top:4px}.fusion-preview-main-effects .relic-effect-item--fusion-bonus .relic-effect-link{color:var(--preview-light);font-style:italic}.fusion-result-preview .fusion-preview-extra{padding:0 2px 1px}.fusion-result-preview .fusion-preview-affixes{font-size:9px;line-height:1.4}
+  @media(max-width:360px){.fusion-flow{--fusion-slot-size:84px}.fusion-result-preview{gap:9px;padding:9px}.fusion-preview-copy .fusion-preview-kicker{font-size:8px}.fusion-preview-copy h3{font-size:13px}.fusion-preview-quality{font-size:9px}}
   @media(prefers-reduced-motion:reduce){.fusion-result-preview,.fusion-result-preview::before{animation:none}}
   .fusion-status{min-height:25px;margin:1px 0 0;color:var(--muted);font-size:10px;line-height:1.45;text-align:center}.fusion-status.error{color:var(--warn)}.fusion-status strong,.fusion-status small{display:block}.fusion-status small{margin-top:2px;color:var(--muted);font-size:8px}
   .fusion-result-rarity-label{color:var(--rarity-rare)}.fusion-result-rarity-label.rarity-legendary{color:var(--rarity-legendary)}.fusion-result-rarity-label.rarity-mythic{color:var(--rarity-mythic)}.fusion-result-rarity-label{display:block;margin:2px 0 7px;font:400 10px var(--font-display);letter-spacing:.08em}
@@ -1918,6 +1918,9 @@
   .character-hero-art>.sprite-box .sprite-svg[data-outfit-display]{width:var(--outfit-sheet-size)!important;height:var(--outfit-sheet-size)!important;left:var(--outfit-sheet-x)!important;top:var(--outfit-sheet-y)!important}
   .outfit-full-body img[data-outfit-display]{width:var(--outfit-card-size)!important;height:var(--outfit-card-size)!important;left:var(--outfit-card-x)!important;top:var(--outfit-card-y)!important;transform:none!important}
   .hoy-face img[data-outfit-display],.habit-hero-sprite img[data-outfit-display],.inventory-outfit-card .outfit-portrait img[data-outfit-display]{position:relative;width:var(--outfit-face-size)!important;height:var(--outfit-face-size)!important;max-width:none;left:var(--outfit-face-x)!important;top:var(--outfit-face-y)!important}
+  /* El Custodio conserva su escala en Héroe, ficha y tienda; Hoy y Hábitos van al 88.2 %. */
+  #hoyFace img[src*="/drowned-reliquary/"][data-outfit-display],
+  .habit-hero-sprite.outfit-id-drowned-reliquary img[data-outfit-display]{scale:.882}
   #characterSheetBody .character-identity{align-items:flex-end;padding-bottom:14px}
   .character-identity>div:first-child{min-width:0;flex:1}
   #characterSheetBody .character-identity h2{font-size:22px;line-height:1.25;color:#fff0cf;overflow-wrap:anywhere}
@@ -1961,7 +1964,7 @@
   .cosmetic-rarity-mythic{--cosmetic-color:#b77bea;--cosmetic-glow:rgba(183,123,234,.24)}
   .outfit-option[class*="cosmetic-rarity-"],.frame-option[class*="cosmetic-rarity-"]{border-color:var(--cosmetic-color);box-shadow:inset 0 0 0 1px var(--cosmetic-glow),0 0 10px var(--cosmetic-glow)}
   .outfit-option[class*="cosmetic-rarity-"].equipped,.frame-option[class*="cosmetic-rarity-"].equipped{outline:1px solid var(--cosmetic-color);outline-offset:3px}
-  .cosmetic-rarity-label{display:block;margin:0 0 8px;color:var(--cosmetic-color);font:400 9px/1.5 var(--font-display);letter-spacing:.12em}
+  .cosmetic-rarity-label{display:block;margin:0 0 8px;color:var(--cosmetic-color);font:400 9px/1.5 var(--font-display);letter-spacing:.12em;text-align:center}
   .outfit-option[class*="cosmetic-rarity-"].equipped::before,.frame-option[class*="cosmetic-rarity-"].equipped::before{content:'';position:absolute;inset:0;z-index:3;padding:0;border:1px solid var(--kodak);border-radius:inherit;background:none;mask:none;-webkit-mask:none;animation:none;pointer-events:none}
 
   /* Página interna para comparar todos los perfiles de escala de outfits. */
@@ -2407,7 +2410,9 @@
   #forgeBody .forge-focus>p,#forgeBody .forge-empty p,
   #shopBody .shop-empty p,#shopBody .shop-sale-copy,
   #forgeBody .shop-destination-copy,#shopBody .shop-destination-copy,
-  .outfit-selector-modal--shop .shop-outfit-heading p{
+  .outfit-selector-modal--shop .shop-outfit-heading p,
+  .outfit-selector-modal--shop .outfit-owned-detail p,
+  .outfit-selector-modal--shop .outfit-weave-detail p{
     font-family:var(--font-copy);font-size:var(--shop-type-help);font-weight:400;
     line-height:1.6;color:var(--muted);white-space:normal;overflow-wrap:break-word;
   }
@@ -2462,6 +2467,54 @@
   .recovery-modal .support-sheet-head h3{margin:0;text-transform:none}
 
 
+
+.candy-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.candy-card{border-color:#a46d46;background:radial-gradient(circle at 50% 45%,#483224,#1c1717);box-shadow:inset 0 0 0 1px rgba(255,175,92,.25),0 0 10px rgba(217,106,50,.2)}
+.candy-card .candy-art{width:calc(100% - 8px);height:calc(100% - 27px);min-height:0}
+.candy-card[data-open-shop-candy] .candy-art{height:calc(100% - 8px)}
+.candy-card .candy-art img,.candy-detail-frame .candy-art img{image-rendering:pixelated;object-fit:contain}
+.candy-card>b{flex:0 0 auto;min-height:18px;margin:0;white-space:normal;line-height:1.2;font-size:7px}
+.candy-card .potion-owned{background:#321a19;color:#ffd285}
+.candy-detail-frame{border-color:#b97950}
+.candy-detail-frame .candy-art{width:100%;height:100%}
+.bag-candy-section{margin-top:18px}
+.shop-city-zone--halloween span{position:relative;padding:8px 9px;border-color:#d96260;background:linear-gradient(180deg,rgba(91,24,29,.96),rgba(31,12,15,.96));color:#ffe3db;white-space:nowrap;text-shadow:0 1px 3px #240507,0 0 7px #e74747;box-shadow:inset 0 0 0 1px rgba(255,163,146,.2),0 0 11px rgba(190,31,43,.55);animation:shop-halloween-glow 2.2s ease-in-out infinite}
+.shop-city-zone--halloween span::before,.shop-city-zone--halloween span::after{content:'';position:absolute;bottom:0;width:4px;height:6px;border-radius:0;clip-path:polygon(50% 0,70% 28%,94% 56%,100% 72%,88% 90%,66% 100%,34% 100%,12% 90%,0 72%,6% 56%,30% 28%);background:#cb303d;pointer-events:none;animation:shop-halloween-drip 2.2s ease-in infinite}
+.shop-city-zone--halloween span::before{left:24%;animation-delay:.2s}
+.shop-city-zone--halloween span::after{right:19%;width:3px;height:5px;animation-delay:1.3s}
+/* Ritmos y fases propios: las tres tiendas nunca arrancan el goteo al unísono. */
+.shop-city-zone--halloween.shop-city-zone--potions{--blood-glow-duration:2.7s;--blood-glow-delay:-.6s;--blood-drip-duration:2.9s;--blood-drip-delay:-1.1s;--blood-drip-alt-duration:3.7s;--blood-drip-alt-delay:-2.4s}
+.shop-city-zone--halloween.shop-city-zone--weave{--blood-glow-duration:3.4s;--blood-glow-delay:-2.1s;--blood-drip-duration:3.8s;--blood-drip-delay:-2.7s;--blood-drip-alt-duration:2.6s;--blood-drip-alt-delay:-.4s}
+.shop-city-zone--halloween.shop-city-zone--frames{--blood-glow-duration:4.1s;--blood-glow-delay:-3.2s;--blood-drip-duration:3.3s;--blood-drip-delay:-.3s;--blood-drip-alt-duration:4.3s;--blood-drip-alt-delay:-1.8s}
+.shop-city-zone--halloween.shop-city-zone--relics{--blood-glow-duration:3.8s;--blood-glow-delay:-1.7s;--blood-drip-duration:4.2s;--blood-drip-delay:-3.1s;--blood-drip-alt-duration:3.1s;--blood-drip-alt-delay:-.9s}
+.shop-city-zone--halloween span{animation-duration:var(--blood-glow-duration,2.2s);animation-delay:var(--blood-glow-delay,0s)}
+.shop-city-zone--halloween span::before{animation-duration:var(--blood-drip-duration,2.2s);animation-delay:var(--blood-drip-delay,.2s)}
+.shop-city-zone--halloween span::after{animation-duration:var(--blood-drip-alt-duration,2.2s);animation-delay:var(--blood-drip-alt-delay,1.3s)}
+@keyframes shop-halloween-glow{0%,100%{border-color:#ac3c43;box-shadow:inset 0 0 0 1px rgba(255,163,146,.13),0 0 7px rgba(190,31,43,.35)}50%{border-color:#f27b71;box-shadow:inset 0 0 0 1px rgba(255,163,146,.36),0 0 18px rgba(231,53,61,.8)}}
+@keyframes shop-halloween-drip{0%,14%{opacity:0;transform:translateY(0) scale(.7)}20%{opacity:1;transform:translateY(2px) scale(1)}70%{opacity:.95;transform:translateY(12px) scale(.8)}100%{opacity:0;transform:translateY(19px) scale(.5)}}
+.shop-relic-mode-tabs .halloween-buy-text{color:#f4827e;animation:shop-halloween-tab-text 2.2s ease-in-out infinite}
+.shop-relic-mode-tabs .halloween-buy-text.active{background:linear-gradient(180deg,#5b181ded,#2c1015f5);box-shadow:inset 0 0 0 1px #d96260,0 0 8px #be1f2b33}
+.shop-relic-mode-tabs .halloween-buy-text:focus-visible{outline:2px solid #d96260;outline-offset:2px}
+@keyframes shop-halloween-tab-text{0%,100%{color:#c94e58;text-shadow:0 0 2px rgba(201,78,88,.25)}50%{color:#ffaaa0;text-shadow:0 0 9px rgba(255,97,97,.85)}}
+@media(prefers-reduced-motion:reduce){.shop-city-zone--halloween span,.shop-city-zone--halloween span::before,.shop-city-zone--halloween span::after,#shopBody .shop-relic-mode-tabs [data-botica-mode="candy"]{animation:none}.shop-city-zone--halloween span::before,.shop-city-zone--halloween span::after{display:none}}
+
+/* The shared relic art carries the event treatment on every display surface. */
+.halloween-gift-modal .pioneer-chest-scene{height:145px}
+.relic-identity-badges{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+#relicDetailBody .relic-detail-identity .relic-duration-badge{border-color:#ab4552;background:#6e202529;color:#ffb1b6}
+.halloween-mask-duration-notice{margin-top:20px;padding:13px;border:1px solid #a94451;border-radius:10px;background:linear-gradient(135deg,#681c2638,#211513);text-align:left}
+.halloween-mask-duration-notice>strong{display:block;color:#ffb1b6;font:400 10px/1.5 var(--font-display)}
+.halloween-mask-duration-notice>p{margin:8px 0;color:var(--text);font-size:13px;line-height:1.5}
+.halloween-mask-duration-notice>small{display:block;color:var(--muted);font-size:11px;line-height:1.5}
+.halloween-gift-modal .pioneer-chest-scene>img{width:142px;height:142px;object-fit:contain}
+.halloween-gift-items .pioneer-reward-item{height:104px;padding:7px 4px}
+.halloween-gift-items img{width:57px;height:57px;object-fit:contain;image-rendering:pixelated}
+.halloween-gift-items strong{font:400 11px var(--font-display)}
+.halloween-gift-items small{font:400 7px/1.4 var(--font-display)}
+.halloween-season .relic-art.relic-art--halloween-mask{position:relative;border:1px solid #db525e;border-radius:10px;box-shadow:inset 0 0 8px #9d162633,0 0 8px #d22b4555;animation:halloween-mask-aura 3.1s ease-in-out infinite}
+.halloween-season :is(.relic-card,.relic-collection-item,.forge-picker-relic,.relic-detail-art,.shop-relic):has(.relic-art--halloween-mask){--relic-border-color:#d8495b;--relic-border-light:#ff9da5;border-color:#d8495b}
+@keyframes halloween-mask-aura{0%,100%{border-color:#b83348;box-shadow:inset 0 0 6px #9d162633,0 0 5px #d22b4544}50%{border-color:#ff8792;box-shadow:inset 0 0 10px #9d162644,0 0 12px #e83b5977}}
+@media(prefers-reduced-motion:reduce){.relic-art.relic-art--halloween-mask,.shop-relic-mode-tabs .halloween-buy-text{animation:none}}
 
 /* Reward frame overrides stay last so every current and future reward inherits them. */
 .pioneer-reward-modal{border:2px solid #dca83e!important;border-radius:18px!important;background:radial-gradient(circle at 50% 28%,#3a2917 0,#24190f 45%,#130e0a 100%)!important;box-shadow:0 0 0 1px #4e3214,0 0 0 3px rgba(255,218,119,.16),0 18px 50px rgba(0,0,0,.82),0 0 42px rgba(232,180,74,.24)!important}
