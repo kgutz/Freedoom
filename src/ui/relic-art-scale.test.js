@@ -5,6 +5,12 @@ import { relicArt } from './inventory-view.js';
 
 const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 describe('Catálogo: ajustes ópticos localizados',()=>{
+  it('sitúa el borde rojo en la casilla exterior de inventario, colección y ficha sin un marco interior',()=>{
+    expect(css).toContain('.halloween-season :is(.character-relic-slot,.relic-collection-item,.relic-grid .relic-card):has(.relic-art--halloween-mask){--relic-border-color:#d8495b;--relic-border-light:#ff9da5;border-color:#d8495b;animation:halloween-mask-aura');
+    expect(css).toContain('.halloween-season :is(.character-relic-slot,.relic-collection-item,.relic-grid .relic-card)>.relic-art--halloween-mask{border:0;border-radius:inherit;box-shadow:none;animation:none}');
+    expect(css).toContain('.halloween-season .equipped-relics .relic-card .relic-art--halloween-mask{--relic-border-color:#d8495b;--relic-border-light:#ff9da5}');
+    expect(css).toContain('.halloween-season .shop-relic-preview>.relic-art.relic-art--halloween-mask{box-sizing:border-box;border:1px solid #d8495b;border-radius:10px;animation:halloween-mask-aura 3.1s ease-in-out infinite}');
+  });
   it('comparte un aura detrás de la máscara sin añadir gotas ni alterar el tamaño del marco',()=>{
     const mask=ALL_RELIC_DEFINITIONS.find(definition=>definition.id==='halloween-mask');
     expect(relicArt(mask)).toContain('<span class="halloween-mask-energy" aria-hidden="true"></span>');
@@ -21,7 +27,8 @@ describe('Catálogo: ajustes ópticos localizados',()=>{
     const rule=css.match(/\.halloween-season \.relic-art\.relic-art--halloween-mask\{([^}]+)\}/);
     expect(rule).not.toBeNull();
     expect(rule[1]).not.toMatch(/position:|width:|height:|inset:/);
-    expect(rule[1]).toContain('animation:halloween-mask-aura');
+    expect(rule[1]).toContain('border:0;border-radius:inherit;box-shadow:none;animation:none');
+    expect(rule[1]).toContain('--relic-border-color:#d8495b');
     expect(css).toContain('.character-equipment .character-relic-slot>.relic-art{position:absolute;inset:3px;width:auto;height:auto;');
   });
   it('desplaza solo el Yelmo del Cielo Carbonizado 2px a la izquierda sin cambiar su escala',()=>{
