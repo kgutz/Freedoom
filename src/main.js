@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.29';
+const APP_VERSION='2.29.30';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4398,78 +4398,106 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     return;
   }
   if(event.target.closest('[data-resolve-hunt]')){
-    ensureHero();
-    const stats=gameStats();
-    const activeHuntFortune=state.game.hunt?.active?.fortune;
-    const fortuneUsage=activeHuntFortune?.dayKey?potionFortuneBonusUsage({
-      habitState:state.habits,
-      economy:state.economy,
-      dayKey:activeHuntFortune.dayKey
-    }):null;
-    const result=resolveHunt({
-      hunt:state.game.hunt,
-      classId:state.game.cls,
-      level:stats.lvl,
-      allocation:state.game.attributes,
-      potions:state.inventory?.potions,
-      fortuneBonusRemaining:fortuneUsage?.remaining||0,
-      nowTimestamp:Date.now()
-    });
-    if(!result.ok){showToast('La expedición todavía no ha terminado','bad');return;}
-    state.game.hunt=result.hunt;
-    state.inventory={...(state.inventory||{}),potions:result.potions};
-    const candyResult=rollHalloweenHuntCandy({
-      candy:state.inventory.halloweenCandy,report:result.report,
-      active:halloweenSeasonActive(result.report.startedAt,LOCAL_DEMO_HALLOWEEN)
-    });
-    state.inventory.halloweenCandy=candyResult.candy;
-    result.report.rewards.xp+=candyResult.xpBonus;
-    result.report.rewards.bossBlood+=candyResult.bloodBonus+candyResult.maskBloodBonus;
-    result.report.rewards.maskBloodBonus=candyResult.maskBloodBonus;
-    result.report.rewards.candyDrops=candyResult.drops;
-    result.report.rewards.candyXpBonus=candyResult.xpBonus;
-    result.report.rewards.candyBloodBonus=candyResult.bloodBonus;
-    trackHalloweenBalance({operationId:`result:${result.report.id}`,source:'hunt',region:result.report.regionId,
-      difficulty:result.report.difficultyId,level:result.report.eventAnalyticsLevel||stats.lvl,
-      metrics:halloweenHuntMetrics(result.report)},result.report.completedAt,result.report.startedAt);
-    if(result.report.fusion16ManaRecovered){
-      state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
-    }
-    if(result.report.bonusDayKey){
-      if(result.report.encounters.some(encounter=>encounter.miniThreeHabitsTriggered))
-        state.inventory.dailyActivations[`fusion_39:mini-hit:${result.report.bonusDayKey}`]=true;
-      if(result.report.encounters.some(encounter=>encounter.miniAllHabitsGold>0))
-        state.inventory.dailyActivations[`fusion_40:mini-gold:${result.report.bonusDayKey}`]=true;
-    }
-    state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
-    state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
-    state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
-    state.economy=state.economy||{coins:0,bossBlood:0,arcaneFibers:0,transactions:[]};
-    state.economy.coins=Math.max(0,Number(state.economy.coins)||0)+result.report.rewards.gold;
-    state.economy.arcaneFibers=Math.max(0,Number(state.economy.arcaneFibers)||0)+result.report.rewards.arcaneFibers;
-    state.economy.arcaneInks=Math.max(0,Number(state.economy.arcaneInks)||0)+result.report.rewards.arcaneInks;
-    state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
-    state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
-    if(!state.economy.transactions.some(transaction=>transaction?.id===`hunt:${result.report.id}`)) state.economy.transactions.push({
-      id:`hunt:${result.report.id}`,
-      type:'hunt',
-      at:Date.now(),
-      fortuneDayKey:result.report.fortune?.dayKey||null,
-      ...result.report.rewards
-    });
-    state.economy.transactions=state.economy.transactions.slice(-200);
-    const death=result.report.heroDied
-      ? triggerHeroDeath({
-          cause:`${[...result.report.encounters].reverse().find(encounter=>!encounter.won)?.name||'La Cacería'} derrotó a tu héroe.`,
-          source:'hunt'
-        })
-      : null;
+    const result=computeHuntResolution();
+    if(!result){showToast('La expedición todavía no ha terminado','bad');return;}
+    const death=applyResolvedHunt(result);
     scheduleSave({type:'hunt:resolve',won:result.report.won});
     renderAll();
     if(death) pendingPostDeathHuntReport=result.report;
     else openHuntResultModal(result.report);
   }
 });
+
+/* Calcula (sin aplicar) el resultado de la cacería activa si ya terminó su temporizador. */
+function computeHuntResolution(){
+  if(!state.game.hunt?.active) return null;
+  ensureHero();
+  const stats=gameStats();
+  const activeHuntFortune=state.game.hunt.active.fortune;
+  const fortuneUsage=activeHuntFortune?.dayKey?potionFortuneBonusUsage({
+    habitState:state.habits,
+    economy:state.economy,
+    dayKey:activeHuntFortune.dayKey
+  }):null;
+  const result=resolveHunt({
+    hunt:state.game.hunt,
+    classId:state.game.cls,
+    level:stats.lvl,
+    allocation:state.game.attributes,
+    potions:state.inventory?.potions,
+    fortuneBonusRemaining:fortuneUsage?.remaining||0,
+    nowTimestamp:Date.now()
+  });
+  return result.ok?{...result,stats}:null;
+}
+
+/* Aplica al estado un resultado ya calculado (vida, maná, economía, muerte). Devuelve la notificación de muerte si la hubo. */
+function applyResolvedHunt(result){
+  const stats=result.stats;
+  state.game.hunt=result.hunt;
+  state.inventory={...(state.inventory||{}),potions:result.potions};
+  const candyResult=rollHalloweenHuntCandy({
+    candy:state.inventory.halloweenCandy,report:result.report,
+    active:halloweenSeasonActive(result.report.startedAt,LOCAL_DEMO_HALLOWEEN)
+  });
+  state.inventory.halloweenCandy=candyResult.candy;
+  result.report.rewards.xp+=candyResult.xpBonus;
+  result.report.rewards.bossBlood+=candyResult.bloodBonus+candyResult.maskBloodBonus;
+  result.report.rewards.maskBloodBonus=candyResult.maskBloodBonus;
+  result.report.rewards.candyDrops=candyResult.drops;
+  result.report.rewards.candyXpBonus=candyResult.xpBonus;
+  result.report.rewards.candyBloodBonus=candyResult.bloodBonus;
+  trackHalloweenBalance({operationId:`result:${result.report.id}`,source:'hunt',region:result.report.regionId,
+    difficulty:result.report.difficultyId,level:result.report.eventAnalyticsLevel||stats.lvl,
+    metrics:halloweenHuntMetrics(result.report)},result.report.completedAt,result.report.startedAt);
+  if(result.report.fusion16ManaRecovered){
+    state.inventory.dailyActivations[`fusion_16:mana-recovered:${todayKey()}`]=true;
+  }
+  if(result.report.bonusDayKey){
+    if(result.report.encounters.some(encounter=>encounter.miniThreeHabitsTriggered))
+      state.inventory.dailyActivations[`fusion_39:mini-hit:${result.report.bonusDayKey}`]=true;
+    if(result.report.encounters.some(encounter=>encounter.miniAllHabitsGold>0))
+      state.inventory.dailyActivations[`fusion_40:mini-gold:${result.report.bonusDayKey}`]=true;
+  }
+  state.game.hp=Math.max(0,Math.round(stats.maxHp*(result.report.heroHp/Math.max(1,result.report.heroMaxHp))));
+  state.game.mp=Math.max(0,Math.round(stats.maxMp*(result.report.heroMana/Math.max(1,result.report.heroMaxMana))));
+  state.game.bonusXp=Math.max(0,Number(state.game.bonusXp)||0)+result.report.rewards.xp;
+  state.economy=state.economy||{coins:0,bossBlood:0,arcaneFibers:0,transactions:[]};
+  state.economy.coins=Math.max(0,Number(state.economy.coins)||0)+result.report.rewards.gold;
+  state.economy.arcaneFibers=Math.max(0,Number(state.economy.arcaneFibers)||0)+result.report.rewards.arcaneFibers;
+  state.economy.arcaneInks=Math.max(0,Number(state.economy.arcaneInks)||0)+result.report.rewards.arcaneInks;
+  state.economy.bossBlood=Math.max(0,Number(state.economy.bossBlood)||0)+result.report.rewards.bossBlood;
+  state.economy.transactions=Array.isArray(state.economy.transactions)?state.economy.transactions:[];
+  if(!state.economy.transactions.some(transaction=>transaction?.id===`hunt:${result.report.id}`)) state.economy.transactions.push({
+    id:`hunt:${result.report.id}`,
+    type:'hunt',
+    at:Date.now(),
+    fortuneDayKey:result.report.fortune?.dayKey||null,
+    ...result.report.rewards
+  });
+  state.economy.transactions=state.economy.transactions.slice(-200);
+  return result.report.heroDied
+    ? triggerHeroDeath({
+        cause:`${[...result.report.encounters].reverse().find(encounter=>!encounter.won)?.name||'La Cacería'} derrotó a tu héroe.`,
+        source:'hunt'
+      })
+    : null;
+}
+
+/* Apenas termina el temporizador de la cacería, se resuelve sola en segundo plano:
+   así la vida/maná mostrados en Hoy y Héroe reflejan la realidad sin esperar a que
+   el jugador abra el informe y "reclame" las recompensas. */
+function tryAutoResolveHunt(){
+  const active=state.game.hunt?.active;
+  if(!active||Date.now()<active.endsAt) return false;
+  const result=computeHuntResolution();
+  if(!result) return false;
+  const death=applyResolvedHunt(result);
+  scheduleSave({type:'hunt:resolve',auto:true,won:result.report.won});
+  if(death) pendingPostDeathHuntReport=result.report;
+  return true;
+}
+setInterval(()=>{ if(tryAutoResolveHunt()) renderAll(); },1000);
 
 document.getElementById('view-habits').addEventListener('keydown',event=>{
   if(!event.target.closest('[data-open-character-sheet]')||!['Enter',' '].includes(event.key)) return;
@@ -7765,6 +7793,7 @@ function syncHalloweenPresentation() {
   if (!active) document.getElementById('halloweenGiftBg')?.classList.remove('show');
 }
 function checkDay(){
+  const huntAutoResolved=tryAutoResolveHunt();
   const seasonChanged = document.body.classList.contains('halloween-season') !== halloweenSeasonActive(Date.now(), LOCAL_DEMO_HALLOWEEN);
   syncHalloweenPresentation();
   if (seasonChanged && document.getElementById('sheetInventory')?.classList.contains('show')) {
@@ -7785,6 +7814,7 @@ function checkDay(){
     renderAll();
     if(journeyDayChanged&&!LOCAL_PROGRESSION_UPDATE_PREVIEW&&!showPendingDeathModal()) showPendingWeekResult();
   }
+  else if(huntAutoResolved) renderAll();
   else{renderHoy();renderHero();}
 }
 setInterval(checkDay,60000);
