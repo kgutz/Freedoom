@@ -1,6 +1,6 @@
 export const HALLOWEEN_MASK_ID = 'halloween-mask';
 export const HALLOWEEN_MASK_DURATION_MS = 24 * 60 * 60 * 1000;
-export function halloweenMaskPrice(level = 1) { return 50 + 5 * Math.max(1, Math.trunc(Number(level) || 1)); }
+export function halloweenMaskPrice(level = 1) { return 60 + 6 * Math.max(1, Math.trunc(Number(level) || 1)); }
 export function halloweenMaskActive(record, now = Date.now()) {
   return Boolean(record?.unlocked && (!record.expiresAt || record.expiresAt > now));
 }

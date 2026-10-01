@@ -1,6 +1,6 @@
 export const HALLOWEEN_CANDIES = Object.freeze([
   Object.freeze({ id: 'blood', name: 'Chuche de Sangre', image: 'potions/candy_blood.webp', price: 100,
-    shortEffect: 'En Cacería difícil, una tirada independiente del 30% para obtener +1 Sangre del minijefe.' }),
+    shortEffect: 'En Cacería difícil, una tirada independiente del 22% para obtener +1 Sangre del minijefe.' }),
   Object.freeze({ id: 'energy', name: 'Chuche de Energía', image: 'potions/candy_energy.webp', price: 30,
     shortEffect: 'Recupera 2 puntos de Energía de Cacería al instante.' }),
   Object.freeze({ id: 'experience', name: 'Chuche de Experiencia', image: 'potions/candy_experience.webp', price: 30,
@@ -12,7 +12,7 @@ export const HALLOWEEN_CANDY_BY_ID = Object.freeze(Object.fromEntries(
 ));
 export const HALLOWEEN_CANDY_DROP_RATES = Object.freeze({ easy: .07, medium: .12, hard: .20 });
 export const HALLOWEEN_BLOOD_DROP_RATE = .40;
-export const HALLOWEEN_BLOOD_BONUS_RATE = .30;
+export const HALLOWEEN_BLOOD_BONUS_RATE = .22;
 export const HALLOWEEN_XP_BONUS_RATE = .50;
 
 const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};

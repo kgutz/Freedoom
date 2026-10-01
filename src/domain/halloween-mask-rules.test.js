@@ -6,9 +6,9 @@ describe('Máscara del Diezmo Carmesí',()=>{
   const now=Date.now();
   const purchase=()=>buyHalloweenMask({state:{...emptyLootState(),economy:{...emptyLootState().economy,coins:1000}},level:22,active:true,operationId:'test',nowTimestamp:now});
   it('costs only level-adjusted gold; rank 3 and no timer before equipping',()=>{
-    expect(halloweenMaskPrice(22)).toBe(160);
+    expect(halloweenMaskPrice(22)).toBe(192);
     const bought=purchase();
-    expect(bought.economy.coins).toBe(840);
+    expect(bought.economy.coins).toBe(808);
     expect(bought.economy.bossBlood).toBe(0);
     expect(bought.inventory.relics['halloween-mask']).toMatchObject({rank:3,expiresAt:0});
     expect(buyHalloweenMask({state:bought,active:true,operationId:'second'}).reason).toBe('owned');
