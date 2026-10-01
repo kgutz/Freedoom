@@ -1,5 +1,23 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView } from './hunt-view.js';
+
+it('mantiene los cinco recursos del Búnker difícil en una fila adaptable al móvil', () => {
+  const html = huntResultRewardsMarkup({ xp: 60, gold: 18, arcaneFibers: 1, arcaneInks: 1, bossBlood: 1 });
+  expect(html).toContain('hunt-result-reward-grid items-5');
+  expect(html.match(/class="hunt-result-reward-slot"/g)).toHaveLength(5);
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  expect(css).toContain('.hunt-result-reward-grid.items-5{--hunt-reward-count:5;grid-template-columns:repeat(5,minmax(0,78px))}');
+});
+
+it('el indicador de cacería usa texto pixel nítido sin círculo, brillo ni animación', () => {
+  const css = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  const rule = css.match(/\.hunt-world-map \.hunt-map-zone>i\{([^}]+)\}/)[1];
+  expect(rule).toContain('background:transparent;color:inherit');
+  expect(rule).toContain('font:400 14px/1 var(--font-display)');
+  expect(rule).toContain('box-shadow:none;filter:none;animation:none;transform:none');
+  expect(rule).toContain('text-shadow:1px 1px 0 #050705,-1px -1px 0 #050705');
+});
 
 it('explains gradual recovery and keeps relic recovery separate', () => {
   const html = huntRecoveryNoteMarkup();

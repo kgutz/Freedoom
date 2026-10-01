@@ -917,6 +917,7 @@
   }
   .faq-category[hidden],.faq-item[hidden]{display:none}
 
+  .hunt-result-reward-grid.items-5{--hunt-reward-count:5;grid-template-columns:repeat(5,minmax(0,78px))}
   @media(max-width:360px){
     .faq-hero h4{font-size:16px}
     .faq-category>summary{padding-left:10px;padding-right:9px}
@@ -2428,6 +2429,7 @@
   .hunt-world-map .hunt-map-zone{min-height:44px;border:0;border-radius:6px;background:transparent;color:#f0e7ce;box-shadow:none;text-shadow:-1px 0 1px #050705,1px 0 1px #050705,0 -1px 1px #050705,0 1px 1px #050705,0 2px 3px #050705,0 0 6px #050705,0 0 10px #050705}
   .hunt-world-map .hunt-map-zone:hover,.hunt-world-map .hunt-map-zone.active{background:transparent;color:#fff3cc;box-shadow:none}
   .hunt-world-map .hunt-map-zone.report-ready{color:var(--kodak);box-shadow:none}
+  .hunt-world-map .hunt-map-zone>i{width:auto;height:auto;min-width:12px;margin-left:6px;border-radius:0;background:transparent;color:inherit;font:400 14px/1 var(--font-display);font-style:normal;text-shadow:1px 1px 0 #050705,-1px -1px 0 #050705;box-shadow:none;filter:none;animation:none;transform:none}
   .hunt-world-map .hunt-map-zone:focus-visible{outline:2px solid #e8b44a;outline-offset:1px}
   .hunt-world-map .hunt-map-zone{font-size:12px;line-height:1.2;text-align:center}
   .hunt-world-map .hunt-map-zone--mist{left:25%;bottom:auto;top:80%;transform:translate(-50%,-50%)}
