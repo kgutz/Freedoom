@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.22';
+const APP_VERSION='2.29.23';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -6439,7 +6439,9 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     return;
   }
   if(event.target.closest('[data-close-shop-map]')){
-    returnToCharacterSheetFromShop();
+    forgeFromCity=false;
+    showInventoryPanel('bag');
+    document.getElementById('bagTab')?.focus();
     return;
   }
   if(event.target.closest('[data-close-shop-destination]')){

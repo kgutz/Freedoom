@@ -78,10 +78,21 @@ describe('outfits de héroe', () => {
       for (const surface of ['hero', 'sheet', 'card', 'face']) {
         expect(profile[surface][0]).toBeGreaterThan(original[surface][0]);
       }
-      expect(profile.hero[0]).toBeGreaterThanOrEqual(90);
-      expect(profile.card[0]).toBeGreaterThanOrEqual(110);
+      expect(profile.hero[0]).toBeGreaterThanOrEqual(classId === 'knight' ? 86 : 90);
+      expect(profile.card[0]).toBeGreaterThanOrEqual(classId === 'knight' ? 109 : 110);
       expect(profile.face[0]).toBeGreaterThanOrEqual(120);
     }
+  });
+
+  it('reduce solo el cuerpo del Caballero de Halloween un 5% y lo desplaza a la derecha', () => {
+    const profile = outfitDisplayProfile('knight', 'drowned-reliquary');
+    const previous = outfitDisplayProfile('knight', 'celestial-rhythm-master');
+    for (const surface of ['hero', 'sheet', 'card']) {
+      expect(profile[surface][0]).toBeCloseTo(previous[surface][0] * 0.95, 3);
+      expect(profile[surface][1]).toBeCloseTo(previous[surface][1] + 3, 3);
+      expect(profile[surface][2]).toBe(previous[surface][2]);
+    }
+    expect(profile.face).toEqual(previous.face);
   });
 
   it('exige una calibracion completa para cada outfit y cada heroe', () => {

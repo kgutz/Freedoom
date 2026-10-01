@@ -412,13 +412,13 @@ function candyGridMarkup(normalized, mode = 'shop') {
   const candy = normalizeHalloweenCandy(normalized.inventory.halloweenCandy);
   const definitions = mode === 'shop' ? HALLOWEEN_CANDIES : HALLOWEEN_CANDIES.filter(({ id }) => candy.owned[id] || candy.prepared[id]);
   if (!definitions.length) return '<p class="collection-hint">Todavía no tienes chuches de Halloween.</p>';
-  return `<div class="potion-grid candy-grid">${definitions.map(definition => {
+  return `<div class="potion-grid candy-grid${mode === 'inventory' ? ' candy-grid--inventory' : ''}">${definitions.map(definition => {
     const owned = candy.owned[definition.id];
     const attr = mode === 'shop' ? 'data-open-shop-candy' : 'data-open-candy';
     return `<button type="button" class="potion-card potion-card--shop candy-card candy-card--${definition.id}" ${attr}="${definition.id}" aria-label="${escapeHtml(definition.name)}${mode === 'shop' ? ` · ${definition.price} de oro` : ` · ${owned} disponibles`}">
-      ${candyArt(definition)}${mode === 'shop' ? '' : `<b>${escapeHtml(definition.name)}</b><span class="potion-owned">×${owned}</span>`}
+      ${candyArt(definition)}${mode === 'shop' ? '' : `<span class="potion-owned">×${owned}</span>`}
     </button>`;
-  }).join('')}</div>`;
+  }).join('')}<div class="potion-card potion-card--future candy-card--empty" aria-label="Casilla vacía"><span aria-hidden="true">?</span></div></div>`;
 }
 
 export function renderCandyDetail(document, lootState, candyId, options = {}) {

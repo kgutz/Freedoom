@@ -34,6 +34,24 @@ function lootWithBosses(count, source = 'retroactive') {
   });
 }
 
+it('las chuches del inventario muestran imagen y cantidad, con nombre solo accesible o en detalle', () => {
+  const document = fakeDocument();
+  const state = { inventory: { halloweenCandy: { owned: { blood: 3, energy: 4, experience: 2 } } } };
+  renderInventoryView(document, state, { halloweenActive: true });
+  const cards = document.elements.inventoryBody.innerHTML.match(/<button[^>]*data-open-candy="[^\"]+"[^>]*>[\s\S]*?<\/button>/g);
+  expect(cards).toHaveLength(3);
+  expect(document.elements.inventoryBody.innerHTML).toContain('candy-grid--inventory');
+  expect(document.elements.inventoryBody.innerHTML).toContain('aria-label="Casilla vacía"><span aria-hidden="true">?</span>');
+  for (const card of cards) {
+    expect(card).toContain('aria-label="Chuche de');
+    expect(card).toContain('candy-art');
+    expect(card).toContain('potion-owned');
+    expect(card).not.toContain('<b>');
+  }
+  renderCandyDetail(document, state, 'blood');
+  expect(document.elements.relicDetailBody.innerHTML).toContain('<h3>Chuche de Sangre</h3>');
+});
+
 function fakeDocument() {
   const elements = Object.fromEntries([
     'inventoryBody', 'collectionBody', 'forgeBody', 'shopBody', 'relicDetailBody', 'relicReplacementBody', 'relicEffectInfoTitle',
@@ -50,6 +68,7 @@ describe('interfaz de inventario y botín', () => {
     renderShopView(document, {}, 20 * 86400000, { section: 'potions', halloweenActive: true, boticaMode: 'candy' });
     const cards = [...document.elements.shopBody.innerHTML.matchAll(/<button[^>]*data-open-shop-candy="([^"]+)"[^>]*>([\s\S]*?)<\/button>/g)];
     expect(cards).toHaveLength(3);
+    expect(document.elements.shopBody.innerHTML).toContain('aria-label="Casilla vacía"><span aria-hidden="true">?</span>');
     for (const [, , content] of cards) {
       expect(content).toContain('candy-art');
       expect(content).not.toMatch(/<b>|potion-owned|ORO/);

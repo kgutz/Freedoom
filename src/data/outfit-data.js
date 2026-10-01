@@ -103,7 +103,7 @@ export const OUTFIT_DISPLAY_PROFILES = Object.freeze({
     druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [139, 0, -0.6] }),
   }),
   'drowned-reliquary': Object.freeze({
-    knight: Object.freeze({ hero: [91.3333, -2.0833, -2.36], sheet: [90.05, -2.0833, -2.36], card: [115.68, -2.35, -5.62], face: [139, 0, -2.8] }),
+    knight: Object.freeze({ hero: [86.7666, 0.9167, -2.36], sheet: [85.5475, 0.9167, -2.36], card: [109.896, 0.65, -5.62], face: [139, 0, -2.8] }),
     paladin: Object.freeze({ hero: [95.5, 1.6667, -4.1667], sheet: [93.91, 1.6667, -4.1667], card: [110, 2.14, -3.25], face: [134, 0, -2.3] }),
     sorcerer: Object.freeze({ hero: [90.4467, 0, -2.83], sheet: [88.9667, 0, -2.8], card: [115.67, 0, -5.38], face: [134, 0, -2] }),
     druid: Object.freeze({ hero: [91.3333, 0, -2.5], sheet: [89.81, 0, -2.5], card: [117.09, 4.08, -5.91], face: [139, 0, -0.6] }),

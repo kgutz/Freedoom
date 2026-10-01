@@ -5,6 +5,13 @@ import { relicArt } from './inventory-view.js';
 
 const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 describe('Catálogo: ajustes ópticos localizados',()=>{
+  it('el aura de Halloween no altera el anclaje ni el tamaño del hueco de reliquia equipada',()=>{
+    const rule=css.match(/\.halloween-season \.relic-art\.relic-art--halloween-mask\{([^}]+)\}/);
+    expect(rule).not.toBeNull();
+    expect(rule[1]).not.toMatch(/position:|width:|height:|inset:/);
+    expect(rule[1]).toContain('animation:halloween-mask-aura');
+    expect(css).toContain('.character-equipment .character-relic-slot>.relic-art{position:absolute;inset:3px;width:auto;height:auto;');
+  });
   it('desplaza solo el Yelmo del Cielo Carbonizado 2px a la izquierda sin cambiar su escala',()=>{
     expect(css).toContain('.relic-art--fusion_28>img{transform:translateX(-2px)}');
     expect(css).toContain('.relic-art--fusion_26>img,.relic-art--fusion_28>img{width:92%;height:92%;');
