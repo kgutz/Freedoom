@@ -5,6 +5,18 @@ import { relicArt } from './inventory-view.js';
 
 const css=readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 describe('Catálogo: ajustes ópticos localizados',()=>{
+  it('comparte un aura detrás de la máscara sin añadir gotas ni alterar el tamaño del marco',()=>{
+    const mask=ALL_RELIC_DEFINITIONS.find(definition=>definition.id==='halloween-mask');
+    expect(relicArt(mask)).toContain('<span class="halloween-mask-energy" aria-hidden="true"></span>');
+    expect(relicArt(ALL_RELIC_DEFINITIONS.find(definition=>definition.id!=='halloween-mask'))).not.toContain('halloween-mask-energy');
+    expect(css).toContain('grid-area:1/1;position:relative;z-index:1');
+    expect(css).toContain('@keyframes halloween-mask-energy');
+    expect(css).toContain('animation:halloween-mask-energy 2.8s ease-in-out infinite');
+    expect(css).toContain('transform:rotate(24deg) scale(1.12);opacity:1');
+    expect(css).toContain('width:80%;height:80%;min-width:0;min-height:0;border-radius:50%');
+    expect(css).toContain('mask-image:radial-gradient(circle closest-side,#000 30%,#000d 52%,transparent 96%)');
+    expect(css).toContain('animation:none;will-change:auto;opacity:.65');
+  });
   it('el aura de Halloween no altera el anclaje ni el tamaño del hueco de reliquia equipada',()=>{
     const rule=css.match(/\.halloween-season \.relic-art\.relic-art--halloween-mask\{([^}]+)\}/);
     expect(rule).not.toBeNull();

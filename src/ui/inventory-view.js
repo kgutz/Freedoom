@@ -320,6 +320,7 @@ export function relicArt(definition, overlay = '', imageLoading = 'lazy') {
   return `<div class="relic-art${fusionClass} relic-art--${definition.id}">
     <img src="${definition.image}" alt="${escapeHtml(definition.name)}" loading="${imageLoading}" decoding="${imageLoading === 'eager' ? 'sync' : 'async'}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="relic-art-fallback" style="display:none">${Number.isInteger(definition.bossIndex) ? definition.bossIndex + 1 : '✦'}</span>
+    ${definition.id === 'halloween-mask' ? '<span class="halloween-mask-energy" aria-hidden="true"></span>' : ''}
     ${overlay}
   </div>`;
 }
