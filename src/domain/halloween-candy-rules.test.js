@@ -1,10 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import {
   buyHalloweenCandy, normalizeHalloweenCandy, prepareHalloweenCandy,
+  HALLOWEEN_CANDY_BY_ID, HALLOWEEN_BLOOD_DROP_RATE,
   rollHalloweenHuntCandy, rollHalloweenWeeklyCandy, takePreparedHalloweenCandy,
 } from './halloween-candy-rules.js';
 
 describe('chuches de Halloween', () => {
+  it.each([[.199,1,1],[.20,1,0],[.299,1,0],[.30,0,0],[.49,0,0]])('aplica 30%% a la chuche y 20%% a la máscara con tirada %s', (value,bloodBonus,maskBloodBonus) => {
+    for (const maskBloodChance of [20,50]) {
+      const report={id:`balance-${maskBloodChance}`,difficultyId:'hard',maskBloodChance,halloweenCandy:{blood:true},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
+      expect(rollHalloweenHuntCandy({report,active:false,random:()=>value})).toMatchObject({bloodBonus,maskBloodBonus});
+    }
+  });
+  it('conserva precio y caída de la chuche y actualiza su descripción', () => {
+    expect(HALLOWEEN_BLOOD_DROP_RATE).toBe(.40);
+    expect(HALLOWEEN_CANDY_BY_ID.blood.price).toBe(100);
+    expect(HALLOWEEN_CANDY_BY_ID.blood.shortEffect).toContain('30%');
+    const report={id:'drop-unchanged',difficultyId:'hard',encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
+    expect(rollHalloweenHuntCandy({report,active:true,random:()=>.35}).drops.blood).toBe(1);
+  });
   it('compra sin afectar a las pociones y descuenta el precio', () => {
     const bought = buyHalloweenCandy({ candy: null, coins: 200, id: 'blood', quantity: 2 });
     expect(bought.ok).toBe(true);

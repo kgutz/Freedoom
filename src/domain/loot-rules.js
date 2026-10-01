@@ -1803,7 +1803,7 @@ export function equippedHuntEffects(state) {
     petrificationMana: synergy('fusion_23'),
     petrificationHealth: synergy('fusion_24'),
     petrificationVampirism: synergy('fusion_25'),
-    maskBloodChance: maskActive ? 50 : 0,
+    maskBloodChance: maskActive ? 20 : 0,
     vampirism: sum('relic_07') + (maskActive ? 10 : 0), petrification: sum('relic_08'),
     damageReduction: sum('relic_09'),
     victoryHealth: sum('relic_06'), victoryMana: sum('relic_05'),

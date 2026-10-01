@@ -940,7 +940,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniThreeHabitsHit', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
-      maskBloodChance: relicEffects.maskBloodChance === 50 ? 50 : 0,
+      maskBloodChance: [20, 50].includes(relicEffects.maskBloodChance) ? 20 : 0,
     },
     relicBonuses: {
       physicalAttack: safeInteger(relicBonuses.physicalAttack),

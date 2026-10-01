@@ -19,7 +19,7 @@ describe('Máscara del Diezmo Carmesí',()=>{
     expect(equipped.ok).toBe(true);
     expect(equipped.inventory.relics['halloween-mask'].expiresAt).toBe(now+86400000);
     expect(equippedRelicBonuses(equipped)).toMatchObject({physicalAttack:5,magicAttack:5,defense:4});
-    expect(equippedHuntEffects(equipped)).toMatchObject({vampirism:10,maskBloodChance:50});
+    expect(equippedHuntEffects(equipped)).toMatchObject({vampirism:10,maskBloodChance:20});
     const restored=normalizeLootState(JSON.parse(JSON.stringify(unequipRelic(equipped,'halloween-mask'))));
     const again=equipRelic(restored,'halloween-mask',null,{nowTimestamp:now+1000});
     expect(again.inventory.relics['halloween-mask'].expiresAt).toBe(now+86400000);
@@ -39,7 +39,7 @@ describe('Máscara del Diezmo Carmesí',()=>{
     expect(bought.inventory.collection['halloween-mask']).toBeTruthy();
   });
   it('rolls mask and candy separately, once per difficult miniboss victory',()=>{
-    const report={id:'mask-hunt',difficultyId:'hard',maskBloodChance:50,halloweenCandy:{blood:true},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
+    const report={id:'mask-hunt',difficultyId:'hard',maskBloodChance:20,halloweenCandy:{blood:true},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
     const rolled=rollHalloweenHuntCandy({candy:null,report,active:true,random:()=>0});
     expect(rolled).toMatchObject({bloodBonus:1,maskBloodBonus:1});
     expect(rollHalloweenHuntCandy({candy:rolled.candy,report,active:true,random:()=>0})).toMatchObject({bloodBonus:0,maskBloodBonus:0});

@@ -1,6 +1,6 @@
 export const HALLOWEEN_CANDIES = Object.freeze([
   Object.freeze({ id: 'blood', name: 'Chuche de Sangre', image: 'potions/candy_blood.webp', price: 100,
-    shortEffect: 'En Cacería difícil, una tirada independiente del 40% para obtener +1 Sangre del minijefe.' }),
+    shortEffect: 'En Cacería difícil, una tirada independiente del 30% para obtener +1 Sangre del minijefe.' }),
   Object.freeze({ id: 'energy', name: 'Chuche de Energía', image: 'potions/candy_energy.webp', price: 30,
     shortEffect: 'Recupera 2 puntos de Energía de Cacería al instante.' }),
   Object.freeze({ id: 'experience', name: 'Chuche de Experiencia', image: 'potions/candy_experience.webp', price: 30,
@@ -12,7 +12,7 @@ export const HALLOWEEN_CANDY_BY_ID = Object.freeze(Object.fromEntries(
 ));
 export const HALLOWEEN_CANDY_DROP_RATES = Object.freeze({ easy: .07, medium: .12, hard: .20 });
 export const HALLOWEEN_BLOOD_DROP_RATE = .40;
-export const HALLOWEEN_BLOOD_BONUS_RATE = .40;
+export const HALLOWEEN_BLOOD_BONUS_RATE = .30;
 export const HALLOWEEN_XP_BONUS_RATE = .50;
 
 const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -83,7 +83,8 @@ export function rollHalloweenHuntCandy({ candy, report, active = false, random =
   const bloodBonus = minibossWon && prepared.blood && random() < HALLOWEEN_BLOOD_BONUS_RATE ? 1 : 0;
   const xpBonus = prepared.experience && Number(report.rewards?.xp) > 0
     ? Math.round(report.rewards.xp * HALLOWEEN_XP_BONUS_RATE) : 0;
-  const maskBloodBonus = minibossWon && report.maskBloodChance === 50 && random() < .5 ? 1 : 0;
+  // Mantiene la elegibilidad de expediciones antiguas, pero aplica el balance actual.
+  const maskBloodBonus = minibossWon && [20, 50].includes(report.maskBloodChance) && random() < .20 ? 1 : 0;
   for (const id of Object.keys(drops)) current.owned[id] += drops[id];
   if (prepared.blood && !minibossWon) current.owned.blood += 1;
   if (prepared.experience && !Number(report.rewards?.xp)) current.owned.experience += 1;
