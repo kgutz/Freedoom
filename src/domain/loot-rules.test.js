@@ -916,22 +916,22 @@ describe('preview puro de Fusión', () => {
     expect(result.economy.transactions.at(-1).id).toBe('fusion:after-preview');
   });
 
-  it('desfusiona por 150 de oro, devuelve una Sangre y conserva las reliquias originales', () => {
+  it('desfusiona por 150 de oro, cuesta una Sangre y conserva las reliquias originales', () => {
     const fused = fuseRelics({
       state: fusionState(), leftId: 'relic_01', rightId: 'relic_02',
       operationId: 'fusion-before-defusion', randomValue: 0, nowTimestamp: 20,
     });
     const preview = getDefusionPreview(fused, 'fusion_01');
-    expect(preview).toMatchObject({ ok: true, coinCost: 150, bloodCost: 0, bloodRefund: 1 });
+    expect(preview).toMatchObject({ ok: true, coinCost: 150, bloodCost: 1, bloodRefund: 0 });
     const result = defuseRelic({
       state: fused, relicId: 'fusion_01', operationId: 'defusion-1', nowTimestamp: 30,
     });
     expect(result.ok).toBe(true);
-    expect(result.economy).toMatchObject({ coins: 250, bossBlood: 4 });
+    expect(result.economy).toMatchObject({ coins: 250, bossBlood: 2 });
     expect(result.inventory.relics.fusion_01).toBeUndefined();
     expect(result.inventory.relics.relic_01).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['vitality'] });
     expect(result.inventory.relics.relic_02).toMatchObject({ rarity: 'legendary', rank: 2, affixes: ['arcane'] });
-    expect(result.forge.fusion.history.at(-1)).toMatchObject({ type: 'defusion', coinsSpent: 150, bossBloodSpent: 0, bossBloodRefunded: 1 });
+    expect(result.forge.fusion.history.at(-1)).toMatchObject({ type: 'defusion', coinsSpent: 150, bossBloodSpent: 1, bossBloodRefunded: 0 });
     expect(result.economy.transactions.at(-1)).toMatchObject({ id: 'defusion:defusion-1', type: 'relic_defusion' });
   });
 
@@ -944,6 +944,22 @@ describe('preview puro de Fusión', () => {
     expect(getDefusionPreview(fused, 'fusion_01')).toMatchObject({
       ok: false, reason: 'ingredient-owned', ingredientAlreadyOwned: 'relic_01',
     });
+  });
+
+  it('no desfusiona sin Sangre de Jefe suficiente', () => {
+    const state = fusionState();
+    const fused = fuseRelics({
+      state, leftId: 'relic_01', rightId: 'relic_02',
+      operationId: 'fusion-no-blood', randomValue: 0, nowTimestamp: 20,
+    });
+    fused.economy.bossBlood = 0;
+    expect(getDefusionPreview(fused, 'fusion_01')).toMatchObject({ ok: false, reason: 'blood' });
+    const result = defuseRelic({
+      state: fused, relicId: 'fusion_01', operationId: 'defusion-no-blood', nowTimestamp: 30,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('blood');
+    expect(result.inventory.relics.fusion_01).toBeDefined();
   });
 });
 
