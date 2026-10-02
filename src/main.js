@@ -295,7 +295,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.50';
+const APP_VERSION='2.29.51';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4888,7 +4888,7 @@ function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=cur
   }
   const ultimate=rewards.ultimateChallenge;
   if(canCompleteUltimateHabit({challenge:ultimate,habitId:habit.id,day:key,
-    becameCompleted:result.becameCompleted,count:result.entry.count,target:habit.target})){
+    becameCompleted:result.becameCompleted,countChanged:result.countChanged,count:result.entry.count})){
     ultimate.completedIds.push(habit.id);
     const ultimateReward=ultimateHabitReward({
       completedCount:ultimate.completedIds.length,

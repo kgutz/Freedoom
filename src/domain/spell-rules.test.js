@@ -43,18 +43,18 @@ describe('validación de hechizos', () => {
     expect(completeLevelEightHabitChallenge({ progress: automatic, habitId: 'c', today: 'today' }).advanced).toBe(false);
     expect(completeLevelEightHabitChallenge({ progress: automatic, habitId: 'a', today: 'today' }).advanced).toBe(true);
   });
-  it('la definitiva espera 3/3 y no cuenta repeticiones parciales ni hábitos ajenos', () => {
+  it('la definitiva cuenta la primera repetición del hábito, pero no hábitos ajenos ni repetidos', () => {
     const args = { challenge: { day: 'today', habitIds: ['repeat'], completedIds: [] },
-      habitId: 'repeat', day: 'today', target: 3 };
-    expect(canCompleteUltimateHabit({ ...args, count: 1, becameCompleted: false })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 2, becameCompleted: false })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 2, becameCompleted: true })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true })).toBe(true);
-    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true, habitId: 'other' })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true, day: 'tomorrow' })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true,
+      habitId: 'repeat', day: 'today' };
+    expect(canCompleteUltimateHabit({ ...args, count: 1, countChanged: true, becameCompleted: false })).toBe(true);
+    expect(canCompleteUltimateHabit({ ...args, count: 3, countChanged: true, becameCompleted: true })).toBe(true);
+    expect(canCompleteUltimateHabit({ ...args, count: 0, countChanged: true, becameCompleted: false })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 2, countChanged: false, becameCompleted: false })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 1, countChanged: true, habitId: 'other' })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 1, countChanged: true, day: 'tomorrow' })).toBe(false);
+    expect(canCompleteUltimateHabit({ ...args, count: 1, countChanged: true,
       challenge: { ...args.challenge, completedIds: ['repeat'] } })).toBe(false);
-    expect(canCompleteUltimateHabit({ ...args, count: 3, becameCompleted: true,
+    expect(canCompleteUltimateHabit({ ...args, count: 1, countChanged: true,
       challenge: { ...args.challenge, rewarded: true } })).toBe(false);
   });
   it('Filacteria cura al gastar maná, respeta el máximo y solo activa dos veces por semana', () => {
@@ -528,5 +528,18 @@ describe('retos de nivel 8 con hábitos repetibles', () => {
     expect(countsTowardLevelEightChallenge({ becameCompleted: true, countChanged: true, count: 4 })).toBe(true);
     expect(countsTowardLevelEightChallenge({ becameCompleted: false, countChanged: true, count: 0 })).toBe(false);
     expect(countsTowardLevelEightChallenge({ becameCompleted: false, countChanged: false, count: 2 })).toBe(false);
+  });
+});
+
+describe('reto de nivel 8 igual para las cuatro clases', () => {
+  it.each(['muro', 'certero', 'ceniza', 'regen'])('%s avanza con la primera repetición y se completa con 2 hábitos', (spellId) => {
+    const automatic = spellId === 'ceniza';
+    const progress = { habitChallenge: { day: 'today', spellId, habitIds: automatic ? [] : ['a', 'b'], completedIds: [], ...(automatic ? { autoNextHabitCount: 2 } : {}) } };
+    const firstRepetition = { becameCompleted: false, countChanged: true, count: 1 };
+    expect(countsTowardLevelEightChallenge(firstRepetition)).toBe(true);
+    const one = completeLevelEightHabitChallenge({ progress, habitId: 'a', today: 'today' });
+    expect(one).toMatchObject({ advanced: true, completed: false });
+    const two = completeLevelEightHabitChallenge({ progress: one.progress, habitId: 'b', today: 'today' });
+    expect(two).toMatchObject({ advanced: true, completed: true });
   });
 });

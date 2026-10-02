@@ -44,8 +44,8 @@ export function countsTowardLevelEightChallenge({ becameCompleted, countChanged,
   return Boolean(becameCompleted || (countChanged && Number(count) >= 1));
 }
 
-export function canCompleteUltimateHabit({ challenge, habitId, day, becameCompleted, count, target = 1 }) {
-  return Boolean(becameCompleted && Number(count) >= Math.max(1, Number(target) || 1)
+export function canCompleteUltimateHabit({ challenge, habitId, day, becameCompleted, countChanged, count }) {
+  return Boolean(countsTowardLevelEightChallenge({ becameCompleted, countChanged, count })
     && challenge && !challenge.rewarded && challenge.day === day
     && challenge.habitIds.includes(habitId) && !challenge.completedIds.includes(habitId));
 }
