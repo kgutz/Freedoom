@@ -340,6 +340,7 @@ export function normalizeHuntState(
     energy: normalizedEnergy,
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
+    unseenReportId: typeof hunt?.unseenReportId === 'string' && hunt.unseenReportId ? hunt.unseenReportId : null,
     history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],
   };
 }

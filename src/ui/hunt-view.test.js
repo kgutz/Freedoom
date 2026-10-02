@@ -139,6 +139,23 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('RESULTADO');
   });
 
+  it('tras resolverse sola la cacería, mantiene el aviso en el mapa y el botón VER INFORME hasta abrir el informe', () => {
+    const nowTimestamp = new Date(2026, 7, 26, 12).getTime();
+    const report = { id: 'done-hunt', regionId: 'dead-hours-bunker', difficultyId: 'easy', won: true, defeatedEnemies: 3, encounters: [], rewards: {}, recovery: {}, heroHp: 10, heroMaxHp: 10 };
+    const game = (unseenReportId) => ({ cls: 'paladin', hunt: { energyDay: '2026-08-26', energy: 1, active: null, lastReport: report, unseenReportId } });
+    const map = { dataset: { huntScreen: 'map' }, innerHTML: '' };
+    renderHuntView({ document: { getElementById: () => map }, game: game('done-hunt'), stats: { lvl: 20 }, nowTimestamp });
+    expect(map.innerHTML).toContain('INFORME PENDIENTE');
+    expect(map.innerHTML).toContain('data-view-hunt-report="dead-hours-bunker"');
+    expect(map.innerHTML).toContain('hunt-map-zone--bunker active report-ready');
+    const region = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
+    renderHuntView({ document: { getElementById: () => region }, game: game('done-hunt'), stats: { lvl: 20 }, nowTimestamp });
+    expect(region.innerHTML).toContain('data-view-hunt-report="dead-hours-bunker"');
+    expect(region.innerHTML).toContain('VER INFORME');
+    renderHuntView({ document: { getElementById: () => map }, game: game(null), stats: { lvl: 20 }, nowTimestamp });
+    expect(map.innerHTML).not.toContain('data-view-hunt-report');
+  });
+
   it('muestra el Búnker como una zona pulsable igual que Campos de la Bruma', () => {
     const root = { dataset: { huntScreen: 'map' }, innerHTML: '' };
     renderHuntView({

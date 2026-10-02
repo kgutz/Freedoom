@@ -255,6 +255,10 @@ function reportMarkup(report) {
   </section>`;
 }
 
+function unseenHuntReport(hunt) {
+  return hunt.lastReport && hunt.unseenReportId && hunt.unseenReportId === hunt.lastReport.id ? hunt.lastReport : null;
+}
+
 function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   const energy = huntEnergyDisplay(hunt);
   const activeRegionId = hunt.active ? hunt.active.regionId || 'fields-of-mist' : null;
@@ -263,12 +267,21 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   const reportReady = Boolean(hunt.active) && nowTimestamp >= hunt.active.endsAt;
   const compactRegionName = activeRegionId === 'dead-hours-bunker' ? 'Búnker' : activeRegion?.name || 'Zona de cacería';
   const activeNoticeLabel = `${reportReady ? 'Informe pendiente' : 'Cacería en curso'} · ${activeRegion?.name || 'Zona de cacería'} · ${activeDifficulty?.name || ''}`;
-  const activeNotice = hunt.active ? `<button type="button" class="hunt-map-active-notice${reportReady ? ' is-ready' : ''}" data-open-pending-hunt="${activeRegionId}" aria-label="${activeNoticeLabel}">
+  const unseen = unseenHuntReport(hunt);
+  const unseenRegionId = unseen ? unseen.regionId || 'fields-of-mist' : null;
+  const unseenRegion = unseen ? HUNT_REGIONS[unseenRegionId] : null;
+  const unseenNotice = !hunt.active && unseen ? `<button type="button" class="hunt-map-active-notice is-ready" data-view-hunt-report="${unseenRegionId}" aria-label="Informe pendiente · ${unseenRegion?.name || 'Zona de cacería'}">
+    <span>INFORME PENDIENTE</span>
+    <strong>${unseenRegionId === 'dead-hours-bunker' ? 'Búnker' : unseenRegion?.name || 'Zona de cacería'}</strong>
+    <small>Expedición terminada · recoge el resultado.</small>
+    <b>RESULTADO →</b>
+  </button>` : '';
+  const activeNotice = unseenNotice || (hunt.active ? `<button type="button" class="hunt-map-active-notice${reportReady ? ' is-ready' : ''}" data-open-pending-hunt="${activeRegionId}" aria-label="${activeNoticeLabel}">
     <span>${reportReady ? 'INFORME PENDIENTE' : `CACERÍA EN CURSO — ${remainingLabel(hunt.active.endsAt - nowTimestamp)}`}</span>
     <strong>${compactRegionName} · ${activeDifficulty?.name || ''}</strong>
     ${reportReady ? '<small>Expedición terminada · recoge el resultado.</small>' : ''}
     <b>${reportReady ? 'RESULTADO' : 'EXPEDICIÓN'} →</b>
-  </button>` : '';
+  </button>` : '');
   return `<div class="hunt-map-heading">
     <span>MAPA DE CACERÍA</span>
     <div class="hunt-map-title-row">
@@ -280,14 +293,14 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   ${activeNotice}
   <section class="hunt-world-map" data-hunt-zoom-surface aria-label="Mapa de zonas de caza. Pellizca con dos dedos para ampliar.">
     <img data-hunt-zoom-image src="hunt/world-map-nuncabasta.webp" alt="Mapa de zonas de caza" loading="lazy" decoding="async" onerror="this.style.display='none'">
-    <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="fields-of-mist">
-      Campos de<br>la Bruma${activeRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
+    <button type="button" class="hunt-map-zone hunt-map-zone--mist${activeRegionId === 'fields-of-mist' ? ` active${reportReady ? ' report-ready' : ''}` : unseenRegionId === 'fields-of-mist' ? ' active report-ready' : ''}" data-open-hunt-region="fields-of-mist">
+      Campos de<br>la Bruma${activeRegionId === 'fields-of-mist' || unseenRegionId === 'fields-of-mist' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="dead-hours-bunker">
-      Búnker de las<br>Horas Muertas${activeRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
+    <button type="button" class="hunt-map-zone hunt-map-zone--bunker${activeRegionId === 'dead-hours-bunker' ? ` active${reportReady ? ' report-ready' : ''}` : unseenRegionId === 'dead-hours-bunker' ? ' active report-ready' : ''}" data-open-hunt-region="dead-hours-bunker">
+      Búnker de las<br>Horas Muertas${activeRegionId === 'dead-hours-bunker' || unseenRegionId === 'dead-hours-bunker' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
-    <button type="button" class="hunt-map-zone hunt-map-zone--nuncabasta${activeRegionId === 'nuncabasta-peaks' ? ` active${reportReady ? ' report-ready' : ''}` : ''}" data-open-hunt-region="nuncabasta-peaks">
-      Picos de<br>Nuncabasta${activeRegionId === 'nuncabasta-peaks' ? '<i aria-hidden="true">!</i>' : ''}
+    <button type="button" class="hunt-map-zone hunt-map-zone--nuncabasta${activeRegionId === 'nuncabasta-peaks' ? ` active${reportReady ? ' report-ready' : ''}` : unseenRegionId === 'nuncabasta-peaks' ? ' active report-ready' : ''}" data-open-hunt-region="nuncabasta-peaks">
+      Picos de<br>Nuncabasta${activeRegionId === 'nuncabasta-peaks' || unseenRegionId === 'nuncabasta-peaks' ? '<i aria-hidden="true">!</i>' : ''}
     </button>
   </section>
   `;
@@ -323,6 +336,13 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
     <strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>
     <button type="button" data-resolve-hunt ${nowTimestamp < active.endsAt ? 'disabled' : ''}>${nowTimestamp < active.endsAt ? 'Informe disponible al terminar' : 'VER INFORME'}</button>
   </div>` : '';
+  const unseenReport = unseenHuntReport(hunt);
+  const reportReadyMarkup = !active && unseenReport && (unseenReport.regionId || 'fields-of-mist') === region.id
+    ? `<div class="hunt-region-active" aria-label="Informe pendiente">
+    <span>INFORME PENDIENTE</span>
+    <strong>EXPEDICIÓN TERMINADA</strong>
+    <button type="button" data-view-hunt-report="${region.id}">VER INFORME</button>
+  </div>` : '';
   const difficulties = Object.values(HUNT_DIFFICULTIES).map((baseDifficulty) => {
     const difficulty = huntDifficultyForRegion(region.id, baseDifficulty.id);
     const requiredLevel = huntDifficultyMinLevel(region.id, difficulty.id);
@@ -333,7 +353,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   }).join('');
   const otherRegionActive = active && !regionActive;
   root.innerHTML = `<div class="hunt-region hunt-region--${region.id}"><button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>${region.name}</h2><div class="hunt-map-energy" aria-label="${energy.aria}"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${energy.html}</strong></div></div><p>${region.description}</p>${regionLocked ? `<div class="hunt-region-lock-notice"><span aria-hidden="true">🔒</span> Alcanza el nivel ${regionMinLevel} para iniciar esta cacería</div>` : ''}</div>
-    <div class="hunt-region-art" data-hunt-zoom-surface aria-label="${region.name}. Pellizca con dos dedos para ampliar."><img data-hunt-zoom-image src="${region.art}" alt="${region.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">${region.name.toUpperCase()}<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}</div>
+    <div class="hunt-region-art" data-hunt-zoom-surface aria-label="${region.name}. Pellizca con dos dedos para ampliar."><img data-hunt-zoom-image src="${region.art}" alt="${region.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">${region.name.toUpperCase()}<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}${reportReadyMarkup}</div>
     <section class="card hunt-roster"><div class="hunt-section-title"><span>Enemigos</span></div><div class="hunt-monsters">${region.enemies.map(monsterCard).join('')}</div></section>
     <section class="card hunt-launch"><div class="hunt-section-title"><span>Elegir dificultad</span>${active ? `<b>${otherRegionActive ? 'Expedición activa en otra zona' : 'Una expedición activa'}</b>` : ''}</div><div class="hunt-difficulties">${difficulties}</div><small>La energía se recupera al comenzar un nuevo día. La Sangre de Jefe solo puede caer en Difícil.</small></section>
     ${(hunt.lastReport?.regionId || 'fields-of-mist') === region.id ? reportMarkup(hunt.lastReport) : ''}</div>`;

@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.39';
+const APP_VERSION='2.29.40';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4103,6 +4103,11 @@ function openHuntResultModal(report){
   document.getElementById('huntResultSummary').innerHTML=huntResultSummaryMarkup(report);
   document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
   document.getElementById('huntResultBg').classList.add('show');
+  if(report?.id&&state.game.hunt?.unseenReportId===report.id){
+    state.game.hunt={...state.game.hunt,unseenReportId:null};
+    scheduleSave({type:'hunt:report-seen'});
+    renderHunt();
+  }
 }
 
 function closeHuntConfirmation(){
@@ -4366,6 +4371,17 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     openCharacterSheet();
     return;
   }
+  const viewReportButton=event.target.closest('[data-view-hunt-report]');
+  if(viewReportButton){
+    const report=state.game.hunt?.lastReport;
+    if(!report) return;
+    const huntContent=document.getElementById('huntContent');
+    huntContent.dataset.huntScreen='region';
+    huntContent.dataset.huntRegion=viewReportButton.dataset.viewHuntReport||report.regionId||'fields-of-mist';
+    openHuntResultModal(report);
+    renderHunt();
+    return;
+  }
   const pendingHuntButton=event.target.closest('[data-open-pending-hunt]');
   if(pendingHuntButton){
     const huntContent=document.getElementById('huntContent');
@@ -4494,6 +4510,7 @@ function tryAutoResolveHunt(){
   const result=computeHuntResolution();
   if(!result) return false;
   const death=applyResolvedHunt(result);
+  state.game.hunt={...state.game.hunt,unseenReportId:result.report.id};
   scheduleSave({type:'hunt:resolve',auto:true,won:result.report.won});
   if(death) pendingPostDeathHuntReport=result.report;
   return true;
