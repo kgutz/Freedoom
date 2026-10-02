@@ -7,7 +7,7 @@ import {
 } from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
 import { recordHalloweenAnalytics, halloweenHuntMetrics } from './domain/event-analytics.js';
-import { buyHalloweenMask, expireHalloweenMask, halloweenMaskPrice } from './domain/halloween-mask-rules.js';
+import { HALLOWEEN_MASK_BLOOD_COST, buyHalloweenMask, expireHalloweenMask, halloweenMaskPrice } from './domain/halloween-mask-rules.js';
 // Image cache only: never intercepts saves, cloud requests or application code.
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => navigator.serviceWorker.register(new URL('service-worker.js',location.href),{updateViaCache:'none'}).catch(error => console.warn('Caché de imágenes no disponible',error)));
@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.36';
+const APP_VERSION='2.29.37';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -6568,7 +6568,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
     if(purchase.disabled||shopLocked) return;
     const relicId=purchase.dataset.buyRelic;
     if(relicId==='halloween-mask'){
-      openShopPurchaseConfirmation({type:'relic',relicId,name:'Máscara del Diezmo Carmesí',coinCost:halloweenMaskPrice(gameStats().lvl),bloodCost:0});
+      openShopPurchaseConfirmation({type:'relic',relicId,name:'Máscara del Diezmo Carmesí',coinCost:halloweenMaskPrice(gameStats().lvl),bloodCost:HALLOWEEN_MASK_BLOOD_COST});
       return;
     }
     const offer=shopOffers(normalizeLootState(state),Date.now()).find(item=>item.relicId===relicId);

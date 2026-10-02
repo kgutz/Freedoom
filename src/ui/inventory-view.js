@@ -1,5 +1,5 @@
 import { sceneMediaMarkup } from './scene-media.js';
-import { halloweenMaskActive, halloweenMaskPrice } from '../domain/halloween-mask-rules.js';
+import { HALLOWEEN_MASK_BLOOD_COST, halloweenMaskActive, halloweenMaskPrice } from '../domain/halloween-mask-rules.js';
 import {
   AFFIX_DEFINITIONS,
   ALL_RELIC_DEFINITIONS,
@@ -1124,7 +1124,7 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
   const relicMode = options.relicMode === 'sell' ? 'sell' : 'buy';
   const offers = shopOffers(normalized, nowTimestamp);
   if (options.halloweenActive) offers.unshift({relicId:'halloween-mask',definition:relicDefinition('halloween-mask'),
-    relic:{rank:3,rarity:'legendary',affixes:[]},coinPrice:halloweenMaskPrice(options.level||1),bloodPrice:0,source:'halloween'});
+    relic:{rank:3,rarity:'legendary',affixes:[]},coinPrice:halloweenMaskPrice(options.level||1),bloodPrice:HALLOWEEN_MASK_BLOOD_COST,source:'halloween'});
   const rotation = normalized.shop.rotation;
   const content = offers.length
     ? `<div class="shop-grid">${offers.map((offer) => {
@@ -1139,12 +1139,12 @@ export function renderShopView(document, lootState, nowTimestamp = Date.now(), o
             <span class="shop-relic-copy">
               <h4 title="${escapeHtml(offer.definition.name)}">${escapeHtml(offer.definition.name)}</h4>
               <span class="rarity-label">${rarity.label} · RANGO ${offer.relic.rank}</span>
-              <small>${escapeHtml(offer.source==='halloween'?'HALLOWEEN · 24 HORAS · SOLO ORO':shopOfferContext(offer))}</small>
+              <small>${escapeHtml(offer.source==='halloween'?'HALLOWEEN · 24 HORAS · ORO + 1 SANGRE':shopOfferContext(offer))}</small>
             </span>
           </button>
           <div class="shop-price">
             ${resourceValue('coin', offer.coinPrice)}
-            ${offer.source==='halloween' ? '' : resourceValue('boss-blood', offer.bloodPrice)}
+            ${resourceValue('boss-blood', offer.bloodPrice)}
           </div>
           <button type="button" class="shop-relic-buy" data-buy-relic="${offer.relicId}" aria-label="Comprar ${escapeHtml(offer.definition.name)}"${lacksCoins || lacksBlood ? ' disabled' : ''}>${buttonText}</button>
         </article>`;
