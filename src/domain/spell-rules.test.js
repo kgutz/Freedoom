@@ -7,6 +7,7 @@ import {
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
+  levelScaledChallengeXp,
   canCompleteUltimateHabit,
   reservedHabitIdsForSpell,
 } from './spell-rules.js';
@@ -541,5 +542,20 @@ describe('reto de nivel 8 igual para las cuatro clases', () => {
     expect(one).toMatchObject({ advanced: true, completed: false });
     const two = completeLevelEightHabitChallenge({ progress: one.progress, habitId: 'b', today: 'today' });
     expect(two).toMatchObject({ advanced: true, completed: true });
+  });
+});
+
+describe('XP escalada por nivel de los retos', () => {
+  it('conserva la base al nivel de desbloqueo y crece con el nivel', () => {
+    expect(levelScaledChallengeXp({ base: 5, unlockLevel: 8, level: 8 })).toBe(5);
+    expect(levelScaledChallengeXp({ base: 5, unlockLevel: 8, level: 4 })).toBe(5);
+    expect(levelScaledChallengeXp({ base: 5, unlockLevel: 8, level: 20 })).toBe(13);
+    expect(levelScaledChallengeXp({ base: 5, unlockLevel: 8, level: 50 })).toBe(33);
+    expect(levelScaledChallengeXp({ base: 10, unlockLevel: 14, level: 14 })).toBe(10);
+    expect(levelScaledChallengeXp({ base: 10, unlockLevel: 14, level: 50 })).toBe(37);
+  });
+  it('la definitiva escala tanto el XP por hábito como el bonus de completarla', () => {
+    expect(ultimateHabitReward({ completedCount: 1, target: 3, level: 14 })).toMatchObject({ xp: 10, gold: 4 });
+    expect(ultimateHabitReward({ completedCount: 3, target: 3, level: 50 })).toMatchObject({ xp: 74, gold: 12, completesChallenge: true });
   });
 });

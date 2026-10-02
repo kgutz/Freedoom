@@ -50,10 +50,24 @@ export function canCompleteUltimateHabit({ challenge, habitId, day, becameComple
     && challenge.habitIds.includes(habitId) && !challenge.completedIds.includes(habitId));
 }
 
-export function ultimateHabitReward({ completedCount, target = 3 }) {
+/* XP escalada por nivel: `base` XP al nivel en que se desbloquea la habilidad y crece con el
+   tramo de XP de cada nivel (35·(2L−1)), así que siempre pesa ~1% del nivel actual. */
+export const LEVEL_EIGHT_HABIT_XP = 5;
+export const LEVEL_EIGHT_UNLOCK_LEVEL = 8;
+export const ULTIMATE_UNLOCK_LEVEL = 14;
+function levelXpStep(level) {
+  return 35 * (2 * Math.max(1, Math.trunc(Number(level) || 1)) - 1);
+}
+export function levelScaledChallengeXp({ base, unlockLevel, level }) {
+  const scaled = Math.round(base * levelXpStep(level) / levelXpStep(unlockLevel));
+  return Math.max(base, scaled);
+}
+
+export function ultimateHabitReward({ completedCount, target = 3, level = ULTIMATE_UNLOCK_LEVEL }) {
   const completesChallenge = completedCount >= target;
+  const scale = (base) => levelScaledChallengeXp({ base, unlockLevel: ULTIMATE_UNLOCK_LEVEL, level });
   return {
-    xp: ULTIMATE_HABIT_XP + (completesChallenge ? ULTIMATE_COMPLETION_XP : 0),
+    xp: scale(ULTIMATE_HABIT_XP) + (completesChallenge ? scale(ULTIMATE_COMPLETION_XP) : 0),
     gold: ULTIMATE_HABIT_GOLD + (completesChallenge ? ULTIMATE_COMPLETION_GOLD : 0),
     completesChallenge,
   };

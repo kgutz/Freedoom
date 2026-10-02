@@ -80,6 +80,9 @@ import {
   castSpellEffect,
   completeLevelEightHabitChallenge,
   countsTowardLevelEightChallenge,
+  levelScaledChallengeXp,
+  LEVEL_EIGHT_HABIT_XP,
+  LEVEL_EIGHT_UNLOCK_LEVEL,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
@@ -295,7 +298,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.51';
+const APP_VERSION='2.29.52';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2389,19 +2392,19 @@ function renderSkillHabitPicker(){
   const limit=skillSelectionLimit(spell);
   document.getElementById('skillHabitPickerTitle').textContent=spell.name;
   document.getElementById('skillHabitPickerIntro').textContent=spell.ulti
-    ? 'Selecciona tres hábitos diarios pendientes.'
+    ? 'Selecciona tres hábitos pendientes (diarios o semanales).'
     : limit.max===1
-    ? 'Selecciona un hábito diario pendiente.'
+    ? 'Selecciona un hábito pendiente (diario o semanal).'
     : limit.max===3
-      ? 'Selecciona entre dos y tres hábitos diarios pendientes.'
-      : 'Selecciona dos hábitos diarios pendientes.';
+      ? 'Selecciona entre dos y tres hábitos pendientes (diarios o semanales).'
+      : 'Selecciona dos hábitos pendientes (diarios o semanales).';
   document.getElementById('skillHabitPickerList').innerHTML=available.map(habit=>{
     const isSelected=selected.includes(habit.id);
     const difficulty=habit.difficulty==='hard'?'Difícil':habit.difficulty==='medium'?'Media':'Fácil';
     return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${escapeHtml(habit.id)}" aria-pressed="${isSelected}">
       <span class="skill-habit-option-mark">${isSelected?'✓':'·'}</span>
-      <span class="skill-habit-option-copy"><b>${escapeHtml(habit.title)}</b><small>${difficulty} · hábito diario</small></span>
-      <span class="skill-habit-option-xp">+5 XP</span>
+      <span class="skill-habit-option-copy"><b>${escapeHtml(habit.title)}</b><small>${difficulty} · hábito ${habit.frequency==='weekly'?'semanal':'diario'}</small></span>
+      <span class="skill-habit-option-xp">+${spell.ulti?levelScaledChallengeXp({base:10,unlockLevel:14,level:gameStats().lvl}):levelScaledChallengeXp({base:LEVEL_EIGHT_HABIT_XP,unlockLevel:LEVEL_EIGHT_UNLOCK_LEVEL,level:gameStats().lvl})} XP</span>
     </button>`;
   }).join('');
   const ready=selected.length>=limit.min&&selected.length<=limit.max;
@@ -2411,12 +2414,23 @@ function renderSkillHabitPicker(){
   document.getElementById('skillHabitPickerContinue').disabled=!ready;
 }
 
+/* Hábitos elegibles para retos de habilidades: diarios y semanales aún sin completar en su periodo. */
+function pendingChallengeHabits(){
+  const normalized=normalizeHabitState(state.habits);
+  const date=currentHabitDate();
+  return normalized.items.filter(habit=>{
+    if(habit.active===false) return false;
+    const entry=habitEntryFor(state.habits,habit,date,state.config.startDate);
+    return (Number(entry.count)||0)<Math.max(1,Number(habit.target)||1);
+  });
+}
+
 function openSkillHabitPicker(spell){
   const reserved=reservedHabitIdsForSpell({progress:state.game.powerProgress,spell,today:habitDayKey()});
-  const available=pendingDailyHabits().filter(habit=>!reserved.includes(habit.id));
+  const available=pendingChallengeHabits().filter(habit=>!reserved.includes(habit.id));
   const limit=skillSelectionLimit(spell);
   if(available.length<limit.min){
-    showToast(`Necesitas ${limit.min} hábitos diarios libres, sin asignar a otra habilidad`,'dmg');
+    showToast(`Necesitas ${limit.min} hábitos libres, sin asignar a otra habilidad`,'dmg');
     return;
   }
   pendingSkillCast={spell,available,selected:[]};
@@ -2499,8 +2513,8 @@ function castSpell(id,options={}){
   }
   if(sp.autoHabitChallenge&&!options.confirmed){
     const reserved=reservedHabitIdsForSpell({progress:g.powerProgress,spell:sp,today:spellDayKey});
-    if(pendingDailyHabits().filter(habit=>!reserved.includes(habit.id)).length<2){
-      showToast('Necesitas 2 hábitos diarios libres, sin asignar a otra habilidad','dmg');
+    if(pendingChallengeHabits().filter(habit=>!reserved.includes(habit.id)).length<2){
+      showToast('Necesitas 2 hábitos libres, sin asignar a otra habilidad','dmg');
       return;
     }
     openSkillConfirmation(sp);
@@ -2541,7 +2555,7 @@ function castSpell(id,options={}){
     else if(result.reason==='challenge-active') showToast('Completa primero el reto activo','dmg');
     else if(result.reason==='challenge-cooldown') showToast(`Podrás volver a usarla en ${Math.max(1,Math.ceil(result.cooldownRemainingMs/1000))} s`,'dmg');
     else if(result.reason==='spell-cooldown') return;
-    else if(result.reason==='habits') showToast('Faltan hábitos diarios','dmg');
+    else if(result.reason==='habits') showToast('Faltan hábitos pendientes','dmg');
     else if(result.reason==='habit-reserved') showToast('Ese hábito ya está asignado a otra habilidad','dmg');
     else if(result.reason==='health') showToast('Vida insuficiente para pagar el sacrificio','dmg');
     else if(result.reason==='charges') showToast(`Último Bastión · ${result.charges}/6 cargas`,'dmg');
@@ -4891,6 +4905,7 @@ function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=cur
     becameCompleted:result.becameCompleted,countChanged:result.countChanged,count:result.entry.count})){
     ultimate.completedIds.push(habit.id);
     const ultimateReward=ultimateHabitReward({
+      level:lvl,
       completedCount:ultimate.completedIds.length,
       target:ultimate.habitIds.length,
     });
@@ -4945,18 +4960,19 @@ function applyLevelEightChallengeHabitCompletion({habitId,key=habitDayKey(),comp
   const notices=[];
   const challengeSpellId=challengeResult.spellId;
   const rewards=g.powerProgress=challengeResult.progress;
-  g.bonusXp=(g.bonusXp||0)+5;
+  const challengeXp=levelScaledChallengeXp({base:LEVEL_EIGHT_HABIT_XP,unlockLevel:LEVEL_EIGHT_UNLOCK_LEVEL,level:gameStats().lvl});
+  g.bonusXp=(g.bonusXp||0)+challengeXp;
   if(challengeSpellId==='muro'){
     g.buffs.shield=(g.buffs.shield||0)+1;
-    notices.push('+5 XP · +1 Escudo');
+    notices.push(`+${challengeXp} XP · +1 Escudo`);
   }else if(challengeSpellId==='ceniza'){
     const recovered=recoverMana(5);
-    notices.push(`+5 XP · +${recovered} 💧`);
+    notices.push(`+${challengeXp} XP · +${recovered} 💧`);
   }else if(challengeSpellId==='regen'){
     const before=g.hp;
     g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05*healingPowerMultiplier({classId:g.cls,allocation:g.attributes}))));
-    notices.push(`+5 XP · +${g.hp-before} ♥`);
-  }else notices.push('+5 XP');
+    notices.push(`+${challengeXp} XP · +${g.hp-before} ♥`);
+  }else notices.push(`+${challengeXp} XP`);
   if(challengeResult.completed){
     state.economy.coins+=2;
     notices.push('+2 🪙');
@@ -4981,6 +4997,7 @@ function reconcileStoredLevelEightHabitChallenge(){
     const habit=state.habits?.items?.find(candidate=>candidate?.id===habitId);
     if(!habit) continue;
     const entry=habitEntryFor(state.habits,habit,date,state.config.startDate);
+    if(habit.frequency==='weekly') continue; /* lo semanal cuenta con una repetición nueva, no con las de otros días */
     if((Number(entry.count)||0)<1) continue;
     changed=Boolean(applyLevelEightChallengeHabitCompletion({habitId,key,completedAt:0}))||changed;
   }
