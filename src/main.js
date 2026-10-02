@@ -86,6 +86,7 @@ import {
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
+  ultimateHabitXp,
   canCompleteUltimateHabit,
   reservedHabitIdsForSpell,
   ultimateSpellAvailability,
@@ -298,7 +299,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.53';
+const APP_VERSION='2.29.54';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2404,7 +2405,7 @@ function renderSkillHabitPicker(){
     return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${escapeHtml(habit.id)}" aria-pressed="${isSelected}">
       <span class="skill-habit-option-mark">${isSelected?'✓':'·'}</span>
       <span class="skill-habit-option-copy"><b>${escapeHtml(habit.title)}</b><small>${difficulty} · hábito ${habit.frequency==='weekly'?'semanal':'diario'}</small></span>
-      <span class="skill-habit-option-xp">+${spell.ulti?levelScaledChallengeXp({base:10,unlockLevel:14,level:gameStats().lvl}):levelScaledChallengeXp({base:LEVEL_EIGHT_HABIT_XP,unlockLevel:LEVEL_EIGHT_UNLOCK_LEVEL,level:gameStats().lvl})} XP</span>
+      <span class="skill-habit-option-xp">+${spell.ulti?ultimateHabitXp({level:gameStats().lvl,weekly:habit.frequency==='weekly'}):levelScaledChallengeXp({base:LEVEL_EIGHT_HABIT_XP,unlockLevel:LEVEL_EIGHT_UNLOCK_LEVEL,level:gameStats().lvl})} XP</span>
     </button>`;
   };
   const groupMarkup=(label,habits)=>habits.length?`<h4 class="skill-habit-group">${label}</h4>${habits.map(optionMarkup).join('')}`:'';
@@ -4910,6 +4911,7 @@ function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=cur
     ultimate.completedIds.push(habit.id);
     const ultimateReward=ultimateHabitReward({
       level:lvl,
+      weekly:habit.frequency==='weekly',
       completedCount:ultimate.completedIds.length,
       target:ultimate.habitIds.length,
     });

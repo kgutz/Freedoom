@@ -558,4 +558,9 @@ describe('XP escalada por nivel de los retos', () => {
     expect(ultimateHabitReward({ completedCount: 1, target: 3, level: 14 })).toMatchObject({ xp: 10, gold: 4 });
     expect(ultimateHabitReward({ completedCount: 3, target: 3, level: 50 })).toMatchObject({ xp: 74, gold: 12, completesChallenge: true });
   });
+  it('un hábito semanal da un 25% más de XP que uno diario en la definitiva', () => {
+    expect(ultimateHabitReward({ completedCount: 1, target: 3, level: 14, weekly: true }).xp).toBe(13);
+    expect(ultimateHabitReward({ completedCount: 1, target: 3, level: 50, weekly: true }).xp).toBe(46);
+    expect(ultimateHabitReward({ completedCount: 1, target: 3, level: 14 }).xp).toBe(10);
+  });
 });

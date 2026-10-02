@@ -63,11 +63,18 @@ export function levelScaledChallengeXp({ base, unlockLevel, level }) {
   return Math.max(base, scaled);
 }
 
-export function ultimateHabitReward({ completedCount, target = 3, level = ULTIMATE_UNLOCK_LEVEL }) {
+/* Un hábito semanal pesa más que uno diario: su XP por hábito en la definitiva sube un 25%. */
+export const WEEKLY_HABIT_XP_MULTIPLIER = 1.25;
+export function ultimateHabitXp({ level = ULTIMATE_UNLOCK_LEVEL, weekly = false } = {}) {
+  const base = levelScaledChallengeXp({ base: ULTIMATE_HABIT_XP, unlockLevel: ULTIMATE_UNLOCK_LEVEL, level });
+  return weekly ? Math.round(base * WEEKLY_HABIT_XP_MULTIPLIER) : base;
+}
+
+export function ultimateHabitReward({ completedCount, target = 3, level = ULTIMATE_UNLOCK_LEVEL, weekly = false }) {
   const completesChallenge = completedCount >= target;
   const scale = (base) => levelScaledChallengeXp({ base, unlockLevel: ULTIMATE_UNLOCK_LEVEL, level });
   return {
-    xp: scale(ULTIMATE_HABIT_XP) + (completesChallenge ? scale(ULTIMATE_COMPLETION_XP) : 0),
+    xp: ultimateHabitXp({ level, weekly }) + (completesChallenge ? scale(ULTIMATE_COMPLETION_XP) : 0),
     gold: ULTIMATE_HABIT_GOLD + (completesChallenge ? ULTIMATE_COMPLETION_GOLD : 0),
     completesChallenge,
   };
