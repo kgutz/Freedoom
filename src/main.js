@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.35';
+const APP_VERSION='2.29.36';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -7779,10 +7779,14 @@ bindBackupControls({
     const imported={...importedState,...initializeForgeSeed(importedState)};
     const candidate=ensureCloudIdentity(migratePioneerRewardEligibility(imported,{existingProfile:true}).state);
     if(activeCloudService){
-      const plan=createMigrationPlan(candidate);
+      const migrationPlan=createMigrationPlan(candidate);
       const previous=await activeCloudService.loadGameSaveRevision();
+      /* Con una partida ya en la nube, el id de migración (= linaje) haría que el servidor
+         lo tratara como repetición y devolviera la partida vieja sin guardar la importada.
+         Se guarda como una actualización normal, igual que el autoguardado. */
+      const plan=previous?{...migrationPlan,migrationId:null}:migrationPlan;
       const saved=await activeCloudService.saveGameState(plan,previous?.revision||0);
-      if(!verifyCloudSave(saved,plan)){
+      if(!(previous?verifyUpdatedCloudSave(saved,plan):verifyCloudSave(saved,plan))){
         throw new Error('La copia no coincide. La partida local sigue intacta.');
       }
     }
