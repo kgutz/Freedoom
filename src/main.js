@@ -298,7 +298,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.52';
+const APP_VERSION='2.29.53';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2398,7 +2398,7 @@ function renderSkillHabitPicker(){
     : limit.max===3
       ? 'Selecciona entre dos y tres hábitos pendientes (diarios o semanales).'
       : 'Selecciona dos hábitos pendientes (diarios o semanales).';
-  document.getElementById('skillHabitPickerList').innerHTML=available.map(habit=>{
+  const optionMarkup=habit=>{
     const isSelected=selected.includes(habit.id);
     const difficulty=habit.difficulty==='hard'?'Difícil':habit.difficulty==='medium'?'Media':'Fácil';
     return `<button type="button" class="skill-habit-option${isSelected?' selected':''}" data-skill-habit="${escapeHtml(habit.id)}" aria-pressed="${isSelected}">
@@ -2406,7 +2406,11 @@ function renderSkillHabitPicker(){
       <span class="skill-habit-option-copy"><b>${escapeHtml(habit.title)}</b><small>${difficulty} · hábito ${habit.frequency==='weekly'?'semanal':'diario'}</small></span>
       <span class="skill-habit-option-xp">+${spell.ulti?levelScaledChallengeXp({base:10,unlockLevel:14,level:gameStats().lvl}):levelScaledChallengeXp({base:LEVEL_EIGHT_HABIT_XP,unlockLevel:LEVEL_EIGHT_UNLOCK_LEVEL,level:gameStats().lvl})} XP</span>
     </button>`;
-  }).join('');
+  };
+  const groupMarkup=(label,habits)=>habits.length?`<h4 class="skill-habit-group">${label}</h4>${habits.map(optionMarkup).join('')}`:'';
+  document.getElementById('skillHabitPickerList').innerHTML=
+    groupMarkup('Hábitos diarios',available.filter(habit=>habit.frequency!=='weekly'))
+    +groupMarkup('Hábitos semanales',available.filter(habit=>habit.frequency==='weekly'));
   const ready=selected.length>=limit.min&&selected.length<=limit.max;
   const count=document.getElementById('skillHabitPickerCount');
   count.textContent=`${selected.length} de ${limit.max} seleccionados`;
