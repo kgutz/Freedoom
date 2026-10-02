@@ -295,7 +295,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.49';
+const APP_VERSION='2.29.50';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -6491,7 +6491,11 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   if(event.target.closest('#bagTab')){ forgeFromCity=false; showInventoryPanel('bag'); return; }
   if(event.target.closest('#templeTab')){ forgeFromCity=false; showInventoryPanel('temple'); return; }
   if(event.target.closest('[data-close-temple]')){
-    returnToCharacterSheetFromShop();
+    document.getElementById('sheetInventory')?.classList.remove('inventory-shop-cosmetic-open');
+    forgeFromCity=false;
+    shopViewSection='map';
+    relicShopMode='buy';
+    showInventoryPanel('bag');
     return;
   }
   if(event.target.closest('[data-temple-blessings]')){
