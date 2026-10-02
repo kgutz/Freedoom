@@ -3,6 +3,7 @@ import {
   castSpellEffect,
   applyFilacteriaRecovery,
   completeLevelEightHabitChallenge,
+  countsTowardLevelEightChallenge,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
@@ -518,5 +519,14 @@ describe('curación y habilidades definitivas', () => {
     expect(judgment.game.judgmentDays).toEqual(['2026-07-26']);
     expect(judgment.game.ultiW).toBe(3);
     expect(rebirth.game.buffs.renacer).toBe(true);
+  });
+});
+
+describe('retos de nivel 8 con hábitos repetibles', () => {
+  it('la primera repetición basta; completar todas también; sin progreso no cuenta', () => {
+    expect(countsTowardLevelEightChallenge({ becameCompleted: false, countChanged: true, count: 1 })).toBe(true);
+    expect(countsTowardLevelEightChallenge({ becameCompleted: true, countChanged: true, count: 4 })).toBe(true);
+    expect(countsTowardLevelEightChallenge({ becameCompleted: false, countChanged: true, count: 0 })).toBe(false);
+    expect(countsTowardLevelEightChallenge({ becameCompleted: false, countChanged: false, count: 2 })).toBe(false);
   });
 });

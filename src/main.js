@@ -79,6 +79,7 @@ import {
   applyFilacteriaRecovery,
   castSpellEffect,
   completeLevelEightHabitChallenge,
+  countsTowardLevelEightChallenge,
   levelEightSpellAvailability,
   levelTwoSpellAvailability,
   ultimateHabitReward,
@@ -294,7 +295,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.48';
+const APP_VERSION='2.29.49';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4848,7 +4849,7 @@ function applyClassHabitRewards({result,habit,dayKey=habitDayKey(),habitDate=cur
   const entryKey=`${result.entry.habitId}|${result.entry.periodKey}|${result.entry.count}`;
   const entryAlreadyRewarded=Boolean(rewards.habitEntries[entryKey]);
   const notices=[];
-  if(result.becameCompleted){
+  if(countsTowardLevelEightChallenge({becameCompleted:result.becameCompleted,countChanged:result.countChanged,count:result.entry.count})){
     const challengeNotice=applyLevelEightChallengeHabitCompletion({
       habitId:habit.id,
       key,
@@ -4980,7 +4981,7 @@ function reconcileStoredLevelEightHabitChallenge(){
     const habit=state.habits?.items?.find(candidate=>candidate?.id===habitId);
     if(!habit) continue;
     const entry=habitEntryFor(state.habits,habit,date,state.config.startDate);
-    if((Number(entry.count)||0)<Math.max(1,Number(habit.target)||1)) continue;
+    if((Number(entry.count)||0)<1) continue;
     changed=Boolean(applyLevelEightChallengeHabitCompletion({habitId,key,completedAt:0}))||changed;
   }
   if(changed){
@@ -5559,7 +5560,7 @@ document.getElementById('view-habits').addEventListener('click',event=>{
       state.game.hp=healing.hp;
       awardFusionDailyHabitListXp(dayKey);
     }
-    if(result.xpDelta>0||result.becameCompleted) applyClassHabitRewards({result,habit,dayKey,habitDate});
+    if(result.xpDelta>0||countsTowardLevelEightChallenge({becameCompleted:result.becameCompleted,countChanged:result.countChanged,count:result.entry.count})) applyClassHabitRewards({result,habit,dayKey,habitDate});
     const rewardTotalsAfter={
       xp:gameStats().xp,
       coins:Number(state.economy?.coins)||0

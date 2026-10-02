@@ -39,6 +39,11 @@ export function reservedHabitIdsForSpell({ progress = {}, spell, today }) {
   return [...new Set([...(other.habitIds || []), ...(other.completedIds || [])])];
 }
 
+/* Para los retos de nivel 8 basta con haber empezado el hábito (1ª repetición); no hace falta completar todas. */
+export function countsTowardLevelEightChallenge({ becameCompleted, countChanged, count }) {
+  return Boolean(becameCompleted || (countChanged && Number(count) >= 1));
+}
+
 export function canCompleteUltimateHabit({ challenge, habitId, day, becameCompleted, count, target = 1 }) {
   return Boolean(becameCompleted && Number(count) >= Math.max(1, Number(target) || 1)
     && challenge && !challenge.rewarded && challenge.day === day
