@@ -88,3 +88,13 @@ export function allocateAttributePoint({ classId, level, allocation, attributeId
 export function resetAttributeAllocation() {
   return normalizeAttributeAllocation();
 }
+
+export const HEALING_POWER_CLASSES = Object.freeze(['sorcerer', 'druid']);
+export const HEALING_PERCENT_PER_POWER_POINT = 1;
+
+/* Hechicero y Druida curan más con cada punto de Poder invertido (sobre la base de su clase). */
+export function healingPowerMultiplier({ classId, allocation } = {}) {
+  if (!HEALING_POWER_CLASSES.includes(classId)) return 1;
+  const points = normalizeAttributeAllocation(allocation).power;
+  return 1 + (points * HEALING_PERCENT_PER_POWER_POINT) / 100;
+}

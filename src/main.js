@@ -52,7 +52,7 @@ import {
   regenerateHealth,
   weeklyBossPenalty
 } from './domain/hero-rules.js';
-import { allocateAttributePoint, attributeSheet, resetAttributeAllocation } from './domain/attribute-rules.js';
+import { allocateAttributePoint, attributeSheet, healingPowerMultiplier, resetAttributeAllocation } from './domain/attribute-rules.js';
 import {
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
@@ -293,7 +293,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.37';
+const APP_VERSION='2.29.38';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2526,6 +2526,7 @@ function castSpell(id,options={}){
     activeFailureChance:intoxication.activeFailureChance,
     passiveMultiplier:intoxication.passiveMultiplier,
     smokeFreeMode:usesSmokeFreeSkills(state.config),
+    healingMultiplier:healingPowerMultiplier({classId:g.cls,allocation:g.attributes}),
     selectedHabitIds:options.selectedHabitIds||[],
     targetHabitId:options.targetHabitId||null
   });
@@ -4891,7 +4892,7 @@ function applyLevelEightChallengeHabitCompletion({habitId,key=habitDayKey(),comp
     notices.push(`+5 XP · +${recovered} 💧`);
   }else if(challengeSpellId==='regen'){
     const before=g.hp;
-    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05)));
+    g.hp=capHp(g.hp+Math.max(1,Math.round(maxHp*0.05*healingPowerMultiplier({classId:g.cls,allocation:g.attributes}))));
     notices.push(`+5 XP · +${g.hp-before} ♥`);
   }else notices.push('+5 XP');
   if(challengeResult.completed){

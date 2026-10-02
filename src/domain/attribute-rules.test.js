@@ -4,6 +4,7 @@ import {
   attributeSheet,
   availableAttributePoints,
   earnedAttributePoints,
+  healingPowerMultiplier,
   resetAttributeAllocation,
 } from './attribute-rules.js';
 
@@ -39,5 +40,13 @@ describe('attribute rules', () => {
       power: 0,
       constitution: 0,
     });
+  });
+
+  it('hechicero y druida curan +1% por punto de Poder invertido; el resto de clases no', () => {
+    expect(healingPowerMultiplier({ classId: 'sorcerer', allocation: {} })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'sorcerer', allocation: { power: 20 } })).toBeCloseTo(1.2);
+    expect(healingPowerMultiplier({ classId: 'druid', allocation: { power: 50, strength: 9 } })).toBeCloseTo(1.5);
+    expect(healingPowerMultiplier({ classId: 'knight', allocation: { power: 50 } })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'sorcerer' })).toBe(1);
   });
 });

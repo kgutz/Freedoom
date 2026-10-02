@@ -254,6 +254,18 @@ describe('curación y habilidades definitivas', () => {
     expect(sorcerer.game.hp).toBe(66);
   });
 
+  it('Drenaje del Antojo y Bálsamo curan más con el multiplicador de Poder',()=>{
+    const drain=cast(spell('peste',{modern:true,cost:45}),{
+      game:{hp:50,mp:100,buffs:{}},maxHp:200,healingMultiplier:1.5,
+    });
+    const balm=cast(spell('balsamo',{modern:true}),{
+      game:{hp:50,mp:100,buffs:{}},maxHp:200,healingMultiplier:1.5,
+    });
+    expect(drain.game.hp).toBe(74);
+    expect(balm.game.hp).toBe(68);
+    expect(balm.game.buffs.balm.remaining).toBe(27);
+  });
+
   it('crea el reto diario de dos hábitos y cobra vida y maná',()=>{
     const result=cast(spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,

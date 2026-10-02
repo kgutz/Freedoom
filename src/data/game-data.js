@@ -96,7 +96,7 @@ export const CLASSES={
       {lvl:12,icon:'filacteria',name:'Filacteria',d:'Cada 50 de Maná gastado: +2 oro y recuperas 5% de Vida máxima (2/semana).'}
     ],
     act:[
-      {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima.'},
+      {lvl:2,id:'peste',icon:'peste',name:'Drenaje del Antojo',cost:45,modern:true,d:'Recupera 8% de vida máxima. Escala con Poder (+1% por punto).'},
       {lvl:8,id:'ceniza',icon:'ceniza',name:'Maldición de Ceniza',cost:50,habitChallenge:true,autoHabitChallenge:true,modern:true,d:'Los primeros 2 hábitos conceden +5 XP y recuperan 5 de maná. Completar ambos concede 2 oro.'},
       {lvl:14,id:'alma',icon:'alma',name:'Robar Alma',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Marca 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
@@ -130,8 +130,8 @@ export const CLASSES={
       {lvl:12,icon:'pocion',name:'Poción Mayor',d:'Cumple tus objetivos de salud: +1 oro (4/semana).'}
     ],
     act:[
-      {lvl:2,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:50,modern:true,d:'+6% Vida ahora y +9% durante 30 min.'},
-      {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno; ambos dan +2 oro.'},
+      {lvl:2,id:'balsamo',icon:'balsamo',name:'Bálsamo',cost:50,modern:true,d:'+6% Vida ahora y +9% durante 30 min. Escala con Poder (+1% por punto).'},
+      {lvl:8,id:'regen',icon:'regen',name:'Regeneración',cost:55,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos: +5 XP y +5% Vida cada uno (escala con Poder); ambos dan +2 oro.'},
       {lvl:14,id:'renacer',icon:'renacer',name:'Renacer',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Cultiva 3 hábitos: +10 XP y +4 oro cada uno. Completa los 3: +10 XP y +8 oro.'}
     ]
   }

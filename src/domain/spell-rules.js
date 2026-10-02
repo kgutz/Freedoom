@@ -202,6 +202,7 @@ export function castSpellEffect({
   activeFailureChance = 0,
   passiveMultiplier = 1,
   smokeFreeMode = false,
+  healingMultiplier = 1,
   randomValue = Math.random(),
   manaDiscount = 0,
   selectedHabitIds = [],
@@ -417,9 +418,9 @@ export function castSpellEffect({
     case 'balsamo': {
       const hpBefore = nextGame.hp;
       if (spell.modern) {
-        nextGame.hp = cappedHealth(nextGame.hp + Math.round(maxHp * 0.06), maxHp);
+        nextGame.hp = cappedHealth(nextGame.hp + Math.round(maxHp * 0.06 * healingMultiplier), maxHp);
         nextGame.buffs.balm = {
-          remaining: Math.round(maxHp * 0.09),
+          remaining: Math.round(maxHp * 0.09 * healingMultiplier),
           startedAt: nowTimestamp,
           until: nowTimestamp + 30 * 60_000,
         };
@@ -447,7 +448,7 @@ export function castSpellEffect({
     case 'peste':
       if (spell.modern) {
         const hpBefore = nextGame.hp;
-        const amount = Math.round(maxHp * 0.08);
+        const amount = Math.round(maxHp * 0.08 * healingMultiplier);
         nextGame.hp = cappedHealth(nextGame.hp + amount, maxHp);
         result.healing = nextGame.hp - hpBefore;
         break;
