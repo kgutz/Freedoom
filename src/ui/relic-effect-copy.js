@@ -82,7 +82,7 @@ function fusionBonus(definition, rank, inherited) {
 export function relicEffectCopy(definition, relic) {
   if (definition.id === 'halloween-mask') return [
     {id:'halloween-vampirism',name:'Vampirismo',description:'Recupera el 10% del daño infligido como Vida en Cacería.'},
-    {id:'halloween-extraction',name:'Diezmo Carmesí',description:'Una tirada independiente del 20% para +1 Sangre al vencer al minijefe difícil. Se calcula aparte de la chuche y la sangre normal.'},
+    {id:'halloween-extraction',name:'Diezmo Carmesí',description:'Una tirada independiente del 20% para +1 Sangre al vencer al minijefe difícil. Máximo +1 Sangre extra por Cacería: si la Chuche de Sangre ya acierta, esta no tira.'},
   ];
   const inherited = definition.recipeId
     ? Object.entries(relic.inheritedEffects || {})

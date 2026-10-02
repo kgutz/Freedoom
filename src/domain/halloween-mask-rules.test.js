@@ -38,10 +38,12 @@ describe('Máscara del Diezmo Carmesí',()=>{
     expect(bought.inventory.equipped).not.toContain('halloween-mask');
     expect(bought.inventory.collection['halloween-mask']).toBeTruthy();
   });
-  it('rolls mask and candy separately, once per difficult miniboss victory',()=>{
+  it('grants at most +1 extra blood per difficult miniboss victory (candy first, then mask)',()=>{
     const report={id:'mask-hunt',difficultyId:'hard',maskBloodChance:20,halloweenCandy:{blood:true},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
     const rolled=rollHalloweenHuntCandy({candy:null,report,active:true,random:()=>0});
-    expect(rolled).toMatchObject({bloodBonus:1,maskBloodBonus:1});
+    expect(rolled).toMatchObject({bloodBonus:1,maskBloodBonus:0});
+    const maskOnly={...report,id:'mask-only',halloweenCandy:{}};
+    expect(rollHalloweenHuntCandy({candy:null,report:maskOnly,active:true,random:()=>0})).toMatchObject({bloodBonus:0,maskBloodBonus:1});
     expect(rollHalloweenHuntCandy({candy:rolled.candy,report,active:true,random:()=>0})).toMatchObject({bloodBonus:0,maskBloodBonus:0});
     expect(rollHalloweenHuntCandy({candy:null,report:{...report,difficultyId:'easy'},active:true,random:()=>0}).maskBloodBonus).toBe(0);
   });
