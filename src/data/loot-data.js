@@ -11,10 +11,10 @@ export const BOSS_REWARDS = [
   { coins: 145, bossBlood: 3 },
   { coins: 160, bossBlood: 3 },
   { coins: 175, bossBlood: 3 },
-  { coins: 190, bossBlood: 4 },
-  { coins: 205, bossBlood: 4 },
-  { coins: 220, bossBlood: 5 },
-  { coins: 235, bossBlood: 5 },
+  { coins: 190, bossBlood: 3 },
+  { coins: 205, bossBlood: 3 },
+  { coins: 220, bossBlood: 3 },
+  { coins: 235, bossBlood: 3 },
 ];
 export const RELIC_DROP_RATE = 0.6;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
