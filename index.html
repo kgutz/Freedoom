@@ -153,7 +153,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.29.40</div>
+  <div class="ob-version" id="obVersion">v2.29.41</div>
 </div>
 
 <div id="loading" class="loading">
@@ -541,7 +541,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.40</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.41</span></p>
       </div>
     </div>
   </div>
@@ -1156,6 +1156,26 @@
       </div>
       <p class="progression-update-copy">Reparte tus puntos entre los cinco atributos desde la Ficha de personaje. La energía se renueva cada día y te permite enviar a tu héroe de Cacería.</p>
       <button type="button" class="pioneer-reward-action" id="progressionUpdateContinue">VER MI FICHA</button>
+    </section>
+  </div>
+</div>
+
+<div class="modal-bg center progression-update-bg level-up-bg" id="levelUpBg" style="z-index:47">
+  <div class="modal pioneer-reward-modal progression-update-modal" role="dialog" aria-modal="true" aria-labelledby="levelUpTitle">
+    <section class="pioneer-reward-step pioneer-reward-reveal">
+      <span class="pioneer-reward-kicker">¡SUBISTE DE NIVEL!</span>
+      <h3 id="levelUpTitle">Nivel 1</h3>
+      <p id="levelUpSubtitle">Tu héroe se hace más fuerte.</p>
+      <div class="pioneer-reward-items progression-update-items">
+        <div class="pioneer-reward-item progression-update-item">
+          <span class="resource-icon resource-icon--attribute-points progression-update-icon" role="img" aria-label="Puntos de atributo"></span>
+          <strong id="levelUpPoints">+3</strong>
+          <small>PUNTOS DE ATRIBUTO</small>
+        </div>
+      </div>
+      <p class="progression-update-copy" id="levelUpUnlocks" hidden></p>
+      <button type="button" class="pioneer-reward-action" id="levelUpSheet">REPARTIR PUNTOS</button>
+      <button type="button" class="temple-gift-later" id="levelUpContinue">Continuar</button>
     </section>
   </div>
 </div>

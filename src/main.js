@@ -6,6 +6,7 @@ import {
   classDataForJourney
 } from './data/game-data.js';
 import { calculateGameStats } from './domain/progression-rules.js';
+import { levelUpNotice } from './domain/level-up-notice.js';
 import { recordHalloweenAnalytics, halloweenHuntMetrics } from './domain/event-analytics.js';
 import { HALLOWEEN_MASK_BLOOD_COST, buyHalloweenMask, expireHalloweenMask, halloweenMaskPrice } from './domain/halloween-mask-rules.js';
 // Image cache only: never intercepts saves, cloud requests or application code.
@@ -293,7 +294,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.40';
+const APP_VERSION='2.29.41';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -874,7 +875,7 @@ function currentIntoxication(nowTimestamp=Date.now()){
 }
 
 /* ---------- render ---------- */
-function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderHunt();renderSettings();renderStorageHealth();queueLootNotice();}
+function renderAll(){applyPendingJourneyTransition();repairJourneyTransitionHistory();renderHoy();renderHabits();renderCal();renderWeeks();renderGraf();renderHero();renderHunt();renderSettings();renderStorageHealth();queueLootNotice();queueLevelUp();}
 function renderStartupPrimary(){
   syncHalloweenPresentation();
   applyPendingJourneyTransition();
@@ -3390,6 +3391,49 @@ function queueProgressionUpdate(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
   clearTimeout(progressionUpdateTimer);
   if(!shouldDisplayProgressionUpdate()) return;
   progressionUpdateTimer=window.setTimeout(showPendingProgressionUpdate,delay);
+}
+let levelUpTimer=null;
+let levelUpOpening=false;
+const LOCAL_DEMO_LEVEL_UP=LOCAL_DEMO_HOST?Math.max(0,parseInt(LOCAL_DEMO_PARAMS.get('demoLevelUp')||'0',10)||0):0;
+let levelUpDemoApplied=false;
+function showPendingLevelUp(){
+  levelUpTimer=null;
+  if(levelUpOpening||!state.onboarded||!state.game?.cls) return;
+  const level=gameStats().lvl;
+  if(LOCAL_DEMO_LEVEL_UP&&!levelUpDemoApplied){levelUpDemoApplied=true;state.game.levelNoticeSeen=Math.max(0,level-LOCAL_DEMO_LEVEL_UP);}
+  const seen=Number(state.game.levelNoticeSeen);
+  if(!Number.isFinite(seen)||level<=seen){
+    /* partidas existentes o nivel perdido: se sincroniza en silencio, sin modal */
+    if(seen!==level){state.game.levelNoticeSeen=level;scheduleSave({type:'hero:level-notice-synced'});}
+    return;
+  }
+  if((LOCAL_DEMO_QUIET&&!LOCAL_DEMO_LEVEL_UP)||returnSplashPlaying||document.querySelector('.modal-bg.show:not(#levelUpBg)')){
+    if(!LOCAL_DEMO_QUIET||LOCAL_DEMO_LEVEL_UP) levelUpTimer=window.setTimeout(showPendingLevelUp,700);
+    return;
+  }
+  const notice=levelUpNotice({classId:state.game.cls,previousLevel:seen,level,smokeFree:usesSmokeFreeSkills(state.config)});
+  if(!notice) return;
+  levelUpOpening=true;
+  state.game.levelNoticeSeen=level;
+  scheduleSave({type:'hero:level-notice-shown',level});
+  document.getElementById('levelUpTitle').textContent=`Nivel ${notice.level}`;
+  document.getElementById('levelUpSubtitle').textContent=notice.levelsGained>1
+    ? `Has subido ${notice.levelsGained} niveles de golpe.`
+    : 'Tu héroe se hace más fuerte.';
+  document.getElementById('levelUpPoints').textContent=`+${notice.pointsGained}`;
+  const unlocks=[
+    ...notice.skills.map(name=>`Nueva habilidad: ${name}`),
+    ...notice.hunts
+  ];
+  const unlocksEl=document.getElementById('levelUpUnlocks');
+  unlocksEl.hidden=!unlocks.length;
+  unlocksEl.replaceChildren(...unlocks.flatMap((line,index)=>index?[document.createElement('br'),document.createTextNode(line)]:[document.createTextNode(line)]));
+  document.getElementById('levelUpBg').classList.add('show');
+  levelUpOpening=false;
+}
+function queueLevelUp(){
+  if(levelUpTimer) return;
+  levelUpTimer=window.setTimeout(showPendingLevelUp,400);
 }
 function acknowledgeActiveLootNotice(){
   if(!activeLootNoticeId) return;
@@ -7605,6 +7649,13 @@ document.getElementById('fiberCatchupContinue').addEventListener('click',()=>{
   if(notice.arcaneFibers) rewards.push(`+${notice.arcaneFibers} Fibras Arcanas`);
   if(notice.arcaneInks) rewards.push(`+${notice.arcaneInks} Tintas Arcanas`);
   showToast(rewards.join(' · '),'heal');
+});
+document.getElementById('levelUpContinue').addEventListener('click',()=>{
+  document.getElementById('levelUpBg').classList.remove('show');
+});
+document.getElementById('levelUpSheet').addEventListener('click',()=>{
+  document.getElementById('levelUpBg').classList.remove('show');
+  openCharacterSheet();
 });
 document.getElementById('progressionUpdateContinue').addEventListener('click',()=>{
   state.game={
