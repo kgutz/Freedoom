@@ -1773,6 +1773,15 @@ export function collarFirstHabitFusionBonuses(state, dayKey) {
     .map(([id, , effect]) => [id, effect, fusionDefinition(id).synergy.values[normalized.inventory.relics[id].rank]]);
 }
 
+/* Reliquias equipadas que de verdad aportan algo: la máscara temporal caducada no cuenta. */
+export function activeEquippedRelicCount(state, now = Date.now()) {
+  const normalized = normalizeLootState(state);
+  return normalized.inventory.equipped.filter(id => {
+    const expiresAt = Number(normalized.inventory.relics[id]?.expiresAt) || 0;
+    return !expiresAt || expiresAt > now;
+  }).length;
+}
+
 export function equippedHuntEffects(state) {
   const normalized = normalizeLootState(state);
   const mask = normalized.inventory.relics['halloween-mask'];

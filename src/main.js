@@ -98,6 +98,7 @@ import {
   chargeFirstHabitVampirism,
   collarFirstHabitFusionBonuses,
   equippedHuntEffects,
+  activeEquippedRelicCount,
   consumeHuntCharges,
   advancePeriodicManaRecovery,
   advancePeriodicHealthRecovery,
@@ -299,7 +300,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.56';
+const APP_VERSION='2.29.57';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4254,6 +4255,7 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
       <div class="hunt-potential-rewards">${huntPotentialRewardsMarkup(difficulty,region)}</div>
     </details>
   </div>
+  ${activeEquippedRelicCount(state,Date.now())<1?`<div class="hunt-relic-warning" role="alert"><b>⚠ Sin reliquia equipada</b><span>Entrarás sin ningún bonus y es más fácil que tu héroe caiga. Equipa una reliquia desde el Bolso antes de empezar.</span></div>`:''}
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
   ${huntRecoveryNoteMarkup({regionId:region.id,difficultyId:difficulty.id})}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">

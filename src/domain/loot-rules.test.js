@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activeEquippedRelicCount,
   acknowledgeLootNotice,
   advancePeriodicManaRecovery,
   attemptForge,
@@ -1206,5 +1207,18 @@ describe('Forja', () => {
     );
     expect(normalized.economy.coins).toBe(state.economy.coins);
     expect(normalized.economy.bossBlood).toBe(state.economy.bossBlood);
+  });
+});
+
+describe('aviso de cacería sin reliquia', () => {
+  it('cuenta solo las reliquias equipadas que no han caducado', () => {
+    const state = emptyLootState();
+    expect(activeEquippedRelicCount(state)).toBe(0);
+    const now = Date.now();
+    const withMask = { ...state, inventory: { ...state.inventory,
+      relics: { ...state.inventory.relics, 'halloween-mask': { unlocked: true, rank: 3, rarity: 'legendary', affixes: [], expiresAt: now + 1000 } },
+      equipped: ['halloween-mask'] } };
+    expect(activeEquippedRelicCount(withMask, now)).toBe(1);
+    expect(activeEquippedRelicCount(withMask, now + 5000)).toBe(0);
   });
 });
