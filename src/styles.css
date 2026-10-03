@@ -1489,10 +1489,10 @@
   .potion-detail-effect p{margin:7px 0 0;color:var(--muted);font-size:10px;line-height:1.55}
   .potion-resource-meter{margin:12px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
   .potion-resource-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font:400 9px var(--font-display);letter-spacing:.12em;color:var(--kodak)}.potion-resource-head b{font-weight:400;color:var(--text);letter-spacing:.04em}
-  .potion-resource-bar{position:relative;height:10px;margin-top:8px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+  .potion-resource-bar{position:relative;height:12px;margin-top:8px;border-radius:99px;background:#0E0B09;border:1px solid var(--line);overflow:hidden}
   .potion-resource-fill,.potion-resource-preview{position:absolute;top:0;bottom:0;display:block}.potion-resource-fill{left:0;border-radius:99px;transition:width .35s ease}
   .potion-resource-meter--hp .potion-resource-fill{background:#8faf5e}.potion-resource-meter--mp .potion-resource-fill{background:#5b8fc7}
-  .potion-resource-preview{background:repeating-linear-gradient(135deg,rgba(255,255,255,.55) 0 4px,rgba(255,255,255,.22) 4px 8px);border-radius:0 99px 99px 0}
+  .potion-resource-preview{background:rgba(237,227,210,.16);border-radius:0 99px 99px 0}
   .potion-resource-note{display:block;margin-top:7px;color:var(--muted);font-size:10px;line-height:1.45}
   .potion-resource-meter.is-full{border-color:rgba(143,175,94,.55)}.potion-resource-meter.is-full .potion-resource-note{color:#b9d68a}
   .potion-buy-quantity{display:grid;grid-template-columns:34px 44px 34px;justify-content:center;align-items:center;gap:7px;margin:0 0 9px}.potion-buy-quantity button{height:31px;border:1px solid var(--line);border-radius:7px;background:#18130f;color:var(--kodak);font:400 16px var(--font-display)}.potion-buy-quantity output{font:400 12px var(--font-display);color:var(--text);text-align:center}
