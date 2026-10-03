@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { relicCombatBonus, relicCombatBonuses, relicRankEffect } from '../data/loot-data.js';
+import { hydraXpPercents, relicCombatBonus, relicCombatBonuses, relicRankEffect } from '../data/loot-data.js';
 import {
   BRUMA_ENEMIES,
   BUNKER_ENEMIES,
@@ -170,8 +170,10 @@ describe('PvE combat rules', () => {
     }
   });
 
-  it('conserva la XP original de la Gargantilla para los jugadores existentes', () => {
-    expect([1, 2, 3].map(rank => relicRankEffect('relic_11', rank))).toEqual([12, 18, 25]);
+  it('Tres Fauces guarda por rango el % del primer enemigo y sus tres porcentajes', () => {
+    expect([1, 2, 3].map(rank => relicRankEffect('relic_11', rank))).toEqual([3, 6, 10]);
+    expect([1, 2, 3].map(rank => hydraXpPercents(relicRankEffect('relic_11', rank)))).toEqual([[3, 6, 10], [6, 10, 15], [10, 15, 20]]);
+    expect(hydraXpPercents(12)).toEqual([0, 0, 0]);
   });
 
   it('el Ojo aporta ataque físico y Mirada petrificante por rango', () => {

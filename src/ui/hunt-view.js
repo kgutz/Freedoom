@@ -189,6 +189,8 @@ function reportMarkup(report) {
       Number(encounter.miniFirstHitManaRecovered) > 0 ? `+${encounter.miniFirstHitManaRecovered} maná` : '',
       Number(encounter.miniOpeningDamageDealt) > 0 ? `+${encounter.miniOpeningDamageDealt} daño` : '',
       Number(encounter.miniVictoryHealthRecovered) > 0 ? `+${encounter.miniVictoryHealthRecovered} vida` : '',
+      Number(encounter.miniVictoryManaRecovered) > 0 ? `+${encounter.miniVictoryManaRecovered} maná` : '',
+      Number(encounter.hydraXp) > 0 ? `+${encounter.hydraXp} XP Tres Fauces` : '',
       Number(encounter.miniVictoryXp) > 0 ? `+${encounter.miniVictoryXp} XP` : '',
       Number(encounter.miniAllHabitsGold) > 0 ? `+${encounter.miniAllHabitsGold} oro` : '',
     ].filter(Boolean).join(' · ');

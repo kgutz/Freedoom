@@ -1,4 +1,4 @@
-import { relicRankEffect } from '../data/loot-data.js';
+import { hydraXpPercents, relicRankEffect } from '../data/loot-data.js';
 
 // One presentation source for detail, collection detail and forge previews.
 // Inherited values come from the saved fusion, never from its current rank.
@@ -6,7 +6,7 @@ const names = {
   relic_01: 'Protección', relic_02: 'Maná del hábito', relic_03: 'Experiencia del hábito',
   relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
   relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Escamas protectoras',
-  relic_10: 'Sangre adicional', relic_11: 'Tres hábitos', relic_12: 'Hábitos completos',
+  relic_10: 'Sangre adicional', relic_11: 'Tres Fauces', relic_12: 'Hábitos completos',
 };
 
 function baseDescription(id, value) {
@@ -21,9 +21,14 @@ function baseDescription(id, value) {
     relic_08: `Reduce un ${value}% el siguiente golpe que te alcance tras tu primer ataque a cada enemigo de Cacería.`,
     relic_09: `Reduce un ${value}% el daño recibido en Cacería. No reduce a cero un golpe con daño.`,
     relic_10: `Suma ${value}% a la probabilidad de +1 Sangre de Jefe al vencer al jefe semanal.`,
-    relic_11: `Gana ${value} XP al completar 3 hábitos distintos en el día. Una vez al día.`,
+    relic_11: tresFaucesCopy(value),
     relic_12: `Gana ${value} de oro al completar todos los hábitos programados para el día. Una vez al día.`,
   }[id];
+}
+
+function tresFaucesCopy(value) {
+  const [first, second, third] = hydraXpPercents(value);
+  return `En Cacería, cada enemigo derrotado concede un extra sobre su XP base: +${first}% el primero, +${second}% el segundo y +${third}% el tercero (minijefe). Se reinicia en cada Cacería y no se suma al total.`;
 }
 
 const singleCharge = 'Solo guardas 1 carga y la gastas al entrar.';
@@ -72,10 +77,18 @@ function fusionBonus(definition, rank, inherited) {
     fusion_36: `Con un minijefe de Cacería, Vampirismo sube ${increase('relic_07', value)}.`,
     fusion_37: `Con un minijefe de Cacería, Mirada petrificante sube ${increase('relic_08', value)}.`,
     fusion_38: `Con un minijefe de Cacería, Escamas protectoras sube ${increase('relic_09', value)}, sin reducir a cero un golpe con daño.`,
-    fusion_39: `Al completar 3 hábitos distintos hoy, el primer ataque que dañe al próximo minijefe de Cacería hace ${value} de daño extra. Una vez al día.`,
+    fusion_39: `Al derrotar a los dos primeros enemigos, el primer ataque que dañe al minijefe de Cacería hace ${value} de daño extra. Una vez por Cacería.`,
     fusion_40: `Al completar todos los hábitos del día, el primer minijefe derrotado hoy concede ${value} de oro extra. Una vez al día.`,
     fusion_41: `Al completar Constancia, el primer ataque que dañe a un minijefe en la próxima Cacería hace ${value} de daño extra. ${equippedCharge}`,
     fusion_42: `Al derrotar al primer minijefe de una Cacería, recuperas ${value}% de la Vida máxima, sin resucitar ni superar el máximo.`,
+    fusion_43: `Al derrotar a los dos primeros enemigos, el primer golpe que conecte el minijefe de Cacería hace ${value} de daño menos, sin reducir a cero un golpe con daño. Una vez por Cacería.`,
+    fusion_44: `Cuando tu primer ataque dañe a cada enemigo de Cacería, recuperas ${value} de Maná, sin superar el máximo. Una vez por enemigo.`,
+    fusion_45: `Al derrotar al minijefe de Cacería, recuperas ${value} de Maná, sin superar el máximo. Una vez por Cacería.`,
+    fusion_46: `Al derrotar al minijefe de Cacería, recuperas ${value} de Vida, sin resucitar ni superar el máximo. Una vez por Cacería.`,
+    fusion_47: `Con el minijefe de Cacería, Vampirismo sube ${increase('relic_07', value)}.`,
+    fusion_48: `Con el minijefe de Cacería, Mirada petrificante sube ${increase('relic_08', value)}.`,
+    fusion_49: `Con el minijefe de Cacería, Escamas protectoras sube ${increase('relic_09', value)}, sin reducir a cero un golpe con daño.`,
+    fusion_50: `Cuando tu primer ataque dañe a cada enemigo de Cacería, hace ${value} de daño extra. Una vez por enemigo.`,
   }[definition.id];
 }
 

@@ -66,8 +66,8 @@ describe('Malla: Escamas protectoras', () => {
     expect(weeklyBossPenalty({ ...penalty, relicEffects: equippedHuntEffects(state) })).toEqual(weeklyBossPenalty(penalty));
     expect(weeklyBossPenalty(penalty).hp).toBe(70);
   });
-  it('no hereda los antiguos 40% desde recetas ajenas; solo las siete recetas legítimas de Malla', () => {
-    expect(FUSION_RELIC_DEFINITIONS.filter(r => r.ingredientIds.includes('relic_09'))).toHaveLength(7);
+  it('no hereda los antiguos 40% desde recetas ajenas; solo las ocho recetas legítimas de Malla', () => {
+    expect(FUSION_RELIC_DEFINITIONS.filter(r => r.ingredientIds.includes('relic_09'))).toHaveLength(8);
     const state = stateFor(3);
     state.inventory.relics.fusion_01 = { unlocked: true, rank: 3, rarity: 'rare', affixes: [], inheritedEffects: { relic_09: 40 } };
     state.inventory.equipped = ['fusion_01'];

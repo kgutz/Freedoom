@@ -211,9 +211,9 @@ export const RELIC_DEFINITIONS = [
     equipmentType: 'choker',
     effectFamily: 'experience',
     image: 'relics/relic_11_gargantilla_tres_fauces.webp',
-    effectLabel: 'Completar tres hábitos distintos durante el mismo día concede experiencia adicional. Una activación diaria.',
+    effectLabel: 'Tres Fauces: en Cacería, cada enemigo derrotado concede un porcentaje extra de su XP base, mayor con el segundo y el tercero.',
     affixPool: ['discipline', 'arcane', 'fortune'],
-    valueUnit: 'XP',
+    valueUnit: '% XP',
   },
   {
     id: 'relic_12',
@@ -275,8 +275,8 @@ export const FUSION_RELIC_DEFINITIONS = [
   {
     id: 'fusion_39', recipeId: 'fusion_recipe_39', ingredientIds: ['relic_11', 'relic_10'],
     name: 'Gargantilla de las Tres Almas', equipmentType: 'choker', image: 'relics/fusion_39_gargantilla_tres_almas.webp',
-    effectLabel: 'Hereda Tres hábitos y Sangre adicional. Tras completar tres hábitos, refuerza el primer ataque al próximo minijefe.',
-    synergy: { type: 'mini-three-habits-hit', values: { 1: 2, 2: 3, 3: 4 } },
+    effectLabel: 'Hereda Tres Fauces y Sangre adicional. Tras derrotar a los dos primeros enemigos, el primer ataque al minijefe hace daño extra.',
+    synergy: { type: 'mini-first-hit-damage', values: { 1: 2, 2: 3, 3: 4 } },
   },
   {
     id: 'fusion_40', recipeId: 'fusion_recipe_40', ingredientIds: ['relic_12', 'relic_10'],
@@ -295,6 +295,54 @@ export const FUSION_RELIC_DEFINITIONS = [
     name: 'Colmillo de la Llama Devorada', equipmentType: 'fang', image: 'relics/fusion_42_colmillo_llama_devorada.webp',
     effectLabel: 'Hereda Vida de victoria y Sangre adicional. Derrotar al primer minijefe de la Cacería recupera Vida extra.',
     synergy: { type: 'mini-victory-health', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_43', recipeId: 'fusion_recipe_43', ingredientIds: ['relic_01', 'relic_11'],
+    name: 'Corazón de las Tres Fauces', equipmentType: 'heart', image: 'relics/fusion_43_corazon_tres_fauces.webp',
+    effectLabel: 'Hereda Protección y Tres Fauces. Tras derrotar a los dos primeros enemigos, reduce el primer golpe que conecte el minijefe.',
+    synergy: { type: 'mini-first-hit-shield', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_44', recipeId: 'fusion_recipe_44', ingredientIds: ['relic_02', 'relic_11'],
+    name: 'Lágrima del Eco Triple', equipmentType: 'spirit', image: 'relics/fusion_44_lagrima_eco_triple.webp',
+    effectLabel: 'Hereda Maná del hábito y Tres Fauces. El primer ataque que dañe a cada enemigo recupera Maná.',
+    synergy: { type: 'first-hit-mana-each', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_45', recipeId: 'fusion_recipe_45', ingredientIds: ['relic_05', 'relic_11'],
+    name: 'Redoma de las Tres Gargantas', equipmentType: 'vessel', image: 'relics/fusion_45_redoma_tres_gargantas.webp',
+    effectLabel: 'Hereda Maná de victoria y Tres Fauces. Derrotar al minijefe recupera Maná una vez por Cacería.',
+    synergy: { type: 'mini-victory-mana', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_46', recipeId: 'fusion_recipe_46', ingredientIds: ['relic_06', 'relic_11'],
+    name: 'Colmillo de la Hidra Renacida', equipmentType: 'fang', image: 'relics/fusion_46_colmillo_hidra_renacida.webp',
+    effectLabel: 'Hereda Vida de victoria y Tres Fauces. Derrotar al minijefe recupera Vida, sin resucitar.',
+    synergy: { type: 'mini-victory-health-flat', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_47', recipeId: 'fusion_recipe_47', ingredientIds: ['relic_07', 'relic_11'],
+    name: 'Gargantilla del Hambre Triple', equipmentType: 'choker', image: 'relics/fusion_47_gargantilla_hambre_triple.webp',
+    effectLabel: 'Hereda Vampirismo y Tres Fauces. Aumenta ligeramente el Vampirismo contra minijefes.',
+    synergy: { type: 'mini-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_48', recipeId: 'fusion_recipe_48', ingredientIds: ['relic_08', 'relic_11'],
+    name: 'Ojo de las Tres Vigilias', equipmentType: 'eye', image: 'relics/fusion_48_ojo_tres_vigilias.webp',
+    effectLabel: 'Hereda Mirada petrificante y Tres Fauces. Su efecto es mayor contra minijefes.',
+    synergy: { type: 'mini-petrification', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_49', recipeId: 'fusion_recipe_49', ingredientIds: ['relic_09', 'relic_11'],
+    name: 'Malla de la Hidra Acorazada', equipmentType: 'armor', image: 'relics/fusion_49_malla_hidra_acorazada.webp',
+    effectLabel: 'Hereda Escamas protectoras y Tres Fauces. Escamas protege algo más contra minijefes.',
+    synergy: { type: 'mini-armor', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_50', recipeId: 'fusion_recipe_50', ingredientIds: ['relic_12', 'relic_11'],
+    name: 'Puño del Juramento Triple', equipmentType: 'fist', image: 'relics/fusion_50_puno_juramento_triple.webp',
+    effectLabel: 'Hereda Hábitos completos y Tres Fauces. El primer ataque que dañe a cada enemigo causa daño extra.',
+    synergy: { type: 'first-hit-damage-each', values: { 1: 1, 2: 2, 3: 3 } },
   },
   {
     id: 'fusion_26', recipeId: 'fusion_recipe_26', ingredientIds: ['relic_02', 'relic_09'],
@@ -556,6 +604,9 @@ export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
   ['relic_01', 'relic_08'],
   ['relic_01', 'relic_09'],
   ['relic_08', 'relic_09'],
+  // Tres Fauces pertenece a la familia de experiencia, igual que la Daga y el Yelmo.
+  ['relic_03', 'relic_11'],
+  ['relic_04', 'relic_11'],
 ];
 
 export const ALL_RELIC_DEFINITIONS = [
@@ -579,9 +630,24 @@ export const RELIC_RANK_EFFECTS = {
   relic_08: { 1: 10, 2: 15, 3: 27 },
   relic_09: { 1: 5, 2: 8, 3: 12 },
   relic_10: { 1: 10, 2: 15, 3: 20 },
-  relic_11: { 1: 12, 2: 18, 3: 25 },
+  relic_11: { 1: 3, 2: 6, 3: 10 },
   relic_12: { 1: 5, 2: 8, 3: 12 },
 };
+
+/* Tres Fauces (relic_11): % extra sobre la XP base del 1.er, 2.º y 3.er enemigo de la Cacería.
+   El valor guardado por rango (RELIC_RANK_EFFECTS.relic_11) es el % del primer enemigo y sirve de
+   clave: así las fusiones heredan el rango sin guardar nada nuevo. */
+export const HYDRA_XP_PERCENTS_BY_RANK = Object.freeze({
+  1: Object.freeze([3, 6, 10]),
+  2: Object.freeze([6, 10, 15]),
+  3: Object.freeze([10, 15, 20]),
+});
+export function hydraXpPercents(firstEnemyPercent) {
+  const rank = [1, 2, 3].find((candidate) => HYDRA_XP_PERCENTS_BY_RANK[candidate][0] === Number(firstEnemyPercent));
+  return rank ? [...HYDRA_XP_PERCENTS_BY_RANK[rank]] : [0, 0, 0];
+}
+// Atributos de la Hydra: Ataque, Poder y Defensa por rango. Sustituyen al bonus genérico del tipo de equipo.
+export const HYDRA_COMBAT_BONUS_BY_RANK = Object.freeze({ 1: 5, 2: 6, 3: 7 });
 
 export const RELIC_COMBAT_STATS_BY_EQUIPMENT_TYPE = Object.freeze({
   heart: 'defense',
@@ -653,20 +719,26 @@ export function relicCombatBonus(relicId, rank = 1) {
   };
 }
 
+function baseRelicCombatBonuses(relicId, rank = 1) {
+  if (relicId === 'relic_11') {
+    const value = HYDRA_COMBAT_BONUS_BY_RANK[Math.min(3, Math.max(1, Math.trunc(Number(rank) || 1)))];
+    return ['physicalAttack', 'magicAttack', 'defense'].map((stat) => ({ stat, value }));
+  }
+  const bonus = relicCombatBonus(relicId, rank);
+  return bonus.stat ? [bonus] : [];
+}
+
 export function relicCombatBonuses(relicId, rank = 1, ingredientSnapshots = {}) {
   if (relicId === 'halloween-mask') return [{stat:'physicalAttack',value:5},{stat:'magicAttack',value:5},{stat:'defense',value:4}];
   const definition = relicDefinition(relicId);
-  if (!Array.isArray(definition?.ingredientIds)) {
-    const bonus = relicCombatBonus(relicId, rank);
-    return bonus.stat ? [bonus] : [];
-  }
+  if (!Array.isArray(definition?.ingredientIds)) return baseRelicCombatBonuses(relicId, rank);
 
   const totals = new Map();
   for (const ingredientId of definition.ingredientIds) {
     const ingredientRank = ingredientSnapshots?.[ingredientId]?.rank ?? rank;
-    const bonus = relicCombatBonus(ingredientId, ingredientRank);
-    if (!bonus.stat) continue;
-    totals.set(bonus.stat, (totals.get(bonus.stat) || 0) + bonus.value);
+    for (const bonus of baseRelicCombatBonuses(ingredientId, ingredientRank)) {
+      totals.set(bonus.stat, (totals.get(bonus.stat) || 0) + bonus.value);
+    }
   }
   return [...totals].map(([stat, value]) => ({ stat, value }));
 }

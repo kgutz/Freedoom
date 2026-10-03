@@ -64,7 +64,7 @@ describe('Fusiones de la Calavera', () => {
     const enemy = { maxHp: 1000, physicalAttack: 10, defense: 0 };
     const base = simulatePveCombat({ hero, enemy, heroHp: 50, heroMana: 10, maxRounds: 3, roll: () => 0.99 });
     const enhanced = simulatePveCombat({ hero, enemy, heroHp: 50, heroMana: 10, maxRounds: 3, roll: () => 0.99,
-      relicEffects: { miniFirstHitShield: 4, miniManaOpenings: 3, miniFirstHitMana: 4, miniThreeHabitsHit: 4 } });
+      relicEffects: { miniFirstHitShield: 4, miniManaOpenings: 3, miniFirstHitMana: 4, miniFirstHitDamage: 4 } });
     expect(enhanced.miniFirstHitShieldPrevented).toBeGreaterThan(0);
     expect(enhanced.miniFirstHitShieldPrevented).toBeLessThanOrEqual(4);
     expect(enhanced.miniManaSaved).toBe(3);

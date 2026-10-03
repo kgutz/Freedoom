@@ -25,6 +25,7 @@ import {
   SHOP_MAX_VISIBLE_RELICS,
   bossReward,
   fusionDefinition,
+  hydraXpPercents,
   isBaseRelic,
   relicDefinition,
   relicCombatBonuses,
@@ -144,7 +145,8 @@ function normalizeRelicRecord(id, value) {
   // Recompute changed main effects from ingredient ranks; historical XP is untouched.
   // Discard obsolete/injected armor snapshots on recipes without this ingredient.
   if (!fusion || !definition.ingredientIds.includes('relic_09')) delete inheritedEffects.relic_09;
-  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09']) {
+  // relic_11 (Tres Fauces) cambió de XP diaria por hábitos a XP porcentual de Cacería: el rango se conserva.
+  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09', 'relic_11']) {
     if (!fusion || !definition.ingredientIds.includes(baseId)) continue;
     const rank = ingredientSnapshots[baseId]?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
     inheritedEffects[baseId] = relicRankEffect(baseId, rank);
@@ -1801,6 +1803,9 @@ export function equippedHuntEffects(state) {
   const maskActive = normalized.inventory.equipped.includes('halloween-mask') && (!mask.expiresAt || mask.expiresAt > Date.now());
   const sum = id => equippedRelicEffectSources(normalized, id).reduce((total, source) => total + source.value, 0);
   const charged = id => normalized.inventory.equipped.includes(id) && normalized.inventory.huntCharges[id];
+  /* Tres Fauces solo puede venir de una reliquia equipada: Hydra y sus fusiones comparten familia. */
+  const hydraSource = equippedRelicEffectSources(normalized, 'relic_11')[0];
+  const hydraXp = hydraSource ? hydraXpPercents(hydraSource.value) : [0, 0, 0];
   const synergy = id => normalized.inventory.equipped.includes(id)
     ? fusionDefinition(id).synergy.values[normalized.inventory.relics[id].rank] : 0;
   return {
@@ -1811,14 +1816,18 @@ export function equippedHuntEffects(state) {
     armorManaCap: synergy('fusion_29'),
     armorHealthCap: synergy('fusion_30'),
     armorVampirism: synergy('fusion_31'),
-    miniFirstHitShield: synergy('fusion_32'),
+    miniFirstHitShield: synergy('fusion_32') + synergy('fusion_43'),
     miniManaOpenings: synergy('fusion_33'),
     miniVictoryXp: synergy('fusion_34'),
     miniFirstHitMana: synergy('fusion_35'),
-    miniVampirism: synergy('fusion_36'),
-    miniPetrification: synergy('fusion_37'),
-    miniArmor: synergy('fusion_38'),
-    miniThreeHabitsHit: synergy('fusion_39'),
+    miniVampirism: synergy('fusion_36') + synergy('fusion_47'),
+    miniPetrification: synergy('fusion_37') + synergy('fusion_48'),
+    miniArmor: synergy('fusion_38') + synergy('fusion_49'),
+    miniFirstHitDamage: synergy('fusion_39'),
+    firstHitDamageEach: synergy('fusion_50'),
+    firstHitManaEach: synergy('fusion_44'),
+    miniVictoryMana: synergy('fusion_45'),
+    miniVictoryHealthFlat: synergy('fusion_46'),
     miniAllHabitsGold: synergy('fusion_40'),
     miniConstancyHit: charged('fusion_41') ? synergy('fusion_41') : 0,
     miniVictoryHealth: synergy('fusion_42'),
@@ -1827,6 +1836,7 @@ export function equippedHuntEffects(state) {
     petrificationMana: synergy('fusion_23'),
     petrificationHealth: synergy('fusion_24'),
     petrificationVampirism: synergy('fusion_25'),
+    hydraXpFirst: hydraXp[0], hydraXpSecond: hydraXp[1], hydraXpThird: hydraXp[2],
     maskBloodChance: maskActive ? 20 : 0,
     vampirism: sum('relic_07') + (maskActive ? 10 : 0), petrification: sum('relic_08'),
     damageReduction: sum('relic_09'),
