@@ -1,6 +1,6 @@
 export const HALLOWEEN_CANDIES = Object.freeze([
   Object.freeze({ id: 'blood', name: 'Chuche de Sangre', image: 'potions/candy_blood.webp', price: 100,
-    shortEffect: 'En Cacería difícil, una tirada del 22% para obtener +1 Sangre del minijefe (máximo +1 extra por Cacería junto a la máscara).' }),
+    shortEffect: 'En Cacería difícil, una tirada del 28% para obtener +1 Sangre del minijefe (máximo +1 extra por Cacería junto a la máscara).' }),
   Object.freeze({ id: 'energy', name: 'Chuche de Energía', image: 'potions/candy_energy.webp', price: 30,
     shortEffect: 'Recupera 2 puntos de Energía de Cacería al instante.' }),
   Object.freeze({ id: 'experience', name: 'Chuche de Experiencia', image: 'potions/candy_experience.webp', price: 30,
@@ -12,7 +12,8 @@ export const HALLOWEEN_CANDY_BY_ID = Object.freeze(Object.fromEntries(
 ));
 export const HALLOWEEN_CANDY_DROP_RATES = Object.freeze({ easy: .07, medium: .12, hard: .20 });
 export const HALLOWEEN_BLOOD_DROP_RATE = .25;
-export const HALLOWEEN_BLOOD_BONUS_RATE = .22;
+export const HALLOWEEN_BLOOD_BONUS_RATE = .28;
+export const HALLOWEEN_MASK_BLOOD_RATE = .25;
 export const HALLOWEEN_XP_BONUS_RATE = .50;
 
 const objectOf = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -85,7 +86,7 @@ export function rollHalloweenHuntCandy({ candy, report, active = false, random =
     ? Math.round(report.rewards.xp * HALLOWEEN_XP_BONUS_RATE) : 0;
   // Mantiene la elegibilidad de expediciones antiguas, pero aplica el balance actual.
   // Máximo +1 Sangre extra por cacería: si la chuche ya acertó, la máscara no tira.
-  const maskBloodBonus = !bloodBonus && minibossWon && [20, 50].includes(report.maskBloodChance) && random() < .20 ? 1 : 0;
+  const maskBloodBonus = !bloodBonus && minibossWon && [20, 50].includes(report.maskBloodChance) && random() < HALLOWEEN_MASK_BLOOD_RATE ? 1 : 0;
   for (const id of Object.keys(drops)) current.owned[id] += drops[id];
   if (prepared.blood && !minibossWon) current.owned.blood += 1;
   if (prepared.experience && !Number(report.rewards?.xp)) current.owned.experience += 1;

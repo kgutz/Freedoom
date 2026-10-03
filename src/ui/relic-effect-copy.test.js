@@ -4,11 +4,11 @@ import { grantBossRewards, fuseRelics } from '../domain/loot-rules.js';
 import { renderRelicDetail, renderForgeView, renderFusionView } from './inventory-view.js';
 import { relicEffectCopy, HUNT_CHARGE_RELIC_IDS } from './relic-effect-copy.js';
 
-it('la información de la máscara anuncia el 20% sin cambiar el vampirismo', () => {
-  expect(relicDefinition('halloween-mask').effectLabel).toContain('20%');
+it('la información de la máscara anuncia el 25% sin cambiar el vampirismo', () => {
+  expect(relicDefinition('halloween-mask').effectLabel).toContain('25%');
   expect(relicDefinition('halloween-mask').effectLabel).toContain('10% de Vampirismo');
   const copy=JSON.stringify(relicEffectCopy(relicDefinition('halloween-mask'),3));
-  expect(copy).toContain('20%');
+  expect(copy).toContain('25%');
   expect(copy).not.toContain('50%');
 });
 

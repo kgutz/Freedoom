@@ -6,16 +6,20 @@ import {
 } from './halloween-candy-rules.js';
 
 describe('chuches de Halloween', () => {
-  it.each([[.199,1,0],[.20,1,0],[.219,1,0],[.22,0,0],[.49,0,0]])('aplica 22%% a la chuche y 20%% a la máscara (máx. +1 extra) con tirada %s', (value,bloodBonus,maskBloodBonus) => {
+  it.each([[.199,1,0],[.20,1,0],[.279,1,0],[.28,0,0],[.49,0,0]])('aplica 28%% a la chuche (máx. +1 extra, la máscara no tira si acierta) con tirada %s', (value,bloodBonus,maskBloodBonus) => {
     for (const maskBloodChance of [20,50]) {
       const report={id:`balance-${maskBloodChance}`,difficultyId:'hard',maskBloodChance,halloweenCandy:{blood:true},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
       expect(rollHalloweenHuntCandy({report,active:false,random:()=>value})).toMatchObject({bloodBonus,maskBloodBonus});
     }
   });
+  it.each([[.199,1],[.249,1],[.25,0],[.49,0]])('aplica 25%% a la máscara sin chuche preparada con tirada %s', (value,maskBloodBonus) => {
+    const report={id:'mask-only-roll',difficultyId:'hard',maskBloodChance:20,halloweenCandy:{},encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
+    expect(rollHalloweenHuntCandy({report,active:false,random:()=>value})).toMatchObject({bloodBonus:0,maskBloodBonus});
+  });
   it('conserva precio y caída de la chuche y actualiza su descripción', () => {
     expect(HALLOWEEN_BLOOD_DROP_RATE).toBe(.25);
     expect(HALLOWEEN_CANDY_BY_ID.blood.price).toBe(100);
-    expect(HALLOWEEN_CANDY_BY_ID.blood.shortEffect).toContain('22%');
+    expect(HALLOWEEN_CANDY_BY_ID.blood.shortEffect).toContain('28%');
     const report={id:'drop-unchanged',difficultyId:'hard',encounters:[{won:true},{won:true},{won:true}],rewards:{xp:22}};
     expect(rollHalloweenHuntCandy({report,active:true,random:()=>.20}).drops.blood).toBe(1);
   });

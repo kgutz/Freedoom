@@ -563,7 +563,7 @@ export const ALL_RELIC_DEFINITIONS = [
   ...FUSION_RELIC_DEFINITIONS,
   { id:'halloween-mask', name:'Máscara del Diezmo Carmesí', image:'relics/relic_halloween_mascara_diezmo_carmesi.webp',
     equipmentType:'halloween-mask', effectFamily:'halloween-blood', seasonal:'halloween', fixedRank:3,
-    effectLabel:'10% de Vampirismo y una tirada del 20% para +1 Sangre al vencer al minijefe difícil (máximo +1 extra por Cacería junto a la chuche). Dura 24 horas desde la primera equipación.', affixPool:[] },
+    effectLabel:'10% de Vampirismo y una tirada del 25% para +1 Sangre al vencer al minijefe difícil (máximo +1 extra por Cacería junto a la chuche). Dura 24 horas desde la primera equipación.', affixPool:[] },
 ];
 
 // Rangos II y III son valores conservadores provisionales y están aislados aquí
