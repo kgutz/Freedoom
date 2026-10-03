@@ -1782,6 +1782,19 @@ export function activeEquippedRelicCount(state, now = Date.now()) {
   }).length;
 }
 
+/* Huecos de reliquia libres y reliquias en el Bolso que podrían ocuparlos (el aviso de Cacería
+   solo tiene sentido si hay algo que equipar). */
+export function relicSlotStatus(state, now = Date.now()) {
+  const normalized = normalizeLootState(state);
+  const active = activeEquippedRelicCount(normalized, now);
+  const spare = Object.entries(normalized.inventory.relics).filter(([id, record]) => {
+    const expiresAt = Number(record?.expiresAt) || 0;
+    return !normalized.inventory.equipped.includes(id) && (!expiresAt || expiresAt > now);
+  }).length;
+  const free = Math.max(0, MAX_EQUIPPED_RELICS - active);
+  return { active, free, spare, canFill: free > 0 && spare > 0, empty: active === 0 };
+}
+
 export function equippedHuntEffects(state) {
   const normalized = normalizeLootState(state);
   const mask = normalized.inventory.relics['halloween-mask'];

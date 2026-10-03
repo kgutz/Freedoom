@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeEquippedRelicCount,
+  relicSlotStatus,
   acknowledgeLootNotice,
   advancePeriodicManaRecovery,
   attemptForge,
@@ -1220,5 +1221,21 @@ describe('aviso de cacería sin reliquia', () => {
       equipped: ['halloween-mask'] } };
     expect(activeEquippedRelicCount(withMask, now)).toBe(1);
     expect(activeEquippedRelicCount(withMask, now + 5000)).toBe(0);
+  });
+});
+
+describe('huecos de reliquia para el aviso de Cacería', () => {
+  const now = Date.now();
+  const stateWith = (relics, equipped) => {
+    const base = emptyLootState();
+    return { ...base, inventory: { ...base.inventory, relics, equipped } };
+  };
+  const owned = { unlocked: true, rank: 1, rarity: 'common', affixes: [], expiresAt: 0 };
+  it('avisa con un hueco libre solo si hay otra reliquia que equipar', () => {
+    expect(relicSlotStatus(stateWith({}, []), now)).toMatchObject({ free: 2, spare: 0, canFill: false });
+    expect(relicSlotStatus(stateWith({ relic_01: owned }, ['relic_01']), now)).toMatchObject({ free: 1, spare: 0, canFill: false });
+    expect(relicSlotStatus(stateWith({ relic_01: owned, relic_02: owned }, ['relic_01']), now)).toMatchObject({ free: 1, spare: 1, canFill: true, empty: false });
+    expect(relicSlotStatus(stateWith({ relic_01: owned, relic_02: owned }, []), now)).toMatchObject({ free: 2, canFill: true, empty: true });
+    expect(relicSlotStatus(stateWith({ relic_01: owned, relic_02: owned }, ['relic_01', 'relic_02']), now).canFill).toBe(false);
   });
 });
