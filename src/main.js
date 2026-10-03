@@ -172,7 +172,7 @@ import {
   reconcilePotionHabitBonus,
   usePotion
 } from './domain/potion-rules.js';
-import { POTION_BAG_SLOT_LIMIT, POTION_BY_ID } from './data/potion-data.js';
+import { POTION_BAG_SLOT_LIMIT, POTION_BY_ID, POTION_RESTORE_AMOUNTS } from './data/potion-data.js';
 import {
   addBeerIntoxication,
   beerUndoEffects,
@@ -300,7 +300,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.61';
+const APP_VERSION='2.29.62';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -5463,7 +5463,8 @@ function potionViewOptions(){
   const bossIndex=Math.max(0,Number(state.game?.bossCombat?.bossIndex)||0);
   const nowTimestamp=Date.now();
   const hunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
-  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',level:gameStats().lvl,huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY,halloweenActive:halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)};
+  const potionMaxes=heroMaxes();
+  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',level:gameStats().lvl,heroHp:state.game.hp,heroMaxHp:potionMaxes.maxHp,heroMp:state.game.mp,heroMaxMp:potionMaxes.maxMp,huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY,halloweenActive:halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)};
 }
 
 function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
@@ -6286,10 +6287,10 @@ function handlePotionUse(potionId){
   state.inventory=result.inventory;
   let notice='Poción utilizada';
   if(potionId==='life'){
-    const before=state.game.hp||0; state.game.hp=capHp(before+20); notice=`+${state.game.hp-before} Salud`;
+    const before=state.game.hp||0; state.game.hp=capHp(before+POTION_RESTORE_AMOUNTS.life); notice=`+${state.game.hp-before} Salud`;
     flashHeroStatFeedback('hp');
   }else if(potionId==='mana'){
-    const before=state.game.mp||0; state.game.mp=capMp(before+25); notice=`+${state.game.mp-before} Maná`;
+    const before=state.game.mp||0; state.game.mp=capMp(before+POTION_RESTORE_AMOUNTS.mana); notice=`+${state.game.mp-before} Maná`;
     flashHeroStatFeedback('mp');
   }else if(potionId==='energy'){
     const reward=grantRewardHuntEnergy({hunt:normalizedHunt,amount:result.energyRestore,nowTimestamp});

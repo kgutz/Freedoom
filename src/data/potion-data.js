@@ -44,4 +44,6 @@ export const POTION_DAILY_LIMITS = Object.freeze({
   fortune: 1, experience: 1, energy: 3,
 });
 export const POTION_ENERGY_RESTORES = Object.freeze([5, 3, 2]);
+// Puntos que recuperan las pociones instantáneas de Vida y Maná.
+export const POTION_RESTORE_AMOUNTS = Object.freeze({ life: 20, mana: 25 });
 export const POTION_BLOOD_CHANCES = Object.freeze([20, 10, 5]);

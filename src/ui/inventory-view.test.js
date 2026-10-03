@@ -89,6 +89,46 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.relicDetailBody.innerHTML).toContain('aria-disabled="true"');
   });
 
+  it('las pociones de Vida y Maná muestran la barra del recurso y cuánto subirá', () => {
+    const document = fakeDocument();
+    const state = { inventory: { potions: { owned: { life: 3, mana: 2 } } } };
+    renderPotionDetail(document, state, 'life', { dayKey: '2026-10-03', heroHp: 100, heroMaxHp: 146, heroMp: 10, heroMaxMp: 50 });
+    let html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('potion-resource-meter--hp');
+    expect(html).toContain('100 / 146');
+    expect(html).toContain('Esta poción sube +20 · quedarás en 120 / 146');
+    expect(html.indexOf('potion-resource-meter')).toBeLessThan(html.indexOf('data-use-potion'));
+    expect(html).not.toContain('aria-disabled="true"');
+    renderPotionDetail(document, state, 'life', { dayKey: '2026-10-03', heroHp: 140, heroMaxHp: 146, heroMp: 10, heroMaxMp: 50 });
+    expect(document.elements.relicDetailBody.innerHTML).toContain('quedarás en 146 / 146');
+    renderPotionDetail(document, state, 'mana', { dayKey: '2026-10-03', heroHp: 100, heroMaxHp: 146, heroMp: 10, heroMaxMp: 50 });
+    html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('potion-resource-meter--mp');
+    expect(html).toContain('Esta poción sube +25 · quedarás en 35 / 50');
+  });
+  it('avisa cuando la Salud o el Maná ya están completos y bloquea el uso', () => {
+    const document = fakeDocument();
+    const state = { inventory: { potions: { owned: { life: 3, mana: 2 } } } };
+    renderPotionDetail(document, state, 'life', { dayKey: '2026-10-03', heroHp: 146, heroMaxHp: 146, heroMp: 10, heroMaxMp: 50 });
+    let html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('Salud completa. No necesitas usar más pociones de Vida.');
+    expect(html).toContain('is-full');
+    expect(html).toContain('SALUD COMPLETA');
+    expect(html).toContain('aria-disabled="true"');
+    renderPotionDetail(document, state, 'mana', { dayKey: '2026-10-03', heroHp: 100, heroMaxHp: 146, heroMp: 50, heroMaxMp: 50 });
+    html = document.elements.relicDetailBody.innerHTML;
+    expect(html).toContain('Maná completo. No necesitas usar más pociones de Maná.');
+    expect(html).toContain('MANÁ COMPLETO');
+  });
+  it('Vigor y la tienda no muestran la barra del recurso', () => {
+    const document = fakeDocument();
+    const state = { inventory: { potions: { owned: { energy: 2 } } } };
+    renderPotionDetail(document, state, 'energy', { dayKey: '2026-10-03', huntEnergy: 4, huntEnergyCapacity: 20 });
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('potion-resource-meter');
+    renderPotionDetail(document, { inventory: { potions: { owned: {} } }, economy: { coins: 100 } }, 'life', { mode: 'shop', dayKey: '2026-10-03', heroHp: 10, heroMaxHp: 100 });
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('potion-resource-meter');
+  });
+
   it.each(['fusion_26','fusion_27','fusion_28','fusion_29','fusion_30','fusion_31'])('%s presenta arte, límites y herencias R1/2/3', id => {
     const recipe=fusionDefinition(id);
     for (const rank of [1,2,3]) {
