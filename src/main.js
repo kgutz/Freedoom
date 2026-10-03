@@ -300,7 +300,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.59';
+const APP_VERSION='2.29.60';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4362,7 +4362,12 @@ document.getElementById('relicWarnSkip').addEventListener('click',()=>{
 document.getElementById('relicWarnEquip').addEventListener('click',()=>{
   huntRelicReturn=relicWarnContext;
   closeRelicWarning();
-  openInventory('bag');
+  /* Abre el mismo selector que el "+" de la ficha, apuntando al primer hueco libre. */
+  const equipped=normalizeLootState(state).inventory.equipped;
+  const slot=Math.max(0,[0,1].find(index=>!equipped[index])??equipped.length);
+  forgePickerTarget={mode:'equip',slot,source:'hunt'};
+  renderForgeRelicPicker(document,state,forgePickerTarget);
+  document.getElementById('forgeRelicPickerBg').classList.add('show');
 });
 document.getElementById('relicWarnBg').addEventListener('click',event=>{
   if(event.target.id==='relicWarnBg') closeRelicWarning();
@@ -4556,6 +4561,12 @@ document.getElementById('view-habits').addEventListener('click',event=>{
   const monster=event.target.closest('[data-hunt-monster]');
   if(monster&&renderHuntMonsterDetail({document,enemyId:monster.dataset.huntMonster})){
     showSheet(document,'sheetHuntMonster');
+    return;
+  }
+  const infoButton=event.target.closest('[data-hunt-info]');
+  if(infoButton){
+    const tip=document.getElementById('huntLaunchTip');
+    if(tip){tip.hidden=!tip.hidden;infoButton.setAttribute('aria-expanded',String(!tip.hidden));}
     return;
   }
   const startButton=event.target.closest('[data-start-hunt]');
@@ -7146,7 +7157,7 @@ document.getElementById('outfitSelectorBg').addEventListener('input',event=>{
   if(saleButton) saleButton.textContent=`VENDER ${quantity} · ${total} ORO`;
 });
 document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
-  if(event.target.id==='forgeRelicPickerBg'){event.currentTarget.classList.remove('show');return;}
+  if(event.target.id==='forgeRelicPickerBg'){event.currentTarget.classList.remove('show');huntRelicReturn=null;return;}
   const unequipChoice=event.target.closest('[data-picker-unequip]');
   if(unequipChoice&&forgePickerTarget?.mode==='equip'){
     const returnToCharacter=forgePickerTarget.source==='character';
@@ -7181,6 +7192,7 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
     renderInventoryView(document,state,potionViewOptions()); renderHero();
     if(returnToCharacter) renderCurrentCharacterSheet();
     showToast('Reliquia equipada','heal');
+    returnToHuntAfterEquip();
     return;
   }
   if(forgePickerTarget.mode==='upgrade'||forgePickerTarget.mode==='defusion') selectedForgeRelicId=relicId;
@@ -7190,7 +7202,10 @@ document.getElementById('forgeRelicPickerBg').addEventListener('click',event=>{
   event.currentTarget.classList.remove('show');
   renderForgeView(document,state,selectedForgeRelicId,forgeRenderOptions());
 });
-document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>document.getElementById('forgeRelicPickerBg').classList.remove('show'));
+document.getElementById('forgeRelicPickerClose').addEventListener('click',()=>{
+  document.getElementById('forgeRelicPickerBg').classList.remove('show');
+  huntRelicReturn=null;
+});
 function equipRelicFromDetail(equip){
   const relicId=equip.dataset.equipRelic;
   const replace=equip.dataset.replaceSlot===undefined?null:Number(equip.dataset.replaceSlot);

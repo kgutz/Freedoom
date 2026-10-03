@@ -201,6 +201,38 @@ describe('informe de Cacería', () => {
     expect(root.innerHTML).toContain('<span class="hunt-difficulty-main"><span>Fácil</span><i aria-hidden="true">-</i><b>');
   });
 
+  it('fija la barra de dificultad al final y marca la última usada', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'fields-of-mist' }, innerHTML: '' };
+    const now = new Date(2026, 7, 26, 12).getTime();
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: { energyDay: '2026-08-26', energy: 10, lastReport: { id: 'r1', regionId: 'fields-of-mist', difficultyId: 'medium', completedAt: now - 1000, encounters: [], rewards: {} } } },
+      stats: { lvl: 30 },
+      nowTimestamp: now,
+    });
+    expect(root.innerHTML).not.toContain('hunt-launch"');
+    expect(root.innerHTML).toContain('class="hunt-launch-bar"');
+    expect(root.innerHTML.indexOf('hunt-launch-bar')).toBeGreaterThan(root.innerHTML.indexOf('hunt-roster'));
+    expect(root.innerHTML).toContain('data-hunt-info');
+    expect(root.innerHTML.match(/is-last/g)).toHaveLength(1);
+    expect(root.innerHTML).toMatch(/hunt-difficulty medium[^>]*is-last/);
+    expect(root.innerHTML).toContain('ÚLTIMA');
+  });
+
+  it('con una expedición activa la barra muestra el tiempo restante en vez de los botones', () => {
+    const root = { dataset: { huntScreen: 'region', huntRegion: 'fields-of-mist' }, innerHTML: '' };
+    const now = new Date(2026, 7, 26, 12).getTime();
+    renderHuntView({
+      document: { getElementById: () => root },
+      game: { cls: 'paladin', hunt: { energyDay: '2026-08-26', energy: 5, active: { id: 'a1', regionId: 'fields-of-mist', difficultyId: 'easy', startedAt: now - 60000, endsAt: now + 120000 } } },
+      stats: { lvl: 30 },
+      nowTimestamp: now,
+    });
+    expect(root.innerHTML).toContain('hunt-launch-active');
+    expect(root.innerHTML).toContain('Expedición en curso');
+    expect(root.innerHTML).not.toContain('data-start-hunt');
+  });
+
   it('renderiza la pantalla y las fichas propias del Búnker', () => {
     const root = { dataset: { huntScreen: 'region', huntRegion: 'dead-hours-bunker' }, innerHTML: '' };
     const detailRoot = { innerHTML: '' };
