@@ -299,7 +299,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.54';
+const APP_VERSION='2.29.55';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2204,6 +2204,8 @@ function ensureHero(){
     });
     g.hp=recovered.hp;
     g.mp=recovered.mp;
+    /* Si el día fallido se corrige luego en el calendario, esto es lo que hay que devolver. */
+    g.dayPenalty=completedDay?null:{forDay:g.day,hp:Math.max(0,mx.maxHp-recovered.hp),mp:Math.max(0,mx.maxMp-recovered.mp)};
     if(!completedDay){
       if(g.buffs.bastion){                      /* Último Bastión (Knight) */
         (g.pardons=g.pardons||[]).push(g.day);
@@ -2214,6 +2216,11 @@ function ensureHero(){
     g.buffs.pesteDay=null;
     g.day=todayKey(); g.hpT=now;
     g.cigDmg=[]; g.beerDmg=[];
+    dirty=true;
+  }
+  /* Un día fallido corregido desde otro dispositivo o antes de recargar también devuelve lo perdido. */
+  if(g.dayPenalty?.forDay&&g.dayPenalty.forDay<todayKey()&&completedDayForKey(g.dayPenalty.forDay)){
+    restoreDayPenalty(g.dayPenalty.forDay);
     dirty=true;
   }
   syncBossCombat(currentDayDate(new Date(now)),now);
@@ -3511,6 +3518,38 @@ function openModal(k){
   });
   document.getElementById('modalBg').classList.add('show');
 }
+/* Corregir en el calendario un día pasado que había fallado devuelve lo que el cambio de día no
+   recargó: vida y maná del descanso nocturno y la energía de cacería del día siguiente. */
+function restoreDayPenalty(key){
+  const g=state.game;
+  if(!g||!completedDayForKey(key)) return false;
+  const restored=[];
+  const penalty=g.dayPenalty;
+  if(penalty&&penalty.forDay===key){
+    const mx=heroMaxes();
+    const hp=Math.min(mx.maxHp,(g.hp||0)+penalty.hp)-(g.hp||0);
+    const mp=Math.min(mx.maxMp,(g.mp||0)+penalty.mp)-(g.mp||0);
+    g.hp=(g.hp||0)+hp;
+    g.mp=(g.mp||0)+mp;
+    g.dayPenalty=null;
+    if(hp>0) restored.push(`+${hp} ♥`);
+    if(mp>0) restored.push(`+${mp} 💧`);
+  }
+  const previousDate=currentDayDate();
+  previousDate.setDate(previousDate.getDate()-1);
+  if(keyOf(previousDate)===key&&g.hunt){
+    const now=Date.now();
+    const hunt=normalizeHuntState(g.hunt,now,huntBaseEnergyForToday(new Date(now)),state.config.dayStartTime);
+    const missing=Math.max(0,hunt.baseEnergy-hunt.dailyRefill);
+    if(missing>0){
+      const gained=Math.min(missing,Math.max(0,MAX_HUNT_ENERGY-hunt.energy));
+      g.hunt={...hunt,energy:hunt.energy+gained,dailyRefill:hunt.baseEnergy};
+      if(gained>0) restored.push(`+${gained} ⚡`);
+    }
+  }
+  if(restored.length) showToast(`Día corregido · ${restored.join(' · ')}`,'heal');
+  return restored.length>0;
+}
 function closeModal(){
   const c=+document.getElementById('mCigVal').textContent;
   const p=+document.getElementById('mPillVal').textContent;
@@ -3542,6 +3581,7 @@ function closeModal(){
     if(completedDayForKey(editingKey)){
       awardRelicDayXp(editingKey);
       applyClassDayRewards(editingKey,true);
+      restoreDayPenalty(editingKey);
     }
     else revokeRelicDayXp(editingKey);
     scheduleSave({type:'relic:historical-day-sync',day:editingKey});

@@ -330,6 +330,9 @@ export function normalizeHuntState(
     energyDay,
     dayStartTime: normalizedDayStartTime,
     baseEnergy,
+    dailyRefill: sameDay
+      ? clamp(safeInteger(hunt?.dailyRefill) || baseEnergy, 1, baseEnergy)
+      : dailyRefillEnergy,
     bonusEnergyEarned,
     bonusEnergyRemaining,
     rewardEnergyRemaining,

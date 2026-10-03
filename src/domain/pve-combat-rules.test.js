@@ -814,4 +814,12 @@ describe('PvE combat rules', () => {
     expect(capped.report.rewards.fortuneGold).toBe(2);
     expect(capped.report.fortune.remaining).toBe(0);
   });
+  it('recuerda la recarga diaria para poder devolver la energía si el día anterior se corrige', () => {
+    const now = new Date(2026, 9, 3, 10, 0).getTime();
+    const failedRollover = normalizeHuntState({ energyDay: '2026-10-02', energy: 4 }, now, 2, '04:00');
+    expect(failedRollover).toMatchObject({ energy: 2, dailyRefill: 2, baseEnergy: 10 });
+    const sameDay = normalizeHuntState({ ...failedRollover, energy: 1 }, now, 10, '04:00');
+    expect(sameDay).toMatchObject({ energy: 1, dailyRefill: 2 });
+    expect(normalizeHuntState({ energyDay: '2026-10-02' }, now, 10, '04:00').dailyRefill).toBe(10);
+  });
 });
