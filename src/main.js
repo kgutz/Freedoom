@@ -300,7 +300,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.58';
+const APP_VERSION='2.29.59';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -4222,14 +4222,34 @@ function closeHuntConfirmation(){
   document.getElementById('huntConfirmBg').classList.remove('show');
 }
 
+let relicWarnContext=null;
+let huntRelicReturn=null;
 function relicSlotWarningMarkup(status){
-  if(!status.canFill) return '';
   return status.empty
     ? `<div class="hunt-relic-warning" role="alert"><b>⚠ Sin reliquia equipada</b><span>Entrarás sin ningún bonus y es más fácil que tu héroe caiga. Equipa una reliquia desde el Bolso antes de empezar.</span></div>`
     : `<div class="hunt-relic-warning" role="alert"><b>⚠ Hueco de reliquia libre</b><span>Tienes un espacio vacío y reliquias en el Bolso. Equípalas antes de empezar para aprovechar todos tus bonus.</span></div>`;
 }
+function openRelicWarning(difficultyId,regionId,status){
+  relicWarnContext={difficultyId,regionId};
+  document.getElementById('relicWarnBody').innerHTML=relicSlotWarningMarkup(status);
+  document.getElementById('relicWarnBg').classList.add('show');
+}
+function closeRelicWarning(){
+  relicWarnContext=null;
+  document.getElementById('relicWarnBg').classList.remove('show');
+}
+/* Tras equipar desde el aviso, se cierra el Bolso y se vuelve a la confirmación de la Cacería. */
+function returnToHuntAfterEquip(){
+  const context=huntRelicReturn;
+  huntRelicReturn=null;
+  if(!context) return;
+  document.getElementById('sheetRelicReplacement')?.classList.remove('show');
+  document.getElementById('sheetRelicDetail')?.classList.remove('show');
+  document.getElementById('sheetInventory')?.classList.remove('show','inventory-shop-cosmetic-open');
+  openHuntConfirmation(context.difficultyId,context.regionId,{skipRelicWarning:true});
+}
 
-function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
+function openHuntConfirmation(difficultyId,regionId='fields-of-mist',options={}){
   const region=HUNT_REGIONS[regionId];
   const difficulty=huntDifficultyForRegion(regionId,difficultyId);
   if(!difficulty||!region) return;
@@ -4239,6 +4259,10 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
   const requiredLevel=huntDifficultyMinLevel(region.id,difficulty.id);
   if(heroLevel<requiredLevel){showToast(`Necesitas nivel ${requiredLevel}`,'bad');return;}
   if(hunt.energy<difficulty.energyCost){showToast('No tienes energía suficiente','bad');return;}
+  if(!options.skipRelicWarning){
+    const slotStatus=relicSlotStatus(state,Date.now());
+    if(slotStatus.canFill){openRelicWarning(difficultyId,region.id,slotStatus);return;}
+  }
   pendingHuntDifficultyId=difficultyId;
   pendingHuntRegionId=region.id;
   pendingHuntAutoUsePotions=true;
@@ -4262,7 +4286,6 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist'){
       <div class="hunt-potential-rewards">${huntPotentialRewardsMarkup(difficulty,region)}</div>
     </details>
   </div>
-  ${relicSlotWarningMarkup(relicSlotStatus(state,Date.now()))}
   ${fortuneActive?`<div class="hunt-fortune-notice"><b>Poción de Fortuna activa</b><span>+50% del oro obtenido · hasta +${fortuneUsage.remaining} de oro disponible</span></div>`:''}
   ${huntRecoveryNoteMarkup({regionId:region.id,difficultyId:difficulty.id})}
   <label class="hunt-potion-toggle${hasCombatPotions?'':' is-empty'}">
@@ -4331,6 +4354,19 @@ function confirmHuntStart(){
   showToast(`Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
 }
 
+document.getElementById('relicWarnSkip').addEventListener('click',()=>{
+  const context=relicWarnContext;
+  closeRelicWarning();
+  if(context) openHuntConfirmation(context.difficultyId,context.regionId,{skipRelicWarning:true});
+});
+document.getElementById('relicWarnEquip').addEventListener('click',()=>{
+  huntRelicReturn=relicWarnContext;
+  closeRelicWarning();
+  openInventory('bag');
+});
+document.getElementById('relicWarnBg').addEventListener('click',event=>{
+  if(event.target.id==='relicWarnBg') closeRelicWarning();
+});
 document.getElementById('huntConfirmCancel').addEventListener('click',closeHuntConfirmation);
 document.getElementById('huntConfirmAccept').addEventListener('click',confirmHuntStart);
 document.getElementById('huntConfirmBg').addEventListener('click',event=>{
@@ -6559,6 +6595,7 @@ document.getElementById('sheetInventory').addEventListener('click',async event=>
   }
   if(event.target===event.currentTarget||event.target.closest('[data-sheet="sheetInventory"]')){
     clearFusionFeedback();
+    huntRelicReturn=null;
   }
   if(event.target.closest('#bagTab')){ forgeFromCity=false; showInventoryPanel('bag'); return; }
   if(event.target.closest('#templeTab')){ forgeFromCity=false; showInventoryPanel('temple'); return; }
@@ -7187,6 +7224,7 @@ function equipRelicFromDetail(equip){
   showSheet(document,'sheetInventory');
   showInventoryPanel('collection',true); renderHero();
   showToast('Reliquia equipada','heal');
+  returnToHuntAfterEquip();
 }
 document.getElementById('sheetRelicReplacement').addEventListener('click',event=>{
   const equip=event.target.closest('[data-equip-relic]');
