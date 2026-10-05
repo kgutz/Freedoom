@@ -28,7 +28,7 @@ export const CLASSES={
       {lvl:12,icon:'yelmo',name:'Yelmo Templado',d:'Día correcto con 3 hábitos: +1 oro (4/semana).'}
     ],
     act:[
-      {lvl:2,id:'grito',icon:'grito',name:'Grito de Guerra',cost:30,modern:true,d:'+10% Vida y +2 Armadura para el próximo golpe.'},
+      {lvl:2,id:'grito',icon:'grito',name:'Grito de Guerra',cost:30,modern:true,d:'+10% Vida y +2 Armadura para el próximo golpe. La curación escala con Poder (+0,5% por punto) y Defensa (+0,25% por punto).'},
       {lvl:8,id:'muro',icon:'muro',name:'Muro de Escudos',cost:40,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos (basta una repetición): +5 XP base cada uno (sube con tu nivel) y +2 oro al completar ambos.'},
       {lvl:14,id:'bastion',icon:'bastion',name:'Último Bastión',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Fortifica 3 hábitos (basta una repetición): +10 XP base (sube con tu nivel) y +4 oro cada uno. Completa los 3: +10 XP base y +8 oro.'}
     ]
@@ -62,7 +62,7 @@ export const CLASSES={
       {lvl:12,icon:'punteria',name:'Puntería Divina',d:'Días correctos 3 y 5: +2 oro.'}
     ],
     act:[
-      {lvl:2,id:'luz',icon:'luz',name:'Luz Sanadora',cost:35,modern:true,d:'+10% Vida. El próximo hábito recupera 5% de Maná.'},
+      {lvl:2,id:'luz',icon:'luz',name:'Luz Sanadora',cost:35,modern:true,d:'+10% Vida (escala con Poder, +0,5% por punto, y Destreza, +0,25% por punto). El próximo hábito recupera 5% de Maná.'},
       {lvl:8,id:'certero',icon:'certero',name:'Ojo Certero',cost:45,hpCost:10,habitChallenge:true,modern:true,d:'Potencia 2 hábitos (basta una repetición): +5 XP base cada uno (sube con tu nivel) y +2 oro al completar ambos.'},
       {lvl:14,id:'juicio',icon:'juicio',name:'Juicio Divino',cost:70,ulti:true,modern:true,habitChallenge:true,d:'Bendice 3 hábitos (basta una repetición): +10 XP base (sube con tu nivel) y +4 oro cada uno. Completa los 3: +10 XP base y +8 oro.'}
     ]

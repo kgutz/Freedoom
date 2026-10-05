@@ -3,6 +3,7 @@ import {
   createCalendarModel,
   createDayEditorModel,
   createWeeksModel,
+  renderCalendarView,
   renderWeeksView,
 } from './calendar-view.js';
 
@@ -255,5 +256,36 @@ describe('modelo de semanas', () => {
     expect(rows[0].dataset.weekIndex).toBe('0');
     rows[0].click();
     expect(onWeekClick).toHaveBeenCalledWith(0);
+  });
+});
+
+describe('rejilla del calendario', () => {
+  function fakeElement() {
+    const children = [];
+    return {
+      children, className: '', dataset: {}, innerHTML: '', textContent: '',
+      appendChild(child) { children.push(child); },
+      setAttribute() {}, addEventListener() {},
+    };
+  }
+  it('solo muestra el día y los cigarros; pastillas y cervezas no aparecen pero el día sigue siendo pulsable', () => {
+    const grid = fakeElement();
+    const document = {
+      createElement: fakeElement,
+      getElementById: (id) => (id === 'calGrid' ? Object.assign(grid, { set innerHTML(v) { grid.children.length = 0; }, get innerHTML() { return ''; } }) : fakeElement()),
+    };
+    renderCalendarView({
+      document,
+      cursor: new Date(2026, 9, 1),
+      now: new Date(2026, 9, 10, 12),
+      config: { ...config, takesPills: true, pillsGoal: 3, tracksBeer: true },
+      days: { '2026-10-05': { c: 7, p: 3, b: 2 } },
+      onDayClick: () => {},
+    });
+    const html = grid.children.map(child => child.innerHTML).join('');
+    expect(html).toContain('<span class="c">7</span>');
+    expect(html).not.toContain('💊');
+    expect(html).not.toContain('🍺');
+    expect(html).not.toContain('cal-extra');
   });
 });

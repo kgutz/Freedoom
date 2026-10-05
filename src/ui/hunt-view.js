@@ -342,7 +342,7 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const reportReadyMarkup = !active && unseenReport && (unseenReport.regionId || 'fields-of-mist') === region.id
     ? `<div class="hunt-region-active" aria-label="Informe pendiente">
     <span>INFORME PENDIENTE</span>
-    <strong>EXPEDICIÓN TERMINADA</strong>
+    <strong>Expedición terminada</strong>
     <button type="button" data-view-hunt-report="${region.id}">VER INFORME</button>
   </div>` : '';
   const lastDifficultyId = hunt.lastReport?.difficultyId || null;

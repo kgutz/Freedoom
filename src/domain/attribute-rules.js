@@ -89,12 +89,26 @@ export function resetAttributeAllocation() {
   return normalizeAttributeAllocation();
 }
 
-export const HEALING_POWER_CLASSES = Object.freeze(['sorcerer', 'druid']);
 export const HEALING_PERCENT_PER_POWER_POINT = 0.5;
+export const HEALING_PERCENT_PER_SECONDARY_POINT = 0.25;
 
-/* Hechicero y Druida curan más con cada punto de Poder invertido (sobre la base de su clase). */
+/* Atributo extra que potencia la curación de cada clase, además del Poder. Los híbridos usan el
+   atributo en el que más invierten: el Caballero su Defensa y el Paladín su Destreza. */
+export const HEALING_SECONDARY_ATTRIBUTE = Object.freeze({
+  knight: 'defense',
+  paladin: 'dexterity',
+  sorcerer: null,
+  druid: null,
+});
+export const HEALING_POWER_CLASSES = Object.freeze(Object.keys(HEALING_SECONDARY_ATTRIBUTE));
+
+/* Todas las clases curan más con cada punto de Poder invertido (+0,5%); Caballero y Paladín suman
+   además +0,25% por punto de Defensa o Destreza. Solo cuentan los puntos asignados por el jugador. */
 export function healingPowerMultiplier({ classId, allocation } = {}) {
   if (!HEALING_POWER_CLASSES.includes(classId)) return 1;
-  const points = normalizeAttributeAllocation(allocation).power;
-  return 1 + (points * HEALING_PERCENT_PER_POWER_POINT) / 100;
+  const points = normalizeAttributeAllocation(allocation);
+  const secondary = HEALING_SECONDARY_ATTRIBUTE[classId];
+  const percent = points.power * HEALING_PERCENT_PER_POWER_POINT
+    + (secondary ? points[secondary] * HEALING_PERCENT_PER_SECONDARY_POINT : 0);
+  return 1 + percent / 100;
 }

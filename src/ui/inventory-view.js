@@ -147,7 +147,8 @@ export function renderOutfitSelector(document, lootState, selectedOutfitId = nul
   if (selectorBack) selectorBack.hidden = !shopContext || !selected || shopMode === 'sell';
   if (selectorReturnCharacter) selectorReturnCharacter.hidden = !shopContext;
   const emptyCollectionSlots = Math.max(0, 3 - ownedOutfits.length);
-  const emptyFrameSlots = Math.max(0, 4 - ownedFrames.length);
+  // Filas de 3: se completa la última fila (mínimo dos filas) con huecos bloqueados.
+  const emptyFrameSlots = Math.max(Math.max(6, Math.ceil(ownedFrames.length / 3) * 3) - ownedFrames.length, 0);
   const sectionIntro = shopContext
     ? `<div class="shop-outfit-heading"><p>${section === 'frames'
       ? 'Paisajes encantados transforman el lugar desde el que tu héroe emprende su viaje.'
@@ -469,7 +470,7 @@ export function potionResourceMeterMarkup(potionId, options = {}) {
       : '';
   return `<div class="potion-resource-meter potion-resource-meter--${meter.tone}${full ? ' is-full' : ''}" role="group" aria-label="${meter.label}">
     <div class="potion-resource-head"><span>${meter.label}</span><b data-potion-resource-value>${current} / ${max}</b></div>
-    <div class="potion-resource-bar" role="img" aria-label="${meter.label} ${current} de ${max}"><i class="potion-resource-fill" style="width:${percent(current)}%"></i>${gain > 0 ? `<i class="potion-resource-preview" style="left:${percent(current)}%;width:${percent(gain)}%"></i>` : ''}</div>
+    <div class="potion-resource-bar" role="img" aria-label="${meter.label} ${current} de ${max}">${gain > 0 ? `<i class="potion-resource-preview" style="width:${percent(current + gain)}%"></i>` : ''}<i class="potion-resource-fill" style="width:${percent(current)}%"></i></div>
     ${note ? `<small class="potion-resource-note">${escapeHtml(note)}</small>` : ''}
   </div>`;
 }
@@ -491,7 +492,8 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
   const energyBlocked=potionId==='energy'&&(options.huntEnergy||0)>(options.huntEnergyCapacity||20)-energyRestore;
   const outOfStock=owned<1;
   const resourceFull=options.mode!=='shop'&&((potionId==='life'&&Number(options.heroMaxHp)>0&&Number(options.heroHp)>=Number(options.heroMaxHp))||(potionId==='mana'&&Number(options.heroMaxMp)>0&&Number(options.heroMp)>=Number(options.heroMaxMp)));
-  const blocked=outOfStock||resourceFull||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active)||energyBlocked;
+  const huntLocked=options.mode!=='shop'&&Boolean(options.huntLocked)&&['life','mana'].includes(potionId);
+  const blocked=outOfStock||resourceFull||huntLocked||(limit!==null&&used>=limit)||(['fortune','experience'].includes(potionId)&&active)||energyBlocked;
   const shopMode=options.mode==='shop';
   const lacksCoins=normalized.economy.coins<definition.price;
   const occupiedSlots=Object.values(potions.owned).filter((quantity)=>Math.max(0,Number(quantity)||0)>0).length;
@@ -500,9 +502,9 @@ export function renderPotionDetail(document, lootState, potionId, options = {}) 
     ? `<div class="potion-buy-quantity" aria-label="Cantidad a comprar"><button type="button" data-potion-quantity-step="-1" aria-label="Reducir cantidad">−</button><output data-potion-quantity>1</output><button type="button" data-potion-quantity-step="1" aria-label="Aumentar cantidad">+</button></div><button type="button" data-buy-potion="${potionId}" data-unit-price="${definition.price}"${lacksCoins||bagFull?' aria-disabled="true"':''}>${bagFull?'BOLSO LLENO':lacksCoins?'FALTA ORO':`COMPRAR · ${definition.price}`}</button>`
     : outOfStock
       ? `<button type="button" data-open-potion-shop>COMPRAR MÁS</button>`
-      : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${resourceFull?(potionId==='life'?'SALUD COMPLETA':'MANÁ COMPLETO'):blocked?'NO DISPONIBLE':'USAR'}</button>`;
+      : `<button type="button" data-use-potion="${potionId}"${blocked?' aria-disabled="true"':''}>${huntLocked?'EN CACERÍA':resourceFull?(potionId==='life'?'SALUD COMPLETA':'MANÁ COMPLETO'):blocked?'NO DISPONIBLE':'USAR'}</button>`;
   const usageCopy=limit===null?'Usos diarios: SIN LÍMITE':`Usos: ${used}/${limit}${potionId==='blood'?` · Bonus preparado: +${potionBloodChance(potions,options.bossKey)}%`:''}${potionId==='energy'&&energyRestore?` · Próxima dosis: +${energyRestore} energía`:''}`;
-  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div>${shopMode?'':potionResourceMeterMarkup(potionId,options)}<div class="relic-equip-actions">${action}</div>`;
+  body.innerHTML=`<div class="relic-detail-frame potion-detail-frame potion-tone--${definition.tone}"><div class="relic-detail-art">${potionArt(definition)}</div><div class="rarity-label">CONSUMIBLE</div><h3>${escapeHtml(definition.name)}</h3><div class="relic-rank">${shopMode?`PRECIO · ${definition.price} ORO`:`DISPONIBLES · ${owned}`}</div></div><div class="relic-effect potion-detail-effect"><span>EFECTO</span><p>${escapeHtml(definition.shortEffect)}</p><p>${escapeHtml(definition.detail)}</p>${shopMode?'':`<p>${usageCopy}</p>`}</div>${shopMode?'':potionResourceMeterMarkup(potionId,options)}${huntLocked?`<p class="potion-hunt-lock" role="status">${escapeHtml(options.huntLockMessage||'Tu héroe está en Cacería')}. Podrás usarla al volver.</p>`:''}<div class="relic-equip-actions">${action}</div>`;
   if (potionId === 'blood') body.innerHTML = bloodPreparedNotice(normalized, options) + body.innerHTML;
   if (shopMode) body.innerHTML = `<div class="shop-potion-detail">${body.innerHTML}</div>`;
   return true;

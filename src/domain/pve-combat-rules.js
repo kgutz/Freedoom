@@ -964,6 +964,22 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
   };
 }
 
+/* Mientras hay una expedición activa el héroe "está fuera": no puede lanzar habilidades ni usar
+   pociones de Vida o Maná, porque al volver su Vida y su Maná se sustituyen por el resultado. */
+export function huntLockState(hunt, nowTimestamp = Date.now()) {
+  const active = hunt?.active;
+  if (!active) return { locked: false, remainingMs: 0, message: '' };
+  const remainingMs = Math.max(0, safeInteger(active.endsAt) - nowTimestamp);
+  const minutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+  return {
+    locked: true,
+    remainingMs,
+    message: remainingMs > 0
+      ? `Tu héroe está en Cacería · vuelve en ${minutes} min`
+      : 'Tu héroe vuelve de la Cacería · recoge el informe primero',
+  };
+}
+
 export function resolveHunt({ hunt, classId, level, allocation, potions: suppliedPotions, fortuneBonusRemaining = 0, nowTimestamp = Date.now() }) {
   const normalized = normalizeHuntState(hunt, nowTimestamp);
   const active = normalized.active;

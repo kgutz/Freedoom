@@ -42,11 +42,23 @@ describe('attribute rules', () => {
     });
   });
 
-  it('hechicero y druida curan +0,5% por punto de Poder invertido; el resto de clases no', () => {
+  it('el Caballero suma +0,25% por punto de Defensa y el Paladín por punto de Destreza, además del Poder', () => {
+    expect(healingPowerMultiplier({ classId: 'knight', allocation: { defense: 30, power: 8 } })).toBeCloseTo(1 + (30 * 0.25 + 8 * 0.5) / 100);
+    expect(healingPowerMultiplier({ classId: 'knight', allocation: { defense: 30, power: 8 } })).toBeCloseTo(1.115);
+    expect(healingPowerMultiplier({ classId: 'knight', allocation: { dexterity: 40, strength: 10 } })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'paladin', allocation: { dexterity: 20, power: 10 } })).toBeCloseTo(1.1);
+    expect(healingPowerMultiplier({ classId: 'paladin', allocation: { defense: 40 } })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'sorcerer', allocation: { defense: 40, dexterity: 40 } })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'druid', allocation: { defense: 40, dexterity: 40, power: 10 } })).toBeCloseTo(1.05);
+  });
+
+  it('las cuatro clases curan +0,5% por punto de Poder invertido', () => {
     expect(healingPowerMultiplier({ classId: 'sorcerer', allocation: {} })).toBe(1);
     expect(healingPowerMultiplier({ classId: 'sorcerer', allocation: { power: 20 } })).toBeCloseTo(1.1);
     expect(healingPowerMultiplier({ classId: 'druid', allocation: { power: 50, strength: 9 } })).toBeCloseTo(1.25);
-    expect(healingPowerMultiplier({ classId: 'knight', allocation: { power: 50 } })).toBe(1);
+    expect(healingPowerMultiplier({ classId: 'knight', allocation: { power: 50 } })).toBeCloseTo(1.25);
+    expect(healingPowerMultiplier({ classId: 'paladin', allocation: { power: 20 } })).toBeCloseTo(1.1);
+    expect(healingPowerMultiplier({ classId: 'warrior', allocation: { power: 50 } })).toBe(1);
     expect(healingPowerMultiplier({ classId: 'sorcerer' })).toBe(1);
   });
 });

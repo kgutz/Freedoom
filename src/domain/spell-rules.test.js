@@ -268,6 +268,17 @@ describe('curación y habilidades definitivas', () => {
     expect(balm.game.buffs.balm.remaining).toBe(27);
   });
 
+  it('Grito de Guerra y Luz Sanadora también curan más con el multiplicador de Poder',()=>{
+    const shout=cast(spell('grito',{modern:true,cost:30}),{game:{hp:50,mp:100,buffs:{}},maxHp:200,healingMultiplier:1.5});
+    const light=cast(spell('luz',{modern:true,cost:35}),{game:{hp:50,mp:100,buffs:{}},maxHp:200,healingMultiplier:1.5});
+    expect(shout.game.hp).toBe(80);
+    expect(shout.game.buffs.knightGuard).toEqual({amount:2,day:'2026-07-26'});
+    expect(light.game.hp).toBe(80);
+    expect(light.game.buffs.paladinManaHabit).toBe(true);
+    const base=cast(spell('grito',{modern:true,cost:30}),{game:{hp:50,mp:100,buffs:{}},maxHp:200});
+    expect(base.game.hp).toBe(70);
+  });
+
   it('crea el reto diario de dos hábitos y cobra vida y maná',()=>{
     const result=cast(spell('certero',{
       lvl:8,cost:45,modern:true,hpCost:10,habitChallenge:true,

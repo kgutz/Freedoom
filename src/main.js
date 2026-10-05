@@ -63,6 +63,7 @@ import {
   huntDifficultyForRegion,
   huntDropRules,
   huntDifficultyMinLevel,
+  huntLockState,
   syncHabitSetHuntEnergy,
   pveHeroStats,
   normalizeHuntState,
@@ -300,7 +301,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.63';
+const APP_VERSION='2.29.64';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2485,7 +2486,15 @@ function applyFilacteria(spentMana){
   return recovery.activations?` · Filacteria ×${recovery.activations} · +${recovery.healing} ♥ · +${recovery.activations*2} 🪙`:'';
 }
 
+function huntLock(){
+  return huntLockState(state.game?.hunt,Date.now());
+}
+function syncHuntLockClass(){
+  document.body.classList.toggle('hunt-in-progress',huntLock().locked);
+}
 function castSpell(id,options={}){
+  const lock=huntLock();
+  if(lock.locked){showToast(lock.message,'dmg');return;}
   ensureHero();
   const g=state.game;
   const st=gameStats();
@@ -2643,6 +2652,7 @@ function flashHeroStatFeedback(stat){
 
 function renderHero(){
   syncHalloweenPresentation();
+  syncHuntLockClass();
   const cls=state.game&&state.game.cls;
   if(!cls||!CLASSES[cls]){
     renderHeroView({
@@ -2922,6 +2932,7 @@ function renderCurrentCharacterSheet(){
 }
 
 function renderHunt(){
+  syncHuntLockClass();
   const game=state.game||{};
   const stats=game.cls?gameStats():null;
   if(game.cls){
@@ -5464,7 +5475,8 @@ function potionViewOptions(){
   const nowTimestamp=Date.now();
   const hunt=normalizeHuntState(state.game.hunt,nowTimestamp,huntBaseEnergyForToday(new Date(nowTimestamp)),state.config.dayStartTime);
   const potionMaxes=heroMaxes();
-  return {dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',level:gameStats().lvl,heroHp:state.game.hp,heroMaxHp:potionMaxes.maxHp,heroMp:state.game.mp,heroMaxMp:potionMaxes.maxMp,huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY,halloweenActive:halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)};
+  const potionHuntLock=huntLockState(state.game.hunt,nowTimestamp);
+  return {huntLocked:potionHuntLock.locked,huntLockMessage:potionHuntLock.message,dayKey:todayKey(),bossKey:RELIC_DEFINITIONS[bossIndex]?.rewardId||'',level:gameStats().lvl,heroHp:state.game.hp,heroMaxHp:potionMaxes.maxHp,heroMp:state.game.mp,heroMaxMp:potionMaxes.maxMp,huntEnergy:hunt.energy,huntEnergyCapacity:MAX_HUNT_ENERGY,halloweenActive:halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)};
 }
 
 function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
@@ -6247,6 +6259,10 @@ document.getElementById('classChangeConfirmAccept').addEventListener('click',()=
 });
 
 function handlePotionUse(potionId){
+  if(['life','mana'].includes(potionId)){
+    const lock=huntLock();
+    if(lock.locked){showToast(lock.message,'dmg');return false;}
+  }
   const maxes=heroMaxes();
   if(potionId==='life'&&(state.game.hp||0)>=maxes.maxHp){ showToast('La Salud ya está completa','dmg'); return false; }
   if(potionId==='mana'&&(state.game.mp||0)>=maxes.maxMp){ showToast('El Maná ya está completo','dmg'); return false; }

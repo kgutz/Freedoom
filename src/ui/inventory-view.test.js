@@ -120,6 +120,23 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Maná completo. No necesitas usar más pociones de Maná.');
     expect(html).toContain('MANÁ COMPLETO');
   });
+  it('en Cacería las pociones de Vida y Maná quedan bloqueadas con aviso, y Vigor no', () => {
+    const document = fakeDocument();
+    const state = { inventory: { potions: { owned: { life: 3, mana: 2, energy: 2 } } } };
+    const options = { dayKey: '2026-10-03', heroHp: 100, heroMaxHp: 146, heroMp: 10, heroMaxMp: 50, huntEnergy: 4, huntEnergyCapacity: 20, huntLocked: true, huntLockMessage: 'Tu héroe está en Cacería · vuelve en 5 min' };
+    for (const id of ['life', 'mana']) {
+      renderPotionDetail(document, state, id, options);
+      const html = document.elements.relicDetailBody.innerHTML;
+      expect(html).toContain('EN CACERÍA');
+      expect(html).toContain('aria-disabled="true"');
+      expect(html).toContain('vuelve en 5 min');
+      expect(html).toContain('Podrás usarla al volver.');
+    }
+    renderPotionDetail(document, state, 'energy', options);
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('EN CACERÍA');
+    renderPotionDetail(document, state, 'life', { ...options, huntLocked: false });
+    expect(document.elements.relicDetailBody.innerHTML).not.toContain('EN CACERÍA');
+  });
   it('Vigor y la tienda no muestran la barra del recurso', () => {
     const document = fakeDocument();
     const state = { inventory: { potions: { owned: { energy: 2 } } } };
@@ -324,7 +341,7 @@ describe('interfaz de inventario y botín', () => {
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('aria-label="Colección de fondos"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('data-select-frame="beta-tester"');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('hero_background/beta_tester_bg_final.webp');
-    expect(document.elements.outfitSelectorBody.innerHTML.match(/frame-option--locked/g)).toHaveLength(2);
+    expect(document.elements.outfitSelectorBody.innerHTML.match(/frame-option--locked/g)).toHaveLength(4);
 
     expect(renderOutfitSelector(document, state, 'beta-tester', { section: 'frames' })).toBe('beta-tester');
     expect(document.elements.outfitSelectorBody.innerHTML).toContain('Corazón de Freedom');

@@ -406,7 +406,7 @@ export function castSpellEffect({
       break;
     case 'grito': {
       const hpBefore = nextGame.hp;
-      const amount = spell.modern ? Math.round(maxHp * 0.1) : 20;
+      const amount = spell.modern ? Math.round(maxHp * 0.1 * healingMultiplier) : 20;
       nextGame.hp = cappedHealth(nextGame.hp + amount, maxHp);
       if (spell.modern) nextGame.buffs.knightGuard = { amount: 2, day: today };
       result.healing = nextGame.hp - hpBefore;
@@ -436,7 +436,7 @@ export function castSpellEffect({
     case 'luz':
       if (spell.modern) {
         const hpBefore = nextGame.hp;
-        nextGame.hp = cappedHealth(nextGame.hp + Math.round(maxHp * 0.1), maxHp);
+        nextGame.hp = cappedHealth(nextGame.hp + Math.round(maxHp * 0.1 * healingMultiplier), maxHp);
         nextGame.buffs.paladinManaHabit = true;
         result.healing = nextGame.hp - hpBefore;
         break;

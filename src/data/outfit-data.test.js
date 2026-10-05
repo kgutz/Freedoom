@@ -87,22 +87,26 @@ describe('outfits de héroe', () => {
   it('reduce solo el cuerpo del Caballero de Halloween un 5% y lo desplaza a la derecha', () => {
     const profile = outfitDisplayProfile('knight', 'drowned-reliquary');
     const previous = outfitDisplayProfile('knight', 'celestial-rhythm-master');
-    for (const surface of ['hero', 'sheet', 'card']) {
+    for (const surface of ['hero', 'sheet']) {
       expect(profile[surface][0]).toBeCloseTo(previous[surface][0] * 0.95, 3);
       expect(profile[surface][1]).toBeCloseTo(previous[surface][1] + 3, 3);
       expect(profile[surface][2]).toBe(previous[surface][2]);
     }
+    // Tarjeta de Cosméticos: +2 px de tamaño centrado sobre el valor aprobado anterior (109,896 · 0,65 · −5,62).
+    expect(profile.card).toEqual([112.296, -0.53, -6.82]);
     expect(profile.face).toEqual(previous.face);
   });
 
   it('amplía el cuerpo del Hechicero de Halloween un 3% y lo desplaza a la derecha', () => {
     const profile = outfitDisplayProfile('sorcerer', 'drowned-reliquary');
     const previous = outfitDisplayProfile('sorcerer', 'celestial-rhythm-master');
-    for (const surface of ['hero', 'sheet', 'card']) {
+    for (const surface of ['hero', 'sheet']) {
       expect(profile[surface][0]).toBeCloseTo(previous[surface][0] * 1.03, 3);
       expect(profile[surface][1]).toBe(3);
       expect(profile[surface][2]).toBe(previous[surface][2]);
     }
+    // Tarjeta de Cosméticos: +2 px de tamaño centrado sobre el valor aprobado anterior (119,1401 · 3 · −5,38).
+    expect(profile.card).toEqual([121.5401, 1.82, -6.58]);
     expect(profile.face).toEqual(previous.face);
   });
 
@@ -195,6 +199,7 @@ describe('outfits de héroe', () => {
 
     expect(profile.hero[1]).toBe(0);
     expect(profile.sheet[1]).toBe(0);
-    expect(profile.card[1]).toBe(0);
+    // La tarjeta de Cosméticos va 3 px (3,55 % de la caja de 84,5 px) a la derecha.
+    expect(profile.card[1]).toBe(3.55);
   });
 });

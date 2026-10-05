@@ -5,6 +5,7 @@ import {
   classDataForJourney,
 } from '../data/game-data.js';
 import { escapeHtml } from './escape-html.js';
+import { huntLockState } from '../domain/pve-combat-rules.js';
 import { keyOf, minutesOf } from '../domain/date-utils.js';
 import {
   logicalClockMinutes,
@@ -344,7 +345,9 @@ export function nextLogicalDayStart(now = new Date(), dayStartTime = '04:00') {
   return next.getTime();
 }
 
-function skillIcon(classId, level, ability, type, status = null, used = false, cooldown = false, cooldownUntil = 0) {
+const HUNT_LOCK_LABEL = 'EN CACERÍA';
+
+function skillIcon(classId, level, ability, type, status = null, used = false, cooldown = false, cooldownUntil = 0, huntLocked = false) {
   const active = level >= ability.lvl;
   const ultimateClass = ability.ulti ? ' ulti' : '';
   const statusClass = status && !cooldown ? ' spell-effect-active' : '';
@@ -364,18 +367,18 @@ function skillIcon(classId, level, ability, type, status = null, used = false, c
       <img src="${source}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <span class="sk-fallback" style="display:none">${fallback}</span>
       ${status ? `<span class="skill-active-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
-      ${used ? `<span class="skill-used-label" aria-label="Habilidad usada">${ability.ulti ? 'USADA' : 'USADA HOY'}</span>` : ''}
+      ${huntLocked && active && type === 'act' ? `<span class="skill-used-label skill-hunt-label" aria-label="Bloqueada durante la Cacería">${HUNT_LOCK_LABEL}</span>` : used ? `<span class="skill-used-label" aria-label="Habilidad usada">${ability.ulti ? 'USADA' : 'USADA HOY'}</span>` : ''}
     </div>`;
 }
 
-function quickSkillIcon(classId, level, ability, status = null, used = false, cooldown = false, cooldownUntil = 0) {
+function quickSkillIcon(classId, level, ability, status = null, used = false, cooldown = false, cooldownUntil = 0, huntLocked = false) {
   const unlocked = level >= ability.lvl;
   const source = `spells/${classId}_spells/${classId}_act_${ability.icon}.webp`;
   return `<button type="button" class="hero-skill-slot${unlocked ? ' on' : ' off'}${status && !cooldown ? ' spell-effect-active' : ''}${used ? ' spell-week-used' : ''}${cooldown ? ' spell-cooldown' : ''}" data-cast="${ability.id}" aria-label="${ability.name}${unlocked ? '' : ` · Nivel ${ability.lvl} necesario`}${used ? (ability.ulti ? ' · Usada dos veces esta semana' : ' · Usada hoy') : ''}${cooldown ? ` · Enfriamiento ${status}` : ''}" title="${ability.name}"${cooldown ? ' disabled' : ''}>
     <img src="${source}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
     <span class="hero-skill-fallback" style="display:none">${ability.name.charAt(0)}</span>
     ${status ? `<span class="skill-active-timer hero-skill-timer${cooldown ? ' skill-cooldown-timer' : ''}"${cooldownUntil ? ` data-cooldown-until="${cooldownUntil}"` : ''} aria-label="${cooldown ? 'Enfriamiento' : 'Efecto activo'}: ${status}">${status}</span>` : ''}
-    ${used ? `<span class="skill-used-label hero-skill-used">${ability.ulti ? 'USADA' : 'HOY'}</span>` : ''}
+    ${huntLocked && unlocked ? `<span class="skill-used-label hero-skill-used skill-hunt-label" aria-label="Bloqueada durante la Cacería">${HUNT_LOCK_LABEL}</span>` : used ? `<span class="skill-used-label hero-skill-used">${ability.ulti ? 'USADA' : 'HOY'}</span>` : ''}
   </button>`;
 }
 
@@ -553,16 +556,17 @@ export function renderHeroView({
       used: !cooldown && !status && spellUnavailableAfterUse({ ability, game, currentWeek, today }),
     };
   };
+  const huntLocked = huntLockState(game?.hunt, now.getTime()).locked;
   const activeIcons = classData.act
     .map((ability) => {
       const ui = abilityUiState(ability);
-      return skillIcon(classId, heroStats.lvl, ability, 'act', ui.status, ui.used, ui.cooldown, ui.cooldownUntil);
+      return skillIcon(classId, heroStats.lvl, ability, 'act', ui.status, ui.used, ui.cooldown, ui.cooldownUntil, huntLocked);
     })
     .join('');
   const quickActiveIcons = classData.act
     .map((ability) => {
       const ui = abilityUiState(ability);
-      return quickSkillIcon(classId, heroStats.lvl, ability, ui.status, ui.used, ui.cooldown, ui.cooldownUntil);
+      return quickSkillIcon(classId, heroStats.lvl, ability, ui.status, ui.used, ui.cooldown, ui.cooldownUntil, huntLocked);
     })
     .join('');
   const futureActiveIcons = Array.from({ length: Math.max(0, 6 - classData.act.length) }, (_, index) =>
