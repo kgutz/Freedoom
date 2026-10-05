@@ -305,6 +305,36 @@ export function renderCalendarView({
   });
 }
 
+const normalizeSearch = (value) => String(value ?? '')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+/* Una búsqueda solo de dígitos coincide con el número de semana (empieza por ese número);
+   cualquier otra busca en el texto de la semana: número, día y mes (abreviado o completo). */
+export function weekSearchMatches(query, { number, text }) {
+  const wanted = normalizeSearch(query);
+  if (!wanted) return true;
+  if (/^\d+$/.test(wanted)) return String(number).startsWith(wanted);
+  return normalizeSearch(text).includes(wanted);
+}
+
+export function applyWeekSearch(document) {
+  const list = document.getElementById('weekList');
+  if (!list) return 0;
+  const query = document.getElementById('weekSearch')?.value ?? '';
+  let visible = 0;
+  const rows = list.querySelectorAll ? [...list.querySelectorAll('.wk-row')] : [];
+  rows.forEach((row) => {
+    const match = weekSearchMatches(query, { number: row.dataset.weekNumber, text: row.dataset.searchText });
+    row.hidden = !match;
+    if (match) visible += 1;
+  });
+  const empty = document.getElementById('weekEmpty');
+  if (empty) empty.hidden = !(rows.length > 0 && visible === 0);
+  const count = document.getElementById('weekSummaryCount');
+  if (count) count.textContent = normalizeSearch(query) ? `${visible} de ${rows.length}` : `${rows.length}`;
+  return visible;
+}
+
 export function renderWeeksView({ document, now, config, days, onWeekClick }) {
   const model = createWeeksModel({ now, config, days });
   const list = document.getElementById('weekList');
@@ -317,6 +347,12 @@ export function renderWeeksView({ document, now, config, days, onWeekClick }) {
     row.type = 'button';
     row.className = 'wk-row';
     row.dataset.weekIndex = String(week.index);
+    row.dataset.weekNumber = String(week.number);
+    row.dataset.searchText = [
+      `semana ${week.number}`,
+      `${formatDate(week.firstDay)} ${week.firstDay.getDate()} ${MONTH_NAMES[week.firstDay.getMonth()]}`,
+      `${formatDate(week.lastDay)} ${week.lastDay.getDate()} ${MONTH_NAMES[week.lastDay.getMonth()]}`,
+    ].join(' ');
     row.setAttribute(
       'aria-label',
       `Abrir la gráfica de la semana ${week.number}`,
@@ -340,4 +376,5 @@ export function renderWeeksView({ document, now, config, days, onWeekClick }) {
       'Has llegado al final del plan. Enhorabuena por el camino recorrido.';
     list.appendChild(done);
   }
+  applyWeekSearch(document);
 }

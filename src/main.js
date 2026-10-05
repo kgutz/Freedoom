@@ -215,6 +215,7 @@ import {
 } from './storage/state-storage.js';
 import {
   createDayEditorModel,
+  applyWeekSearch,
   renderCalendarView,
   renderWeeksView
 } from './ui/calendar-view.js';
@@ -301,7 +302,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.64';
+const APP_VERSION='2.29.65';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -987,7 +988,7 @@ function renderCal(){
     ? 'En días permitidos verás cuántos cigarros registraste. En los demás, ✓ significa que no fumaste, × que fumaste y · que sigue pendiente.'
     : isSmokeFreeMode(state.config)
       ? 'Toca un día para corregirlo. ✓ significa que te mantuviste sin fumar, × que fumaste y · que sigue pendiente.'
-      : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.';
+      : 'Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día).';
 }
 
 function renderHabits(){
@@ -4025,6 +4026,8 @@ document.getElementById('timeModalBg').addEventListener('click',e=>{
 
 document.getElementById('calPrev').addEventListener('click',()=>{calCursor.setMonth(calCursor.getMonth()-1);renderCal();});
 document.getElementById('calNext').addEventListener('click',()=>{calCursor.setMonth(calCursor.getMonth()+1);renderCal();});
+/* Buscador de semanas: filtra al escribir (número de semana, día o mes). */
+document.getElementById('weekSearch')?.addEventListener('input',()=>applyWeekSearch(document));
 
 document.getElementById('cfgStart').addEventListener('change',e=>{
   if(e.target.value){state.config.startDate=e.target.value;scheduleSave();renderAll();}

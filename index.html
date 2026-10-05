@@ -153,7 +153,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.29.64</div>
+  <div class="ob-version" id="obVersion">v2.29.65</div>
 </div>
 
 <div id="loading" class="loading">
@@ -399,12 +399,16 @@
           <button id="calNext" aria-label="Mes siguiente">›</button>
         </div>
         <div class="cal-grid" id="calGrid"></div>
-        <p class="hint" id="calendarHint">Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día) y 💊 las pastillas.</p>
+        <p class="hint" id="calendarHint">Toca un día para corregir sus cantidades. El número amarillo son cigarros (rojo si superó el límite de ese día).</p>
       </div>
-      <div class="week-summary">
-        <h4>Resumen por semanas</h4>
+      <details class="week-summary" id="weekSummary">
+        <summary><span>Resumen por semanas</span><b id="weekSummaryCount"></b></summary>
+        <div class="week-search">
+          <input type="search" id="weekSearch" placeholder="Buscar semana (ej. 12, agosto o 7 ago)" aria-label="Buscar semana" autocomplete="off" enterkeyhint="search">
+        </div>
         <div id="weekList"></div>
-      </div>
+        <p class="hint week-empty" id="weekEmpty" hidden>Ninguna semana coincide con la búsqueda.</p>
+      </details>
     </div>
     <div id="chartPanel" style="display:none">
       <div class="card">
@@ -541,7 +545,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.64</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.65</span></p>
       </div>
     </div>
   </div>

@@ -5,6 +5,7 @@ import {
   createWeeksModel,
   renderCalendarView,
   renderWeeksView,
+  weekSearchMatches,
 } from './calendar-view.js';
 
 const config = {
@@ -287,5 +288,27 @@ describe('rejilla del calendario', () => {
     expect(html).not.toContain('💊');
     expect(html).not.toContain('🍺');
     expect(html).not.toContain('cal-extra');
+  });
+});
+
+describe('buscador del resumen por semanas', () => {
+  const week = { number: 12, text: 'semana 12 24 sep 24 septiembre 30 sep 30 septiembre' };
+  it('sin texto muestra todas las semanas', () => {
+    expect(weekSearchMatches('', week)).toBe(true);
+    expect(weekSearchMatches('   ', week)).toBe(true);
+  });
+  it('un número busca por número de semana', () => {
+    expect(weekSearchMatches('12', week)).toBe(true);
+    expect(weekSearchMatches('1', week)).toBe(true);
+    expect(weekSearchMatches('2', week)).toBe(false);
+    expect(weekSearchMatches('24', week)).toBe(false);
+    expect(weekSearchMatches('120', { number: 120, text: '' })).toBe(true);
+  });
+  it('un texto busca por mes o fecha, sin acentos ni mayúsculas', () => {
+    expect(weekSearchMatches('Septiembre', week)).toBe(true);
+    expect(weekSearchMatches('sep', week)).toBe(true);
+    expect(weekSearchMatches('24 sep', week)).toBe(true);
+    expect(weekSearchMatches('octubre', week)).toBe(false);
+    expect(weekSearchMatches('SEMANA 12', week)).toBe(true);
   });
 });
