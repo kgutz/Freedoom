@@ -13,7 +13,7 @@ it('la información de la máscara anuncia el 25% sin cambiar el vampirismo', ()
 });
 
 function data(definition, rank) {
-  const base = grantBossRewards({ state: {}, bossesDown: 12, source: 'retroactive', seed: 'copy', nowTimestamp: 1 });
+  const base = grantBossRewards({ state: {}, bossesDown: 15, source: 'retroactive', seed: 'copy', nowTimestamp: 1 });
   base.economy.coins = 100000; base.economy.bossBlood = 100;
   Object.values(base.inventory.relics).forEach(relic => { relic.rank = rank; });
   if (definition.fixedRank) base.inventory.relics[definition.id]={unlocked:true,rank:definition.fixedRank,rarity:'legendary',affixes:[],expiresAt:0};

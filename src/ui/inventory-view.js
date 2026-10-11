@@ -582,7 +582,7 @@ function relicEffectRows(definition, relic, options) {
 function forgeUpgradeMarkup(relicId, currentRank, targetRank) {
   const current = relicEffectValue(relicId, relicRankEffect(relicId, currentRank));
   const target = relicEffectValue(relicId, relicRankEffect(relicId, targetRank));
-  const labels = { physicalAttack: 'Ataque', magicAttack: 'Poder', defense: 'Defensa' };
+  const labels = { physicalAttack: 'Ataque', magicAttack: 'Poder', defense: 'Defensa', constitution: 'Constitución', dexterity: 'Destreza' };
   const before = relicCombatBonuses(relicId, currentRank);
   const attributes = relicCombatBonuses(relicId, targetRank).map(bonus => {
     const previous = before.find(item => item.stat === bonus.stat)?.value || 0;
@@ -755,7 +755,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
   const detailEffects = relicEffectCopy(definition, relic);
   const fusionEffect = fusion ? detailEffects.find(effect => effect.id === definition.id) : null;
   const mainEffects = fusionEffect ? detailEffects.filter(effect => effect !== fusionEffect) : detailEffects;
-  const combatStatLabels = { physicalAttack: 'ATAQUE', magicAttack: 'PODER', defense: 'DEFENSA' };
+  const combatStatLabels = { physicalAttack: 'ATAQUE', magicAttack: 'PODER', defense: 'DEFENSA', constitution: 'CONSTITUCIÓN', dexterity: 'DESTREZA' };
   const combatMarkup = combatBonuses.length
     ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('<span class="relic-stat-separator" aria-hidden="true">·</span>')}</div></div>`
     : '';

@@ -123,7 +123,7 @@ describe('Compatibilidad de familias', () => {
   });
 
   it('las ocho fusiones nuevas y la 39 usan una sola receta cada una con la Hydra', () => {
-    const withHydra = FUSION_RELIC_DEFINITIONS.filter(definition => definition.ingredientIds.includes('relic_11'));
+    const withHydra = FUSION_RELIC_DEFINITIONS.filter(definition => definition.ingredientIds.includes('relic_11') && !definition.ingredientIds.includes('relic_13'));
     expect(withHydra.map(definition => definition.id).sort()).toEqual(['fusion_39', ...NEW_IDS].sort());
     expect(new Set(withHydra.map(definition => definition.ingredientIds.find(id => id !== 'relic_11'))).size).toBe(9);
     for (const definition of withHydra) {

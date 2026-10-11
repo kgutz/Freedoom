@@ -7,6 +7,7 @@ const names = {
   relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
   relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Escamas protectoras',
   relic_10: 'Sangre adicional', relic_11: 'Tres Fauces', relic_12: 'Hábitos completos',
+  relic_13: 'Eco de Sobremesa', relic_14: 'Filo del Espejismo', relic_15: 'Bastión del Laberinto',
 };
 
 function baseDescription(id, value) {
@@ -23,6 +24,9 @@ function baseDescription(id, value) {
     relic_10: `Suma ${value}% a la probabilidad de +1 Sangre de Jefe al vencer al jefe semanal.`,
     relic_11: tresFaucesCopy(value),
     relic_12: `Gana ${value} de oro al completar todos los hábitos programados para el día. Una vez al día.`,
+    relic_13: `El primer ataque mágico que daña a cada enemigo de Cacería deja un eco: al terminar el turno inflige un ${value}% de su daño real si el enemigo sigue vivo.`,
+    relic_14: `El primer ataque físico que daña a cada enemigo de Cacería lo marca. El siguiente ataque físico que conecte consume la marca y hace un ${value}% extra del daño del primero.`,
+    relic_15: `Tras recibir dos golpes del mismo enemigo en Cacería, el siguiente golpe que conecte hace un ${value}% menos de daño. Una vez por enemigo; los golpes esquivados no cuentan.`,
   }[id];
 }
 
@@ -89,6 +93,18 @@ function fusionBonus(definition, rank, inherited) {
     fusion_48: `Con el minijefe de Cacería, Mirada petrificante sube ${increase('relic_08', value)}.`,
     fusion_49: `Con el minijefe de Cacería, Escamas protectoras sube ${increase('relic_09', value)}, sin reducir a cero un golpe con daño.`,
     fusion_50: `Cuando tu primer ataque dañe a cada enemigo de Cacería, hace ${value} de daño extra. Una vez por enemigo.`,
+    fusion_51: `Cuando un eco daña a un enemigo, el siguiente golpe suyo que conecte hace ${value} de daño menos, sin bajar de 1. Una vez por enemigo.`,
+    fusion_52: `Cuando tu primer ataque mágico dañe a un enemigo de Cacería, recuperas ${value} de Maná, sin superar el máximo. Una vez por enemigo.`,
+    fusion_53: `Cuando un eco dañe por primera vez a un enemigo de la Cacería, ganas ${value} de XP extra. Una vez por Cacería.`,
+    fusion_54: `Con Constancia cargada al iniciar la Cacería, el eco contra el minijefe hace ${value} de daño extra. No consume la carga.`,
+    fusion_55: `Cuando derrotas a un enemigo al que el eco ya dañó, recuperas ${value} de Maná extra, sin superar el máximo. Una vez por enemigo.`,
+    fusion_56: `Cuando derrotas a un enemigo al que el eco ya dañó, recuperas ${value} de Vida extra, sin resucitar. Una vez por enemigo.`,
+    fusion_57: `Con el ataque que prepara el eco, Vampirismo sube ${value} puntos porcentuales (${increase('relic_07', value)}). El eco no cura.`,
+    fusion_58: `Si tu primer ataque que daña a un enemigo es mágico, Mirada petrificante sube ${value} puntos porcentuales (${increase('relic_08', value)}) contra él. Un ataque físico lo impide.`,
+    fusion_59: `Cuando un eco daña a un enemigo, el siguiente golpe suyo que conecte recibe ${value} puntos porcentuales más de reducción de Escamas. Una vez por enemigo.`,
+    fusion_60: `Al derrotar al minijefe tras dañarlo con un eco, ganas ${value} de oro extra. Una vez por Cacería.`,
+    fusion_61: `Con el eco contra el tercer enemigo de la Cacería, haces ${value} de daño extra. No añade XP.`,
+    fusion_62: `Si completaste todos los hábitos del día, el primer eco que dañe a un enemigo en la Cacería hace ${value} de daño extra. Una vez por Cacería.`,
   }[definition.id];
 }
 

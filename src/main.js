@@ -302,7 +302,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.66';
+const APP_VERSION='2.29.67';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -326,7 +326,11 @@ const LOCAL_DEMO_PROFILE=LOCAL_DEMO_HOST?LOCAL_DEMO_PARAMS.get('demoProfile')||'
    ?demoHydraFusions=1&demoHydraRank=1|2|3 (por defecto 3). Reutiliza el aislamiento de demoSkullFusions. */
 const LOCAL_DEMO_HYDRA_FUSIONS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHydraFusions')==='1';
 const LOCAL_DEMO_HYDRA_RANK=Math.min(3,Math.max(1,parseInt(LOCAL_DEMO_PARAMS.get('demoHydraRank')||'3',10)||3));
-const LOCAL_DEMO_SKULL_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoSkullFusions')==='1'||LOCAL_DEMO_HYDRA_FUSIONS);
+/* Sesión ficticia temporal: reliquias 13-15 y fusiones de Sobremesa 51-62.
+   ?demoSobremesa=1&demoSobremesaRank=1|2|3 (por defecto 3). Misma aislación que demoSkullFusions. */
+const LOCAL_DEMO_SOBREMESA=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoSobremesa')==='1';
+const LOCAL_DEMO_SOBREMESA_RANK=Math.min(3,Math.max(1,parseInt(LOCAL_DEMO_PARAMS.get('demoSobremesaRank')||'3',10)||3));
+const LOCAL_DEMO_SKULL_FUSIONS=LOCAL_DEMO_HOST&&(LOCAL_DEMO_PARAMS.get('demoSkullFusions')==='1'||LOCAL_DEMO_HYDRA_FUSIONS||LOCAL_DEMO_SOBREMESA);
 const LOCAL_DEMO_HALLOWEEN=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoHalloween')==='1';
 const LOCAL_DEMO_REDUCTION_14=LOCAL_DEMO_HOST&&LOCAL_DEMO_PROFILE==='reduction-14';
 const LOCAL_DEMO_ALL_OUTFITS=LOCAL_DEMO_HOST&&LOCAL_DEMO_PARAMS.get('demoAllOutfits')==='1';
@@ -376,7 +380,7 @@ const ACTIVE_STORAGE_KEY=LOCAL_DEMO_BOSSES
     : LOCAL_DEMO_REDUCTION_14
     ? `${STORAGE_KEY}:demo-reduction-14-v3`
     : LOCAL_DEMO_FUSIONS
-    ? `${STORAGE_KEY}:${LOCAL_DEMO_HYDRA_FUSIONS?'demo-hydra-fusions-v1':LOCAL_DEMO_SKULL_FUSIONS?'demo-skull-fusions-v1':LOCAL_DEMO_PENDING_HUNT?'demo-pending-hunt-v2':LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
+    ? `${STORAGE_KEY}:${LOCAL_DEMO_SOBREMESA?'demo-sobremesa-v1':LOCAL_DEMO_HYDRA_FUSIONS?'demo-hydra-fusions-v1':LOCAL_DEMO_SKULL_FUSIONS?'demo-skull-fusions-v1':LOCAL_DEMO_PENDING_HUNT?'demo-pending-hunt-v2':LOCAL_DEMO_DEFUSION?'demo-defusion-v4':'demo-fusions-v2'}`
     : LOCAL_DEMO_CONSTANCY!==null
     ? `${STORAGE_KEY}:demo-constancy-${LOCAL_DEMO_CONSTANCY}-v1`
     : LOCAL_DEMO_SHOP
@@ -1106,7 +1110,7 @@ function prepareLocalBossDemo(){
   };
   if(LOCAL_DEMO_SKULL_FUSIONS){
     const demoLevel=LOCAL_DEMO_LEVEL||35;
-    state.game={...state.game,cls:'sorcerer',name:LOCAL_DEMO_HYDRA_FUSIONS?'Héroe de prueba · Fusiones de Hydra':'Héroe de prueba · Fusiones de Calavera',bonusXp:35*(demoLevel-1)*(demoLevel-1)};
+    state.game={...state.game,cls:'sorcerer',name:LOCAL_DEMO_SOBREMESA?'Héroe de prueba · Sobremesa':LOCAL_DEMO_HYDRA_FUSIONS?'Héroe de prueba · Fusiones de Hydra':'Héroe de prueba · Fusiones de Calavera',bonusXp:35*(demoLevel-1)*(demoLevel-1)};
     const demoMaxes=heroMaxes();
     state.game.hp=demoMaxes.maxHp;
     state.game.mp=demoMaxes.maxMp;
@@ -1243,7 +1247,7 @@ function prepareLocalBossDemo(){
     const nowTimestamp=Date.now();
     RELIC_DEFINITIONS.filter(definition=>definition.bossIndex>=6).forEach((definition,index)=>{
       const record={
-        unlocked:true,rarity:'rare',rank:1,affixes:[],
+        unlocked:true,rarity:'rare',rank:LOCAL_DEMO_SOBREMESA?LOCAL_DEMO_SOBREMESA_RANK:1,affixes:[],
         obtainedAt:nowTimestamp+index,bossIndex:definition.bossIndex,rewardId:definition.rewardId
       };
       demoRelics[definition.id]=record;
@@ -1266,14 +1270,16 @@ function prepareLocalBossDemo(){
       fusion_07:{rarity:'legendary',affixes:['arcane']},
       fusion_08:{rarity:'mythic',affixes:['arcane','discipline']}
     };
-    const demoRecipes=LOCAL_DEMO_HYDRA_FUSIONS
+    const demoRecipes=LOCAL_DEMO_SOBREMESA
+      ? FUSION_RELIC_DEFINITIONS.filter(({id})=>Number(id.slice(7))>=51&&Number(id.slice(7))<=62)
+      : LOCAL_DEMO_HYDRA_FUSIONS
       ? FUSION_RELIC_DEFINITIONS.filter(({id})=>id==='fusion_39'||(Number(id.slice(7))>=43&&Number(id.slice(7))<=50))
       : LOCAL_DEMO_SKULL_FUSIONS
       ? FUSION_RELIC_DEFINITIONS.filter(({id})=>Number(id.slice(7))>=32&&Number(id.slice(7))<=42)
       : FUSION_RELIC_DEFINITIONS;
     demoRecipes.forEach((definition,index)=>{
       const demoStyle=demoFusionStyles[definition.id]||{rarity:'rare',affixes:[]};
-      const demoRank=LOCAL_DEMO_HYDRA_FUSIONS?LOCAL_DEMO_HYDRA_RANK:null;
+      const demoRank=LOCAL_DEMO_SOBREMESA?LOCAL_DEMO_SOBREMESA_RANK:LOCAL_DEMO_HYDRA_FUSIONS?LOCAL_DEMO_HYDRA_RANK:null;
       const ingredientSnapshots=Object.fromEntries(definition.ingredientIds.map(id=>[
         id,{
           rarity:demoRelics[id]?.rarity||'rare',
@@ -1323,6 +1329,8 @@ function prepareLocalBossDemo(){
   }
   state.inventory.equipped=(LOCAL_DEMO_DEFUSION
     ? ['fusion_01']
+    : LOCAL_DEMO_SOBREMESA
+    ? ['fusion_51']
     : LOCAL_DEMO_HYDRA_FUSIONS
     ? ['fusion_43']
     : LOCAL_DEMO_SKULL_FUSIONS
@@ -4337,6 +4345,8 @@ function confirmHuntStart(){
   const relicEffects=equippedHuntEffects(state);
   const activations=state.inventory?.dailyActivations||{};
   if(!activations[`fusion_40:relic_12:${bonusDayKey}`]||activations[`fusion_40:mini-gold:${bonusDayKey}`]) relicEffects.miniAllHabitsGold=0;
+  /* Puño del Ritual Quebrado: elegible solo si hoy se completaron todos los hábitos (misma marca que el Puño de Papel). Se fija al iniciar. */
+  if(!activations[`fusion_62:relic_12:${bonusDayKey}`]) relicEffects.echoHabitsDamage=0;
   const analyticsBonusBefore=normalizeHuntState(state.game.hunt,nowTimestamp).bonusEnergyRemaining;
   const result=startHunt({
     hunt:state.game.hunt,

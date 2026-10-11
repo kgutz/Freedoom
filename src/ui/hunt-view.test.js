@@ -78,6 +78,14 @@ describe('informe de Cacería', () => {
     expect(html).toContain('12 XP');
     expect(renderReport({})).not.toContain('BONUS DE ESCAMAS');
   });
+  it('explica en el informe los bonus de eco, marca y Bastión con sus valores reales', () => {
+    const html=renderReport({xp:15,gold:10,echoXp:3},'easy',{
+      encounters:[{name:'Enemigo',role:'Soldado',won:true,rounds:3,damageDealt:60,damageTaken:20,heroHp:30,heroMana:10,rewards:{xp:15,gold:10},echoDamageDealt:4,markDamageDealt:2,bastionPrevented:2,echoShieldPrevented:1,echoFirstHitManaRecovered:3,echoDefeatManaRecovered:2,echoDefeatHealthRecovered:4,echoXp:3,echoMiniGold:5}],
+    });
+    expect(html).toContain('BONUS DE SOBREMESA');
+    expect(html).toContain('4 daño de eco · 2 daño de marca · 2 daño evitado por Bastión · 1 daño evitado tras el eco · +3 maná · +2 maná · +4 vida · +3 XP · +5 oro');
+    expect(renderReport({})).not.toContain('BONUS DE SOBREMESA');
+  });
   it('permite explorar Nuncabasta antes de desbloquear el combate', () => {
     const root = { dataset: { huntScreen: 'region', huntRegion: 'nuncabasta-peaks' }, innerHTML: '' };
     renderHuntView({ document: { getElementById: () => root }, game: { cls: 'paladin', hunt: null }, stats: { lvl: 24 }, nowTimestamp: 1_000 });

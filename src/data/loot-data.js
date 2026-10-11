@@ -1,5 +1,5 @@
 export const LOOT_SCHEMA_VERSION = 6;
-export const MAX_INITIAL_RELICS = 12;
+export const MAX_INITIAL_RELICS = 15;
 export const MAX_EQUIPPED_RELICS = 2;
 
 export const BOSS_REWARDS = [
@@ -15,6 +15,10 @@ export const BOSS_REWARDS = [
   { coins: 205, bossBlood: 3 },
   { coins: 220, bossBlood: 3 },
   { coins: 235, bossBlood: 3 },
+  // Jefes 13 a 15: continúan la progresión (+15 de oro por jefe, 3 de Sangre). Valores provisionales sin aprobar.
+  { coins: 250, bossBlood: 3 },
+  { coins: 265, bossBlood: 3 },
+  { coins: 280, bossBlood: 3 },
 ];
 export const RELIC_DROP_RATE = 0.6;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
@@ -228,6 +232,42 @@ export const RELIC_DEFINITIONS = [
     effectLabel: 'Completar todos los hábitos programados para el día concede oro adicional. Una activación diaria.',
     affixPool: ['fortune', 'discipline', 'vitality'],
     valueUnit: 'oro',
+  },
+  {
+    id: 'relic_13',
+    rewardId: 'boss_reward_13',
+    bossIndex: 12,
+    name: 'Báculo del Eco de Sobremesa',
+    equipmentType: 'staff',
+    effectFamily: 'magic-echo',
+    image: 'relics/relic_13_baculo_eco_sobremesa.webp',
+    effectLabel: 'Eco de Sobremesa: el primer ataque mágico que daña a cada enemigo deja un eco que inflige parte de su daño al terminar el turno.',
+    affixPool: ['arcane', 'vitality', 'discipline'],
+    valueUnit: '% del daño',
+  },
+  {
+    id: 'relic_14',
+    rewardId: 'boss_reward_14',
+    bossIndex: 13,
+    name: 'Brazal del Filo Espejado',
+    equipmentType: 'bracer',
+    effectFamily: 'physical-mark',
+    image: 'relics/relic_14_brazal_filo_espejado.webp',
+    effectLabel: 'Filo del Espejismo: el primer ataque físico que daña a cada enemigo deja una marca; el siguiente ataque físico que conecte la consume y causa daño adicional.',
+    affixPool: ['discipline', 'fortune', 'vitality'],
+    valueUnit: '% del daño',
+  },
+  {
+    id: 'relic_15',
+    rewardId: 'boss_reward_15',
+    bossIndex: 14,
+    name: 'Hebilla del Bastión Nocturno',
+    equipmentType: 'buckle',
+    effectFamily: 'impact-bastion',
+    image: 'relics/relic_15_hebilla_bastion_nocturno.webp',
+    effectLabel: 'Bastión del Laberinto: tras recibir dos golpes del mismo enemigo, reduce el daño del siguiente golpe que conecte.',
+    affixPool: ['vitality', 'regeneration', 'fortune'],
+    valueUnit: '% reducción',
   },
 ];
 
@@ -599,6 +639,78 @@ export const FUSION_RELIC_DEFINITIONS = [
     effectLabel: 'Recupera Maná y Vida por enemigo derrotado en Cacería. Recuperar Maná y completar el día otorga XP adicional.',
     synergy: { type: 'periodic-mana-day-xp', values: { 1: 5, 2: 7, 3: 10 } },
   },
+  {
+    id: 'fusion_51', recipeId: 'fusion_recipe_51', ingredientIds: ['relic_13', 'relic_01'],
+    name: 'Corazón del Último Eco', equipmentType: 'heart', image: 'relics/fusion_51_corazon_ultimo_eco.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Protección. Tras un eco que daña a un enemigo, reduce el siguiente golpe de ese enemigo.',
+    synergy: { type: 'echo-shield', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_52', recipeId: 'fusion_recipe_52', ingredientIds: ['relic_13', 'relic_02'],
+    name: 'Lágrima de la Mesa Vacía', equipmentType: 'spirit', image: 'relics/fusion_52_lagrima_mesa_vacia.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Maná del hábito. El primer ataque mágico que daña a cada enemigo recupera Maná.',
+    synergy: { type: 'echo-first-hit-mana', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_53', recipeId: 'fusion_recipe_53', ingredientIds: ['relic_13', 'relic_03'],
+    name: 'Daga del Eco Sombrío', equipmentType: 'dagger', image: 'relics/fusion_53_daga_eco_sombrio.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y XP del hábito. El primer eco que daña a un enemigo concede XP extra una vez por Cacería.',
+    synergy: { type: 'echo-first-xp', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_54', recipeId: 'fusion_recipe_54', ingredientIds: ['relic_13', 'relic_04'],
+    name: 'Yelmo de la Brasa Silente', equipmentType: 'helmet', image: 'relics/fusion_54_yelmo_brasa_silente.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Constancia. Con Constancia cargada, el eco contra el minijefe hace daño extra.',
+    synergy: { type: 'echo-mini-constancy-damage', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_55', recipeId: 'fusion_recipe_55', ingredientIds: ['relic_13', 'relic_05'],
+    name: 'Redoma del Antojo Persistente', equipmentType: 'vessel', image: 'relics/fusion_55_redoma_antojo_persistente.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Maná de victoria. Derrotar a un enemigo dañado por el eco recupera Maná extra.',
+    synergy: { type: 'echo-defeat-mana', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_56', recipeId: 'fusion_recipe_56', ingredientIds: ['relic_13', 'relic_06'],
+    name: 'Colmillo de la Sombra Adherida', equipmentType: 'fang', image: 'relics/fusion_56_colmillo_sombra_adherida.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Vida de victoria. Derrotar a un enemigo dañado por el eco recupera Vida extra.',
+    synergy: { type: 'echo-defeat-health', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_57', recipeId: 'fusion_recipe_57', ingredientIds: ['relic_13', 'relic_07'],
+    name: 'Collar del Hambre Silenciosa', equipmentType: 'collar', image: 'relics/fusion_57_collar_hambre_silenciosa.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Vampirismo. El ataque que prepara el eco recupera más Vida.',
+    synergy: { type: 'echo-vampirism', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_58', recipeId: 'fusion_recipe_58', ingredientIds: ['relic_13', 'relic_08'],
+    name: 'Ojo del Reflejo Ausente', equipmentType: 'eye', image: 'relics/fusion_58_ojo_reflejo_ausente.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Mirada petrificante. Si tu primer ataque al enemigo es mágico, su reducción es mayor.',
+    synergy: { type: 'echo-petrification', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_59', recipeId: 'fusion_recipe_59', ingredientIds: ['relic_13', 'relic_09'],
+    name: 'Malla del Manto Residual', equipmentType: 'armor', image: 'relics/fusion_59_malla_manto_residual.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Escamas protectoras. Tras un eco, Escamas protege algo más en el siguiente golpe.',
+    synergy: { type: 'echo-armor', values: { 1: 1, 2: 2, 3: 3 } },
+  },
+  {
+    id: 'fusion_60', recipeId: 'fusion_recipe_60', ingredientIds: ['relic_13', 'relic_10'],
+    name: 'Calavera del Eco Difunto', equipmentType: 'skull', image: 'relics/fusion_60_calavera_eco_difunto.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Sangre adicional. Derrotar al minijefe tras dañarlo con un eco concede oro extra.',
+    synergy: { type: 'echo-mini-gold', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_61', recipeId: 'fusion_recipe_61', ingredientIds: ['relic_13', 'relic_11'],
+    name: 'Gargantilla de los Tres Ecos', equipmentType: 'choker', image: 'relics/fusion_61_gargantilla_tres_ecos.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Tres Fauces. El eco contra el tercer enemigo de la Cacería hace daño extra.',
+    synergy: { type: 'echo-third-damage', values: { 1: 2, 2: 3, 3: 4 } },
+  },
+  {
+    id: 'fusion_62', recipeId: 'fusion_recipe_62', ingredientIds: ['relic_13', 'relic_12'],
+    name: 'Puño del Ritual Quebrado', equipmentType: 'fist', image: 'relics/fusion_62_puno_ritual_quebrado.webp',
+    effectLabel: 'Hereda Eco de Sobremesa y Hábitos completos. Con todos los hábitos del día completados, el primer eco de la Cacería hace daño extra.',
+    synergy: { type: 'echo-habits-damage', values: { 1: 2, 2: 3, 3: 4 } },
+  },
 ];
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
@@ -634,6 +746,9 @@ export const RELIC_RANK_EFFECTS = {
   relic_10: { 1: 10, 2: 15, 3: 20 },
   relic_11: { 1: 3, 2: 6, 3: 10 },
   relic_12: { 1: 5, 2: 8, 3: 12 },
+  relic_13: { 1: 10, 2: 15, 3: 20 },
+  relic_14: { 1: 10, 2: 15, 3: 20 },
+  relic_15: { 1: 10, 2: 15, 3: 20 },
 };
 
 /* Tres Fauces (relic_11): % extra sobre la XP base del 1.er, 2.º y 3.er enemigo de la Cacería.
@@ -721,7 +836,21 @@ export function relicCombatBonus(relicId, rank = 1) {
   };
 }
 
+/* Reliquias de Sobremesa, Djinn y Minotauro: atributos fijos por rango. Ataque, Poder y Defensa se suman
+   a los derivados de combate; Constitución y Destreza son puntos efectivos que solo cuentan en Cacería
+   y nunca se añaden al reparto permanente de atributos. */
+export const SOBREMESA_COMBAT_BONUS_BY_RANK = Object.freeze({
+  relic_13: Object.freeze({ magicAttack: Object.freeze([7, 8, 9]), constitution: Object.freeze([3, 4, 5]) }),
+  relic_14: Object.freeze({ physicalAttack: Object.freeze([7, 8, 9]), dexterity: Object.freeze([3, 4, 5]) }),
+  relic_15: Object.freeze({ defense: Object.freeze([7, 8, 9]), constitution: Object.freeze([3, 4, 5]) }),
+});
+
 function baseRelicCombatBonuses(relicId, rank = 1) {
+  const fixed = SOBREMESA_COMBAT_BONUS_BY_RANK[relicId];
+  if (fixed) {
+    const index = Math.min(3, Math.max(1, Math.trunc(Number(rank) || 1))) - 1;
+    return Object.entries(fixed).map(([stat, values]) => ({ stat, value: values[index] }));
+  }
   if (relicId === 'relic_11') {
     const value = HYDRA_COMBAT_BONUS_BY_RANK[Math.min(3, Math.max(1, Math.trunc(Number(rank) || 1)))];
     return ['physicalAttack', 'magicAttack', 'defense'].map((stat) => ({ stat, value }));

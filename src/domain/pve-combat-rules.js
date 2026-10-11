@@ -571,7 +571,13 @@ export function recoverHuntEncounterHealth(currentHp, maxHp) {
 }
 
 export function pveHeroStats({ classId, level, allocation, relicBonuses = {} }) {
-  const a = attributeSheet({ classId, level, allocation }).attributes;
+  const sheet = attributeSheet({ classId, level, allocation }).attributes;
+  // Constitución y Destreza de reliquia son puntos efectivos en Cacería: no entran en el reparto permanente.
+  const a = {
+    ...sheet,
+    constitution: sheet.constitution + safeInteger(relicBonuses.constitution),
+    dexterity: sheet.dexterity + safeInteger(relicBonuses.dexterity),
+  };
   return {
     attributes: a,
     maxHp: 70 + a.constitution * 6,
@@ -632,6 +638,43 @@ export function simulatePveCombat({
   let miniManaSaved = 0;
   let miniOpeningDamageUsed = false;
   let miniOpeningDamageDealt = 0;
+  // Sobremesa (eco mágico), Djinn (marca física) y Minotauro (bastión): todo es local a este enemigo.
+  const echoPercent = safeInteger(relicEffects.echoPercent);
+  const markPercent = safeInteger(relicEffects.markPercent);
+  const bastionPercent = safeInteger(relicEffects.bastionPercent);
+  let firstDamageType = null;
+  let echoTriggered = false;
+  let echoPending = 0;
+  let echoDamageDealt = 0;
+  let echoDefeatApplied = false;
+  let echoHabitsApplied = false;
+  let echoFirstHitManaRecovered = 0;
+  let echoVampirismUsed = 0;
+  let echoDefeatManaRecovered = 0;
+  let echoDefeatHealthRecovered = 0;
+  let echoShieldPending = 0;
+  let echoShieldPrevented = 0;
+  let echoArmorPending = 0;
+  let echoArmorBoostUsed = 0;
+  let echoPetrificationBoost = 0;
+  let markPrepared = false;
+  let markConsumed = false;
+  let markBase = 0;
+  let markDamageDealt = 0;
+  let impactsReceived = 0;
+  let bastionUsed = false;
+  let bastionPrevented = 0;
+  const applyEchoDefeat = () => {
+    // Derrotar a un enemigo al que el eco ya ha dañado: una vez por enemigo, sin resucitar.
+    if (echoDefeatApplied || echoDamageDealt <= 0 || enemyHp > 0 || heroHp <= 0) return;
+    echoDefeatApplied = true;
+    const mana = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.echoDefeatMana));
+    const hp = Math.min(hero.maxHp - heroHp, safeInteger(relicEffects.echoDefeatHealth));
+    heroMana += mana;
+    heroHp += hp;
+    echoDefeatManaRecovered = mana;
+    echoDefeatHealthRecovered = hp;
+  };
   const potions = normalizePotionState(suppliedPotions);
   const potionUses = [];
   const roundDetails = [];
@@ -687,6 +730,36 @@ export function simulatePveCombat({
     heroMana = Math.max(0, heroMana - manaSpent);
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
+    if (realDamage > 0 && firstDamageType === null) firstDamageType = attackType;
+    // Eco de Sobremesa: el primer ataque MÁGICO que daña a este enemigo prepara el eco. Un fallo no lo consume.
+    // La base es el daño real ya resuelto (tras modificadores, mitigación y límite de vida restante).
+    const echoTrigger = echoPercent > 0 && attackType === 'magic' && realDamage > 0 && !echoTriggered;
+    let echoHitVampirism = 0;
+    if (echoTrigger) {
+      echoTriggered = true;
+      if (enemyHp > 0) echoPending = realDamage;
+      echoHitVampirism = safeInteger(relicEffects.echoVampirism);
+      echoVampirismUsed = echoHitVampirism;
+      const manaGain = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.echoFirstHitMana));
+      heroMana += manaGain;
+      echoFirstHitManaRecovered = manaGain;
+      echoPetrificationBoost = safeInteger(relicEffects.echoPetrification);
+    }
+    // Filo del Espejismo: el primer ataque FÍSICO que daña deja la marca; el siguiente que conecte la consume.
+    let markExtra = 0;
+    if (markPercent > 0 && attackType === 'physical' && !heroHit.dodged) {
+      if (markPrepared && !markConsumed) {
+        markConsumed = true;
+        if (enemyHp > 0) {
+          markExtra = Math.min(enemyHp, Math.max(1, Math.round(markBase * markPercent / 100)));
+          enemyHp -= markExtra;
+          markDamageDealt = markExtra;
+        }
+      } else if (!markPrepared && realDamage > 0) {
+        markPrepared = true;
+        markBase = realDamage;
+      }
+    }
     const firstHitMana = safeInteger(relicEffects.miniFirstHitMana) + safeInteger(relicEffects.firstHitManaEach);
     if (realDamage > 0 && !miniFirstHitManaUsed && firstHitMana > 0) {
       const restored = Math.min(hero.maxMana - heroMana, firstHitMana);
@@ -704,14 +777,16 @@ export function simulatePveCombat({
     // of actual armor mitigation. It cannot carry into another enemy.
     const armorVampirismBonus = armorPrevented >= 5 ? safeInteger(relicEffects.armorVampirism) : 0;
     if (realDamage > 0) armorVampirismUsed += armorVampirismBonus;
-    const rawHealing = vampirismCarry + realDamage * (safeInteger(relicEffects.vampirism) + hitVampirismBonus + armorVampirismBonus);
+    const rawHealing = vampirismCarry + realDamage * (safeInteger(relicEffects.vampirism) + hitVampirismBonus + armorVampirismBonus + echoHitVampirism);
     const healing = Math.min(hero.maxHp - heroHp, Math.floor(rawHealing / 100));
     heroHp += healing;
     vampirismRecovered += healing;
     vampirismCarry = heroHp >= hero.maxHp ? 0 : rawHealing % 100;
     if (round === 1) petrificationPending = safeInteger(relicEffects.petrification) > 0;
-    log.push({ round, actor: 'hero', ...heroHit, manaSpent, remainingMana: heroMana, remainingHp: enemyHp });
+    log.push({ round, actor: 'hero', ...heroHit, manaSpent, markExtra, remainingMana: heroMana, remainingHp: enemyHp });
+    applyEchoDefeat();
     let damageTaken = 0;
+    let roundEchoDamage = 0;
     if (enemyHp > 0) {
       const enemyHit = resolvePveAttack({ attacker: enemy, defender: hero, attackType: enemy.attackType || 'physical', roll });
       // Hard-hunt pressure is based on current HP, not maximum HP or equipment.
@@ -724,7 +799,8 @@ export function simulatePveCombat({
       }
       if (petrificationPending && !enemyHit.dodged) {
         const originalDamage = enemyHit.damage;
-        const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus) + safeInteger(relicEffects.miniPetrification);
+        const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus) + safeInteger(relicEffects.miniPetrification)
+          + (firstDamageType === 'magic' ? echoPetrificationBoost : 0);
         enemyHit.damage = Math.floor(originalDamage * (100 - clamp(reduction, 0, 100)) / 100);
         enemyHit.petrificationPrevented = originalDamage - enemyHit.damage;
         petrificationTriggered = true;
@@ -735,8 +811,12 @@ export function simulatePveCombat({
       // minimum 1 for positive hits. Existing dodges/Ojo zeroes stay zero.
       if (enemyHit.damage > 0) {
         const beforeArmor = enemyHit.damage;
+        // Malla del Manto Residual: tras un eco, el siguiente golpe que conecte recibe una reducción extra, una sola vez.
+        const echoArmorExtra = safeInteger(relicEffects.damageReduction) > 0 ? echoArmorPending : 0;
+        echoArmorBoostUsed += echoArmorExtra;
+        echoArmorPending = 0;
         const armorReduction = safeInteger(relicEffects.damageReduction) > 0
-          ? safeInteger(relicEffects.damageReduction) + safeInteger(relicEffects.armorHuntBonus) + safeInteger(relicEffects.miniArmor) : 0;
+          ? safeInteger(relicEffects.damageReduction) + safeInteger(relicEffects.armorHuntBonus) + safeInteger(relicEffects.miniArmor) + echoArmorExtra : 0;
         enemyHit.damage = Math.max(1, Math.floor(beforeArmor * (100 - clamp(armorReduction, 0, 100)) / 100));
         enemyHit.armorPrevented = beforeArmor - enemyHit.damage;
         armorPrevented += enemyHit.armorPrevented;
@@ -752,6 +832,27 @@ export function simulatePveCombat({
           miniFirstHitShieldPrevented = prevented;
           miniFirstHitShieldUsed = true;
         }
+        // Corazón del Último Eco: tras un eco, el siguiente golpe que conecte hace unos puntos menos (mínimo 1).
+        if (echoShieldPending > 0) {
+          const prevented = Math.min(enemyHit.damage - 1, echoShieldPending);
+          enemyHit.damage -= prevented;
+          echoShieldPrevented += prevented;
+          echoShieldPending = 0;
+        }
+      }
+      // Bastión del Laberinto. Un golpe cuenta si conecta (no esquivado), aunque otra reducción lo deje en 0.
+      // Tras dos impactos, el siguiente se reduce un % (suelo, mínimo 1 si seguía haciendo daño). Una vez por enemigo.
+      if (bastionPercent > 0 && !enemyHit.dodged) {
+        if (impactsReceived >= 2 && !bastionUsed) {
+          bastionUsed = true;
+          if (enemyHit.damage > 0) {
+            const beforeBastion = enemyHit.damage;
+            enemyHit.damage = Math.max(1, Math.floor(beforeBastion * (100 - clamp(bastionPercent, 0, 100)) / 100));
+            enemyHit.bastionPrevented = beforeBastion - enemyHit.damage;
+            bastionPrevented += enemyHit.bastionPrevented;
+          }
+        }
+        impactsReceived += 1;
       }
       damageTaken = enemyHit.damage;
       heroHp = Math.max(0, heroHp - enemyHit.damage);
@@ -797,10 +898,29 @@ export function simulatePveCombat({
         roundPotionUses.push(use);
         log.push({ round, actor: 'potion', potionId: 'life', restored, remainingMana: heroMana, remainingHp: heroHp });
       }
+      // Fin de turno: tras el ataque del enemigo, el eco pendiente golpea una sola vez. Si el héroe cayó,
+      // el combate termina sin eco. El eco no paga Maná, no tira crítico ni acierto y no activa vampirismo ni
+      // otros efectos de ataque, y no genera otro eco.
+      if (echoPending > 0 && heroHp > 0 && enemyHp > 0) {
+        const extra = safeInteger(relicEffects.echoMiniDamage) + safeInteger(relicEffects.echoThirdDamage)
+          + (!echoHabitsApplied ? safeInteger(relicEffects.echoHabitsDamage) : 0);
+        if (!echoHabitsApplied && safeInteger(relicEffects.echoHabitsDamage) > 0) echoHabitsApplied = true;
+        const wanted = Math.max(1, Math.round(echoPending * echoPercent / 100)) + extra;
+        roundEchoDamage = Math.min(enemyHp, wanted);
+        enemyHp -= roundEchoDamage;
+        echoDamageDealt += roundEchoDamage;
+        echoPending = 0;
+        if (roundEchoDamage > 0) {
+          echoShieldPending = safeInteger(relicEffects.echoShield);
+          echoArmorPending = safeInteger(relicEffects.echoArmor);
+        }
+        log.push({ round, actor: 'echo', damage: roundEchoDamage, remainingHp: enemyHp });
+        applyEchoDefeat();
+      }
     }
     roundDetails.push({
       round,
-      damageDealt: realDamage,
+      damageDealt: realDamage + markExtra + roundEchoDamage,
       damageTaken,
       heroHp,
       heroMana,
@@ -812,6 +932,16 @@ export function simulatePveCombat({
     miniFirstHitShieldPrevented,
     miniManaSaved,
     miniOpeningDamageDealt,
+    echoDamageDealt,
+    echoHabitsApplied,
+    echoFirstHitManaRecovered,
+    echoVampirismUsed,
+    echoDefeatManaRecovered,
+    echoDefeatHealthRecovered,
+    echoShieldPrevented,
+    echoArmorBoostUsed,
+    markDamageDealt,
+    bastionPrevented,
     petrificationTriggered,
     rendDamageBeforeMitigation: log.reduce((sum, entry) => sum + (entry.rendDamageBeforeMitigation || 0), 0),
     guardDamagePrevented: log.reduce((sum, entry) => sum + (entry.guardPrevented || 0), 0),
@@ -938,7 +1068,8 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       bonusPercent: HUNT_FORTUNE_BONUS_PERCENT,
     } : null,
     relicEffects: {
-      ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniFirstHitDamage', 'firstHitDamageEach', 'firstHitManaEach', 'miniVictoryMana', 'miniVictoryHealthFlat', 'hydraXpFirst', 'hydraXpSecond', 'hydraXpThird', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth']
+      ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniFirstHitDamage', 'firstHitDamageEach', 'firstHitManaEach', 'miniVictoryMana', 'miniVictoryHealthFlat', 'hydraXpFirst', 'hydraXpSecond', 'hydraXpThird', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth',
+        'echoPercent', 'markPercent', 'bastionPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
       maskBloodChance: [20, 50].includes(relicEffects.maskBloodChance) ? 20 : 0,
@@ -947,6 +1078,8 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
       physicalAttack: safeInteger(relicBonuses.physicalAttack),
       magicAttack: safeInteger(relicBonuses.magicAttack),
       defense: safeInteger(relicBonuses.defense),
+      constitution: safeInteger(relicBonuses.constitution),
+      dexterity: safeInteger(relicBonuses.dexterity),
     },
   };
   return {
@@ -1006,6 +1139,9 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   let miniRewardAwarded = false;
   let miniHealthAwarded = false;
   let miniVictoryRestoreAwarded = false;
+  let echoXpAwarded = false;
+  let echoMiniGoldAwarded = false;
+  let echoHabitsDamageUsed = false;
   for (const [enemyIndex, definition] of region.enemies.entries()) {
     const enemy = scaledEnemy(definition, difficulty);
     const isMiniboss = enemy.role === 'Minijefe';
@@ -1025,6 +1161,10 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       relicEffects: {
         ...effects,
         ...miniOnly,
+        // Sinergias de eco con alcance propio: solo contra el minijefe, solo el tercer enemigo, una vez por Cacería.
+        echoMiniDamage: isMiniboss ? safeInteger(effects.echoMiniDamage) : 0,
+        echoThirdDamage: enemyIndex === 2 ? safeInteger(effects.echoThirdDamage) : 0,
+        echoHabitsDamage: echoHabitsDamageUsed ? 0 : safeInteger(effects.echoHabitsDamage),
         armorReserve: armorReserveRemaining,
         petrificationFirstBonus: firstPetrificationUsed ? 0 : safeInteger(effects.petrificationFirstBonus),
         vampirism: safeInteger(effects.vampirism) + safeInteger(effects.huntBonus) + (enemyIndex === 0 ? safeInteger(effects.encounterBonus) : 0) + (isMiniboss ? safeInteger(effects.miniVampirism) : 0),
@@ -1042,6 +1182,14 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     firstPetrificationUsed ||= result.petrificationTriggered;
     const petrificationXp = !petrificationXpAwarded && result.petrificationReduced ? safeInteger(effects.petrificationXp) : 0;
     petrificationXpAwarded ||= petrificationXp > 0;
+    // Daga del Eco Sombrío: XP fija la primera vez que un eco daña a un enemigo (como la Mirada, no exige ganar).
+    const echoXp = !echoXpAwarded && result.echoDamageDealt > 0 ? safeInteger(effects.echoFirstXp) : 0;
+    echoXpAwarded ||= echoXp > 0;
+    // Calavera del Eco Difunto: oro extra al derrotar al minijefe tras dañarlo con un eco (incluido el golpe final).
+    const echoMiniGold = isMiniboss && result.won && result.echoDamageDealt > 0 && !echoMiniGoldAwarded
+      ? safeInteger(effects.echoMiniGold) : 0;
+    echoMiniGoldAwarded ||= echoMiniGold > 0;
+    echoHabitsDamageUsed ||= result.echoHabitsApplied;
     potions = result.potions;
     currentHp = result.heroHp;
     currentMana = result.heroMana;
@@ -1091,6 +1239,17 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       }
     }
     encounters.push({
+      echoXp,
+      echoMiniGold,
+      echoDamageDealt: result.echoDamageDealt,
+      echoFirstHitManaRecovered: result.echoFirstHitManaRecovered,
+      echoVampirismUsed: result.echoVampirismUsed,
+      echoDefeatManaRecovered: result.echoDefeatManaRecovered,
+      echoDefeatHealthRecovered: result.echoDefeatHealthRecovered,
+      echoShieldPrevented: result.echoShieldPrevented,
+      echoArmorBoostUsed: result.echoArmorBoostUsed,
+      markDamageDealt: result.markDamageDealt,
+      bastionPrevented: result.bastionPrevented,
       miniVictoryXp,
       miniAllHabitsGold,
       miniVictoryHealthRecovered,
@@ -1150,8 +1309,8 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
     encounter.hydraXpPercent = encounter.won ? safeInteger(hydraXpPercents[index]) : 0;
     encounter.hydraXp = encounter.won ? Math.round(xpByEnemy[index] * encounter.hydraXpPercent / 100) : 0;
     encounter.rewards = {
-      xp: (encounter.won ? xpByEnemy[index] : 0) + encounter.hydraXp + encounter.petrificationXp + encounter.armorXp + encounter.miniVictoryXp,
-      gold: (encounter.won ? goldByEnemy[index] : 0) + encounter.miniAllHabitsGold,
+      xp: (encounter.won ? xpByEnemy[index] : 0) + encounter.hydraXp + encounter.petrificationXp + encounter.armorXp + encounter.miniVictoryXp + encounter.echoXp,
+      gold: (encounter.won ? goldByEnemy[index] : 0) + encounter.miniAllHabitsGold + encounter.echoMiniGold,
       arcaneFibers: 0,
       arcaneInks: 0,
       bossBlood: 0,
@@ -1193,6 +1352,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
   const rewards = {
     xp: encounters.reduce((total, encounter) => total + encounter.rewards.xp, 0),
     hydraXp: encounters.reduce((total, encounter) => total + encounter.hydraXp, 0),
+    echoXp: encounters.reduce((total, encounter) => total + encounter.echoXp, 0),
     gold: baseGold + fortuneGold,
     baseGold,
     fortuneGold,

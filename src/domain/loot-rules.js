@@ -147,7 +147,7 @@ function normalizeRelicRecord(id, value) {
   // Discard obsolete/injected armor snapshots on recipes without this ingredient.
   if (!fusion || !definition.ingredientIds.includes('relic_09')) delete inheritedEffects.relic_09;
   // relic_11 (Tres Fauces) cambió de XP diaria por hábitos a XP porcentual de Cacería: el rango se conserva.
-  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09', 'relic_11']) {
+  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09', 'relic_11', 'relic_13', 'relic_14', 'relic_15']) {
     if (!fusion || !definition.ingredientIds.includes(baseId)) continue;
     const rank = ingredientSnapshots[baseId]?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
     inheritedEffects[baseId] = relicRankEffect(baseId, rank);
@@ -1768,6 +1768,9 @@ export function equippedRelicBonuses(lootState) {
     physicalAttack: 0,
     magicAttack: 0,
     defense: 0,
+    // Puntos efectivos de atributo de Sobremesa, Djinn y Minotauro: solo cuentan en Cacería.
+    constitution: 0,
+    dexterity: 0,
     rankEffects: {},
   };
   for (const relicId of normalized.inventory.equipped) {
@@ -1901,6 +1904,23 @@ export function equippedHuntEffects(state) {
     petrificationHealth: synergy('fusion_24'),
     petrificationVampirism: synergy('fusion_25'),
     hydraXpFirst: hydraXp[0], hydraXpSecond: hydraXp[1], hydraXpThird: hydraXp[2],
+    // Eco de Sobremesa (relic_13), Filo del Espejismo (relic_14) y Bastión del Laberinto (relic_15).
+    echoPercent: sum('relic_13'), markPercent: sum('relic_14'), bastionPercent: sum('relic_15'),
+    echoShield: synergy('fusion_51'),
+    echoFirstHitMana: synergy('fusion_52'),
+    echoFirstXp: synergy('fusion_53'),
+    // La elegibilidad por Constancia se fija al iniciar la Cacería: cargada del todo y sin consumirse.
+    echoMiniDamage: normalized.inventory.equipped.includes('fusion_54') && normalized.inventory.constancy.charge >= 6
+      ? synergy('fusion_54') : 0,
+    echoDefeatMana: synergy('fusion_55'),
+    echoDefeatHealth: synergy('fusion_56'),
+    echoVampirism: synergy('fusion_57'),
+    echoPetrification: synergy('fusion_58'),
+    echoArmor: synergy('fusion_59'),
+    echoMiniGold: synergy('fusion_60'),
+    echoThirdDamage: synergy('fusion_61'),
+    // La condición de hábitos completos la anula main.js al iniciar la Cacería si no se cumple.
+    echoHabitsDamage: synergy('fusion_62'),
     maskBloodChance: maskActive ? 20 : 0,
     vampirism: sum('relic_07') + (maskActive ? 10 : 0), petrification: sum('relic_08'),
     damageReduction: sum('relic_09'),

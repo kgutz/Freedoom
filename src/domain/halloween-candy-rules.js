@@ -82,7 +82,7 @@ export function rollHalloweenHuntCandy({ candy, report, active = false, random =
   const prepared = objectOf(report.halloweenCandy);
   const minibossWon = report.difficultyId === 'hard' && report.encounters?.[2]?.won === true;
   const bloodBonus = minibossWon && prepared.blood && random() < HALLOWEEN_BLOOD_BONUS_RATE ? 1 : 0;
-  const candyXpBase = Math.max(0, Number(report.rewards?.xp) - Math.max(0, Number(report.rewards?.hydraXp) || 0));
+  const candyXpBase = Math.max(0, Number(report.rewards?.xp) - Math.max(0, Number(report.rewards?.hydraXp) || 0) - Math.max(0, Number(report.rewards?.echoXp) || 0));
   const xpBonus = prepared.experience && Number(report.rewards?.xp) > 0
     ? Math.round(candyXpBase * HALLOWEEN_XP_BONUS_RATE) : 0;
   // Mantiene la elegibilidad de expediciones antiguas, pero aplica el balance actual.
