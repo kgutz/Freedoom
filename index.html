@@ -153,7 +153,7 @@
       <button class="ob-next" id="obFinish">Empezar mi aventura <span aria-hidden="true">→</span></button>
     </div>
   </div>
-  <div class="ob-version" id="obVersion">v2.29.65</div>
+  <div class="ob-version" id="obVersion">v2.29.66</div>
 </div>
 
 <div id="loading" class="loading">
@@ -545,7 +545,7 @@
       <div class="settings-footer">
         <button class="btn-reset" id="btnReset">Reiniciar app</button>
         <img src="logo.webp" alt="Freedom" class="set-logo" onerror="this.style.display='none'">
-        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.65</span></p>
+        <p class="hint settings-version">Freedom <span id="settingsVersion">v2.29.66</span></p>
       </div>
     </div>
   </div>
@@ -795,6 +795,29 @@
   <div class="sheet character-sheet">
     <div class="sheet-head sk-head-center"><h3>Ficha de personaje</h3><button class="sheet-close" data-sheet="sheetCharacter">✕</button></div>
     <div id="characterSheetBody"></div>
+  </div>
+</div>
+
+<div class="modal-bg center" id="attributeAmountBg" style="z-index:47">
+  <div class="modal fusion-confirm-modal attribute-amount-modal" role="dialog" aria-modal="true" aria-labelledby="attributeAmountTitle">
+    <span class="relic-effect-info-kicker">REPARTIR PUNTOS</span>
+    <h3 id="attributeAmountTitle">Fuerza</h3>
+    <p class="attribute-amount-info">Tienes <b id="attributeAmountAvailable">0</b> disponibles · <span id="attributeAmountCurrent">0</span> → <b id="attributeAmountNext">0</b></p>
+    <div class="attribute-amount-stepper">
+      <button type="button" id="attributeAmountMinus" aria-label="Quitar un punto">−</button>
+      <input type="number" id="attributeAmountInput" inputmode="numeric" min="1" value="1" aria-label="Cantidad de puntos">
+      <button type="button" id="attributeAmountPlus" aria-label="Añadir un punto">+</button>
+    </div>
+    <div class="attribute-amount-quick" role="group" aria-label="Cantidades rápidas">
+      <button type="button" data-attribute-amount="1">1</button>
+      <button type="button" data-attribute-amount="5">5</button>
+      <button type="button" data-attribute-amount="10">10</button>
+      <button type="button" data-attribute-amount="all">TODOS</button>
+    </div>
+    <div class="fusion-confirm-actions">
+      <button type="button" id="attributeAmountCancel">CANCELAR</button>
+      <button type="button" id="attributeAmountAccept">REPARTIR</button>
+    </div>
   </div>
 </div>
 

@@ -15,6 +15,7 @@ import {
   relicRankEffect,
 } from '../data/loot-data.js';
 import {
+  constancySuspendedStatus,
   forgePreview,
   getDefusionPreview,
   getForgeFusionPreview,
@@ -475,6 +476,13 @@ export function potionResourceMeterMarkup(potionId, options = {}) {
   </div>`;
 }
 
+function constancySavedNotice(lootState) {
+  const saved = constancySuspendedStatus(lootState, Date.now());
+  if (!saved) return '';
+  const minutes = Math.max(1, Math.ceil(saved.remainingMs / 60000));
+  return `<small class="relic-constancy-saved">Carga guardada: ${saved.charge}/6 · vuelve a equiparla en ${minutes} min para conservarla</small>`;
+}
+
 export function renderPotionDetail(document, lootState, potionId, options = {}) {
   const normalized=normalizeLootState(lootState);
   const definition=POTION_DEFINITIONS.find((item)=>item.id===potionId);
@@ -752,7 +760,7 @@ export function renderRelicDetail(document, lootState, relicId, options = {}) {
     ? `<div class="relic-combat-bonus"><span>ESTADÍSTICAS DE CACERÍA</span><div class="relic-combat-values">${combatBonuses.map((bonus) => `<b>${combatStatLabels[bonus.stat]} +${bonus.value}</b>`).join('<span class="relic-stat-separator" aria-hidden="true">·</span>')}</div></div>`
     : '';
   const constancy = relicId === 'relic_04' || relic.inheritedEffects?.relic_04
-    ? `<div class="relic-constancy" aria-label="Carga de Constancia"><span>CONSTANCIA</span><b>Carga actual: ${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b></div>`
+    ? `<div class="relic-constancy" aria-label="Carga de Constancia"><span>CONSTANCIA</span><b>Carga actual: ${Math.min(6, Math.max(0, Number(normalized.inventory.constancy?.charge) || 0))}/6</b>${constancySavedNotice(normalized)}</div>`
     : '';
   const huntCharge = HUNT_CHARGE_RELIC_IDS.includes(relicId)
     ? `<div class="relic-constancy" aria-label="Carga de Cacería"><span>CARGA DE CACERÍA</span><b>${huntChargeCopy(normalized.inventory.huntCharges[relicId])}</b></div>`

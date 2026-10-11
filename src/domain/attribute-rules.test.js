@@ -3,6 +3,7 @@ import {
   allocateAttributePoint,
   attributeSheet,
   availableAttributePoints,
+  clampAttributePointAmount,
   earnedAttributePoints,
   healingPowerMultiplier,
   resetAttributeAllocation,
@@ -60,5 +61,26 @@ describe('attribute rules', () => {
     expect(healingPowerMultiplier({ classId: 'paladin', allocation: { power: 20 } })).toBeCloseTo(1.1);
     expect(healingPowerMultiplier({ classId: 'warrior', allocation: { power: 50 } })).toBe(1);
     expect(healingPowerMultiplier({ classId: 'sorcerer' })).toBe(1);
+  });
+
+  it('limita la cantidad a repartir entre 1 y los puntos disponibles', () => {
+    expect(clampAttributePointAmount(5, 30)).toBe(5);
+    expect(clampAttributePointAmount(99, 30)).toBe(30);
+    expect(clampAttributePointAmount(0, 30)).toBe(1);
+    expect(clampAttributePointAmount(-4, 30)).toBe(1);
+    expect(clampAttributePointAmount('abc', 30)).toBe(1);
+    expect(clampAttributePointAmount(3.9, 30)).toBe(3);
+    expect(clampAttributePointAmount(5, 0)).toBe(0);
+  });
+
+  it('reparte varios puntos de una vez sin pasarse de los disponibles', () => {
+    const level = 5;
+    const ok = allocateAttributePoint({ classId: 'sorcerer', level, allocation: {}, attributeId: 'power', amount: 10 });
+    expect(ok.ok).toBe(true);
+    expect(ok.sheet.allocation.power).toBe(10);
+    expect(ok.sheet.availablePoints).toBe(earnedAttributePoints(level) - 10);
+    const tooMany = allocateAttributePoint({ classId: 'sorcerer', level, allocation: {}, attributeId: 'power', amount: earnedAttributePoints(level) + 1 });
+    expect(tooMany.ok).toBe(false);
+    expect(tooMany.reason).toBe('insufficient-points');
   });
 });

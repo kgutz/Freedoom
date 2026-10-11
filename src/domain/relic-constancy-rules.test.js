@@ -4,15 +4,17 @@ import {
   activateRelicConstancy,
   constancyActivationKey,
   constancyCharge,
+  constancySuspendedStatus,
   emptyLootState,
   equipRelic,
+  fuseRelics,
   normalizeLootState,
   syncRelicConstancy,
   unequipRelic,
 } from './loot-rules.js';
 import { weeklyBossPenalty } from './hero-rules.js';
 import { calculateGameStats } from './progression-rules.js';
-import { relicRankEffect } from '../data/loot-data.js';
+import { CONSTANCY_GRACE_MS, relicRankEffect } from '../data/loot-data.js';
 
 const SIX_HITS = ['hit', 'hit', 'hit', 'hit', 'hit', 'hit', 'pend'];
 
@@ -257,6 +259,77 @@ describe('Constancia del Yelmo de la Última Brasa', () => {
     expect(weeklyBossPenalty({ hp: 100, maxHp: 100, maxMp: 100 })).toEqual({
       hp: 70,
       mp: 20,
+    });
+  });
+
+  describe('margen de 7 minutos al quitar una fuente de Constancia', () => {
+    const T0 = 1_000_000;
+    function charged(charge = 4) {
+      const state = yelmoState();
+      state.inventory.constancy = {
+        cycleId: 'week-3:boss-3', charge, baselineOutcomes: ['hit', 'hit', 'hit', 'hit'], awaitingBaseline: false,
+        lastIncreaseAt: 10, lastIncreaseCharge: charge,
+      };
+      return state;
+    }
+    function withFusion28(state) {
+      state.inventory.relics.relic_09 = { unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 12, bossIndex: 8 };
+      state.economy.coins = 1000;
+      state.economy.bossBlood = 10;
+      return state;
+    }
+
+    it('dura siete minutos', () => {
+      expect(CONSTANCY_GRACE_MS).toBe(7 * 60 * 1000);
+    });
+
+    it('al desequipar guarda la carga y se recupera al volver a equipar dentro del margen', () => {
+      const off = unequipRelic(charged(4), 'relic_04', { confirmConstancyReset: true, nowTimestamp: T0 });
+      expect(off.inventory.constancy.charge).toBe(0);
+      expect(off.inventory.constancy.suspended).toMatchObject({ charge: 4, until: T0 + CONSTANCY_GRACE_MS });
+      expect(constancySuspendedStatus(off, T0 + 60_000)).toEqual({ charge: 4, remainingMs: CONSTANCY_GRACE_MS - 60_000 });
+      const back = equipRelic(off, 'relic_04', null, { nowTimestamp: T0 + 6 * 60_000 });
+      expect(back.ok).toBe(true);
+      expect(back.inventory.constancy).toMatchObject({ charge: 4, awaitingBaseline: false, cycleId: 'week-3:boss-3' });
+      expect(back.inventory.constancy.suspended).toBeUndefined();
+    });
+
+    it('pasados los siete minutos la carga se pierde y se empieza de cero', () => {
+      const off = unequipRelic(charged(4), 'relic_04', { confirmConstancyReset: true, nowTimestamp: T0 });
+      expect(constancySuspendedStatus(off, T0 + CONSTANCY_GRACE_MS + 1)).toBeNull();
+      const back = equipRelic(off, 'relic_04', null, { nowTimestamp: T0 + CONSTANCY_GRACE_MS + 1 });
+      expect(back.inventory.constancy.charge).toBe(0);
+      expect(back.inventory.constancy.awaitingBaseline).toBe(true);
+    });
+
+    it('fusionar el Yelmo no pierde la carga si se equipa la fusión a tiempo', () => {
+      const state = withFusion28(charged(5));
+      const fused = fuseRelics({ state, leftId: 'relic_04', rightId: 'relic_09', operationId: 'grace-fuse', randomValue: 0, nowTimestamp: T0 });
+      expect(fused.ok).toBe(true);
+      expect(fused.inventory.equipped).not.toContain('relic_04');
+      expect(fused.inventory.constancy.suspended).toMatchObject({ charge: 5 });
+      const equipped = equipRelic(fused, 'fusion_28', null, { nowTimestamp: T0 + 3 * 60_000 });
+      expect(equipped.ok).toBe(true);
+      expect(equipped.inventory.constancy.charge).toBe(5);
+    });
+
+    it('una fuente que no es de Constancia no recupera la carga guardada', () => {
+      const off = unequipRelic(charged(4), 'relic_04', { confirmConstancyReset: true, nowTimestamp: T0 });
+      off.inventory.relics.relic_02 = { unlocked: true, rarity: 'rare', rank: 1, affixes: [], obtainedAt: 11, bossIndex: 1 };
+      const other = equipRelic(off, 'relic_02', null, { nowTimestamp: T0 + 1000 });
+      expect(other.inventory.constancy.charge).toBe(0);
+      expect(other.inventory.constancy.suspended).toMatchObject({ charge: 4 });
+    });
+
+    it('la sincronización conserva la carga guardada mientras dura el margen y cambia de ciclo la invalida', () => {
+      const off = unequipRelic(charged(4), 'relic_04', { confirmConstancyReset: true, nowTimestamp: T0 });
+      const during = syncRelicConstancy(off, { cycleId: 'week-3:boss-3', outcomes: ['hit', 'hit', 'hit', 'hit', 'pend', 'pend', 'pend'], nowTimestamp: T0 + 60_000 });
+      expect(during.inventory.constancy.suspended).toMatchObject({ charge: 4 });
+      const expired = syncRelicConstancy(during, { cycleId: 'week-3:boss-3', outcomes: [], nowTimestamp: T0 + CONSTANCY_GRACE_MS + 5 });
+      expect(expired.inventory.constancy.suspended).toBeUndefined();
+      const otherCycle = syncRelicConstancy(off, { cycleId: 'week-4:boss-3', outcomes: [], nowTimestamp: T0 + 60_000 });
+      const back = equipRelic(otherCycle, 'relic_04', null, { nowTimestamp: T0 + 120_000 });
+      expect(back.inventory.constancy.charge).toBe(0);
     });
   });
 });

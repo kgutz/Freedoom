@@ -573,7 +573,7 @@ describe('interfaz de inventario y botín', () => {
     expect(html).toContain('Carga actual: 4/6');
     expect(html).toContain('class="relic-charge-status"');
     expect(html).not.toContain('relic-charge-status--paired');
-    expect(html).toContain('Gana 30 XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; el progreso se pierde al desequipar.');
+    expect(html).toContain('Gana 30 XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; si la desequipas, tienes 7 minutos para volver a equiparla (o una fusión con Constancia) sin perder la carga.');
     expect(html).toContain('+3 puntos porcentuales en la Forja.');
   });
 

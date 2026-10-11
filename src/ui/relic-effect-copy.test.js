@@ -102,13 +102,13 @@ describe('Microcopy de efectos: catálogo completo', () => {
     }
   });
 
-  it.each([1, 2, 3])('Constancia R%i advierte la pérdida de progreso en base y todas sus fusiones', rank => {
+  it.each([1, 2, 3])('Constancia R%i explica los 7 minutos de margen en base y todas sus fusiones', rank => {
     const definitions = ALL_RELIC_DEFINITIONS.filter(definition => definition.id === 'relic_04' || definition.ingredientIds?.includes('relic_04'));
     expect(definitions.length).toBeGreaterThan(1);
     for (const definition of definitions) {
       const { relic } = data(definition, rank);
       const row = relicEffectCopy(definition, relic).find(effect => effect.id === 'relic_04');
-      expect(row.description).toContain('el progreso se pierde al desequipar');
+      expect(row.description).toContain('tienes 7 minutos para volver a equiparla');
       expect(row.description).toContain('Una vez por ciclo');
     }
   });

@@ -85,6 +85,14 @@ export function allocateAttributePoint({ classId, level, allocation, attributeId
   };
 }
 
+/* Cantidad válida para repartir de una vez: entero entre 1 y los puntos disponibles. */
+export function clampAttributePointAmount(requested, available) {
+  const max = Math.max(0, Math.floor(Number(available) || 0));
+  if (max === 0) return 0;
+  const wanted = Math.floor(Number(requested));
+  return Math.min(max, Math.max(1, Number.isFinite(wanted) ? wanted : 1));
+}
+
 export function resetAttributeAllocation() {
   return normalizeAttributeAllocation();
 }

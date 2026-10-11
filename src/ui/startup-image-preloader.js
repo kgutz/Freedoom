@@ -91,7 +91,7 @@ export function startupImagePhases(game = {}) {
       delay: 11_000,
       assets: unique([
         'bosses/boss_medal_locked.webp',
-        ...BOSS_SLUGS.slice(0, 12).map((slug, index) => (
+        ...BOSS_SLUGS.map((slug, index) => (
           `bosses/boss_${String(index + 1).padStart(2, '0')}_${slug}.webp`
         )),
       ]),

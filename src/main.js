@@ -53,7 +53,7 @@ import {
   regenerateHealth,
   weeklyBossPenalty
 } from './domain/hero-rules.js';
-import { allocateAttributePoint, attributeSheet, healingPowerMultiplier, resetAttributeAllocation } from './domain/attribute-rules.js';
+import { allocateAttributePoint, attributeSheet, clampAttributePointAmount, healingPowerMultiplier, resetAttributeAllocation } from './domain/attribute-rules.js';
 import {
   HUNT_DIFFICULTIES,
   HUNT_REGIONS,
@@ -302,7 +302,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.65';
+const APP_VERSION='2.29.66';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -2756,7 +2756,7 @@ function equipFailureMessage(result){
 function confirmConstancyLoss(result, action='Desequipar'){
   const definition=relicDefinition(result?.relicId);
   const name=definition?.name||'el Yelmo';
-  return confirm(`¿${action} ${name}?\n\nPerderás tu carga de Constancia actual (${result.charge}/${result.maxCharge||6}).`);
+  return confirm(`¿${action} ${name}?\n\nTu carga de Constancia (${result.charge}/${result.maxCharge||6}) se guarda 7 minutos: si vuelves a equipar una fuente de Constancia a tiempo, la recuperas. Pasado ese tiempo se pierde.`);
 }
 function forgeRenderOptions(){
   return {mode:forgeMode,fusionLeftId,fusionRightId,fusionErrorId,cityEntry:forgeFromCity};
@@ -6978,6 +6978,74 @@ function openDefusionConfirmation(relicId){
   return true;
 }
 
+/* Repartir puntos de atributo: selector con cantidad, accesos rápidos y "todos". */
+const ATTRIBUTE_AMOUNT_LABELS={strength:'Fuerza',defense:'Defensa',dexterity:'Destreza',power:'Poder',constitution:'Constitución'};
+let pendingAttributeAmount=null;
+function attributeAmountSheet(){
+  return attributeSheet({classId:state.game.cls,level:gameStats().lvl,allocation:state.game.attributes});
+}
+function renderAttributeAmount(){
+  if(!pendingAttributeAmount) return;
+  const sheet=attributeAmountSheet();
+  const amount=clampAttributePointAmount(pendingAttributeAmount.amount,sheet.availablePoints);
+  pendingAttributeAmount.amount=amount;
+  const current=sheet.attributes[pendingAttributeAmount.id];
+  document.getElementById('attributeAmountTitle').textContent=ATTRIBUTE_AMOUNT_LABELS[pendingAttributeAmount.id]||'Atributo';
+  document.getElementById('attributeAmountAvailable').textContent=String(sheet.availablePoints);
+  document.getElementById('attributeAmountCurrent').textContent=String(current);
+  document.getElementById('attributeAmountNext').textContent=String(current+amount);
+  const input=document.getElementById('attributeAmountInput');
+  if(document.activeElement!==input||Number(input.value)!==amount) input.value=String(amount);
+  input.max=String(sheet.availablePoints);
+  document.getElementById('attributeAmountMinus').disabled=amount<=1;
+  document.getElementById('attributeAmountPlus').disabled=amount>=sheet.availablePoints;
+  document.getElementById('attributeAmountAccept').textContent=`REPARTIR ${amount}`;
+}
+function openAttributeAmount(attributeId){
+  const sheet=attributeAmountSheet();
+  if(!sheet.availablePoints){showToast('No tienes puntos disponibles','dmg');return;}
+  pendingAttributeAmount={id:attributeId,amount:1};
+  renderAttributeAmount();
+  document.getElementById('attributeAmountBg').classList.add('show');
+}
+function closeAttributeAmount(){
+  pendingAttributeAmount=null;
+  document.getElementById('attributeAmountBg').classList.remove('show');
+}
+function confirmAttributeAmount(){
+  if(!pendingAttributeAmount) return;
+  const {id,amount}=pendingAttributeAmount;
+  const result=allocateAttributePoint({classId:state.game.cls,level:gameStats().lvl,allocation:state.game.attributes,attributeId:id,amount});
+  closeAttributeAmount();
+  if(!result.ok){showToast('No tienes puntos disponibles','dmg');return;}
+  state.game.attributes=result.sheet.allocation;
+  scheduleSave({type:'hero:attribute',attributeId:id,amount});
+  renderCurrentCharacterSheet();
+  renderHunt();
+  showToast(`+${amount} ${ATTRIBUTE_AMOUNT_LABELS[id]||'punto'}`,'heal');
+}
+document.getElementById('attributeAmountMinus').addEventListener('click',()=>{if(pendingAttributeAmount){pendingAttributeAmount.amount-=1;renderAttributeAmount();}});
+document.getElementById('attributeAmountPlus').addEventListener('click',()=>{if(pendingAttributeAmount){pendingAttributeAmount.amount+=1;renderAttributeAmount();}});
+document.getElementById('attributeAmountInput').addEventListener('input',event=>{
+  if(!pendingAttributeAmount) return;
+  if(event.target.value==='') return;
+  pendingAttributeAmount.amount=Number(event.target.value);
+  renderAttributeAmount();
+});
+document.getElementById('attributeAmountInput').addEventListener('blur',renderAttributeAmount);
+document.querySelector('.attribute-amount-quick').addEventListener('click',event=>{
+  const quick=event.target.closest('[data-attribute-amount]');
+  if(!quick||!pendingAttributeAmount) return;
+  const available=attributeAmountSheet().availablePoints;
+  pendingAttributeAmount.amount=quick.dataset.attributeAmount==='all'?available:Number(quick.dataset.attributeAmount);
+  renderAttributeAmount();
+});
+document.getElementById('attributeAmountCancel').addEventListener('click',closeAttributeAmount);
+document.getElementById('attributeAmountAccept').addEventListener('click',confirmAttributeAmount);
+document.getElementById('attributeAmountBg').addEventListener('click',event=>{
+  if(event.target.id==='attributeAmountBg') closeAttributeAmount();
+});
+
 document.getElementById('attributeResetConfirmCancel').addEventListener('click',closeAttributeResetConfirmation);
 document.getElementById('attributeResetConfirmAccept').addEventListener('click',confirmAttributeReset);
 document.getElementById('attributeResetConfirmBg').addEventListener('click',event=>{
@@ -6992,12 +7060,7 @@ document.getElementById('sheetCharacter').addEventListener('click',event=>{
   }
   const attribute=event.target.closest('[data-character-attribute]');
   if(attribute&&!attribute.disabled){
-    const result=allocateAttributePoint({classId:state.game.cls,level:gameStats().lvl,allocation:state.game.attributes,attributeId:attribute.dataset.characterAttribute});
-    if(!result.ok){showToast('No tienes puntos disponibles','dmg');return;}
-    state.game.attributes=result.sheet.allocation;
-    scheduleSave({type:'hero:attribute',attributeId:attribute.dataset.characterAttribute});
-    renderCurrentCharacterSheet();
-    renderHunt();
+    openAttributeAmount(attribute.dataset.characterAttribute);
     return;
   }
   const relicSlot=event.target.closest('[data-character-relic-slot]');

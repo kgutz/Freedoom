@@ -14,7 +14,7 @@ function baseDescription(id, value) {
     relic_01: `Reduce ${value} de daño de la primera fuente del día.`,
     relic_02: `Recupera ${value}% del Maná máximo con el primer hábito con XP del día.`,
     relic_03: `Gana ${value} XP con el primer hábito con XP del día.`,
-    relic_04: `Gana ${value} XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; el progreso se pierde al desequipar.`,
+    relic_04: `Gana ${value} XP con 6 días consecutivos cumplidos y el jefe derrotado. Una vez por ciclo; si la desequipas, tienes 7 minutos para volver a equiparla (o una fusión con Constancia) sin perder la carga.`,
     relic_05: `Recupera ${value}% del Maná máximo por enemigo derrotado en Cacería.`,
     relic_06: `Recupera ${value}% de la Vida máxima por enemigo derrotado en Cacería.`,
     relic_07: `Recupera Vida igual al ${value}% del daño real de tus ataques en Cacería.`,

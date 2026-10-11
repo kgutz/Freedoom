@@ -11,6 +11,7 @@ import {
   FUSION_COIN_COST,
   FUSION_SUCCESS_PROBABILITIES,
   FUSION_RELIC_DEFINITIONS,
+  CONSTANCY_GRACE_MS,
   FORGE_BLOOD_REQUIREMENTS,
   FORGE_COSTS,
   FORGE_PROBABILITIES,
@@ -350,6 +351,9 @@ export function normalizeLootState(state = {}) {
           6,
           Math.max(0, Math.trunc(Number(inventory.constancy?.lastIncreaseCharge) || 0)),
         ),
+        ...(normalizedSuspendedConstancy(inventory.constancy?.suspended)
+          ? { suspended: normalizedSuspendedConstancy(inventory.constancy.suspended) }
+          : {}),
       },
     },
     forge: {
@@ -1381,9 +1385,7 @@ export function fuseRelics({
   normalized.inventory.equipped = normalized.inventory.equipped.filter(
     (id) => !definition.ingredientIds.includes(id),
   );
-  if (consumesConstancySource) {
-    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
-  }
+  if (consumesConstancySource) retireConstancy(normalized, nowTimestamp);
   normalized.inventory.relics[definition.id] = fusedRelic;
   normalized.inventory.collection[definition.id] = collectionEntry(
     definition.id,
@@ -1494,9 +1496,7 @@ export function defuseRelic({ state, relicId, operationId, nowTimestamp = Date.n
     normalized.inventory.collection[ingredientId].lastOwnedRecord = restored;
   });
   normalized.inventory.equipped = normalized.inventory.equipped.filter((id) => id !== relicId);
-  if (losesConstancy) {
-    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
-  }
+  if (losesConstancy) retireConstancy(normalized, nowTimestamp);
   delete normalized.inventory.relics[relicId];
   normalized.inventory.collection[relicId] = collectionEntry(
     relicId,
@@ -1551,6 +1551,69 @@ function relicEffectFamilies(relicId) {
     return [...new Set(definition.ingredientIds.flatMap((id) => relicEffectFamilies(id)))];
   }
   return definition.effectFamily ? [definition.effectFamily] : [];
+}
+
+/* Carga de Constancia guardada al quitar la fuente: se puede recuperar durante CONSTANCY_GRACE_MS. */
+function normalizedSuspendedConstancy(value) {
+  const raw = objectOf(value);
+  const charge = Math.min(6, Math.max(0, Math.trunc(Number(raw.charge) || 0)));
+  const until = Math.max(0, Number(raw.until) || 0);
+  if (!charge || !until) return null;
+  return {
+    charge,
+    cycleId: typeof raw.cycleId === 'string' ? raw.cycleId : '',
+    baselineOutcomes: arrayOf(raw.baselineOutcomes).slice(0, 7).map((outcome) => String(outcome || '')),
+    lastIncreaseAt: Math.max(0, Number(raw.lastIncreaseAt) || 0),
+    lastIncreaseCharge: Math.min(6, Math.max(0, Math.trunc(Number(raw.lastIncreaseCharge) || 0))),
+    until,
+  };
+}
+
+function validSuspendedConstancy(constancy, nowTimestamp) {
+  const suspended = normalizedSuspendedConstancy(constancy?.suspended);
+  return suspended && suspended.until > nowTimestamp ? suspended : null;
+}
+
+/* Quita la Constancia activa. Si había carga, queda guardada durante la ventana de gracia. */
+function retireConstancy(normalized, nowTimestamp = Date.now()) {
+  const current = normalized.inventory.constancy;
+  const keep = current.charge > 0
+    ? {
+      charge: current.charge,
+      cycleId: current.cycleId,
+      baselineOutcomes: [...current.baselineOutcomes],
+      lastIncreaseAt: current.lastIncreaseAt,
+      lastIncreaseCharge: current.lastIncreaseCharge,
+      until: nowTimestamp + CONSTANCY_GRACE_MS,
+    }
+    : validSuspendedConstancy(current, nowTimestamp);
+  normalized.inventory.constancy = {
+    ...clearedConstancy(current.cycleId),
+    ...(keep ? { suspended: keep } : {}),
+  };
+}
+
+/* Devuelve la carga guardada si se vuelve a equipar una fuente a tiempo y en el mismo ciclo. */
+function restoreSuspendedConstancy(normalized, nowTimestamp = Date.now()) {
+  const current = normalized.inventory.constancy;
+  const suspended = validSuspendedConstancy(current, nowTimestamp);
+  if (!suspended || suspended.cycleId !== current.cycleId) return false;
+  normalized.inventory.constancy = {
+    cycleId: suspended.cycleId,
+    charge: suspended.charge,
+    baselineOutcomes: suspended.baselineOutcomes,
+    awaitingBaseline: false,
+    lastIncreaseAt: suspended.lastIncreaseAt,
+    lastIncreaseCharge: suspended.lastIncreaseCharge,
+  };
+  return true;
+}
+
+/* Para la interfaz: carga guardada y tiempo que queda para recuperarla (o null). */
+export function constancySuspendedStatus(lootState, nowTimestamp = Date.now()) {
+  const normalized = normalizeLootState(lootState);
+  const suspended = validSuspendedConstancy(normalized.inventory.constancy, nowTimestamp);
+  return suspended ? { charge: suspended.charge, remainingMs: suspended.until - nowTimestamp } : null;
 }
 
 function clearedConstancy(cycleId = '') {
@@ -1651,18 +1714,21 @@ export function equipRelic(lootState, relicId, replaceIndex = null, options = {}
   const hasConstancySource = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
   if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'].includes(replacedRelicId)) normalized.inventory.huntCharges[replacedRelicId] = false;
+  const constancyNow = options.nowTimestamp ?? Date.now();
   if (removesConstancySource || (hadConstancySource && !hasConstancySource)) {
-    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
+    retireConstancy(normalized, constancyNow);
   }
   if (relicId === 'halloween-mask' && !normalized.inventory.relics[relicId].firstEquippedAt) {
     const now = options.nowTimestamp ?? Date.now();
     normalized.inventory.relics[relicId] = { ...normalized.inventory.relics[relicId], firstEquippedAt:now, expiresAt:now+86400000 };
   }
   if (hasConstancySource && (!hadConstancySource || removesConstancySource)) {
-    normalized.inventory.constancy = {
-      ...clearedConstancy(normalized.inventory.constancy.cycleId),
-      awaitingBaseline: true,
-    };
+    if (!restoreSuspendedConstancy(normalized, constancyNow)) {
+      normalized.inventory.constancy = {
+        ...clearedConstancy(normalized.inventory.constancy.cycleId),
+        awaitingBaseline: true,
+      };
+    }
   }
   return { ...normalized, ok: true };
 }
@@ -1686,9 +1752,7 @@ export function unequipRelic(lootState, relicId, options = {}) {
     (id) => id !== relicId,
   );
   if (['fusion_20', 'fusion_22', 'fusion_26', 'fusion_28', 'fusion_41'].includes(relicId)) normalized.inventory.huntCharges[relicId] = false;
-  if (removesConstancySource) {
-    normalized.inventory.constancy = clearedConstancy(normalized.inventory.constancy.cycleId);
-  }
+  if (removesConstancySource) retireConstancy(normalized, options.nowTimestamp ?? Date.now());
   return { ...normalized, ok: true };
 }
 
@@ -1924,10 +1988,12 @@ export function syncRelicConstancy(lootState, {
   const equipped = normalized.inventory.equipped.some((id) =>
     relicProvidesConstancy(normalized, id));
   const previous = normalized.inventory.constancy;
+  const keepSuspended = validSuspendedConstancy(previous, Number(nowTimestamp) || Date.now());
   if (!equipped || alreadyActivated) {
     normalized.inventory.constancy = {
       ...clearedConstancy(cycleId),
       baselineOutcomes: currentOutcomes,
+      ...(!equipped && keepSuspended ? { suspended: keepSuspended } : {}),
     };
     return normalized;
   }

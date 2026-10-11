@@ -26,6 +26,8 @@ export const FUSION_COIN_COST = 100;
 export const FUSION_BLOOD_COST = 1;
 export const DEFUSION_COIN_COST = 150;
 export const DEFUSION_BLOOD_COST = 1;
+// Al quitar una fuente de Constancia, su carga queda guardada este tiempo para volver a equiparla.
+export const CONSTANCY_GRACE_MS = 7 * 60 * 1000;
 export const FUSION_SUCCESS_PROBABILITIES = Object.freeze([70, 85, 100]);
 
 export const CHARGE_MECHANICS = {
