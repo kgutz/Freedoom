@@ -227,11 +227,11 @@ export const RELIC_DEFINITIONS = [
     bossIndex: 11,
     name: 'Puño de Papel',
     equipmentType: 'fist',
-    effectFamily: 'coins',
+    effectFamily: 'finisher',
     image: 'relics/relic_12_puno_papel.webp',
-    effectLabel: 'Completar todos los hábitos programados para el día concede oro adicional. Una activación diaria.',
+    effectLabel: 'Remate de papel: el ataque que deja a un enemigo de Cacería con poca Vida lo remata al instante.',
     affixPool: ['fortune', 'discipline', 'vitality'],
-    valueUnit: 'oro',
+    valueUnit: '% de vida',
   },
   {
     id: 'relic_13',
@@ -323,7 +323,7 @@ export const FUSION_RELIC_DEFINITIONS = [
   {
     id: 'fusion_40', recipeId: 'fusion_recipe_40', ingredientIds: ['relic_12', 'relic_10'],
     name: 'Puño del Óbolo Final', equipmentType: 'fist', image: 'relics/fusion_40_puno_obolo_final.webp',
-    effectLabel: 'Hereda Hábitos completos y Sangre adicional. Tras completar todos los hábitos del día, el primer minijefe concede oro extra.',
+    effectLabel: 'Hereda Remate de papel y Sangre adicional. Tras completar todos los hábitos del día, el primer minijefe concede oro extra.',
     synergy: { type: 'mini-all-habits-gold', values: { 1: 5, 2: 8, 3: 12 } },
   },
   {
@@ -383,7 +383,7 @@ export const FUSION_RELIC_DEFINITIONS = [
   {
     id: 'fusion_50', recipeId: 'fusion_recipe_50', ingredientIds: ['relic_12', 'relic_11'],
     name: 'Puño del Juramento Triple', equipmentType: 'fist', image: 'relics/fusion_50_puno_juramento_triple.webp',
-    effectLabel: 'Hereda Hábitos completos y Tres Fauces. El primer ataque que dañe a cada enemigo causa daño extra.',
+    effectLabel: 'Hereda Remate de papel y Tres Fauces. El primer ataque que dañe a cada enemigo causa daño extra.',
     synergy: { type: 'first-hit-damage-each', values: { 1: 1, 2: 2, 3: 3 } },
   },
   {
@@ -708,7 +708,7 @@ export const FUSION_RELIC_DEFINITIONS = [
   {
     id: 'fusion_62', recipeId: 'fusion_recipe_62', ingredientIds: ['relic_13', 'relic_12'],
     name: 'Puño del Ritual Quebrado', equipmentType: 'fist', image: 'relics/fusion_62_puno_ritual_quebrado.webp',
-    effectLabel: 'Hereda Eco de Sobremesa y Hábitos completos. Con todos los hábitos del día completados, el primer eco de la Cacería hace daño extra.',
+    effectLabel: 'Hereda Eco de Sobremesa y Remate de papel. Con todos los hábitos del día completados, el primer eco de la Cacería hace daño extra.',
     synergy: { type: 'echo-habits-damage', values: { 1: 2, 2: 3, 3: 4 } },
   },
 ];
@@ -745,7 +745,7 @@ export const RELIC_RANK_EFFECTS = {
   relic_09: { 1: 5, 2: 8, 3: 12 },
   relic_10: { 1: 10, 2: 15, 3: 20 },
   relic_11: { 1: 3, 2: 6, 3: 10 },
-  relic_12: { 1: 5, 2: 8, 3: 12 },
+  relic_12: { 1: 10, 2: 15, 3: 20 },
   relic_13: { 1: 10, 2: 15, 3: 20 },
   relic_14: { 1: 10, 2: 15, 3: 20 },
   relic_15: { 1: 10, 2: 15, 3: 20 },
@@ -856,6 +856,8 @@ function baseRelicCombatBonuses(relicId, rank = 1) {
     return ['physicalAttack', 'magicAttack', 'defense'].map((stat) => ({ stat, value }));
   }
   const bonus = relicCombatBonus(relicId, rank);
+  // Puño de Papel: +2 de Defensa fija además de su Ataque.
+  if (relicId === 'relic_12' && bonus.stat) return [bonus, { stat: 'defense', value: 2 }];
   return bonus.stat ? [bonus] : [];
 }
 

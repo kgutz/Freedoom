@@ -147,7 +147,7 @@ function normalizeRelicRecord(id, value) {
   // Discard obsolete/injected armor snapshots on recipes without this ingredient.
   if (!fusion || !definition.ingredientIds.includes('relic_09')) delete inheritedEffects.relic_09;
   // relic_11 (Tres Fauces) cambió de XP diaria por hábitos a XP porcentual de Cacería: el rango se conserva.
-  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09', 'relic_11', 'relic_13', 'relic_14', 'relic_15']) {
+  for (const baseId of ['relic_05', 'relic_06', 'relic_07', 'relic_08', 'relic_09', 'relic_11', 'relic_12', 'relic_13', 'relic_14', 'relic_15']) {
     if (!fusion || !definition.ingredientIds.includes(baseId)) continue;
     const rank = ingredientSnapshots[baseId]?.rank || Math.min(3, Math.max(1, Number(relic.rank) || 1));
     inheritedEffects[baseId] = relicRankEffect(baseId, rank);
@@ -1906,6 +1906,8 @@ export function equippedHuntEffects(state) {
     hydraXpFirst: hydraXp[0], hydraXpSecond: hydraXp[1], hydraXpThird: hydraXp[2],
     // Eco de Sobremesa (relic_13), Filo del Espejismo (relic_14) y Bastión del Laberinto (relic_15).
     echoPercent: sum('relic_13'), markPercent: sum('relic_14'), bastionPercent: sum('relic_15'),
+    // Remate de papel (relic_12): % de Vida máxima por debajo del cual el ataque remata al enemigo.
+    finisherPercent: sum('relic_12'),
     echoShield: synergy('fusion_51'),
     echoFirstHitMana: synergy('fusion_52'),
     echoFirstXp: synergy('fusion_53'),

@@ -67,9 +67,19 @@ import {
   syncHabitSetHuntEnergy,
   pveHeroStats,
   normalizeHuntState,
+  localHuntDayKey,
   resolveHunt,
   startHunt,
 } from './domain/pve-combat-rules.js';
+import {
+  AUTO_REPEAT_MAX_RUNS,
+  autoRepeatDecision,
+  autoRepeatPossibleRuns,
+  beginAutoRepeat,
+  countAutoRepeatRun,
+  recordAutoRepeatReport,
+  stopAutoRepeat,
+} from './domain/hunt-auto-repeat-rules.js';
 import {
   evaluateSmoke,
   perfectShotRewards,
@@ -232,7 +242,7 @@ import {
 } from './ui/hero-view.js';
 import { renderSettingsView } from './ui/settings-view.js';
 import { renderHabitsView } from './ui/habits-view.js';
-import { huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
+import { huntAutoRepeatMarkup, huntRecoveryNoteMarkup, huntResultRewardsMarkup, huntResultSummaryMarkup, renderHuntMonsterDetail, renderHuntView, updateHuntCountdown } from './ui/hunt-view.js';
 import { renderCharacterSheet } from './ui/character-sheet-view.js';
 import {
   closeForgeInfoOutside,
@@ -302,7 +312,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.68';
+const APP_VERSION='2.29.69';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -310,7 +320,7 @@ const dismissedInventoryShortcutHints=new Set();
 const AUREO_NOTICE_KEY='freedoom:aureo-notice-seen:v1';
 const AUREO_NOTICE_TARGETS=['outfits','weave','backgrounds'];
 const FEATURE_DISCOVERY_KEY='freedoom:feature-discovery-seen:v1';
-const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-bag-market','inventory-market','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy'];
+const FEATURE_DISCOVERY_TARGETS=['character-entry','character-bag','character-bag-market','inventory-market','character-hero','character-backgrounds','nav-habits','hunt-tab','hero-energy','hunt-auto-repeat'];
 const RETURN_SPLASH_IDLE_MS=30*60*1000;
 const CLOUD_STARTUP_TIMEOUT_MS=8000;
 const LOCAL_DEMO_HOST=location.hostname==='127.0.0.1'||location.hostname==='localhost';
@@ -4236,7 +4246,9 @@ function openHuntResultModal(report){
     : partial
       ? `Tu héroe tuvo que retirarse tras vencer ${defeatedEnemies}/3 enemigos. Conserva su botín y recupera ${recoveredHp} de vida${recoveredMana>0?` y ${recoveredMana} de maná`:''} antes de regresar.`
       : 'Tu héroe tuvo que retirarse sin derrotar enemigos. No obtiene recuperación de salida.';
-  document.getElementById('huntResultSummary').innerHTML=huntResultSummaryMarkup(report);
+  const repeatConfig=normalizeHuntState(state.game.hunt).autoRepeat;
+  const inChain=Boolean(repeatConfig&&report?.id&&repeatConfig.reportIds.includes(report.id)&&(repeatConfig.runs>1||repeatConfig.reportIds.length>1));
+  document.getElementById('huntResultSummary').innerHTML=huntResultSummaryMarkup(report)+(inChain?huntAutoRepeatMarkup(repeatConfig,state.game.hunt):'');
   document.getElementById('huntResultRewards').innerHTML=huntResultRewardsMarkup(report?.rewards);
   document.getElementById('huntResultBg').classList.add('show');
   if(report?.id&&state.game.hunt?.unseenReportId===report.id){
@@ -4307,6 +4319,7 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist',options={})
   const lifePotions=Math.max(0,Number(potions.owned.life)||0);
   const manaPotions=Math.max(0,Number(potions.owned.mana)||0);
   const hasCombatPotions=lifePotions+manaPotions>0;
+  const possibleRuns=autoRepeatPossibleRuns(hunt.energy,difficulty.energyCost);
   document.getElementById('huntConfirmTitle').textContent=`¿Entrar en ${region.name}?`;
   document.getElementById('huntConfirmBody').innerHTML=`<div class="hunt-confirm-summary">
     <div><span>Dificultad</span><b>${difficulty.name}</b></div>
@@ -4323,6 +4336,11 @@ function openHuntConfirmation(difficultyId,regionId='fields-of-mist',options={})
     <input type="checkbox" id="huntAutoPotions" ${hasCombatPotions?'checked':'disabled'}>
     <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
     <span class="hunt-potion-toggle-copy"><b>Usar pociones automáticamente</b><small>${hasCombatPotions?`Vida ×${lifePotions} · Maná ×${manaPotions} · máximo una de cada tipo por enemigo`:'No tienes pociones de Vida ni de Maná en el Bolso'}</small></span>
+  </label>
+  <label class="hunt-potion-toggle hunt-auto-repeat-toggle${possibleRuns>=2?'':' is-empty'}">
+    <input type="checkbox" id="huntAutoRepeat" ${possibleRuns>=2?'':'disabled'}>
+    <span class="hunt-potion-toggle-control" aria-hidden="true"></span>
+    <span class="hunt-potion-toggle-copy"><b>Repetir automáticamente <em class="hunt-new-badge">NUEVO</em></b><small>${possibleRuns>=2?`Repite este nivel mientras haya energía: hasta ${possibleRuns} cacerías seguidas. Se detiene si pierdes, caes o tu Vida baja del 40 %.`:'Necesitas energía para al menos dos cacerías de este nivel'}</small></span>
   </label>`;
   document.getElementById('huntConfirmBg').classList.add('show');
 }
@@ -4333,10 +4351,28 @@ function confirmHuntStart(){
   const regionId=pendingHuntRegionId;
   pendingHuntAutoUsePotions=Boolean(document.getElementById('huntAutoPotions')?.checked);
   const autoUsePotions=pendingHuntAutoUsePotions;
+  const wantsRepeat=Boolean(document.getElementById('huntAutoRepeat')?.checked);
+  if(wantsRepeat) dismissFeatureDiscovery('hunt-auto-repeat');
   closeHuntConfirmation();
+  const launched=launchHunt({regionId,difficultyId,autoUsePotions,startTimestamp:Date.now(),
+    autoRepeat:wantsRepeat?beginAutoRepeat({regionId,difficultyId,autoUsePotions,nowTimestamp:Date.now()}):null});
+  if(!launched.ok){
+    showToast(launched.reason==='insufficient-energy'?'No tienes energía suficiente':launched.reason==='level-locked'?`Necesitas nivel ${launched.requiredLevel}`:'Ya hay una cacería en curso','bad');
+    return;
+  }
+  renderHunt();
+  const durationMinutes=huntDifficultyForRegion(regionId,difficultyId).durationMinutes;
+  showToast(wantsRepeat
+    ? `Cacería iniciada · se repetirá sola · primera vuelta en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`
+    : `Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
+}
+
+/* Arranca una Cacería con el héroe y el equipo de ESTE instante. Lo usan el botón de entrar y la repetición automática.
+   Cada repetición es una Cacería normal: gasta energía, congela sus efectos de reliquia y consume sus cargas. */
+function launchHunt({regionId,difficultyId,autoUsePotions,startTimestamp=Date.now(),autoRepeat=null}){
   ensureHero();
   const stats=gameStats();
-  const nowTimestamp=Date.now();
+  const nowTimestamp=startTimestamp;
   const activePotion=normalizePotionState(state.inventory?.potions).active;
   const fortune=activePotion?.id==='fortune'&&activePotion.endsAt>nowTimestamp
     ? {dayKey:activePotion.dayKey}
@@ -4364,11 +4400,8 @@ function confirmHuntStart(){
     fortune,
     nowTimestamp
   });
-  if(!result.ok){
-    showToast(result.reason==='insufficient-energy'?'No tienes energía suficiente':result.reason==='level-locked'?`Necesitas nivel ${result.requiredLevel}`:'Ya hay una cacería en curso','bad');
-    return;
-  }
-  state.game.hunt=result.hunt;
+  if(!result.ok) return result;
+  state.game.hunt={...result.hunt,autoRepeat};
   if(halloweenSeasonActive(nowTimestamp,LOCAL_DEMO_HALLOWEEN)){
     const taken=takePreparedHalloweenCandy(state.inventory.halloweenCandy,difficultyId);
     state.inventory.halloweenCandy=taken.candy;
@@ -4380,10 +4413,8 @@ function confirmHuntStart(){
         energySpentExtra:Math.max(0,(analyticsBonusBefore||0)-(result.hunt.bonusEnergyRemaining||0))}},nowTimestamp);
   }
   applyLootSlices(consumeHuntCharges(state));
-  scheduleSave({type:'hunt:start',regionId,difficultyId});
-  renderHunt();
-  const durationMinutes=huntDifficultyForRegion(regionId,difficultyId).durationMinutes;
-  showToast(`Cacería iniciada · vuelve en ${durationMinutes} ${durationMinutes===1?'minuto':'minutos'}`,'heal');
+  scheduleSave({type:'hunt:start',regionId,difficultyId,auto:Boolean(autoRepeat&&autoRepeat.runs>1)});
+  return result;
 }
 
 document.getElementById('relicWarnSkip').addEventListener('click',()=>{
@@ -4403,6 +4434,10 @@ document.getElementById('relicWarnEquip').addEventListener('click',()=>{
 });
 document.getElementById('relicWarnBg').addEventListener('click',event=>{
   if(event.target.id==='relicWarnBg') closeRelicWarning();
+});
+/* El brillo del interruptor de repetición automática se apaga la primera vez que el jugador lo usa. */
+document.getElementById('huntConfirmBody').addEventListener('change',event=>{
+  if(event.target?.id==='huntAutoRepeat') dismissFeatureDiscovery('hunt-auto-repeat');
 });
 document.getElementById('huntConfirmCancel').addEventListener('click',closeHuntConfirmation);
 document.getElementById('huntConfirmAccept').addEventListener('click',confirmHuntStart);
@@ -4606,11 +4641,22 @@ document.getElementById('view-habits').addEventListener('click',event=>{
     openHuntConfirmation(startButton.dataset.startHunt,startButton.dataset.huntRegion);
     return;
   }
+  if(event.target.closest('[data-stop-auto-hunt]')){
+    const config=stopAutoRepeat(normalizeHuntState(state.game.hunt).autoRepeat,'manual',Date.now());
+    if(!config) return;
+    state.game.hunt={...state.game.hunt,autoRepeat:config};
+    scheduleSave({type:'hunt:auto-repeat-stop',reason:'manual'});
+    renderHunt();
+    showToast('Repetición automática detenida · la cacería actual sigue','heal');
+    return;
+  }
   if(event.target.closest('[data-resolve-hunt]')){
+    const endedAt=state.game.hunt?.active?.endsAt;
     const result=computeHuntResolution();
     if(!result){showToast('La expedición todavía no ha terminado','bad');return;}
     const death=applyResolvedHunt(result);
     scheduleSave({type:'hunt:resolve',won:result.report.won});
+    continueAutoRepeat(result.report,Boolean(death),endedAt);
     renderAll();
     if(death) pendingPostDeathHuntReport=result.report;
     else openHuntResultModal(result.report);
@@ -4695,14 +4741,57 @@ function applyResolvedHunt(result){
    así la vida/maná mostrados en Hoy y Héroe reflejan la realidad sin esperar a que
    el jugador abra el informe y "reclame" las recompensas. */
 function tryAutoResolveHunt(){
-  const active=state.game.hunt?.active;
-  if(!active||Date.now()<active.endsAt) return false;
-  const result=computeHuntResolution();
-  if(!result) return false;
-  const death=applyResolvedHunt(result);
-  state.game.hunt={...state.game.hunt,unseenReportId:result.report.id};
-  scheduleSave({type:'hunt:resolve',auto:true,won:result.report.won});
-  if(death) pendingPostDeathHuntReport=result.report;
+  let resolved=false;
+  /* Con repetición automática, al terminar una Cacería se lanza la siguiente desde el instante en que acabó la
+     anterior; si ya pasó el tiempo de varias, se resuelven todas seguidas al volver a la app. */
+  for(let guard=0;guard<=AUTO_REPEAT_MAX_RUNS;guard+=1){
+    const active=state.game.hunt?.active;
+    if(!active||Date.now()<active.endsAt) break;
+    const result=computeHuntResolution();
+    if(!result) break;
+    const death=applyResolvedHunt(result);
+    state.game.hunt={...state.game.hunt,unseenReportId:result.report.id};
+    scheduleSave({type:'hunt:resolve',auto:true,won:result.report.won});
+    if(death) pendingPostDeathHuntReport=result.report;
+    resolved=true;
+    if(!continueAutoRepeat(result.report,Boolean(death),active.endsAt)) break;
+  }
+  return resolved;
+}
+
+/* Decide y, si procede, lanza la siguiente Cacería de la cadena. Devuelve true si ya hay otra en marcha. */
+function continueAutoRepeat(report,died,previousEndsAt){
+  let config=normalizeHuntState(state.game.hunt).autoRepeat;
+  if(!config) return false;
+  config=recordAutoRepeatReport(config,report.id);
+  const now=Date.now();
+  if(!config.enabled){
+    state.game.hunt={...state.game.hunt,autoRepeat:config};
+    return false;
+  }
+  const stats=gameStats();
+  const hunt=normalizeHuntState(state.game.hunt,now,huntBaseEnergyForToday(new Date(now)),state.config.dayStartTime);
+  const difficulty=huntDifficultyForRegion(config.regionId,config.difficultyId);
+  const decision=died||!difficulty
+    ? {proceed:false,reason:'died'}
+    : autoRepeatDecision({
+      config,report,energy:hunt.energy,energyCost:difficulty.energyCost,
+      hpRatio:state.game.hp/Math.max(1,stats.maxHp),level:stats.lvl,
+      requiredLevel:huntDifficultyMinLevel(config.regionId,config.difficultyId)
+    });
+  const stop=reason=>{
+    state.game.hunt={...state.game.hunt,autoRepeat:stopAutoRepeat(config,reason,now)};
+    scheduleSave({type:'hunt:auto-repeat-stop',reason});
+    return false;
+  };
+  if(!decision.proceed) return stop(decision.reason);
+  const sameDay=Number.isFinite(previousEndsAt)&&previousEndsAt<=now
+    &&localHuntDayKey(previousEndsAt,state.config.dayStartTime)===hunt.energyDay;
+  const launched=launchHunt({
+    regionId:config.regionId,difficultyId:config.difficultyId,autoUsePotions:config.autoUsePotions,
+    startTimestamp:sameDay?previousEndsAt:now,autoRepeat:countAutoRepeatRun(config)
+  });
+  if(!launched.ok) return stop(launched.reason==='level-locked'?'level':'no-energy');
   return true;
 }
 setInterval(()=>{ if(tryAutoResolveHunt()) renderAll(); },1000);
@@ -5496,24 +5585,14 @@ function applyHabitRelicRewards({habit,dayKey,becameCompleted}){
   if(!becameCompleted) return {xp:0,coins:0,notice:''};
   let xp=0,coins=0;
   const notices=[];
-  const grantCoins=(baseRelicId,sources,label)=>{
-    if(!sources.length) return;
-    const amount=sources.reduce((total,source)=>total+source.value,0);
-    state.economy.coins+=amount;
-    state.economy.transactions.push({
-      id:`${baseRelicId}:${dayKey}:${Date.now()}`,type:'relic_habit_coins',
-      relicId:baseRelicId,coins:amount,at:Date.now()
-    });
-    state.economy.transactions=state.economy.transactions.slice(-200);
-    applyLootSlices(markDailyEffectSources(state,baseRelicId,dayKey,sources,amount));
-    coins+=amount;
-    notices.push(`+${amount} 🪙 ${label}`);
-  };
   const daily=state.habits.items.filter(item=>item.active!==false&&item.frequency==='daily');
   const periodKey=`d:${dayKey}`;
   const completed=daily.filter(item=>(Number(state.habits.entries[`${item.id}|${periodKey}`]?.count)||0)>=Math.max(1,Number(item.target)||1));
   if(daily.length>0&&completed.length===daily.length){
-    grantCoins('relic_12',availableDailyEffectSources(state,'relic_12',dayKey),'Puño de Papel');
+    /* El Puño de Papel ya no da oro. Esta marca diaria solo registra "todos los hábitos completados" para las
+       sinergias de sus fusiones (Óbolo Final y Ritual Quebrado). */
+    const sources=availableDailyEffectSources(state,'relic_12',dayKey);
+    if(sources.length) applyLootSlices(markDailyEffectSources(state,'relic_12',dayKey,sources,true));
   }
   return {xp,coins,notice:notices.length?` · ${notices.join(' · ')}`:''};
 }

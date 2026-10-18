@@ -6,7 +6,7 @@ const names = {
   relic_01: 'Protección', relic_02: 'Maná del hábito', relic_03: 'Experiencia del hábito',
   relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
   relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Escamas protectoras',
-  relic_10: 'Sangre adicional', relic_11: 'Tres Fauces', relic_12: 'Hábitos completos',
+  relic_10: 'Sangre adicional', relic_11: 'Tres Fauces', relic_12: 'Remate de papel',
   relic_13: 'Eco de Sobremesa', relic_14: 'Filo del Espejismo', relic_15: 'Bastión del Laberinto',
 };
 
@@ -23,7 +23,7 @@ function baseDescription(id, value) {
     relic_09: `Reduce un ${value}% el daño recibido en Cacería. No reduce a cero un golpe con daño.`,
     relic_10: `Suma ${value}% a la probabilidad de +1 Sangre de Jefe al vencer al jefe semanal.`,
     relic_11: tresFaucesCopy(value),
-    relic_12: `Gana ${value} de oro al completar todos los hábitos programados para el día. Una vez al día.`,
+    relic_12: `El ataque que deja a un enemigo de Cacería con un ${value}% de su Vida máxima o menos lo remata al instante.`,
     relic_13: `El primer ataque mágico que daña a cada enemigo de Cacería deja un eco: al terminar el turno inflige un ${value}% de su daño real si el enemigo sigue vivo.`,
     relic_14: `El primer ataque físico que daña a cada enemigo de Cacería lo marca. El siguiente ataque físico que conecte consume la marca y hace un ${value}% extra del daño del primero.`,
     relic_15: `Tras recibir dos golpes del mismo enemigo en Cacería, el siguiente golpe que conecte hace un ${value}% menos de daño. Una vez por enemigo; los golpes esquivados no cuentan.`,

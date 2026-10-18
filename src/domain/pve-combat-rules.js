@@ -5,6 +5,7 @@ import {
 } from './day-boundary-rules.js';
 import { normalizePotionState } from './potion-rules.js';
 import { HUNT_BALANCE_TUNING } from '../data/hunt-balance-data.js';
+import { normalizeAutoRepeat } from './hunt-auto-repeat-rules.js';
 
 export const DAILY_HUNT_ENERGY = 10;
 export const DAILY_HUNT_BONUS_ENERGY_CAP = 2;
@@ -344,6 +345,7 @@ export function normalizeHuntState(
     active: hunt?.active && typeof hunt.active === 'object' ? hunt.active : null,
     lastReport: hunt?.lastReport && typeof hunt.lastReport === 'object' ? hunt.lastReport : null,
     unseenReportId: typeof hunt?.unseenReportId === 'string' && hunt.unseenReportId ? hunt.unseenReportId : null,
+    autoRepeat: normalizeAutoRepeat(hunt?.autoRepeat),
     history: Array.isArray(hunt?.history) ? hunt.history.slice(-20) : [],
   };
 }
@@ -642,6 +644,8 @@ export function simulatePveCombat({
   const echoPercent = safeInteger(relicEffects.echoPercent);
   const markPercent = safeInteger(relicEffects.markPercent);
   const bastionPercent = safeInteger(relicEffects.bastionPercent);
+  const finisherPercent = safeInteger(relicEffects.finisherPercent);
+  let finisherDamageDealt = 0;
   let firstDamageType = null;
   let echoTriggered = false;
   let echoPending = 0;
@@ -731,6 +735,14 @@ export function simulatePveCombat({
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
     if (realDamage > 0 && firstDamageType === null) firstDamageType = attackType;
+    // Remate de papel: un ataque que conecta y deja al enemigo con el X % de su Vida máxima o menos (o menos
+    // aún) lo remata. El remate no cura, no activa eco ni marca y no depende del tipo de ataque.
+    let finisherDamage = 0;
+    if (realDamage > 0 && enemyHp > 0 && finisherPercent > 0 && enemyHp <= enemy.maxHp * finisherPercent / 100) {
+      finisherDamage = enemyHp;
+      enemyHp = 0;
+      finisherDamageDealt = finisherDamage;
+    }
     // Eco de Sobremesa: el primer ataque MÁGICO que daña a este enemigo prepara el eco. Un fallo no lo consume.
     // La base es el daño real ya resuelto (tras modificadores, mitigación y límite de vida restante).
     const echoTrigger = echoPercent > 0 && attackType === 'magic' && realDamage > 0 && !echoTriggered;
@@ -783,7 +795,7 @@ export function simulatePveCombat({
     vampirismRecovered += healing;
     vampirismCarry = heroHp >= hero.maxHp ? 0 : rawHealing % 100;
     if (round === 1) petrificationPending = safeInteger(relicEffects.petrification) > 0;
-    log.push({ round, actor: 'hero', ...heroHit, manaSpent, markExtra, remainingMana: heroMana, remainingHp: enemyHp });
+    log.push({ round, actor: 'hero', ...heroHit, manaSpent, markExtra, finisherDamage, remainingMana: heroMana, remainingHp: enemyHp });
     applyEchoDefeat();
     let damageTaken = 0;
     let roundEchoDamage = 0;
@@ -920,7 +932,7 @@ export function simulatePveCombat({
     }
     roundDetails.push({
       round,
-      damageDealt: realDamage + markExtra + roundEchoDamage,
+      damageDealt: realDamage + finisherDamage + markExtra + roundEchoDamage,
       damageTaken,
       heroHp,
       heroMana,
@@ -933,6 +945,7 @@ export function simulatePveCombat({
     miniManaSaved,
     miniOpeningDamageDealt,
     echoDamageDealt,
+    finisherDamageDealt,
     echoHabitsApplied,
     echoFirstHitManaRecovered,
     echoVampirismUsed,
@@ -1069,7 +1082,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
     } : null,
     relicEffects: {
       ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniFirstHitDamage', 'firstHitDamageEach', 'firstHitManaEach', 'miniVictoryMana', 'miniVictoryHealthFlat', 'hydraXpFirst', 'hydraXpSecond', 'hydraXpThird', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth',
-        'echoPercent', 'markPercent', 'bastionPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
+        'echoPercent', 'markPercent', 'bastionPercent', 'finisherPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
       maskBloodChance: [20, 50].includes(relicEffects.maskBloodChance) ? 20 : 0,
@@ -1249,6 +1262,7 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       echoShieldPrevented: result.echoShieldPrevented,
       echoArmorBoostUsed: result.echoArmorBoostUsed,
       markDamageDealt: result.markDamageDealt,
+      finisherDamageDealt: result.finisherDamageDealt,
       bastionPrevented: result.bastionPrevented,
       miniVictoryXp,
       miniAllHabitsGold,

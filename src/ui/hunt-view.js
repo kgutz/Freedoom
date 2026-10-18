@@ -7,6 +7,7 @@ import {
   huntDifficultyMinLevel,
   normalizeHuntState,
 } from '../domain/pve-combat-rules.js';
+import { AUTO_REPEAT_STOP_REASONS, autoRepeatSummary } from '../domain/hunt-auto-repeat-rules.js';
 import { resourceIcon, resourceValue } from './resource-icons.js';
 import { bossMedalNameLines } from './hero-view.js';
 
@@ -194,6 +195,7 @@ function reportMarkup(report) {
       Number(encounter.miniVictoryXp) > 0 ? `+${encounter.miniVictoryXp} XP` : '',
       Number(encounter.miniAllHabitsGold) > 0 ? `+${encounter.miniAllHabitsGold} oro` : '',
     ].filter(Boolean).join(' · ');
+    const punoBonus = Number(encounter.finisherDamageDealt) > 0 ? `${encounter.finisherDamageDealt} de vida rematada` : '';
     const sobremesaBonus = [
       Number(encounter.echoDamageDealt) > 0 ? `${encounter.echoDamageDealt} daño de eco` : '',
       Number(encounter.markDamageDealt) > 0 ? `${encounter.markDamageDealt} daño de marca` : '',
@@ -223,6 +225,7 @@ function reportMarkup(report) {
         ${miradaRecovery ? `<div class="hunt-encounter-recovery"><span>BONUS DE MIRADA</span><b>${miradaRecovery}</b></div>` : ''}
         ${armorBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE ESCAMAS</span><b>${armorBonus}</b></div>` : ''}
         ${skullBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE CALAVERA</span><b>${skullBonus}</b></div>` : ''}
+        ${punoBonus ? `<div class="hunt-encounter-recovery"><span>REMATE DE PAPEL</span><b>${punoBonus}</b></div>` : ''}
         ${sobremesaBonus ? `<div class="hunt-encounter-recovery"><span>BONUS DE SOBREMESA</span><b>${sobremesaBonus}</b></div>` : ''}
         ${rewardsMarkup}
         <div class="hunt-encounter-next"><span>${movesToNextEnemy ? 'SIGUIENTE COMBATE' : 'FIN DE LOS COMBATES'}</span><b>${nextHpPercent}% vida · ${nextManaPercent}% maná</b></div>
@@ -322,6 +325,32 @@ function regionMapMarkup(hunt, nowTimestamp = Date.now()) {
   `;
 }
 
+function autoRepeatTotals(summary) {
+  return [
+    summary.xp > 0 ? `<span>✦ <b>${summary.xp}</b> XP</span>` : '',
+    summary.gold > 0 ? resourceValue('coin', summary.gold) : '',
+    summary.arcaneFibers > 0 ? resourceValue('arcane-fiber', summary.arcaneFibers) : '',
+    summary.arcaneInks > 0 ? resourceValue('arcane-ink', summary.arcaneInks) : '',
+    summary.bossBlood > 0 ? resourceValue('boss-blood', summary.bossBlood) : '',
+  ].filter(Boolean).join('') || '<span>Sin botín obtenido</span>';
+}
+
+/* Resumen de la cadena de Cacerías automáticas: qué llevas ganado y por qué paró (o que sigue en marcha). */
+export function huntAutoRepeatMarkup(config, hunt = {}) {
+  const summary = autoRepeatSummary(config, hunt);
+  if (!summary) return '';
+  if (summary.enabled && summary.finished === 0) return '';
+  const status = summary.enabled
+    ? `En marcha · vuelta ${summary.runs}`
+    : (AUTO_REPEAT_STOP_REASONS[summary.stopReason] || 'Terminada');
+  return `<section class="card hunt-auto-summary" aria-label="Repetición automática">
+    <div class="hunt-section-title"><span>Repetición automática</span><b>${summary.finished} ${summary.finished === 1 ? 'CACERÍA' : 'CACERÍAS'}</b></div>
+    <p class="hunt-auto-status">${status}</p>
+    <div class="hunt-auto-record"><span>${summary.wins} de ${summary.finished} superadas</span></div>
+    <div class="hunt-rewards">${autoRepeatTotals(summary)}</div>
+  </section>`;
+}
+
 export function renderHuntView({ document, game, stats, intoxication, nowTimestamp = Date.now() }) {
   const root = document.getElementById('huntContent');
   if (!root) return;
@@ -347,8 +376,10 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   const regionActive = Boolean(active) && activeRegionId === region.id;
   const energy = huntEnergyDisplay(hunt);
   const activeDifficulty = active ? huntDifficultyForRegion(activeRegionId, active.difficultyId) : null;
+  const autoRepeat = hunt.autoRepeat;
+  const autoOn = Boolean(autoRepeat?.enabled);
   const activeMarkup = regionActive ? `<div class="hunt-region-active" aria-label="Cacería en curso">
-    <span>CACERÍA EN CURSO · ${activeDifficulty.name}</span>
+    <span>CACERÍA EN CURSO · ${activeDifficulty.name}${autoOn ? ` · ↻ AUTO ${autoRepeat.runs}` : ''}</span>
     <strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>
     <button type="button" data-resolve-hunt ${nowTimestamp < active.endsAt ? 'disabled' : ''}>${nowTimestamp < active.endsAt ? 'Informe disponible al terminar' : 'VER INFORME'}</button>
   </div>` : '';
@@ -373,9 +404,10 @@ export function renderHuntView({ document, game, stats, intoxication, nowTimesta
   root.innerHTML = `<div class="hunt-region hunt-region--${region.id}"><button type="button" class="hunt-map-back" data-back-hunt-map>‹ VOLVER AL MAPA</button><div class="hunt-heading"><div class="hunt-region-title-row"><h2>${region.name}</h2><div class="hunt-map-energy" aria-label="${energy.aria}"><span class="resource-icon resource-icon--hunt-energy" aria-hidden="true"></span><strong>${energy.html}</strong></div></div><p>${region.description}</p>${regionLocked ? `<div class="hunt-region-lock-notice"><span aria-hidden="true">🔒</span> Alcanza el nivel ${regionMinLevel} para iniciar esta cacería</div>` : ''}</div>
     <div class="hunt-region-art" data-hunt-zoom-surface aria-label="${region.name}. Pellizca con dos dedos para ampliar."><img data-hunt-zoom-image src="${region.art}" alt="${region.name}" loading="lazy" decoding="async" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="hunt-region-fallback" style="display:none">${region.name.toUpperCase()}<br><small>ARTE DE REGIÓN PENDIENTE</small></span>${activeMarkup}${reportReadyMarkup}</div>
     <section class="card hunt-roster"><div class="hunt-section-title"><span>Enemigos</span></div><div class="hunt-monsters">${region.enemies.map(monsterCard).join('')}</div></section>
+    ${autoRepeat && autoRepeat.regionId === region.id ? huntAutoRepeatMarkup(autoRepeat, hunt) : ''}
     ${(hunt.lastReport?.regionId || 'fields-of-mist') === region.id ? reportMarkup(hunt.lastReport) : ''}
     <div class="hunt-launch-bar" role="group" aria-label="Elegir dificultad">${active
-      ? `<div class="hunt-launch-active"><span aria-hidden="true">⏳</span><div><b>${otherRegionActive ? 'Expedición activa en otra zona' : 'Expedición en curso'}</b><small>${otherRegionActive ? 'Espera a que termine para lanzar otra' : 'Termina en '}${otherRegionActive ? '' : `<strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>`}</small></div></div>`
+      ? `<div class="hunt-launch-active"><span aria-hidden="true">⏳</span><div><b>${otherRegionActive ? 'Expedición activa en otra zona' : 'Expedición en curso'}</b><small>${otherRegionActive ? 'Espera a que termine para lanzar otra' : 'Termina en '}${otherRegionActive ? '' : `<strong data-hunt-countdown data-hunt-ends-at="${active.endsAt}">${remainingLabel(active.endsAt - nowTimestamp)}</strong>`}</small></div>${autoOn ? '<button type="button" class="hunt-auto-stop" data-stop-auto-hunt>DETENER REPETICIÓN</button>' : ''}</div>`
       : `<div class="hunt-launch-tip" id="huntLaunchTip" hidden>La energía se recupera al comenzar un nuevo día. La Sangre de Jefe solo puede caer en Difícil.</div><div class="hunt-launch-row"><button type="button" class="hunt-launch-info" data-hunt-info aria-label="Información sobre energía y recompensas" aria-expanded="false" aria-controls="huntLaunchTip">i</button><div class="hunt-difficulties">${difficulties}</div></div>`}</div></div>`;
 }
 
