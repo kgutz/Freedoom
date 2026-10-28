@@ -9,6 +9,7 @@ export function readCloudConfig(browserWindow = globalThis.window) {
   if (!publishableKey.startsWith('sb_publishable_') && !publishableKey.startsWith('eyJ')) {
     throw new Error('La clave pública de Supabase no es válida');
   }
-  return Object.freeze({ enabled: true, url, publishableKey });
+  // `retirement`: el juego deja la nube; cada jugador pasa su última partida a su navegador y se desvincula.
+  return Object.freeze({ enabled: true, url, publishableKey, ...(value.retirement === true ? { retirement: true } : {}) });
 }
 

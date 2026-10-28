@@ -267,6 +267,7 @@ import { bindBackupControls, exportStateAsFile } from './ui/backup-controller.js
 import { escapeHtml } from './ui/escape-html.js';
 import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
+import { clearCloudAuthTokens, isCloudRetired, markCloudRetired, retirementPlan } from './cloud/cloud-retirement.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
 import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
@@ -312,7 +313,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.69';
+const APP_VERSION='2.29.70';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -8366,7 +8367,10 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     return;
   }
   const cloudConfig=readCloudConfig(window);
-  if(cloudConfig.enabled&&!LOCAL_DEMO_SKULL_FUSIONS&&!LOCAL_DEMO_HALLOWEEN){
+  /* Retirada de la nube: un navegador ya desvinculado funciona solo en local, sin pantallas de acceso. */
+  const retirement=Boolean(cloudConfig.retirement);
+  const cloudRetired=retirement&&isCloudRetired(localStorage);
+  if(cloudConfig.enabled&&!cloudRetired&&!LOCAL_DEMO_SKULL_FUSIONS&&!LOCAL_DEMO_HALLOWEEN){
     const initialAuthCallback=new URLSearchParams(location.search).get('authCallback');
     /* Solo esperamos a que la pantalla de carga haya terminado de aparecer, sin
        arrancar todavía su cuenta atrás para ocultarse: eso lo dispara más abajo
@@ -8396,6 +8400,17 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       config:cloudConfig,
     });
     activeCloudService=cloudService;
+    let retiredNow=false;
+    /* Guarda la partida en este navegador, cierra la sesión y no vuelve a usar la cuenta en este dispositivo. */
+    const retireFromCloud=async()=>{
+      try{ await withCloudTimeout(cloudService.signOut(),CLOUD_STARTUP_TIMEOUT_MS,'signOut'); }
+      catch(error){ console.warn('No se pudo cerrar la sesión al retirar la nube',error); }
+      clearCloudAuthTokens(localStorage);
+      clearCloudAuthTokens(sessionStorage);
+      markCloudRetired(localStorage);
+      activeCloudService=null;
+      retiredNow=true;
+    };
     const enterExistingGame=()=>location.reload();
     let authController;
     const routeAuthenticatedUser=async(known={})=>{
@@ -8406,6 +8421,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         ? known.hasBetaAccess
         : await withCloudTimeout(cloudService.hasBetaAccess(),CLOUD_STARTUP_TIMEOUT_MS,'hasBetaAccess');
       if(!access){
+        if(retirement){ await retireFromCloud(); return location.assign(authenticatedEntryUrl); }
         await finishInitialReturnSplash();
         return authController.show('invite-request');
       }
@@ -8413,6 +8429,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         ? known.cloudSave
         : await withCloudTimeout(cloudService.loadGameSave(),CLOUD_STARTUP_TIMEOUT_MS,'loadGameSave');
       if(cloudSave) return enterExistingGame();
+      if(retirement){ await retireFromCloud(); return location.assign(authenticatedEntryUrl); }
       await finishInitialReturnSplash();
       if(stateInformationProfile(state).meaningful) return authController.show('migration');
       startOnboarding();
@@ -8511,7 +8528,24 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       else await routeAuthenticatedUser({hasBetaAccess:access,cloudSave});
     }
     else if(callback==='invite'||callback==='recovery') authController.show('set-password');
-    else if(!session) authController.show('invite-request');
+    else if(!session){
+      const plan=retirementPlan({
+        retirement,retired:false,hasSession:false,
+        /* Solo cuenta una partida real (héroe elegido): un navegador nuevo también guarda días vacíos. */
+        hasLocalGame:Boolean(state.game?.cls)
+      });
+      if(plan==='retire-local') await retireFromCloud(); /* sigue con la partida de este navegador */
+      else if(plan==='offer-recovery'){
+        await finishInitialReturnSplash();
+        authController.show('login');
+        document.getElementById('authTitle').textContent='Retoma tu partida';
+        document.getElementById('authSubtitle').textContent='Freedom ya no usa cuentas. Entra con Google una última vez para traer tu partida a este navegador, o empieza una nueva.';
+        document.querySelector('#authLogin .auth-invite-copy')?.setAttribute('hidden','');
+        const startNew=document.getElementById('authRetireStart');
+        startNew.hidden=false;
+        startNew.onclick=async()=>{ await retireFromCloud(); location.assign(authenticatedEntryUrl); };
+      }else authController.show('invite-request');
+    }
     else if(cloudSave){
       if(!verifyStoredCloudSave(cloudSave)){
         throw new Error('La partida guardada en la nube no superó la verificación. La copia local sigue intacta.');
@@ -8566,10 +8600,13 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         });
       }
       history.replaceState({},'',authenticatedEntryUrl);
+      /* La partida más reciente ya está en este navegador: se desvincula de la cuenta para siempre. */
+      if(retirement) await retireFromCloud();
     }
+    else if(retirement) await retireFromCloud(); /* cuenta sin partida en la nube: se sigue con la de este navegador (o una nueva) */
     else if(stateInformationProfile(state).meaningful) authController.show('migration');
     else startOnboarding();
-    if(session&&cloudSave&&!callback){
+    if(session&&cloudSave&&!callback&&!retiredNow){
       try{ pendingFeedbackReward=await withCloudTimeout(cloudService.pendingFeedbackReward(),CLOUD_STARTUP_TIMEOUT_MS,'pendingFeedbackReward'); }
       catch(error){ console.warn('No se pudo consultar la recompensa de reportes',error); }
       if(pendingFeedbackReward&&isFeedbackRewardApplied(state,pendingFeedbackReward.event_id)){
@@ -8578,7 +8615,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
         void syncClaimedFeedbackReward(rewardToSync);
       }
     }
-    if(!cloudUnavailable&&(!cloudSave||!session||callback)) return;
+    if(!retiredNow&&!cloudUnavailable&&(!cloudSave||!session||callback)) return;
   }
   /* primera vez (sin héroe elegido) -> onboarding cinematográfico */
   if(!state.onboarded || !(state.game && state.game.cls)){
