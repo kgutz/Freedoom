@@ -1,5 +1,5 @@
 export const LOOT_SCHEMA_VERSION = 6;
-export const MAX_INITIAL_RELICS = 15;
+export const MAX_INITIAL_RELICS = 18;
 export const MAX_EQUIPPED_RELICS = 2;
 
 export const BOSS_REWARDS = [
@@ -19,6 +19,9 @@ export const BOSS_REWARDS = [
   { coins: 250, bossBlood: 3 },
   { coins: 265, bossBlood: 3 },
   { coins: 280, bossBlood: 3 },
+  { coins: 295, bossBlood: 3 },
+  { coins: 310, bossBlood: 3 },
+  { coins: 325, bossBlood: 3 },
 ];
 export const RELIC_DROP_RATE = 0.6;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
@@ -269,6 +272,9 @@ export const RELIC_DEFINITIONS = [
     affixPool: ['vitality', 'regeneration', 'fortune'],
     valueUnit: '% reducción',
   },
+  {"id":"relic_16","rewardId":"boss_reward_16","bossIndex":15,"name":"Sello de la Pausa Clara","equipmentType":"seal","effectFamily":"mana-efficiency","image":"relics/relic_16_phase.webp","effectLabel":"Primer hechizo de pago contra cada enemigo: cuesta 1 / 2 / 3 de maná menos; mínimo 1. Se consume al lanzar, incluso si falla.","affixPool":["arcane","channeling","fortune"],"valueUnit":"Maná menos"},
+  {"id":"relic_17","rewardId":"boss_reward_17","bossIndex":16,"name":"Escama del Peso Perdido","equipmentType":"clasp","effectFamily":"emergency-guard","image":"relics/relic_17_phase.webp","effectLabel":"Al cruzar por primera vez el 50% de vida o menos, el siguiente golpe enemigo que conecte se reduce un 10 / 15 / 20%. Una vez por enemigo; no reduce el golpe que cruza el umbral.","affixPool":["vitality","regeneration","fortune"],"valueUnit":"%"},
+  {"id":"relic_18","rewardId":"boss_reward_18","bossIndex":17,"name":"Broche de los Tres Juramentos","equipmentType":"brooch","effectFamily":"third-strike","image":"relics/relic_18_phase.webp","effectLabel":"El tercer ataque directo que dañe al mismo enemigo añade un 10 / 15 / 20% del daño real de ese golpe, una vez por enemigo. No cuentan ecos, marcas ni efectos automáticos.","affixPool":["discipline","fortune","vitality"],"valueUnit":"%"},
 ];
 
 export const FUSION_RELIC_DEFINITIONS = [
@@ -711,9 +717,85 @@ export const FUSION_RELIC_DEFINITIONS = [
     effectLabel: 'Hereda Eco de Sobremesa y Remate de papel. Con todos los hábitos del día completados, el primer eco de la Cacería hace daño extra.',
     synergy: { type: 'echo-habits-damage', values: { 1: 2, 2: 3, 3: 4 } },
   },
+  {"id":"fusion_63","recipeId":"fusion_recipe_63","ingredientIds":["relic_01","relic_14"],"name":"Corazón del Filo Espejado","equipmentType":"heart","image":"relics/fusion_63_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_64","recipeId":"fusion_recipe_64","ingredientIds":["relic_02","relic_14"],"name":"Lágrima del Filo Espejado","equipmentType":"spirit","image":"relics/fusion_64_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
+  {"id":"fusion_65","recipeId":"fusion_recipe_65","ingredientIds":["relic_03","relic_14"],"name":"Daga del Filo Espejado","equipmentType":"dagger","image":"relics/fusion_65_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_66","recipeId":"fusion_recipe_66","ingredientIds":["relic_04","relic_14"],"name":"Yelmo del Filo Espejado","equipmentType":"helmet","image":"relics/fusion_66_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_67","recipeId":"fusion_recipe_67","ingredientIds":["relic_05","relic_14"],"name":"Frasco del Filo Espejado","equipmentType":"vessel","image":"relics/fusion_67_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
+  {"id":"fusion_68","recipeId":"fusion_recipe_68","ingredientIds":["relic_06","relic_14"],"name":"Colmillo del Filo Espejado","equipmentType":"fang","image":"relics/fusion_68_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Ofensiva"]},
+  {"id":"fusion_69","recipeId":"fusion_recipe_69","ingredientIds":["relic_07","relic_14"],"name":"Collar del Filo Espejado","equipmentType":"collar","image":"relics/fusion_69_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Ofensiva"]},
+  {"id":"fusion_70","recipeId":"fusion_recipe_70","ingredientIds":["relic_08","relic_14"],"name":"Ojo del Filo Espejado","equipmentType":"eye","image":"relics/fusion_70_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_71","recipeId":"fusion_recipe_71","ingredientIds":["relic_09","relic_14"],"name":"Malla del Filo Espejado","equipmentType":"armor","image":"relics/fusion_71_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_72","recipeId":"fusion_recipe_72","ingredientIds":["relic_10","relic_14"],"name":"Calavera del Filo Espejado","equipmentType":"skull","image":"relics/fusion_72_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Sangre","Ofensiva"]},
+  {"id":"fusion_73","recipeId":"fusion_recipe_73","ingredientIds":["relic_11","relic_14"],"name":"Gargantilla del Filo Espejado","equipmentType":"choker","image":"relics/fusion_73_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_74","recipeId":"fusion_recipe_74","ingredientIds":["relic_12","relic_14"],"name":"Puño del Filo Espejado","equipmentType":"fist","image":"relics/fusion_74_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ejecución","Ofensiva"]},
+  {"id":"fusion_75","recipeId":"fusion_recipe_75","ingredientIds":["relic_02","relic_15"],"name":"Lágrima del Bastión Nocturno","equipmentType":"spirit","image":"relics/fusion_75_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Protección"]},
+  {"id":"fusion_76","recipeId":"fusion_recipe_76","ingredientIds":["relic_03","relic_15"],"name":"Daga del Bastión Nocturno","equipmentType":"dagger","image":"relics/fusion_76_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_77","recipeId":"fusion_recipe_77","ingredientIds":["relic_04","relic_15"],"name":"Yelmo del Bastión Nocturno","equipmentType":"helmet","image":"relics/fusion_77_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_78","recipeId":"fusion_recipe_78","ingredientIds":["relic_05","relic_15"],"name":"Frasco del Bastión Nocturno","equipmentType":"vessel","image":"relics/fusion_78_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Protección"]},
+  {"id":"fusion_79","recipeId":"fusion_recipe_79","ingredientIds":["relic_06","relic_15"],"name":"Colmillo del Bastión Nocturno","equipmentType":"fang","image":"relics/fusion_79_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Protección"]},
+  {"id":"fusion_80","recipeId":"fusion_recipe_80","ingredientIds":["relic_07","relic_15"],"name":"Collar del Bastión Nocturno","equipmentType":"collar","image":"relics/fusion_80_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Protección"]},
+  {"id":"fusion_81","recipeId":"fusion_recipe_81","ingredientIds":["relic_10","relic_15"],"name":"Calavera del Bastión Nocturno","equipmentType":"skull","image":"relics/fusion_81_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Sangre","Protección"]},
+  {"id":"fusion_82","recipeId":"fusion_recipe_82","ingredientIds":["relic_11","relic_15"],"name":"Gargantilla del Bastión Nocturno","equipmentType":"choker","image":"relics/fusion_82_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_83","recipeId":"fusion_recipe_83","ingredientIds":["relic_12","relic_15"],"name":"Puño del Bastión Nocturno","equipmentType":"fist","image":"relics/fusion_83_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ejecución","Protección"]},
+  {"id":"fusion_84","recipeId":"fusion_recipe_84","ingredientIds":["relic_13","relic_15"],"name":"Báculo del Bastión Nocturno","equipmentType":"staff","image":"relics/fusion_84_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Protección"]},
+  {"id":"fusion_85","recipeId":"fusion_recipe_85","ingredientIds":["relic_14","relic_15"],"name":"Brazal del Bastión Nocturno","equipmentType":"bracer","image":"relics/fusion_85_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Protección"]},
+  {"id":"fusion_86","recipeId":"fusion_recipe_86","ingredientIds":["relic_01","relic_16"],"name":"Corazón de la Pausa Clara","equipmentType":"heart","image":"relics/fusion_86_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Maná"]},
+  {"id":"fusion_87","recipeId":"fusion_recipe_87","ingredientIds":["relic_03","relic_16"],"name":"Daga de la Pausa Clara","equipmentType":"dagger","image":"relics/fusion_87_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Maná"]},
+  {"id":"fusion_88","recipeId":"fusion_recipe_88","ingredientIds":["relic_04","relic_16"],"name":"Yelmo de la Pausa Clara","equipmentType":"helmet","image":"relics/fusion_88_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Maná"]},
+  {"id":"fusion_89","recipeId":"fusion_recipe_89","ingredientIds":["relic_06","relic_16"],"name":"Colmillo de la Pausa Clara","equipmentType":"fang","image":"relics/fusion_89_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Maná"]},
+  {"id":"fusion_90","recipeId":"fusion_recipe_90","ingredientIds":["relic_07","relic_16"],"name":"Collar de la Pausa Clara","equipmentType":"collar","image":"relics/fusion_90_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Maná"]},
+  {"id":"fusion_91","recipeId":"fusion_recipe_91","ingredientIds":["relic_08","relic_16"],"name":"Ojo de la Pausa Clara","equipmentType":"eye","image":"relics/fusion_91_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Maná"]},
+  {"id":"fusion_92","recipeId":"fusion_recipe_92","ingredientIds":["relic_09","relic_16"],"name":"Malla de la Pausa Clara","equipmentType":"armor","image":"relics/fusion_92_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Maná"]},
+  {"id":"fusion_93","recipeId":"fusion_recipe_93","ingredientIds":["relic_10","relic_16"],"name":"Sello de la Llama Serena","equipmentType":"skull","image":"relics/fusion_93_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Sangre","Maná"]},
+  {"id":"fusion_94","recipeId":"fusion_recipe_94","ingredientIds":["relic_11","relic_16"],"name":"Gargantilla de la Pausa Clara","equipmentType":"choker","image":"relics/fusion_94_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Maná"]},
+  {"id":"fusion_95","recipeId":"fusion_recipe_95","ingredientIds":["relic_12","relic_16"],"name":"Puño de la Pausa Clara","equipmentType":"fist","image":"relics/fusion_95_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ejecución","Maná"]},
+  {"id":"fusion_96","recipeId":"fusion_recipe_96","ingredientIds":["relic_13","relic_16"],"name":"Báculo del Eco Despierto","equipmentType":"staff","image":"relics/fusion_96_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Maná"]},
+  {"id":"fusion_97","recipeId":"fusion_recipe_97","ingredientIds":["relic_14","relic_16"],"name":"Brazal de la Pausa Clara","equipmentType":"bracer","image":"relics/fusion_97_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Maná"]},
+  {"id":"fusion_98","recipeId":"fusion_recipe_98","ingredientIds":["relic_15","relic_16"],"name":"Hebilla de la Pausa Clara","equipmentType":"buckle","image":"relics/fusion_98_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Maná"]},
+  {"id":"fusion_99","recipeId":"fusion_recipe_99","ingredientIds":["relic_02","relic_17"],"name":"Lágrima de la Escama Libre","equipmentType":"spirit","image":"relics/fusion_99_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Protección"]},
+  {"id":"fusion_100","recipeId":"fusion_recipe_100","ingredientIds":["relic_03","relic_17"],"name":"Daga de la Escama Libre","equipmentType":"dagger","image":"relics/fusion_100_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_101","recipeId":"fusion_recipe_101","ingredientIds":["relic_04","relic_17"],"name":"Yelmo de la Escama Libre","equipmentType":"helmet","image":"relics/fusion_101_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_102","recipeId":"fusion_recipe_102","ingredientIds":["relic_05","relic_17"],"name":"Frasco de la Escama Libre","equipmentType":"vessel","image":"relics/fusion_102_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Protección"]},
+  {"id":"fusion_103","recipeId":"fusion_recipe_103","ingredientIds":["relic_06","relic_17"],"name":"Colmillo del Peso Perdido","equipmentType":"fang","image":"relics/fusion_103_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Protección"]},
+  {"id":"fusion_104","recipeId":"fusion_recipe_104","ingredientIds":["relic_07","relic_17"],"name":"Collar de la Escama Libre","equipmentType":"collar","image":"relics/fusion_104_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Protección"]},
+  {"id":"fusion_105","recipeId":"fusion_recipe_105","ingredientIds":["relic_10","relic_17"],"name":"Calavera de la Escama Libre","equipmentType":"skull","image":"relics/fusion_105_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Sangre","Protección"]},
+  {"id":"fusion_106","recipeId":"fusion_recipe_106","ingredientIds":["relic_11","relic_17"],"name":"Gargantilla de la Escama Libre","equipmentType":"choker","image":"relics/fusion_106_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Protección"]},
+  {"id":"fusion_107","recipeId":"fusion_recipe_107","ingredientIds":["relic_12","relic_17"],"name":"Puño de la Escama Libre","equipmentType":"fist","image":"relics/fusion_107_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ejecución","Protección"]},
+  {"id":"fusion_108","recipeId":"fusion_recipe_108","ingredientIds":["relic_13","relic_17"],"name":"Báculo de la Escama Libre","equipmentType":"staff","image":"relics/fusion_108_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Protección"]},
+  {"id":"fusion_109","recipeId":"fusion_recipe_109","ingredientIds":["relic_14","relic_17"],"name":"Brazal de la Escama Libre","equipmentType":"bracer","image":"relics/fusion_109_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ofensiva","Protección"]},
+  {"id":"fusion_110","recipeId":"fusion_recipe_110","ingredientIds":["relic_16","relic_17"],"name":"Sello de la Escama Serena","equipmentType":"seal","image":"relics/fusion_110_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Protección"]},
+  {"id":"fusion_111","recipeId":"fusion_recipe_111","ingredientIds":["relic_01","relic_18"],"name":"Corazón de los Tres Juramentos","equipmentType":"heart","image":"relics/fusion_111_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_112","recipeId":"fusion_recipe_112","ingredientIds":["relic_02","relic_18"],"name":"Lágrima de los Tres Juramentos","equipmentType":"spirit","image":"relics/fusion_112_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
+  {"id":"fusion_113","recipeId":"fusion_recipe_113","ingredientIds":["relic_03","relic_18"],"name":"Daga de los Tres Juramentos","equipmentType":"dagger","image":"relics/fusion_113_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_114","recipeId":"fusion_recipe_114","ingredientIds":["relic_04","relic_18"],"name":"Yelmo de los Tres Juramentos","equipmentType":"helmet","image":"relics/fusion_114_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_115","recipeId":"fusion_recipe_115","ingredientIds":["relic_05","relic_18"],"name":"Frasco de los Tres Juramentos","equipmentType":"vessel","image":"relics/fusion_115_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
+  {"id":"fusion_116","recipeId":"fusion_recipe_116","ingredientIds":["relic_06","relic_18"],"name":"Colmillo de los Tres Juramentos","equipmentType":"fang","image":"relics/fusion_116_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Ofensiva"]},
+  {"id":"fusion_117","recipeId":"fusion_recipe_117","ingredientIds":["relic_07","relic_18"],"name":"Collar de los Tres Juramentos","equipmentType":"collar","image":"relics/fusion_117_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Vida / sustento","Ofensiva"]},
+  {"id":"fusion_118","recipeId":"fusion_recipe_118","ingredientIds":["relic_08","relic_18"],"name":"Ojo de los Tres Juramentos","equipmentType":"eye","image":"relics/fusion_118_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_119","recipeId":"fusion_recipe_119","ingredientIds":["relic_09","relic_18"],"name":"Malla de los Tres Juramentos","equipmentType":"armor","image":"relics/fusion_119_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_120","recipeId":"fusion_recipe_120","ingredientIds":["relic_10","relic_18"],"name":"Pacto de las Tres Cenizas","equipmentType":"skull","image":"relics/fusion_120_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Sangre","Ofensiva"]},
+  {"id":"fusion_121","recipeId":"fusion_recipe_121","ingredientIds":["relic_11","relic_18"],"name":"Gargantilla de los Tres Juramentos","equipmentType":"choker","image":"relics/fusion_121_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Experiencia","Ofensiva"]},
+  {"id":"fusion_122","recipeId":"fusion_recipe_122","ingredientIds":["relic_12","relic_18"],"name":"Puño de los Tres Juramentos","equipmentType":"fist","image":"relics/fusion_122_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Ejecución","Ofensiva"]},
+  {"id":"fusion_123","recipeId":"fusion_recipe_123","ingredientIds":["relic_15","relic_18"],"name":"Hebilla de los Tres Juramentos","equipmentType":"buckle","image":"relics/fusion_123_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_124","recipeId":"fusion_recipe_124","ingredientIds":["relic_16","relic_18"],"name":"Sello de los Tres Juramentos","equipmentType":"seal","image":"relics/fusion_124_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
+  {"id":"fusion_125","recipeId":"fusion_recipe_125","ingredientIds":["relic_17","relic_18"],"name":"Escama de los Tres Juramentos","equipmentType":"clasp","image":"relics/fusion_125_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
 ];
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
+  // Phase 14–18: primary-family exclusions. Historical recipes remain unchanged.
+  ["relic_13","relic_14"],
+  ["relic_01","relic_15"],
+  ["relic_08","relic_15"],
+  ["relic_09","relic_15"],
+  ["relic_02","relic_16"],
+  ["relic_05","relic_16"],
+  ["relic_01","relic_17"],
+  ["relic_08","relic_17"],
+  ["relic_09","relic_17"],
+  ["relic_15","relic_17"],
+  ["relic_13","relic_18"],
+  ["relic_14","relic_18"],
   ['relic_02', 'relic_05'],
   ['relic_01', 'relic_08'],
   ['relic_01', 'relic_09'],
@@ -749,6 +831,9 @@ export const RELIC_RANK_EFFECTS = {
   relic_13: { 1: 10, 2: 15, 3: 20 },
   relic_14: { 1: 10, 2: 15, 3: 20 },
   relic_15: { 1: 10, 2: 15, 3: 20 },
+  relic_16: { 1: 1, 2: 2, 3: 3 },
+  relic_17: { 1: 10, 2: 15, 3: 20 },
+  relic_18: { 1: 10, 2: 15, 3: 20 },
 };
 
 /* Tres Fauces (relic_11): % extra sobre la XP base del 1.er, 2.º y 3.er enemigo de la Cacería.
@@ -840,6 +925,9 @@ export function relicCombatBonus(relicId, rank = 1) {
    a los derivados de combate; Constitución y Destreza son puntos efectivos que solo cuentan en Cacería
    y nunca se añaden al reparto permanente de atributos. */
 export const SOBREMESA_COMBAT_BONUS_BY_RANK = Object.freeze({
+  relic_16: Object.freeze({"magicAttack":[7,8,9],"dexterity":[3,4,5]}),
+  relic_17: Object.freeze({"defense":[7,8,9],"constitution":[3,4,5]}),
+  relic_18: Object.freeze({"physicalAttack":[7,8,9],"dexterity":[3,4,5]}),
   relic_13: Object.freeze({ magicAttack: Object.freeze([7, 8, 9]), constitution: Object.freeze([3, 4, 5]) }),
   relic_14: Object.freeze({ physicalAttack: Object.freeze([7, 8, 9]), dexterity: Object.freeze([3, 4, 5]) }),
   relic_15: Object.freeze({ defense: Object.freeze([7, 8, 9]), constitution: Object.freeze([3, 4, 5]) }),

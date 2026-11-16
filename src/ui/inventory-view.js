@@ -1028,7 +1028,7 @@ function fusionResultPreviewMarkup(preview) {
       <h3>${escapeHtml(definition.name)}</h3>
       <b class="fusion-preview-quality"><span>${escapeHtml(rarityCopy)}</span><span>RANGO ${relic.rank}</span></b>
     </div>
-    <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic, { separateFinal: true })}</div>
+    <div class="relic-effect fusion-preview-main-effects">${relicEffectRows(definition, relic, { separateFinal: Boolean(definition.synergy) })}</div>
     <div class="fusion-preview-copy fusion-preview-extra">
       <small class="fusion-preview-affixes"><span>EFECTOS EXTRAS · </span>${extrasMarkup}</small>
     </div>

@@ -197,6 +197,9 @@ function reportMarkup(report) {
     ].filter(Boolean).join(' · ');
     const punoBonus = Number(encounter.finisherDamageDealt) > 0 ? `${encounter.finisherDamageDealt} de vida rematada` : '';
     const sobremesaBonus = [
+      Number(encounter.clarityManaSaved) > 0 ? `Pausa Clara: ${encounter.clarityManaSaved} maná ahorrado` : '',
+      Number(encounter.emergencyGuardPrevented) > 0 ? `Peso Perdido: ${encounter.emergencyGuardPrevented} daño evitado` : '',
+      Number(encounter.thirdStrikeDamageDealt) > 0 ? `Tres Juramentos: ${encounter.thirdStrikeDamageDealt} daño extra` : '',
       Number(encounter.echoDamageDealt) > 0 ? `${encounter.echoDamageDealt} daño de eco` : '',
       Number(encounter.markDamageDealt) > 0 ? `${encounter.markDamageDealt} daño de marca` : '',
       Number(encounter.bastionPrevented) > 0 ? `${encounter.bastionPrevented} daño evitado por Bastión` : '',

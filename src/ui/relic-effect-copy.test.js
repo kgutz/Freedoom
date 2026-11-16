@@ -13,7 +13,7 @@ it('la información de la máscara anuncia el 25% sin cambiar el vampirismo', ()
 });
 
 function data(definition, rank) {
-  const base = grantBossRewards({ state: {}, bossesDown: 15, source: 'retroactive', seed: 'copy', nowTimestamp: 1 });
+  const base = grantBossRewards({ state: {}, bossesDown: 18, source: 'retroactive', seed: 'copy', nowTimestamp: 1 });
   base.economy.coins = 100000; base.economy.bossBlood = 100;
   Object.values(base.inventory.relics).forEach(relic => { relic.rank = rank; });
   if (definition.fixedRank) base.inventory.relics[definition.id]={unlocked:true,rank:definition.fixedRank,rarity:'legendary',affixes:[],expiresAt:0};
@@ -34,7 +34,7 @@ describe('Microcopy de efectos: catálogo completo', () => {
   it.each(cases)('%s R%i: valores reales y mismas unidades en ficha y Forja', (_id, rank, definition) => {
     const { base, state, relic } = data(definition, rank);
     const rows = relicEffectCopy(definition, relic);
-    expect(rows).toHaveLength(definition.fixedRank ? 2 : definition.recipeId ? 3 : 1);
+    expect(rows).toHaveLength(definition.fixedRank ? 2 : definition.recipeId ? (definition.synergy ? 3 : 2) : 1);
     for (const row of rows) {
       expect(row.name).toBeTruthy(); expect(row.description).toBeTruthy();
       expect(row.description).not.toMatch(/undefined|NaN|Hereda|mientras está equipad|Valor actual/);
@@ -52,8 +52,8 @@ describe('Microcopy de efectos: catálogo completo', () => {
     const forgeRows = effectRows(document.elements.forgeBody.innerHTML);
     if (definition.fixedRank) expect(detail).not.toContain('data-open-forge-relic');
     else expect(forgeRows).toEqual(effectRows(detail));
-    if (definition.recipeId) expect(document.elements.forgeBody.innerHTML).toContain('data-effect-kind="BONUS DE FUSIÓN"');
-    expect(effectRows(detail)).toHaveLength(definition.recipeId ? rows.length - 1 : rows.length);
+    if (definition.synergy) expect(document.elements.forgeBody.innerHTML).toContain('data-effect-kind="BONUS DE FUSIÓN"');
+    expect(effectRows(detail)).toHaveLength(definition.synergy ? rows.length - 1 : rows.length);
     expect(detail).toContain('aria-haspopup="dialog"');
     expect(detail).not.toContain('<p>' + rows[0].description);
     for (const row of rows) {
@@ -80,7 +80,7 @@ describe('Microcopy de efectos: catálogo completo', () => {
     expect(rows[2].description).toContain('preparas 4 de protección extra');
   });
 
-  it.each(cases.filter(([, , definition]) => definition.recipeId))('%s R%i: bonus cotidiano, disparador primero y máximo dos frases', (_id, rank, definition) => {
+  it.each(cases.filter(([, , definition]) => definition.recipeId && definition.synergy))('%s R%i: bonus cotidiano, disparador primero y máximo dos frases', (_id, rank, definition) => {
     const { relic } = data(definition, rank);
     const copy = relicEffectCopy(definition, relic).at(-1).description;
     expect(copy).toMatch(/^(Al |Con |Si |Cuando |La primera vez)/);
@@ -155,5 +155,34 @@ describe('Microcopy de efectos: catálogo completo', () => {
     expect(bonus('fusion_31')).toContain('Contra el siguiente enemigo, vuelve a empezar');
     expect(bonus('fusion_25')).toContain('siguiente ataque que dañe a ese enemigo');
     expect(bonus('fusion_25')).toContain('Solo una vez por enemigo; no puedes acumularlo');
+  });
+});
+
+describe('Inherited-only fusion preview rendering', () => {
+  it('shows both ingredient effects and no empty fusion bonus', () => {
+    const definition = relicDefinition('fusion_63');
+    const { base, relic } = data(definition, 1);
+    const document = documentStub();
+    renderFusionView(document, base, ...definition.ingredientIds);
+    const html = document.elements.forgeBody.innerHTML;
+    const rows = effectRows(html);
+    expect(rows).toHaveLength(2);
+    for (const id of definition.ingredientIds) {
+      expect(rows.some(row => row.includes('data-relic-effect="' + id + '"'))).toBe(true);
+    }
+    expect(relicEffectCopy(definition, relic)).toHaveLength(2);
+    expect(html).not.toContain('data-effect-kind="BONUS DE FUSIÓN"');
+    expect(html).not.toContain('undefined');
+  });
+  it('keeps the two inherited effects and distinct bonus for an existing synergy', () => {
+    const definition = relicDefinition('fusion_51');
+    const { base } = data(definition, 1);
+    const document = documentStub();
+    renderFusionView(document, base, ...definition.ingredientIds);
+    const html = document.elements.forgeBody.innerHTML;
+    expect(effectRows(html)).toHaveLength(2);
+    expect(html).toContain('data-effect-kind="BONUS DE FUSIÓN"');
+    expect(html).toContain('data-relic-effect="fusion_51"');
+    expect(html).not.toContain('undefined');
   });
 });

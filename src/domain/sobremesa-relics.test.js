@@ -62,8 +62,8 @@ const OTHERS = ['relic_01', 'relic_02', 'relic_03', 'relic_04', 'relic_05', 'rel
 
 describe('Reliquias 13, 14 y 15: catálogo, rangos y atributos', () => {
   it('existen tras el jefe 12, con su arte, su familia propia y rangos 10/15/20 %', () => {
-    expect(MAX_INITIAL_RELICS).toBe(15);
-    expect(RELIC_DEFINITIONS.map(definition => definition.id).slice(12)).toEqual(['relic_13', 'relic_14', 'relic_15']);
+    expect(MAX_INITIAL_RELICS).toBe(18);
+    expect(RELIC_DEFINITIONS.map(definition => definition.id).slice(12, 15)).toEqual(['relic_13', 'relic_14', 'relic_15']);
     const expected = { relic_13: ['magic-echo', 12], relic_14: ['physical-mark', 13], relic_15: ['impact-bastion', 14] };
     for (const [id, [family, bossIndex]] of Object.entries(expected)) {
       const definition = relicDefinition(id);
@@ -307,7 +307,7 @@ describe('Recetas, familias y atributos de las fusiones 51-62', () => {
   };
 
   it('hay una receta por reliquia base 01-12, sin duplicar, con arte y numeración libre', () => {
-    const recipes = FUSION_RELIC_DEFINITIONS.filter(definition => definition.ingredientIds.includes('relic_13'));
+    const recipes = FUSION_RELIC_DEFINITIONS.filter(definition => definition.ingredientIds.includes('relic_13') && SOBREMESA_IDS.includes(definition.id));
     expect(recipes.map(definition => definition.id)).toEqual(SOBREMESA_IDS);
     expect(recipes.map(definition => definition.recipeId)).toEqual(SOBREMESA_IDS.map(id => id.replace('fusion_', 'fusion_recipe_')));
     expect(recipes.map(definition => definition.ingredientIds.find(id => id !== 'relic_13'))).toEqual(OTHERS);
@@ -320,11 +320,7 @@ describe('Recetas, familias y atributos de las fusiones 51-62', () => {
     }
   });
 
-  it('el Djinn y el Minotauro no tienen fusiones todavía y las fusionadas no sirven de ingrediente', () => {
-    for (const other of OTHERS) {
-      expect(fusionRecipeStatus('relic_14', other).status).toBe('not-designed');
-      expect(fusionRecipeStatus('relic_15', other).status).toBe('not-designed');
-    }
+  it('las fusionadas y objetos de temporada no sirven de ingrediente', () => {
     expect(fusionRecipeStatus('relic_13', 'fusion_51').definition).toBeNull();
     expect(fusionRecipeStatus('relic_13', 'halloween-mask').definition).toBeNull();
   });
@@ -486,7 +482,7 @@ describe('Sinergias de las fusiones 51-62', () => {
 
 describe('Recompensas de jefe, guardado y compatibilidad', () => {
   it('los jefes 13-15 entregan su reliquia con la tirada habitual, una sola vez', () => {
-    expect(BOSS_REWARDS).toHaveLength(15);
+    expect(BOSS_REWARDS).toHaveLength(18);
     const first = grantBossRewards({ state: {}, bossesDown: 15, source: 'retroactive', seed: 'sobremesa', nowTimestamp: 1 });
     for (const id of ['relic_13', 'relic_14', 'relic_15']) expect(first.inventory.relics[id].unlocked).toBe(true);
     expect(first.rewards.map(reward => reward.bossIndex)).toEqual(Array.from({ length: 15 }, (_, index) => index));

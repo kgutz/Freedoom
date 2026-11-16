@@ -7,6 +7,7 @@ const names = {
   relic_04: 'Constancia', relic_05: 'Maná de victoria', relic_06: 'Vida de victoria',
   relic_07: 'Vampirismo', relic_08: 'Mirada petrificante', relic_09: 'Escamas protectoras',
   relic_10: 'Sangre adicional', relic_11: 'Tres Fauces', relic_12: 'Remate de papel',
+  relic_16: 'Pausa Clara', relic_17: 'Peso Perdido', relic_18: 'Tres Juramentos',
   relic_13: 'Eco de Sobremesa', relic_14: 'Filo del Espejismo', relic_15: 'Bastión del Laberinto',
 };
 
@@ -26,6 +27,9 @@ function baseDescription(id, value) {
     relic_12: `El ataque que deja a un enemigo de Cacería con un ${value}% de su Vida máxima o menos lo remata al instante.`,
     relic_13: `El primer ataque mágico que daña a cada enemigo de Cacería deja un eco: al terminar el turno inflige un ${value}% de su daño real si el enemigo sigue vivo.`,
     relic_14: `El primer ataque físico que daña a cada enemigo de Cacería lo marca. El siguiente ataque físico que conecte consume la marca y hace un ${value}% extra del daño del primero.`,
+    relic_16: `El primer ataque mágico pagado contra cada enemigo de Cacería cuesta ${value} de Maná menos, con mínimo 1. Se consume aunque falle.`,
+    relic_17: `Al caer de más del 50% al 50% de Vida o menos por un golpe, reduce ${value}% el siguiente golpe que conecte. Una vez por enemigo, mínimo 1 de daño y sin resucitar.`,
+    relic_18: `El tercer ataque directo que dañe al mismo enemigo de Cacería añade un ${value}% de su daño real. Una vez por enemigo; los ecos, marcas y otros efectos no cuentan.`,
     relic_15: `Tras recibir dos golpes del mismo enemigo en Cacería, el siguiente golpe que conecte hace un ${value}% menos de daño. Una vez por enemigo; los golpes esquivados no cuentan.`,
   }[id];
 }
@@ -119,7 +123,7 @@ export function relicEffectCopy(definition, relic) {
   const rows = inherited.map(([id, value]) => ({
     id, name: names[id], description: baseDescription(id, value),
   }));
-  if (definition.recipeId) rows.push({
+  if (definition.recipeId && fusionBonus(definition, relic.rank, relic.inheritedEffects || {})) rows.push({
     id: definition.id, name: 'Bonus de fusión', description: fusionBonus(definition, relic.rank, relic.inheritedEffects || {}),
   });
   return rows;

@@ -668,6 +668,13 @@ export function simulatePveCombat({
   let impactsReceived = 0;
   let bastionUsed = false;
   let bastionPrevented = 0;
+  let clarityUsed = false;
+  let clarityManaSaved = 0;
+  let emergencyGuardArmed = false;
+  let emergencyGuardUsed = false;
+  let emergencyGuardPrevented = 0;
+  let directDamagingHits = 0;
+  let thirdStrikeDamageDealt = 0;
   const applyEchoDefeat = () => {
     // Derrotar a un enemigo al que el eco ya ha dañado: una vez por enemigo, sin resucitar.
     if (echoDefeatApplied || echoDamageDealt <= 0 || enemyHp > 0 || heroHp <= 0) return;
@@ -705,7 +712,12 @@ export function simulatePveCombat({
     }
     const normalManaSpent = Math.min(2, heroMana);
     const miniManaDiscount = round <= safeInteger(relicEffects.miniManaOpenings) && normalManaSpent > 1 ? 1 : 0;
-    const manaSpent = normalManaSpent - miniManaDiscount;
+    const paidMana = normalManaSpent - miniManaDiscount;
+    const clarityDiscount = !clarityUsed && attackType === 'magic' && paidMana > 0
+      ? Math.min(Math.max(0, paidMana - 1), safeInteger(relicEffects.clarityManaDiscount)) : 0;
+    if (!clarityUsed && attackType === 'magic' && paidMana > 0) clarityUsed = true;
+    clarityManaSaved += clarityDiscount;
+    const manaSpent = paidMana - clarityDiscount;
     miniManaSaved += miniManaDiscount;
     const heroHit = resolvePveAttack({
       attacker: hero,
@@ -735,6 +747,16 @@ export function simulatePveCombat({
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
     if (realDamage > 0 && firstDamageType === null) firstDamageType = attackType;
+    // Count only direct damaging attacks. Procs never count or recursively trigger this strike.
+    let thirdStrikeDamage = 0;
+    if (realDamage > 0) {
+      directDamagingHits += 1;
+      if (directDamagingHits === 3 && enemyHp > 0 && safeInteger(relicEffects.thirdStrikePercent) > 0) {
+        thirdStrikeDamage = Math.min(enemyHp, Math.max(1, Math.round(realDamage * safeInteger(relicEffects.thirdStrikePercent) / 100)));
+        enemyHp -= thirdStrikeDamage;
+        thirdStrikeDamageDealt += thirdStrikeDamage;
+      }
+    }
     // Remate de papel: un ataque que conecta y deja al enemigo con el X % de su Vida máxima o menos (o menos
     // aún) lo remata. El remate no cura, no activa eco ni marca y no depende del tipo de ataque.
     let finisherDamage = 0;
@@ -795,7 +817,7 @@ export function simulatePveCombat({
     vampirismRecovered += healing;
     vampirismCarry = heroHp >= hero.maxHp ? 0 : rawHealing % 100;
     if (round === 1) petrificationPending = safeInteger(relicEffects.petrification) > 0;
-    log.push({ round, actor: 'hero', ...heroHit, manaSpent, markExtra, finisherDamage, remainingMana: heroMana, remainingHp: enemyHp });
+    log.push({ round, actor: 'hero', ...heroHit, manaSpent, markExtra, thirdStrikeDamage, finisherDamage, remainingMana: heroMana, remainingHp: enemyHp });
     applyEchoDefeat();
     let damageTaken = 0;
     let roundEchoDamage = 0;
@@ -866,8 +888,19 @@ export function simulatePveCombat({
         }
         impactsReceived += 1;
       }
+      // A strict crossing arms the NEXT connected hit, never the triggering hit.
+      if (emergencyGuardArmed && !emergencyGuardUsed && !enemyHit.dodged) {
+        emergencyGuardUsed = true;
+        const before = enemyHit.damage;
+        if (before > 0) enemyHit.damage = Math.max(1, Math.floor(before * (100 - clamp(safeInteger(relicEffects.emergencyGuardPercent), 0, 100)) / 100));
+        enemyHit.emergencyGuardPrevented = before - enemyHit.damage;
+        emergencyGuardPrevented += enemyHit.emergencyGuardPrevented;
+      }
       damageTaken = enemyHit.damage;
+      const hpBeforeHit = heroHp;
       heroHp = Math.max(0, heroHp - enemyHit.damage);
+      if (!emergencyGuardArmed && !emergencyGuardUsed && safeInteger(relicEffects.emergencyGuardPercent) > 0
+        && hpBeforeHit > hero.maxHp / 2 && heroHp > 0 && heroHp <= hero.maxHp / 2) emergencyGuardArmed = true;
       if (heroHp > 0 && enemyHit.armorPrevented > 0) {
         // Spend generated points even at full resources; no overheal banking.
         const manaTotal = Math.min(safeInteger(relicEffects.armorManaCap), Math.floor(armorPrevented * 20 / 100));
@@ -932,7 +965,7 @@ export function simulatePveCombat({
     }
     roundDetails.push({
       round,
-      damageDealt: realDamage + finisherDamage + markExtra + roundEchoDamage,
+      damageDealt: realDamage + thirdStrikeDamage + finisherDamage + markExtra + roundEchoDamage,
       damageTaken,
       heroHp,
       heroMana,
@@ -955,6 +988,7 @@ export function simulatePveCombat({
     echoArmorBoostUsed,
     markDamageDealt,
     bastionPrevented,
+    clarityManaSaved, emergencyGuardPrevented, thirdStrikeDamageDealt,
     petrificationTriggered,
     rendDamageBeforeMitigation: log.reduce((sum, entry) => sum + (entry.rendDamageBeforeMitigation || 0), 0),
     guardDamagePrevented: log.reduce((sum, entry) => sum + (entry.guardPrevented || 0), 0),
@@ -1082,7 +1116,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
     } : null,
     relicEffects: {
       ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniFirstHitDamage', 'firstHitDamageEach', 'firstHitManaEach', 'miniVictoryMana', 'miniVictoryHealthFlat', 'hydraXpFirst', 'hydraXpSecond', 'hydraXpThird', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth',
-        'echoPercent', 'markPercent', 'bastionPercent', 'finisherPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
+        'clarityManaDiscount', 'emergencyGuardPercent', 'thirdStrikePercent', 'echoPercent', 'markPercent', 'bastionPercent', 'finisherPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
       maskBloodChance: [20, 50].includes(relicEffects.maskBloodChance) ? 20 : 0,
@@ -1264,6 +1298,9 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       markDamageDealt: result.markDamageDealt,
       finisherDamageDealt: result.finisherDamageDealt,
       bastionPrevented: result.bastionPrevented,
+      clarityManaSaved: result.clarityManaSaved,
+      emergencyGuardPrevented: result.emergencyGuardPrevented,
+      thirdStrikeDamageDealt: result.thirdStrikeDamageDealt,
       miniVictoryXp,
       miniAllHabitsGold,
       miniVictoryHealthRecovered,

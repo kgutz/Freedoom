@@ -1906,6 +1906,7 @@ export function equippedHuntEffects(state) {
     hydraXpFirst: hydraXp[0], hydraXpSecond: hydraXp[1], hydraXpThird: hydraXp[2],
     // Eco de Sobremesa (relic_13), Filo del Espejismo (relic_14) y Bastión del Laberinto (relic_15).
     echoPercent: sum('relic_13'), markPercent: sum('relic_14'), bastionPercent: sum('relic_15'),
+    clarityManaDiscount: sum('relic_16'), emergencyGuardPercent: sum('relic_17'), thirdStrikePercent: sum('relic_18'),
     // Remate de papel (relic_12): % de Vida máxima por debajo del cual el ataque remata al enemigo.
     finisherPercent: sum('relic_12'),
     echoShield: synergy('fusion_51'),
