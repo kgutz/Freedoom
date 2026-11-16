@@ -1,4 +1,4 @@
-export const EPILOGUE_NOTICE_ID = 'epilogue-bosses-22-25-v1';
+export const EPILOGUE_NOTICE_ID = 'epilogue-bosses-22-25-v2';
 export const EPILOGUE_VISIBLE_MS = 5000;
 export function epilogueNoticePending(state) {
   return Boolean(state?.onboarded && state.game?.cls && !state.game?.updateNotices?.[EPILOGUE_NOTICE_ID]?.acknowledgedAt);
@@ -48,8 +48,11 @@ export function installEpilogueAnnouncement({ document, getState, acknowledge, i
     dialog.innerHTML = `<div class="epilogue-announcement-content"><small>UN NUEVO CAPÍTULO</small>
       <img src="bosses/boss_22_archivista.webp" alt="El Archivista de las Excusas" width="320" height="320">
       <h2 id="epilogue-announcement-title">El Archivista de las Excusas</h2>
-      <p id="epilogue-announcement-copy">Más allá de El Vacío, tu aventura continúa. Cuatro nuevos jefes, nuevas reliquias y 19 fusiones te esperan en el epílogo.</p>
-      <p class="epilogue-announcement-note">Tu partida y tu progreso se conservan. Los nuevos desafíos llegan después del jefe 21.</p>
+      <p id="epilogue-announcement-copy">Llegan cuatro jefes, nuevas reliquias y 19 fusiones.</p>
+      <p class="epilogue-fusion-rule"><strong>Desde el jefe 22, cambia la fusión:</strong><br>Cada nueva reliquia solo se combina con las de los seis jefes inmediatamente anteriores, siempre que no compartan familia de efectos.</p>
+      <p class="epilogue-fusion-example">Por ejemplo: la reliquia del jefe 22 puede combinarse con las compatibles de los jefes 16 al 21.</p>
+      <p><strong>Las fusiones antiguas no cambian.</strong></p>
+      <p class="epilogue-announcement-note">Tu partida y tu progreso se conservan.</p>
       <button type="button" disabled>Continuar en 5 s</button></div>`;
     dialog.addEventListener('cancel', event => { event.preventDefault(); finish(); });
     dialog.querySelector('button').addEventListener('click', finish);

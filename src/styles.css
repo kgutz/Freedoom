@@ -2586,7 +2586,7 @@ dialog.epilogue-announcement.modal-bg.show { display:block; }
 dialog.epilogue-announcement::backdrop { background:#100c18d9; }
 .epilogue-announcement-content { text-align:center; }
 .epilogue-announcement-content small { color:#d9b970; letter-spacing:.15em; }
-.epilogue-announcement-content img { display:block; margin:12px auto; width:min(58vw,250px); height:auto; object-fit:contain; image-rendering:pixelated; }
+.epilogue-announcement-content img { display:block; margin:12px auto; width:min(34vw,160px); height:auto; object-fit:contain; image-rendering:pixelated; }
 .epilogue-announcement-content h2 { margin:12px 0; font-size:1.4rem; }
 .epilogue-announcement-content p { line-height:1.5; }
 .epilogue-announcement-note { font-size:.85rem; opacity:.8; }
