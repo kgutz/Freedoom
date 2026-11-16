@@ -1,4 +1,4 @@
-export const EPILOGUE_NOTICE_ID = 'epilogue-bosses-22-25-v2';
+export const EPILOGUE_NOTICE_ID = 'epilogue-bosses-22-25-v3';
 export const EPILOGUE_VISIBLE_MS = 5000;
 export function epilogueNoticePending(state) {
   return Boolean(state?.onboarded && state.game?.cls && !state.game?.updateNotices?.[EPILOGUE_NOTICE_ID]?.acknowledgedAt);
@@ -45,14 +45,10 @@ export function installEpilogueAnnouncement({ document, getState, acknowledge, i
     dialog.className = 'epilogue-announcement modal-bg show';
     dialog.setAttribute('aria-labelledby', 'epilogue-announcement-title');
     dialog.setAttribute('aria-describedby', 'epilogue-announcement-copy');
-    dialog.innerHTML = `<div class="epilogue-announcement-content"><small>UN NUEVO CAPÍTULO</small>
+    dialog.innerHTML = `<div class="epilogue-announcement-content">
+      <h2 id="epilogue-announcement-title">Nuevas mecánicas de<br><span>fusión de reliquias</span></h2>
       <img src="bosses/boss_22_archivista.webp" alt="El Archivista de las Excusas" width="320" height="320">
-      <h2 id="epilogue-announcement-title">El Archivista de las Excusas</h2>
-      <p id="epilogue-announcement-copy">Llegan cuatro jefes, nuevas reliquias y 19 fusiones.</p>
-      <p class="epilogue-fusion-rule"><strong>Desde el jefe 22, cambia la fusión:</strong><br>Cada nueva reliquia solo se combina con las de los seis jefes inmediatamente anteriores, siempre que no compartan familia de efectos.</p>
-      <p class="epilogue-fusion-example">Por ejemplo: la reliquia del jefe 22 puede combinarse con las compatibles de los jefes 16 al 21.</p>
-      <p><strong>Las fusiones antiguas no cambian.</strong></p>
-      <p class="epilogue-announcement-note">Tu partida y tu progreso se conservan.</p>
+      <p id="epilogue-announcement-copy">Después de <strong>El Vacío</strong>, las nuevas reliquias solo podrán fusionarse con las <strong>seis reliquias anteriores</strong> que sean compatibles.</p>
       <button type="button" disabled>Continuar en 5 s</button></div>`;
     dialog.addEventListener('cancel', event => { event.preventDefault(); finish(); });
     dialog.querySelector('button').addEventListener('click', finish);
