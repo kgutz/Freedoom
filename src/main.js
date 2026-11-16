@@ -1,3 +1,4 @@
+import { installEpilogueAnnouncement } from './ui/epilogue-announcement.js';
 import {
   BOSSES,
   BOSS_LORE,
@@ -313,7 +314,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.71';
+const APP_VERSION='2.29.72';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -3430,6 +3431,14 @@ function queueFiberCatchup(delay=SPLASH_MIN_VISIBLE_MS+SPLASH_FADE_MS+120){
   if(!pendingFiberCatchupNotice(state)) return;
   fiberCatchupTimer=window.setTimeout(()=>void showPendingFiberCatchup(),delay);
 }
+const epilogueAnnouncement = installEpilogueAnnouncement({
+  document, getState: () => state,
+  isBlocked: () => returnSplashPlaying,
+  acknowledge: noticeId => {
+    state.game = { ...state.game, updateNotices: { ...state.game?.updateNotices, [noticeId]: { acknowledgedAt: Date.now() } } };
+    scheduleSave({ type: 'update:epilogue-notice-acknowledged', noticeId });
+  },
+});
 function progressionUpdateAcknowledged(){
   return Boolean(state.game?.updateNotices?.[PROGRESSION_UPDATE_NOTICE_ID]?.acknowledgedAt);
 }
@@ -8268,6 +8277,7 @@ const onboarding=createOnboardingController({
     switchView('view-hoy','navHoy');
     renderAll();
     queuePioneerReward();
+    if (!LOCAL_DEMO_QUIET) epilogueAnnouncement.queue();
   }
 });
 function startOnboarding(){
@@ -8675,6 +8685,7 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
       queueFiberCatchup();
     }
     queueProgressionUpdate();
+    epilogueAnnouncement.queue(SPLASH_MIN_VISIBLE_MS + SPLASH_FADE_MS + 600);
   }else if(LOCAL_BETA_TESTER_REWARD_PREVIEW){
     queueBetaTesterReward(220);
   }else if(LOCAL_FEEDBACK_REWARD_PREVIEW){

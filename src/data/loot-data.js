@@ -1,5 +1,5 @@
 export const LOOT_SCHEMA_VERSION = 6;
-export const MAX_INITIAL_RELICS = 18;
+export const MAX_INITIAL_RELICS = 25;
 export const MAX_EQUIPPED_RELICS = 2;
 
 export const BOSS_REWARDS = [
@@ -22,6 +22,13 @@ export const BOSS_REWARDS = [
   { coins: 295, bossBlood: 3 },
   { coins: 310, bossBlood: 3 },
   { coins: 325, bossBlood: 3 },
+  { coins: 340, bossBlood: 3 },
+  { coins: 355, bossBlood: 3 },
+  { coins: 370, bossBlood: 3 },
+  { coins: 385, bossBlood: 3 },
+  { coins: 400, bossBlood: 3 },
+  { coins: 415, bossBlood: 3 },
+  { coins: 430, bossBlood: 3 },
 ];
 export const RELIC_DROP_RATE = 0.6;
 export const BOSS_BLOOD_DOUBLE_RATE = 0.02;
@@ -275,6 +282,13 @@ export const RELIC_DEFINITIONS = [
   {"id":"relic_16","rewardId":"boss_reward_16","bossIndex":15,"name":"Sello de la Pausa Clara","equipmentType":"seal","effectFamily":"mana-efficiency","image":"relics/relic_16_phase.webp","effectLabel":"Primer hechizo de pago contra cada enemigo: cuesta 1 / 2 / 3 de maná menos; mínimo 1. Se consume al lanzar, incluso si falla.","affixPool":["arcane","channeling","fortune"],"valueUnit":"Maná menos"},
   {"id":"relic_17","rewardId":"boss_reward_17","bossIndex":16,"name":"Escama del Peso Perdido","equipmentType":"clasp","effectFamily":"emergency-guard","image":"relics/relic_17_phase.webp","effectLabel":"Al cruzar por primera vez el 50% de vida o menos, el siguiente golpe enemigo que conecte se reduce un 10 / 15 / 20%. Una vez por enemigo; no reduce el golpe que cruza el umbral.","affixPool":["vitality","regeneration","fortune"],"valueUnit":"%"},
   {"id":"relic_18","rewardId":"boss_reward_18","bossIndex":17,"name":"Broche de los Tres Juramentos","equipmentType":"brooch","effectFamily":"third-strike","image":"relics/relic_18_phase.webp","effectLabel":"El tercer ataque directo que dañe al mismo enemigo añade un 10 / 15 / 20% del daño real de ese golpe, una vez por enemigo. No cuentan ecos, marcas ni efectos automáticos.","affixPool":["discipline","fortune","vitality"],"valueUnit":"%"},
+  {"id":"relic_19","rewardId":"boss_reward_19","bossIndex":18,"name":"Colgante del Ocaso Gemelo","equipmentType":"pendant","effectFamily":"critical-restoration","primaryEffectFamilies":["life","mana"],"image":"relics/relic_19_epilogue.webp","effectLabel":"El primer crítico directo que daña a cada enemigo recupera Vida y Maná, sin superar sus máximos.","affixPool":["vitality","fortune","arcane"],"valueUnit":"puntos"},
+  {"id":"relic_20","rewardId":"boss_reward_20","bossIndex":19,"name":"Anillo del Paso Propio","equipmentType":"ring","effectFamily":"miss-focus","primaryEffectFamilies":["offense"],"image":"relics/relic_20_epilogue.webp","effectLabel":"Si el primer intento de ataque directo no hace daño, el siguiente intento gana probabilidad de crítico; se consume aunque falle y solo ocurre una vez por enemigo.","affixPool":["vitality","fortune","arcane"],"valueUnit":"puntos porcentuales"},
+  {"id":"relic_21","rewardId":"boss_reward_21","bossIndex":20,"name":"Prisma del Horizonte","equipmentType":"prism","effectFamily":"excess-guard","primaryEffectFamilies":["protection"],"image":"relics/relic_21_epilogue.webp","effectLabel":"El primer golpe enemigo que supera el 25% de tu Vida máxima reduce solo la parte que excede ese umbral, una vez por enemigo.","affixPool":["vitality","fortune","arcane"],"valueUnit":"%"},
+  {"id":"relic_22","rewardId":"boss_reward_22","bossIndex":21,"name":"Lente de la Verdad Incómoda","equipmentType":"lens","effectFamily":"opening-critical","primaryEffectFamilies":["offense"],"image":"relics/relic_22_epilogue.webp","effectLabel":"El primer intento de ataque directo contra cada enemigo tiene una bonificación de crítico.","affixPool":["vitality","fortune","arcane"],"valueUnit":"puntos porcentuales"},
+  {"id":"relic_23","rewardId":"boss_reward_23","bossIndex":22,"name":"Diapasón del Pulso Libre","equipmentType":"tuning-fork","effectFamily":"second-physical-mana","primaryEffectFamilies":["mana"],"image":"relics/relic_23_epilogue.webp","effectLabel":"El segundo ataque físico directo que daña al mismo enemigo recupera Maná, una vez por enemigo.","affixPool":["vitality","fortune","arcane"],"valueUnit":"puntos"},
+  {"id":"relic_24","rewardId":"boss_reward_24","bossIndex":23,"name":"Ancla de la Marea Clara","equipmentType":"anchor","effectFamily":"spell-ward","primaryEffectFamilies":["protection"],"image":"relics/relic_24_epilogue.webp","effectLabel":"El primer hechizo de pago prepara una reducción fija para el siguiente golpe enemigo que conecte, una vez por enemigo.","affixPool":["vitality","fortune","arcane"],"valueUnit":"puntos"},
+  {"id":"relic_25","rewardId":"boss_reward_25","bossIndex":24,"name":"Corona del Horizonte Abierto","equipmentType":"crown","effectFamily":"low-health-victory","primaryEffectFamilies":["life"],"image":"relics/relic_25_epilogue.webp","effectLabel":"Vencer con vida y con el 35% de Vida o menos recupera un porcentaje de la Vida máxima, sin resucitar.","affixPool":["vitality","fortune","arcane"],"valueUnit":"%"},
 ];
 
 export const FUSION_RELIC_DEFINITIONS = [
@@ -780,9 +794,33 @@ export const FUSION_RELIC_DEFINITIONS = [
   {"id":"fusion_123","recipeId":"fusion_recipe_123","ingredientIds":["relic_15","relic_18"],"name":"Hebilla de los Tres Juramentos","equipmentType":"buckle","image":"relics/fusion_123_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
   {"id":"fusion_124","recipeId":"fusion_recipe_124","ingredientIds":["relic_16","relic_18"],"name":"Sello de los Tres Juramentos","equipmentType":"seal","image":"relics/fusion_124_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Maná","Ofensiva"]},
   {"id":"fusion_125","recipeId":"fusion_recipe_125","ingredientIds":["relic_17","relic_18"],"name":"Escama de los Tres Juramentos","equipmentType":"clasp","image":"relics/fusion_125_phase.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","designFamilies":["Protección","Ofensiva"]},
+  {"id":"fusion_126","recipeId":"fusion_recipe_126","ingredientIds":["relic_16","relic_22"],"name":"Sello de la Verdad Incómoda","equipmentType":"seal","image":"relics/fusion_126_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["mana","offense"]},
+  {"id":"fusion_127","recipeId":"fusion_recipe_127","ingredientIds":["relic_17","relic_22"],"name":"Escama de la Verdad Incómoda","equipmentType":"clasp","image":"relics/fusion_127_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","offense"]},
+  {"id":"fusion_128","recipeId":"fusion_recipe_128","ingredientIds":["relic_19","relic_22"],"name":"Colgante de la Verdad Incómoda","equipmentType":"pendant","image":"relics/fusion_128_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["life","mana","offense"]},
+  {"id":"fusion_129","recipeId":"fusion_recipe_129","ingredientIds":["relic_21","relic_22"],"name":"Prisma de la Verdad Incómoda","equipmentType":"prism","image":"relics/fusion_129_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","offense"]},
+  {"id":"fusion_130","recipeId":"fusion_recipe_130","ingredientIds":["relic_17","relic_23"],"name":"Escama del Pulso Libre","equipmentType":"clasp","image":"relics/fusion_130_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","mana"]},
+  {"id":"fusion_131","recipeId":"fusion_recipe_131","ingredientIds":["relic_18","relic_23"],"name":"Broche del Pulso Libre","equipmentType":"brooch","image":"relics/fusion_131_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","mana"]},
+  {"id":"fusion_132","recipeId":"fusion_recipe_132","ingredientIds":["relic_20","relic_23"],"name":"Anillo del Pulso Libre","equipmentType":"ring","image":"relics/fusion_132_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","mana"]},
+  {"id":"fusion_133","recipeId":"fusion_recipe_133","ingredientIds":["relic_21","relic_23"],"name":"Prisma del Pulso Libre","equipmentType":"prism","image":"relics/fusion_133_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","mana"]},
+  {"id":"fusion_134","recipeId":"fusion_recipe_134","ingredientIds":["relic_22","relic_23"],"name":"Lente del Pulso Verdadero","equipmentType":"lens","image":"relics/fusion_134_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","mana"]},
+  {"id":"fusion_135","recipeId":"fusion_recipe_135","ingredientIds":["relic_18","relic_24"],"name":"Broche de la Marea Clara","equipmentType":"brooch","image":"relics/fusion_135_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","protection"]},
+  {"id":"fusion_136","recipeId":"fusion_recipe_136","ingredientIds":["relic_19","relic_24"],"name":"Colgante de la Marea Clara","equipmentType":"pendant","image":"relics/fusion_136_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["life","mana","protection"]},
+  {"id":"fusion_137","recipeId":"fusion_recipe_137","ingredientIds":["relic_20","relic_24"],"name":"Anillo de la Marea Clara","equipmentType":"ring","image":"relics/fusion_137_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","protection"]},
+  {"id":"fusion_138","recipeId":"fusion_recipe_138","ingredientIds":["relic_22","relic_24"],"name":"Lente de la Marea Clara","equipmentType":"lens","image":"relics/fusion_138_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","protection"]},
+  {"id":"fusion_139","recipeId":"fusion_recipe_139","ingredientIds":["relic_23","relic_24"],"name":"Diapasón de la Marea Clara","equipmentType":"tuning-fork","image":"relics/fusion_139_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["mana","protection"]},
+  {"id":"fusion_140","recipeId":"fusion_recipe_140","ingredientIds":["relic_20","relic_25"],"name":"Anillo del Horizonte Abierto","equipmentType":"ring","image":"relics/fusion_140_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","life"]},
+  {"id":"fusion_141","recipeId":"fusion_recipe_141","ingredientIds":["relic_21","relic_25"],"name":"Prisma del Horizonte Abierto","equipmentType":"prism","image":"relics/fusion_141_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","life"]},
+  {"id":"fusion_142","recipeId":"fusion_recipe_142","ingredientIds":["relic_22","relic_25"],"name":"Lente del Horizonte Abierto","equipmentType":"lens","image":"relics/fusion_142_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["offense","life"]},
+  {"id":"fusion_143","recipeId":"fusion_recipe_143","ingredientIds":["relic_23","relic_25"],"name":"Diapasón del Horizonte Abierto","equipmentType":"tuning-fork","image":"relics/fusion_143_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["mana","life"]},
+  {"id":"fusion_144","recipeId":"fusion_recipe_144","ingredientIds":["relic_24","relic_25"],"name":"Ancla del Reino Claro","equipmentType":"anchor","image":"relics/fusion_144_epilogue.webp","effectLabel":"Hereda los dos efectos principales de sus ingredientes, sin añadir un tercer efecto.","primaryEffectFamilies":["protection","life"]},
 ];
 
 export const PERMANENTLY_INCOMPATIBLE_FUSIONS = [
+  ["relic_18","relic_22"],
+  ["relic_20","relic_22"],
+  ["relic_19","relic_23"],
+  ["relic_21","relic_24"],
+  ["relic_19","relic_25"],
   // Phase 14–18: primary-family exclusions. Historical recipes remain unchanged.
   ["relic_13","relic_14"],
   ["relic_01","relic_15"],
@@ -816,6 +854,13 @@ export const ALL_RELIC_DEFINITIONS = [
 // Rangos II y III son valores conservadores provisionales y están aislados aquí
 // para poder equilibrarlos sin cambiar reglas, migraciones ni estado guardado.
 export const RELIC_RANK_EFFECTS = {
+  relic_19: {1:1,2:2,3:3},
+  relic_20: {1:3,2:5,3:7},
+  relic_21: {1:10,2:15,3:20},
+  relic_22: {1:3,2:5,3:7},
+  relic_23: {1:1,2:2,3:3},
+  relic_24: {1:1,2:2,3:3},
+  relic_25: {1:2,2:3,3:4},
   relic_01: { 1: 5, 2: 7, 3: 10 },
   relic_02: { 1: 5, 2: 7, 3: 10 },
   relic_03: { 1: 2, 2: 3, 3: 4 },
@@ -925,6 +970,13 @@ export function relicCombatBonus(relicId, rank = 1) {
    a los derivados de combate; Constitución y Destreza son puntos efectivos que solo cuentan en Cacería
    y nunca se añaden al reparto permanente de atributos. */
 export const SOBREMESA_COMBAT_BONUS_BY_RANK = Object.freeze({
+  relic_19: Object.freeze({"physicalAttack":[4,5,6],"magicAttack":[4,5,6]}),
+  relic_20: Object.freeze({"physicalAttack":[7,8,9],"dexterity":[3,4,5]}),
+  relic_21: Object.freeze({"defense":[7,8,9],"constitution":[3,4,5]}),
+  relic_22: Object.freeze({"magicAttack":[7,8,9],"dexterity":[3,4,5]}),
+  relic_23: Object.freeze({"physicalAttack":[7,8,9],"constitution":[3,4,5]}),
+  relic_24: Object.freeze({"defense":[7,8,9],"constitution":[3,4,5]}),
+  relic_25: Object.freeze({"defense":[7,8,9],"dexterity":[3,4,5]}),
   relic_16: Object.freeze({"magicAttack":[7,8,9],"dexterity":[3,4,5]}),
   relic_17: Object.freeze({"defense":[7,8,9],"constitution":[3,4,5]}),
   relic_18: Object.freeze({"physicalAttack":[7,8,9],"dexterity":[3,4,5]}),

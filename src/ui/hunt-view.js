@@ -197,6 +197,12 @@ function reportMarkup(report) {
     ].filter(Boolean).join(' · ');
     const punoBonus = Number(encounter.finisherDamageDealt) > 0 ? `${encounter.finisherDamageDealt} de vida rematada` : '';
     const sobremesaBonus = [
+      Number(encounter.criticalHealthRecovered) > 0 ? `Ocaso: vida: ${encounter.criticalHealthRecovered}` : '',
+      Number(encounter.criticalManaRecovered) > 0 ? `Ocaso: maná: ${encounter.criticalManaRecovered}` : '',
+      Number(encounter.secondPhysicalManaRecovered) > 0 ? `Pulso Libre: maná: ${encounter.secondPhysicalManaRecovered}` : '',
+      Number(encounter.excessGuardPrevented) > 0 ? `Horizonte: daño evitado: ${encounter.excessGuardPrevented}` : '',
+      Number(encounter.spellWardPrevented) > 0 ? `Marea Clara: daño evitado: ${encounter.spellWardPrevented}` : '',
+      Number(encounter.lowVictoryHealthRecovered) > 0 ? `Horizonte Abierto: vida: ${encounter.lowVictoryHealthRecovered}` : '',
       Number(encounter.clarityManaSaved) > 0 ? `Pausa Clara: ${encounter.clarityManaSaved} maná ahorrado` : '',
       Number(encounter.emergencyGuardPrevented) > 0 ? `Peso Perdido: ${encounter.emergencyGuardPrevented} daño evitado` : '',
       Number(encounter.thirdStrikeDamageDealt) > 0 ? `Tres Juramentos: ${encounter.thirdStrikeDamageDealt} daño extra` : '',

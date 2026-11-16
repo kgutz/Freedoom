@@ -675,6 +675,11 @@ export function simulatePveCombat({
   let emergencyGuardPrevented = 0;
   let directDamagingHits = 0;
   let thirdStrikeDamageDealt = 0;
+  let criticalRecoveryUsed = false, missCriticalArmed = false, missCriticalUsed = false;
+  let excessGuardUsed = false, spellWardArmed = false, spellWardUsed = false, spellWardCastUsed = false;
+  let physicalDamagingHits = 0;
+  let criticalHealthRecovered = 0, criticalManaRecovered = 0, secondPhysicalManaRecovered = 0;
+  let excessGuardPrevented = 0, spellWardPrevented = 0, lowVictoryHealthRecovered = 0;
   const applyEchoDefeat = () => {
     // Derrotar a un enemigo al que el eco ya ha dañado: una vez por enemigo, sin resucitar.
     if (echoDefeatApplied || echoDamageDealt <= 0 || enemyHp > 0 || heroHp <= 0) return;
@@ -719,8 +724,15 @@ export function simulatePveCombat({
     clarityManaSaved += clarityDiscount;
     const manaSpent = paidMana - clarityDiscount;
     miniManaSaved += miniManaDiscount;
+    const missBonus = missCriticalArmed && !missCriticalUsed ? safeInteger(relicEffects.missCriticalBonus) : 0;
+    if (missCriticalArmed && !missCriticalUsed) { missCriticalUsed = true; missCriticalArmed = false; }
+    const openingBonus = round === 1 ? safeInteger(relicEffects.openingCriticalBonus) : 0;
+    if (!spellWardCastUsed && attackType === 'magic' && manaSpent > 0) {
+      spellWardCastUsed = true;
+      spellWardArmed = safeInteger(relicEffects.spellWardFlat) > 0;
+    }
     const heroHit = resolvePveAttack({
-      attacker: hero,
+      attacker: { ...hero, criticalChance: clamp((hero.criticalChance || 0) + (missBonus + openingBonus) / 100, 0, 1) },
       defender: enemy,
       attackType,
       attackMultiplier: manaSpent > 0 ? 1 : 0.72,
@@ -746,6 +758,20 @@ export function simulatePveCombat({
     heroMana = Math.max(0, heroMana - manaSpent);
     const realDamage = Math.min(enemyHp, heroHit.damage);
     enemyHp = Math.max(0, enemyHp - realDamage);
+    if (round === 1 && realDamage <= 0 && !missCriticalUsed && !missCriticalArmed && safeInteger(relicEffects.missCriticalBonus) > 0) missCriticalArmed = true;
+    if (realDamage > 0 && heroHit.critical && !criticalRecoveryUsed && safeInteger(relicEffects.criticalResourceRecovery) > 0) {
+      criticalRecoveryUsed = true;
+      criticalHealthRecovered = Math.min(hero.maxHp - heroHp, safeInteger(relicEffects.criticalResourceRecovery));
+      criticalManaRecovered = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.criticalResourceRecovery));
+      heroHp += criticalHealthRecovered; heroMana += criticalManaRecovered;
+    }
+    if (realDamage > 0 && attackType === 'physical') {
+      physicalDamagingHits += 1;
+      if (physicalDamagingHits === 2) {
+        secondPhysicalManaRecovered = Math.min(hero.maxMana - heroMana, safeInteger(relicEffects.secondPhysicalMana));
+        heroMana += secondPhysicalManaRecovered;
+      }
+    }
     if (realDamage > 0 && firstDamageType === null) firstDamageType = attackType;
     // Count only direct damaging attacks. Procs never count or recursively trigger this strike.
     let thirdStrikeDamage = 0;
@@ -831,6 +857,15 @@ export function simulatePveCombat({
         enemyHit.rendDamageBeforeMitigation = Math.round(heroHp * rendPercent / 100 * (enemyHit.critical ? 1.6 : 1));
         enemyHit.damage += enemyHit.rendDamageBeforeMitigation;
       }
+      // Read pre-relic damage (after defense, critical and rend), reduce only excess over 25% HP.
+      if (!excessGuardUsed && !enemyHit.dodged && enemyHit.damage > hero.maxHp * 0.25 && safeInteger(relicEffects.excessGuardPercent) > 0) {
+        excessGuardUsed = true;
+        const before = enemyHit.damage;
+        const excess = before - hero.maxHp * 0.25;
+        enemyHit.damage = Math.max(1, Math.floor(before - excess * clamp(safeInteger(relicEffects.excessGuardPercent), 0, 100) / 100));
+        excessGuardPrevented = before - enemyHit.damage;
+        enemyHit.excessGuardPrevented = excessGuardPrevented;
+      }
       if (petrificationPending && !enemyHit.dodged) {
         const originalDamage = enemyHit.damage;
         const reduction = safeInteger(relicEffects.petrification) + safeInteger(relicEffects.petrificationFirstBonus) + safeInteger(relicEffects.petrificationHuntBonus) + safeInteger(relicEffects.miniPetrification)
@@ -895,6 +930,13 @@ export function simulatePveCombat({
         if (before > 0) enemyHit.damage = Math.max(1, Math.floor(before * (100 - clamp(safeInteger(relicEffects.emergencyGuardPercent), 0, 100)) / 100));
         enemyHit.emergencyGuardPrevented = before - enemyHit.damage;
         emergencyGuardPrevented += enemyHit.emergencyGuardPrevented;
+      }
+      if (spellWardArmed && !spellWardUsed && !enemyHit.dodged) {
+        spellWardUsed = true;
+        const before = enemyHit.damage;
+        if (before > 0) enemyHit.damage = Math.max(1, before - safeInteger(relicEffects.spellWardFlat));
+        spellWardPrevented = before - enemyHit.damage;
+        enemyHit.spellWardPrevented = spellWardPrevented;
       }
       damageTaken = enemyHit.damage;
       const hpBeforeHit = heroHp;
@@ -972,7 +1014,13 @@ export function simulatePveCombat({
       potionUses: roundPotionUses,
     });
   }
+  if (enemyHp <= 0 && heroHp > 0 && heroHp <= hero.maxHp * 0.35 && safeInteger(relicEffects.lowVictoryHealthPercent) > 0) {
+    lowVictoryHealthRecovered = Math.min(hero.maxHp - heroHp, Math.max(1, Math.floor(hero.maxHp * safeInteger(relicEffects.lowVictoryHealthPercent) / 100)));
+    heroHp += lowVictoryHealthRecovered;
+  }
   return {
+    criticalHealthRecovered, criticalManaRecovered, secondPhysicalManaRecovered,
+    excessGuardPrevented, spellWardPrevented, lowVictoryHealthRecovered,
     miniFirstHitManaRecovered,
     miniFirstHitShieldPrevented,
     miniManaSaved,
@@ -1116,7 +1164,7 @@ export function startHunt({ hunt, regionId = 'fields-of-mist', difficultyId, lev
     } : null,
     relicEffects: {
       ...Object.fromEntries(['vampirism', 'petrification', 'damageReduction', 'victoryHealth', 'victoryMana', 'encounterBonus', 'huntBonus', 'petrificationFirstBonus', 'petrificationHuntBonus', 'petrificationXp', 'petrificationMana', 'petrificationHealth', 'petrificationVampirism', 'armorReserve', 'armorHuntBonus', 'armorXp', 'armorManaCap', 'armorHealthCap', 'armorVampirism', 'miniFirstHitShield', 'miniManaOpenings', 'miniVictoryXp', 'miniFirstHitMana', 'miniVampirism', 'miniPetrification', 'miniArmor', 'miniFirstHitDamage', 'firstHitDamageEach', 'firstHitManaEach', 'miniVictoryMana', 'miniVictoryHealthFlat', 'hydraXpFirst', 'hydraXpSecond', 'hydraXpThird', 'miniAllHabitsGold', 'miniConstancyHit', 'miniVictoryHealth',
-        'clarityManaDiscount', 'emergencyGuardPercent', 'thirdStrikePercent', 'echoPercent', 'markPercent', 'bastionPercent', 'finisherPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
+        'criticalResourceRecovery', 'missCriticalBonus', 'excessGuardPercent', 'openingCriticalBonus', 'secondPhysicalMana', 'spellWardFlat', 'lowVictoryHealthPercent', 'clarityManaDiscount', 'emergencyGuardPercent', 'thirdStrikePercent', 'echoPercent', 'markPercent', 'bastionPercent', 'finisherPercent', 'echoShield', 'echoFirstHitMana', 'echoFirstXp', 'echoMiniDamage', 'echoDefeatMana', 'echoDefeatHealth', 'echoVampirism', 'echoPetrification', 'echoArmor', 'echoMiniGold', 'echoThirdDamage', 'echoHabitsDamage']
         .map(key => [key, safeInteger(relicEffects[key])])),
       manaFusion16: relicEffects.manaFusion16 === true,
       maskBloodChance: [20, 50].includes(relicEffects.maskBloodChance) ? 20 : 0,
@@ -1298,6 +1346,12 @@ export function resolveHunt({ hunt, classId, level, allocation, potions: supplie
       markDamageDealt: result.markDamageDealt,
       finisherDamageDealt: result.finisherDamageDealt,
       bastionPrevented: result.bastionPrevented,
+      criticalHealthRecovered: result.criticalHealthRecovered,
+      criticalManaRecovered: result.criticalManaRecovered,
+      secondPhysicalManaRecovered: result.secondPhysicalManaRecovered,
+      excessGuardPrevented: result.excessGuardPrevented,
+      spellWardPrevented: result.spellWardPrevented,
+      lowVictoryHealthRecovered: result.lowVictoryHealthRecovered,
       clarityManaSaved: result.clarityManaSaved,
       emergencyGuardPrevented: result.emergencyGuardPrevented,
       thirdStrikeDamageDealt: result.thirdStrikeDamageDealt,

@@ -207,13 +207,14 @@ export const BOSSES=[
   'Wyvern de Brea','Nigromante del Mechero','Hidra de Tres Caladas','Titán de Cartón',
   'Sombra de la Sobremesa','Djinn del Mediodía','Minotauro Nocturno','Liche del Café',
   'Dragón Menguante','El Último Trío','Gemelos del Ocaso','El Solitario',
-  'El Vacío — jefe final'
+  'El Vacío — jefe final',
+  'El Archivista de las Excusas','El Campanero del Hábito','Leviatán de la Bruma','El Rey Sin Ceniza'
 ];
 
 export const BOSS_SLUGS=[
   'golem','espectro','arana','caballero','bruja','gusano','sabueso','gargola',
   'wyvern','nigromante','hidra','titan','sombra','djinn','minotauro','liche',
-  'dragon','trio','gemelos','solitario','vacio'
+  'dragon','trio','gemelos','solitario','vacio','archivista','campanero','leviatan','rey'
 ];
 
 export const BOSS_LORE=[
@@ -237,7 +238,11 @@ export const BOSS_LORE=[
   'Tres figuras encapuchadas protegen los últimos restos de una costumbre casi derrotada. Atacan juntas porque por separado ya no conservan suficiente fuerza.',
   'Nacidos bajo el último resplandor del día, uno representa la costumbre y el otro la tentación. Solo pierden su coordinación cuando cae la noche sin fumar.',
   'Espera en una llanura silenciosa donde ya no quedan ejércitos que lo acompañen. Es el último hábito aislado, aferrado a un territorio que se ha quedado vacío.',
-  'No tiene carne, piedra ni humo: es el espacio que queda cuando desaparece la dependencia. Atravesarlo significa aprender que ese vacío también puede llenarse de libertad.'
+  'No tiene carne, piedra ni humo: es el espacio que queda cuando desaparece la dependencia. Atravesarlo significa aprender que ese vacío también puede llenarse de libertad.',
+  "En el epílogo, un archivista espectral encadena cada excusa a un libro de ceniza. Su lente obliga a mirar de frente las historias que antes parecían inevitables.",
+  "Una campana de bronce late donde debería haber un rostro. Sus cuerdas intentan imponer el ritmo de la costumbre, pero cada nuevo hábito hace sonar una nota distinta.",
+  "Bajo la bruma se desliza una serpiente de placas de marfil y garganta turquesa. Su marea arrastra recuerdos antiguos; mantenerse firme abre un paso hacia aguas claras.",
+  "Una armadura real de obsidiana guarda una corona rota y un interior vacío. Ya no gobierna la ceniza: vencerlo permite elegir qué construir en el horizonte abierto."
 ];
 
 export const CLASS_GROWTH={

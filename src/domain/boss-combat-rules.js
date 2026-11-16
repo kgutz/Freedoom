@@ -521,6 +521,17 @@ export function reconcileBossCombat({
     finalBossIndex,
     Math.max(0, next.bossIndex || 0),
   );
+  // Reopen only a finished original campaign when the epilogue is available.
+  // Do not replay elapsed weeks or erase the original campaign history.
+  if (next.completed && next.legacyBossesDown + next.defeated === 21 && bossCount > 21) {
+    next.completed = false;
+    next.bossIndex = 21;
+    next.week = currentWeek;
+    next.hpAtWeekStart = BOSS_MAX_HP;
+    next.victoryRecorded = false;
+    next.earlyVictory = null;
+    next.epilogueStarted = true;
+  }
   if (next.legacyBossesDown + next.defeated >= bossCount) {
     next.completed = true;
     next.bossIndex = finalBossIndex;
