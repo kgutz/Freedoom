@@ -268,7 +268,7 @@ import { bindBackupControls, exportStateAsFile } from './ui/backup-controller.js
 import { escapeHtml } from './ui/escape-html.js';
 import { createAuthPreviewController } from './ui/auth-preview-controller.js';
 import { readCloudConfig } from './cloud/cloud-config.js';
-import { clearCloudAuthTokens, isCloudRetired, markCloudRetired, retirementPlan } from './cloud/cloud-retirement.js';
+import { clearCloudAuthTokens, isCloudRetired, markCloudRetired, retirementPlan, verifyLocalCopyBeforeRetirement } from './cloud/cloud-retirement.js';
 import { createFreedomClient, createCloudService } from './cloud/cloud-service.js';
 import { createMigrationPlan, ensureCloudIdentity, verifyCloudSave, verifyStoredCloudSave, verifyUpdatedCloudSave } from './cloud/cloud-migration.js';
 import { withCloudTimeout } from './cloud/with-cloud-timeout.js';
@@ -314,7 +314,7 @@ import {
   waitForSplashAssets
 } from './ui/splash-assets.js';
 
-const APP_VERSION='2.29.74';
+const APP_VERSION='2.29.75';
 const INVENTORY_SHORTCUT_HINT_KEY='freedoom:inventory-shortcut-seen:v2';
 const INVENTORY_SHORTCUT_SURFACES=['today','habits','hero'];
 const FORCE_INVENTORY_SHORTCUT_HINT=new URLSearchParams(location.search).get('demoInventoryShortcut')==='1';
@@ -8413,6 +8413,9 @@ if(LOCAL_OUTFIT_AUDIT) mountOutfitAudit(document);
     let retiredNow=false;
     /* Guarda la partida en este navegador, cierra la sesión y no vuelve a usar la cuenta en este dispositivo. */
     const retireFromCloud=async()=>{
+      await verifyLocalCopyBeforeRetirement({
+        store,storage:localStorage,key:ACTIVE_STORAGE_KEY,value:serializeState(state),
+      });
       try{ await withCloudTimeout(cloudService.signOut(),CLOUD_STARTUP_TIMEOUT_MS,'signOut'); }
       catch(error){ console.warn('No se pudo cerrar la sesión al retirar la nube',error); }
       clearCloudAuthTokens(localStorage);

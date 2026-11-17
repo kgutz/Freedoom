@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readCloudConfig } from './cloud-config.js';
 import {
   CLOUD_RETIRED_KEY, clearCloudAuthTokens, isCloudRetired, markCloudRetired, retirementPlan,
+  verifyLocalCopyBeforeRetirement,
 } from './cloud-retirement.js';
 
 function fakeStorage(initial = {}) {
@@ -17,6 +18,36 @@ function fakeStorage(initial = {}) {
 }
 
 describe('Retirada de la nube', () => {
+  it('verifica la copia exacta antes de permitir desvincular, sin borrar la sesión', async () => {
+    const storage = fakeStorage({ 'freedom-auth': 'session' });
+    const store = { set(key, value) { storage.setItem(key, value); return { verified: true }; } };
+    await expect(verifyLocalCopyBeforeRetirement({ store, storage, key: 'save', value: 'current' })).resolves.toEqual({ verified: true });
+    expect(storage.getItem('freedom-auth')).toBe('session');
+    expect(isCloudRetired(storage)).toBe(false);
+  });
+
+  it.each([
+    { blocked: true, verified: false },
+    { blocked: false, verified: false, degraded: true },
+    { verified: true },
+    undefined,
+  ])('no acepta un guardado fallido o una relectura distinta: %j', async (result) => {
+    const storage = fakeStorage({ 'freedom-auth': 'session', save: 'older' });
+    const store = { set: async () => result };
+    await expect(verifyLocalCopyBeforeRetirement({ store, storage, key: 'save', value: 'current' })).rejects.toThrow('No se pudo verificar');
+    expect(storage.getItem('freedom-auth')).toBe('session');
+    expect(storage.getItem('save')).toBe('older');
+    expect(isCloudRetired(storage)).toBe(false);
+  });
+
+  it('propaga el fallo de escritura sin borrar datos o marcar la retirada', async () => {
+    const storage = fakeStorage({ 'freedom-auth': 'session' });
+    const store = { set: async () => { throw new Error('quota'); } };
+    await expect(verifyLocalCopyBeforeRetirement({ store, storage, key: 'save', value: 'current' })).rejects.toThrow('quota');
+    expect(storage.getItem('freedom-auth')).toBe('session');
+    expect(isCloudRetired(storage)).toBe(false);
+  });
+
   it('marca el navegador como retirado y lo recuerda', () => {
     const storage = fakeStorage();
     expect(isCloudRetired(storage)).toBe(false);

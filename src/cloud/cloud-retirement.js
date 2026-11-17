@@ -5,6 +5,17 @@
 export const CLOUD_RETIRED_KEY = 'freedom:cloud-retired:v1';
 const AUTH_STORAGE_PREFIX = 'freedom-auth';
 
+/* Retirement must not trust a fulfilled storage promise alone: the store can
+   preserve an older recovery copy while returning blocked/degraded. Verify the
+   exact current state in the primary browser slot before discarding any auth. */
+export async function verifyLocalCopyBeforeRetirement({ store, storage, key, value }) {
+  const saved = await store.set(key, value);
+  if (saved?.blocked || saved?.verified !== true || storage.getItem(key) !== value) {
+    throw new Error('No se pudo verificar tu partida en este navegador. No se ha desvinculado la cuenta. Exporta una copia y vuelve a intentarlo.');
+  }
+  return saved;
+}
+
 export function isCloudRetired(storage) {
   try {
     return storage?.getItem(CLOUD_RETIRED_KEY) === '1';
